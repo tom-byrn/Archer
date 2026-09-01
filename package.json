@@ -1,0 +1,11 @@
+{
+  "name": "archlang",
+  "private": true,
+  "scripts": {
+    "test": "pnpm -r test",
+    "typecheck": "pnpm -r typecheck",
+    "dev": "pnpm --filter @archlang/web dev",
+    "build": "pnpm -r build"
+  },
+  "packageManager": "pnpm@10.17.0"
+}
