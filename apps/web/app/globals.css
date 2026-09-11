@@ -18,6 +18,23 @@ body {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
+/* Language reference typography */
+.spec h1 { @apply pb-3 text-2xl font-bold tracking-tight; }
+.spec h2 { @apply pb-2 pt-7 text-lg font-bold tracking-tight; }
+.spec h3 { @apply pb-1.5 pt-5 text-[15px] font-bold; }
+.spec p { @apply pb-3 text-[14px] leading-relaxed text-slate-700; }
+.spec li { @apply ml-5 list-disc pb-1 text-[14px] leading-relaxed text-slate-700; }
+.spec ol li { @apply list-decimal; }
+.spec code {
+  @apply rounded bg-slate-100 px-1 py-0.5 text-[12.5px];
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+.spec pre { @apply mb-4 overflow-x-auto rounded-xl bg-slate-900 p-4 text-slate-100; }
+.spec pre code { @apply bg-transparent p-0 text-[12.5px] leading-relaxed text-slate-100; }
+.spec table { @apply mb-4 w-full border-collapse text-[13px]; }
+.spec th { @apply border-b-2 border-slate-200 px-2 py-1.5 text-left font-semibold; }
+.spec td { @apply border-b border-slate-100 px-2 py-1.5 text-slate-700; }
+
 /* React Flow chrome tweaks */
 .react-flow__attribution {
   @apply opacity-40;

@@ -5,6 +5,7 @@ import {
   addComponent,
   addConnection,
   autoLayout,
+  compileForAgent,
   componentPaths,
   findComponent,
   format,
@@ -190,6 +191,16 @@ export function Editor({
   const relayout = () =>
     mutate((d) => autoLayout({ ...parse(format(d)).doc, layout: [] }));
 
+  const [copied, setCopied] = useState<"code" | "agent" | null>(null);
+  const copy = (kind: "code" | "agent") => {
+    const text =
+      kind === "agent" ? compileForAgent(derived.doc) : format(derived.doc);
+    void navigator.clipboard.writeText(text).then(() => {
+      setCopied(kind);
+      setTimeout(() => setCopied(null), 1500);
+    });
+  };
+
   return (
     <div className="flex h-screen flex-col">
       <header className="flex items-center gap-3 border-b border-slate-200 bg-white px-4 py-2.5">
@@ -241,6 +252,32 @@ export function Editor({
           >
             Auto-layout
           </button>
+          <span className="h-5 w-px bg-slate-200" />
+          <button
+            onClick={() => copy("code")}
+            className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-sm hover:bg-slate-50"
+          >
+            {copied === "code" ? "Copied!" : "Copy code"}
+          </button>
+          <button
+            onClick={() => copy("agent")}
+            disabled={!derived.valid}
+            title={
+              derived.valid
+                ? "Copy the architecture as an agent-ready spec (layout stripped, guide prepended)"
+                : "Fix validation errors before exporting for an agent"
+            }
+            className="rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-slate-700 disabled:opacity-40"
+          >
+            {copied === "agent" ? "Copied!" : "Copy for agent"}
+          </button>
+          <a
+            href="/language"
+            target="_blank"
+            className="pl-1 text-xs font-medium text-slate-400 hover:text-slate-700"
+          >
+            Language ↗
+          </a>
         </div>
       </header>
 
