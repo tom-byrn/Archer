@@ -22,3 +22,25 @@ export {
   PLANE_INNER_ORIGIN,
   PLANE_INNER_MARGIN,
 } from "./layout";
+export {
+  addComponent,
+  removeComponent,
+  renameComponent,
+  setComponentMeta,
+  setPayload,
+  removePayload,
+  moveComponent,
+  resizeComponent,
+  setDisplay,
+  addConnection,
+  removeConnection,
+  setConnectionMeta,
+  reparentComponent,
+  freshId,
+} from "./transform";
+export type {
+  AddComponentOptions,
+  ComponentMeta,
+  ConnectionOptions,
+  ConnectionMeta,
+} from "./transform";

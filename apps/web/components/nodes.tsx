@@ -29,8 +29,8 @@ export function Glyph({
 
 const EdgeHandles = () => (
   <>
-    <Handle type="target" position={Position.Left} className="!opacity-0 !pointer-events-none" />
-    <Handle type="source" position={Position.Right} className="!opacity-0 !pointer-events-none" />
+    <Handle type="target" position={Position.Left} className="arch-handle" />
+    <Handle type="source" position={Position.Right} className="arch-handle" />
   </>
 );
 

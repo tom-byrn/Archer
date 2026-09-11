@@ -29,3 +29,29 @@ body {
 .react-flow__arrowhead polyline {
   stroke: #64748b;
 }
+.react-flow__edge.selected .react-flow__edge-path {
+  stroke: #2563eb;
+  stroke-width: 2;
+}
+.react-flow__node.selected > div {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+  border-radius: 14px;
+}
+
+/* Connection handles: subtle dots, prominent on hover / while connecting */
+.arch-handle {
+  width: 9px !important;
+  height: 9px !important;
+  background: #94a3b8 !important;
+  border: 2px solid #fff !important;
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+.react-flow__node:hover .arch-handle,
+.react-flow__node.selected .arch-handle,
+.react-flow .connecting .arch-handle,
+.react-flow__handle.connectingto,
+.react-flow__handle.valid {
+  opacity: 1;
+}

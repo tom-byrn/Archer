@@ -60,7 +60,6 @@ export function toFlow(doc: ArchDoc): { nodes: ArchNode[]; edges: Edge[] } {
           width: size[0] * CELL,
           height: size[1] * CELL,
           ...(prefix !== "" ? { parentId: prefix } : {}),
-          draggable: false,
           data: {
             path,
             label: c.name ?? c.id,
