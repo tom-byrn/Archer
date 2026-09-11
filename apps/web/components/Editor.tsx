@@ -14,7 +14,6 @@ import {
   removeComponent,
   removeConnection,
   reparentComponent,
-  type Diagnostic,
 } from "@archlang/lang";
 import Link from "next/link";
 import { lookupType } from "@archlang/catalog";
@@ -24,25 +23,9 @@ import { resolveDropTarget } from "@/lib/dropTarget";
 import { deriveDoc, useArchDoc } from "@/lib/useArchDoc";
 import { useUserLibrary } from "@/lib/userLibrary";
 import { ArchCanvas, type CanvasCallbacks } from "./ArchCanvas";
+import { CodePane } from "./CodePane";
 import { DetailPanel, connectionKey, type Selection } from "./DetailPanel";
 import { Palette } from "./Palette";
-
-function DiagnosticRow({ d }: { d: Diagnostic }) {
-  const isError = d.severity === "error";
-  return (
-    <li className="flex items-start gap-2 py-1 text-xs">
-      <span
-        className={`mono mt-px shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold ${
-          isError ? "bg-red-100 text-red-700" : "bg-amber-100 text-amber-700"
-        }`}
-      >
-        {d.code}
-        {d.span ? ` · L${d.span.start.line}` : ""}
-      </span>
-      <span className="text-slate-600">{d.message}</span>
-    </li>
-  );
-}
 
 /** Drop paths that sit inside another path in the same set (delete parent deletes them). */
 const outermostOnly = (paths: string[]): string[] =>
@@ -75,6 +58,20 @@ export function Editor({
   const derived = useMemo(() => deriveDoc(source, customTags), [source, customTags]);
   const [selection, setSelection] = useState<Selection>(null);
   const [focus, setFocus] = useState<string[]>([]);
+  const [codeOpen, setCodeOpen] = useState(true);
+  useEffect(() => {
+    try {
+      if (localStorage.getItem("archlang.codeOpen") === "0") setCodeOpen(false);
+    } catch {}
+  }, []);
+  const toggleCode = useCallback(() => {
+    setCodeOpen((open) => {
+      try {
+        localStorage.setItem("archlang.codeOpen", open ? "0" : "1");
+      } catch {}
+      return !open;
+    });
+  }, []);
 
   // A focus that stopped resolving (component deleted/renamed) falls back to root.
   const liveFocus = useMemo(
@@ -283,21 +280,13 @@ export function Editor({
 
       <div className="flex min-h-0 flex-1">
         <Palette onAdd={addFromPalette} library={library} />
-        <div className="flex w-[380px] shrink-0 flex-col border-r border-slate-200 bg-white">
-          <textarea
-            value={source}
-            onChange={(e) => setSource(e.target.value)}
-            spellCheck={false}
-            className="mono min-h-0 flex-1 resize-none p-3 text-[12px] leading-relaxed text-slate-800 outline-none"
-          />
-          {derived.diagnostics.length > 0 && (
-            <ul className="max-h-40 overflow-y-auto border-t border-slate-200 px-3 py-1.5">
-              {derived.diagnostics.map((d, i) => (
-                <DiagnosticRow key={i} d={d} />
-              ))}
-            </ul>
-          )}
-        </div>
+        <CodePane
+          source={source}
+          onChange={setSource}
+          diagnostics={derived.diagnostics}
+          open={codeOpen}
+          onToggle={toggleCode}
+        />
         <main className="flex min-w-0 flex-1 flex-col">
           {liveFocus.length > 0 && (
             <nav className="flex items-center gap-1 border-b border-slate-200 bg-white px-3 py-1.5 text-[12px]">

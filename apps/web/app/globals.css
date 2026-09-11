@@ -18,6 +18,48 @@ body {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
+/* Code pane: highlighted <pre> behind a transparent <textarea>. Font metrics
+   on both layers MUST stay identical or the caret drifts off the text. */
+.hl-pre,
+.hl-textarea {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  padding: 12px;
+  font-size: 12px;
+  line-height: 1.625;
+  white-space: pre;
+  tab-size: 2;
+  border: 0;
+}
+.hl-pre {
+  pointer-events: none;
+  overflow: hidden;
+  color: #334155;
+}
+.hl-textarea {
+  background: transparent;
+  color: transparent;
+  caret-color: #0f172a;
+  resize: none;
+  outline: none;
+  overflow: auto;
+}
+.hl-textarea::selection {
+  background: rgba(59, 130, 246, 0.22);
+  color: transparent;
+}
+
+.tok-kw { color: #7c3aed; font-weight: 600; }
+.tok-string { color: #047857; }
+.tok-type { color: #b45309; }
+.tok-arrow { color: #0f172a; font-weight: 700; }
+.tok-num { color: #be185d; }
+.tok-comment { color: #94a3b8; font-style: italic; }
+.tok-fence { color: #94a3b8; }
+.tok-payload { color: #64748b; }
+.tok-version { color: #0e7490; }
+
 /* Language reference typography */
 .spec h1 { @apply pb-3 text-2xl font-bold tracking-tight; }
 .spec h2 { @apply pb-2 pt-7 text-lg font-bold tracking-tight; }
