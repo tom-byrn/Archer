@@ -23,7 +23,7 @@ import {
 } from "./backend";
 import { BRIEF, GUIDE } from "./guide";
 
-const server = new McpServer({ name: "archlang", version: "1.1.0" });
+const server = new McpServer({ name: "archer", version: "1.4.0" });
 
 const text = (value: unknown) => ({
   content: [
@@ -60,8 +60,8 @@ server.registerResource(
   "guide",
   "archlang://guide",
   {
-    title: "Archlang agent guide",
-    description: "Complete guide to Archlang and this server, incl. the language spec.",
+    title: "Archer agent guide",
+    description: "Complete guide to Archer, its Archlang language, and this server.",
     mimeType: "text/markdown",
   },
   async (uri) => ({
@@ -72,7 +72,7 @@ server.registerResource(
 server.registerTool(
   "get_guide",
   {
-    title: "Get the Archlang guide",
+    title: "Get the Archer guide",
     description: `${BRIEF}\n\nReturns the complete agent guide: the mental model (project = one text document; canvas is a live render of it), standard read/modify/create workflows, how validation gates writes, layout rules, an error-code reference, writing advice with examples, and the full Archlang language specification. CALL THIS ONCE BEFORE YOUR FIRST WRITE in a session — everything else on this server assumes you know the language. Also available as the resource archlang://guide.`,
     inputSchema: {},
   },
@@ -481,4 +481,4 @@ server.registerTool(
 // ---------------------------------------------------------------------------
 
 await server.connect(new StdioServerTransport());
-console.error(`[archlang-mcp] ready — convex: ${CONVEX_URL}, workspace: ${resolveWorkspaceId() ?? "(not set)"}`);
+console.error(`[archer-mcp] ready — convex: ${CONVEX_URL}, workspace: ${resolveWorkspaceId() ?? "(not set)"}`);

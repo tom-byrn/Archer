@@ -30,9 +30,10 @@ export default function Home() {
 
   return (
     <div className="mx-auto max-w-2xl px-6 py-12">
-      <header className="flex items-baseline gap-3">
-        <h1 className="text-2xl font-bold tracking-tight">Archlang</h1>
-        <p className="text-sm text-slate-500">
+      <header className="flex items-center gap-3">
+        <img src="/icon.svg" alt="" className="h-8 w-8 rounded-lg" />
+        <h1 className="text-2xl font-bold tracking-tight">Archer</h1>
+        <p className="pt-1 text-sm text-slate-500">
           Architecture canvas → agent-readable code
         </p>
       </header>
@@ -40,13 +41,14 @@ export default function Home() {
       <div className="flex gap-2 pt-6">
         <button
           onClick={() => void newDoc(BLANK, "Untitled")}
-          className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700"
+          style={{ backgroundColor: "var(--accent)" }}
+          className="rounded-full px-4 py-2 text-sm font-semibold text-white shadow-sm hover:opacity-90"
         >
           New document
         </button>
         <button
           onClick={() => void newDoc(SAMPLE, "Acme SaaS")}
-          className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+          className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-600 hover:border-slate-300 hover:text-slate-900"
         >
           New from sample
         </button>
@@ -106,7 +108,7 @@ export default function Home() {
           </button>
         </div>
         <p className="pt-1.5">
-          Connect an agent: <code className="mono">claude mcp add archlang --env
+          Connect an agent: <code className="mono">claude mcp add archer --env
           ARCHLANG_WORKSPACE_ID={workspaceId ?? "<workspace-id>"} -- pnpm --dir
           &lt;repo&gt;/packages/mcp start</code> — see docs/mcp.md.
         </p>

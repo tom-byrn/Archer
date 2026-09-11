@@ -257,9 +257,10 @@ function ComponentDetail({
                 <button
                   key={mode}
                   onClick={() => mutate((d) => setDisplay(d, segments, mode))}
+                  style={display === mode ? { backgroundColor: "var(--accent)", borderColor: "var(--accent)" } : undefined}
                   className={`rounded-lg border px-2.5 py-1 text-[11.5px] font-medium ${
                     display === mode
-                      ? "border-slate-700 bg-slate-800 text-white"
+                      ? "text-white"
                       : "border-slate-200 text-slate-600 hover:bg-slate-50"
                   }`}
                 >
@@ -365,9 +366,10 @@ function ConnectionDetail({
             <button
               key={a}
               onClick={() => commit({ arrow: a })}
+              style={conn.arrow === a ? { backgroundColor: "var(--accent)", borderColor: "var(--accent)" } : undefined}
               className={`mono rounded-lg border px-3 py-1 text-[12px] font-bold ${
                 conn.arrow === a
-                  ? "border-slate-700 bg-slate-800 text-white"
+                  ? "text-white"
                   : "border-slate-200 text-slate-600 hover:bg-slate-50"
               }`}
             >

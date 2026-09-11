@@ -1,8 +1,8 @@
 import { LANGUAGE_SPEC } from "./languageSpec";
 
-export const BRIEF = `Archlang is an architecture-design tool: a drag-and-drop canvas for humans and a strict text language (".arch" documents) for agents, compiling losslessly into each other. Through this MCP server you can do everything a human can do in the app: create/read/update/delete projects, design systems (components, connections, nested containers, validated schema payloads), define custom component types, and control presentation.`;
+export const BRIEF = `Archer is an architecture-design tool: a drag-and-drop canvas for humans and a strict text language called Archlang (".arch" documents) for agents, compiling losslessly into each other. Through this MCP server you can do everything a human can do in the app: create/read/update/delete projects, design systems (components, connections, nested containers, validated schema payloads), define custom component types, and control presentation.`;
 
-export const GUIDE = `# Archlang MCP Server — Agent Guide
+export const GUIDE = `# Archer MCP Server — Agent Guide
 
 ${BRIEF}
 

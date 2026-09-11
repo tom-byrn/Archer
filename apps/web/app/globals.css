@@ -2,6 +2,9 @@
 
 :root {
   --grid: 40px;
+  --accent: #0d9373;
+  --accent-hover: #0b7c61;
+  --accent-soft: rgba(13, 147, 115, 0.1);
 }
 
 html,
@@ -10,8 +13,7 @@ body {
 }
 
 body {
-  @apply bg-slate-100 text-slate-900 antialiased;
-  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  @apply bg-white text-slate-900 antialiased;
 }
 
 .mono {
@@ -35,30 +37,31 @@ body {
 .hl-pre {
   pointer-events: none;
   overflow: hidden;
-  color: #334155;
+  color: #d1d5db;
+  background: #0f1117;
 }
 .hl-textarea {
   background: transparent;
   color: transparent;
-  caret-color: #0f172a;
+  caret-color: #f9fafb;
   resize: none;
   outline: none;
   overflow: auto;
 }
 .hl-textarea::selection {
-  background: rgba(59, 130, 246, 0.22);
+  background: rgba(52, 211, 153, 0.28);
   color: transparent;
 }
 
-.tok-kw { color: #7c3aed; font-weight: 600; }
-.tok-string { color: #047857; }
-.tok-type { color: #b45309; }
-.tok-arrow { color: #0f172a; font-weight: 700; }
-.tok-num { color: #be185d; }
-.tok-comment { color: #94a3b8; font-style: italic; }
-.tok-fence { color: #94a3b8; }
-.tok-payload { color: #64748b; }
-.tok-version { color: #0e7490; }
+.tok-kw { color: #34d399; font-weight: 600; }
+.tok-string { color: #a5d6ff; }
+.tok-type { color: #7dd3fc; }
+.tok-arrow { color: #f9fafb; font-weight: 700; }
+.tok-num { color: #fca5a5; }
+.tok-comment { color: #6b7280; font-style: italic; }
+.tok-fence { color: #6b7280; }
+.tok-payload { color: #9ca3af; }
+.tok-version { color: #5eead4; }
 
 /* Language reference typography */
 .spec h1 { @apply pb-3 text-2xl font-bold tracking-tight; }
@@ -71,7 +74,7 @@ body {
   @apply rounded bg-slate-100 px-1 py-0.5 text-[12.5px];
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
 }
-.spec pre { @apply mb-4 overflow-x-auto rounded-xl bg-slate-900 p-4 text-slate-100; }
+.spec pre { @apply mb-4 overflow-x-auto rounded-xl p-4 text-slate-100; background: #0f1117; }
 .spec pre code { @apply bg-transparent p-0 text-[12.5px] leading-relaxed text-slate-100; }
 .spec table { @apply mb-4 w-full border-collapse text-[13px]; }
 .spec th { @apply border-b-2 border-slate-200 px-2 py-1.5 text-left font-semibold; }
@@ -89,11 +92,11 @@ body {
   stroke: #64748b;
 }
 .react-flow__edge.selected .react-flow__edge-path {
-  stroke: #2563eb;
+  stroke: var(--accent);
   stroke-width: 2;
 }
 .react-flow__node.selected > div {
-  outline: 2px solid #2563eb;
+  outline: 2px solid var(--accent);
   outline-offset: 2px;
   border-radius: 14px;
 }

@@ -50,7 +50,7 @@ function ExportButton({ title }: { title: string }) {
     const el = document.querySelector<HTMLElement>(".react-flow__viewport");
     if (!el) return;
     void toPng(el, {
-      backgroundColor: "#f1f5f9",
+      backgroundColor: "#ffffff",
       width,
       height,
       style: {
@@ -60,7 +60,7 @@ function ExportButton({ title }: { title: string }) {
       },
     }).then((dataUrl) => {
       const a = document.createElement("a");
-      a.download = `${title.replace(/[^a-z0-9-_]+/gi, "_").toLowerCase() || "archlang"}.png`;
+      a.download = `${title.replace(/[^a-z0-9-_]+/gi, "_").toLowerCase() || "archer"}.png`;
       a.href = dataUrl;
       a.click();
     });
@@ -69,7 +69,7 @@ function ExportButton({ title }: { title: string }) {
   return (
     <button
       onClick={onExport}
-      className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-sm hover:bg-slate-50"
+      className="rounded-full border border-slate-200 bg-white px-3.5 py-1.5 text-xs font-medium text-slate-600 shadow-sm hover:border-slate-300 hover:text-slate-900"
     >
       Export PNG
     </button>

@@ -107,7 +107,8 @@ function NewTypeForm({
         <button
           disabled={tag === ""}
           onClick={() => onCreate({ tag: `custom.${tag}`, name: name.trim(), color, glyph })}
-          className="flex-1 rounded-lg bg-slate-800 py-1.5 text-[11.5px] font-medium text-white disabled:opacity-40"
+          style={{ backgroundColor: "var(--accent)" }}
+          className="flex-1 rounded-lg py-1.5 text-[11.5px] font-medium text-white hover:opacity-90 disabled:opacity-40"
         >
           Create
         </button>

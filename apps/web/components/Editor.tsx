@@ -203,9 +203,10 @@ export function Editor({
       <header className="flex items-center gap-3 border-b border-slate-200 bg-white px-4 py-2.5">
         <Link
           href="/"
-          className="text-[15px] font-bold tracking-tight hover:text-slate-600"
+          className="flex items-center gap-2 text-[15px] font-bold tracking-tight hover:opacity-80"
         >
-          Archlang
+          <img src="/icon.svg" alt="" className="h-5 w-5 rounded-md" />
+          Archer
         </Link>
         <span className="truncate text-sm text-slate-500">{derived.doc.title}</span>
         <span
@@ -232,27 +233,27 @@ export function Editor({
           <button
             onClick={undo}
             disabled={!canUndo}
-            className="rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 shadow-sm hover:bg-slate-50 disabled:opacity-40"
+            className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 hover:border-slate-300 hover:text-slate-900 disabled:opacity-40"
           >
             Undo
           </button>
           <button
             onClick={redo}
             disabled={!canRedo}
-            className="rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 shadow-sm hover:bg-slate-50 disabled:opacity-40"
+            className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 hover:border-slate-300 hover:text-slate-900 disabled:opacity-40"
           >
             Redo
           </button>
           <button
             onClick={relayout}
-            className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-sm hover:bg-slate-50"
+            className="rounded-full border border-slate-200 bg-white px-3.5 py-1.5 text-xs font-medium text-slate-600 hover:border-slate-300 hover:text-slate-900"
           >
             Auto-layout
           </button>
           <span className="h-5 w-px bg-slate-200" />
           <button
             onClick={() => copy("code")}
-            className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-sm hover:bg-slate-50"
+            className="rounded-full border border-slate-200 bg-white px-3.5 py-1.5 text-xs font-medium text-slate-600 hover:border-slate-300 hover:text-slate-900"
           >
             {copied === "code" ? "Copied!" : "Copy code"}
           </button>
@@ -264,16 +265,17 @@ export function Editor({
                 ? "Copy the architecture as an agent-ready spec (layout stripped, guide prepended)"
                 : "Fix validation errors before exporting for an agent"
             }
-            className="rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-slate-700 disabled:opacity-40"
+            style={{ backgroundColor: "var(--accent)" }}
+            className="rounded-full px-4 py-1.5 text-xs font-semibold text-white shadow-sm hover:opacity-90 disabled:opacity-40"
           >
             {copied === "agent" ? "Copied!" : "Copy for agent"}
           </button>
           <a
             href="/language"
             target="_blank"
-            className="pl-1 text-xs font-medium text-slate-400 hover:text-slate-700"
+            className="pl-1 text-xs font-medium text-slate-400 hover:text-[#0d9373]"
           >
-            Language ↗
+            Archlang ↗
           </a>
         </div>
       </header>

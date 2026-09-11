@@ -62,15 +62,16 @@ export function CodePane({
   }
 
   return (
-    <div className="flex w-[380px] shrink-0 flex-col border-r border-slate-200 bg-white">
-      <div className="flex items-center border-b border-slate-100 px-3 py-1">
-        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+    <div className="flex w-[380px] shrink-0 flex-col border-r border-slate-200 bg-[#0f1117]">
+      <div className="flex items-center border-b border-white/10 px-3 py-1">
+        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
           Code
         </span>
+        <span className="mono pl-2 text-[10px] text-slate-600">.arch</span>
         <button
           onClick={onToggle}
           title="Hide code"
-          className="ml-auto rounded px-1.5 py-0.5 text-[12px] text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+          className="ml-auto rounded px-1.5 py-0.5 text-[12px] text-slate-500 hover:bg-white/10 hover:text-slate-200"
         >
           ⟨
         </button>
@@ -100,7 +101,7 @@ export function CodePane({
         />
       </div>
       {diagnostics.length > 0 && (
-        <ul className="max-h-40 overflow-y-auto border-t border-slate-200 px-3 py-1.5">
+        <ul className="max-h-40 overflow-y-auto border-t border-slate-200 bg-white px-3 py-1.5">
           {diagnostics.map((d, i) => (
             <DiagnosticRow key={i} d={d} />
           ))}

@@ -1,6 +1,6 @@
-# Archlang MCP Server
+# Archer MCP Server
 
-`packages/mcp` exposes everything a human can do in the Archlang app to AI
+`packages/mcp` exposes everything a human can do in the Archer app to AI
 agents over the Model Context Protocol: browse/create/edit/delete projects,
 design architectures in the Archlang language (with the same validation gates
 the app enforces), manage the custom component-type library, control canvas
@@ -11,13 +11,13 @@ presentation, and compile agent-ready implementation specs.
 Prerequisites: the Convex backend running (`npx convex dev` in `apps/web`) and
 `pnpm install` done at the repo root.
 
-1. **Get your workspace id** — open the app (http://localhost:3000) and copy it
+1. **Get your workspace id** — open Archer (http://localhost:3000) and copy it
    from the footer of the home page. This scopes the server to the same
    projects your browser sees.
 2. **Register the server** with your MCP client. For Claude Code:
 
    ```sh
-   claude mcp add archlang \
+   claude mcp add archer \
      --env ARCHLANG_WORKSPACE_ID=<your-workspace-id> \
      -- pnpm --dir <absolute-path-to-repo>/packages/mcp start
    ```

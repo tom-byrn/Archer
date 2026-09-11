@@ -47,7 +47,7 @@ export function persistWorkspaceId(id: string): void {
   writeFileSync(WORKSPACE_FILE, id + "\n", "utf8");
 }
 
-export const NO_WORKSPACE_MESSAGE = `No workspace is configured, so project tools can't run yet. The workspace id scopes which projects you see — it must match the one the user's browser uses. Ask the user to copy their workspace id from the footer of the Archlang home page (${APP_URL}), then call the set_workspace tool with it (persists to ~/.archlang/workspace). Alternatively they can set the ARCHLANG_WORKSPACE_ID environment variable for this MCP server. Language tools (validate_source, format_source, compile_for_agent, auto_layout_source, get_guide) work without a workspace.`;
+export const NO_WORKSPACE_MESSAGE = `No workspace is configured, so project tools can't run yet. The workspace id scopes which projects you see — it must match the one the user's browser uses. Ask the user to copy their workspace id from the footer of the Archer home page (${APP_URL}), then call the set_workspace tool with it (persists to ~/.archlang/workspace). Alternatively they can set the ARCHLANG_WORKSPACE_ID environment variable for this MCP server. Language tools (validate_source, format_source, compile_for_agent, auto_layout_source, get_guide) work without a workspace.`;
 
 const client = new ConvexHttpClient(CONVEX_URL);
 
