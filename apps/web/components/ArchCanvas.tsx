@@ -22,8 +22,15 @@ import { CELL, type ArchNode } from "@/lib/toFlow";
 import { DND_MIME } from "./Palette";
 import { nodeTypes } from "./nodes";
 
+export interface DragEndInfo {
+  topLeft: { x: number; y: number };
+  center: { x: number; y: number };
+  sizeGrid: [number, number];
+}
+
 export interface CanvasCallbacks {
-  onMove: (path: string, at: [number, number]) => void;
+  onNodeDragEnd: (path: string, info: DragEndInfo) => void;
+  onDrillIn: (path: string) => void;
   onSelectNode: (path: string) => void;
   onSelectEdge: (index: number) => void;
   onClearSelection: () => void;
@@ -89,12 +96,25 @@ function CanvasInner({
 
   const onNodeDragStop = useCallback(
     (_e: unknown, node: Node) => {
-      callbacks.onMove(node.id, [
-        Math.round(node.position.x / CELL),
-        Math.round(node.position.y / CELL),
-      ]);
+      // Absolute position within the current view = position + ancestor chain.
+      const byId = new Map(nodes.map((n) => [n.id, n]));
+      let x = node.position.x;
+      let y = node.position.y;
+      let parent = node.parentId ? byId.get(node.parentId) : undefined;
+      while (parent) {
+        x += parent.position.x;
+        y += parent.position.y;
+        parent = parent.parentId ? byId.get(parent.parentId) : undefined;
+      }
+      const w = node.width ?? node.measured?.width ?? CELL * 4;
+      const h = node.height ?? node.measured?.height ?? CELL * 3;
+      callbacks.onNodeDragEnd(node.id, {
+        topLeft: { x, y },
+        center: { x: x + w / 2, y: y + h / 2 },
+        sizeGrid: [Math.round(w / CELL), Math.round(h / CELL)],
+      });
     },
-    [callbacks],
+    [callbacks, nodes],
   );
 
   const onConnect: OnConnect = useCallback(
@@ -142,6 +162,7 @@ function CanvasInner({
       onNodesDelete={onNodesDelete}
       onEdgesDelete={onEdgesDelete}
       onNodeClick={(_e, n) => callbacks.onSelectNode(n.id)}
+      onNodeDoubleClick={(_e, n) => callbacks.onDrillIn(n.id)}
       onEdgeClick={(_e, edge) => {
         const i = (edge.data as { index?: number } | undefined)?.index;
         if (i !== undefined) callbacks.onSelectEdge(i);

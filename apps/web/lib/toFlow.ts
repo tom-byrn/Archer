@@ -2,6 +2,7 @@ import type { Edge, Node } from "@xyflow/react";
 import { MarkerType } from "@xyflow/react";
 import {
   effectiveDisplay,
+  findComponent,
   layoutMap,
   pathToString,
   type ArchDoc,
@@ -24,17 +25,32 @@ export interface ArchNodeData extends Record<string, unknown> {
 
 export type ArchNode = Node<ArchNodeData>;
 
+export interface ToFlowOptions {
+  /** Render only this component's subtree (drill-down view). */
+  focus?: string[];
+}
+
 /**
  * Compile a (fully laid out) doc into React Flow nodes/edges.
  * - `plane` containers render children inside them (positions are parent-relative).
  * - `icon` containers collapse: descendants are hidden and their edges remap to
  *   the collapsed ancestor.
+ * - With `focus`, the focused component's children become the view's roots and
+ *   only edges internal to the subtree are drawn.
  */
-export function toFlow(doc: ArchDoc): { nodes: ArchNode[]; edges: Edge[] } {
+export function toFlow(
+  doc: ArchDoc,
+  opts: ToFlowOptions = {},
+): { nodes: ArchNode[]; edges: Edge[] } {
   const layout = layoutMap(doc);
   const nodes: ArchNode[] = [];
   /** path -> deepest visible ancestor path (itself when visible). */
   const visibleAncestor = new Map<string, string>();
+
+  const focus = opts.focus ?? [];
+  const rootPrefix = focus.join(".");
+  const rootItems =
+    focus.length === 0 ? doc.components : (findComponent(doc, focus)?.children ?? []);
 
   const walk = (
     items: ComponentNode[],
@@ -59,7 +75,7 @@ export function toFlow(doc: ArchDoc): { nodes: ArchNode[]; edges: Edge[] } {
           position: { x: at[0] * CELL, y: at[1] * CELL },
           width: size[0] * CELL,
           height: size[1] * CELL,
-          ...(prefix !== "" ? { parentId: prefix } : {}),
+          ...(prefix !== rootPrefix ? { parentId: prefix } : {}),
           data: {
             path,
             label: c.name ?? c.id,
@@ -78,7 +94,7 @@ export function toFlow(doc: ArchDoc): { nodes: ArchNode[]; edges: Edge[] } {
       walk(c.children, path, isVisible, childCollapsed);
     }
   };
-  walk(doc.components, "", true, null);
+  walk(rootItems, rootPrefix, true, null);
 
   const edges: Edge[] = [];
   doc.connections.forEach((c, i) => {

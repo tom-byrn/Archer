@@ -6,11 +6,13 @@ import {
   addConnection,
   autoLayout,
   componentPaths,
+  findComponent,
   format,
   moveComponent,
   parse,
   removeComponent,
   removeConnection,
+  reparentComponent,
   type Diagnostic,
 } from "@archlang/lang";
 import { SAMPLE } from "@/lib/sample";
@@ -46,12 +48,47 @@ export function Editor() {
   const { source, setSource, mutate, undo, redo, canUndo, canRedo } =
     useArchDoc(SAMPLE);
   const derived = useMemo(() => deriveDoc(source), [source]);
-  const flow = useMemo(() => toFlow(derived.laidOut), [derived]);
   const [selection, setSelection] = useState<Selection>(null);
+  const [focus, setFocus] = useState<string[]>([]);
+
+  // A focus that stopped resolving (component deleted/renamed) falls back to root.
+  const liveFocus = useMemo(
+    () =>
+      focus.length > 0 && !componentPaths(derived.doc).has(focus.join("."))
+        ? []
+        : focus,
+    [focus, derived],
+  );
+
+  const flow = useMemo(
+    () => toFlow(derived.laidOut, { focus: liveFocus }),
+    [derived, liveFocus],
+  );
 
   const callbacks: CanvasCallbacks = useMemo(
     () => ({
-      onMove: (path, at) => mutate((d) => moveComponent(d, path.split("."), at)),
+      onNodeDragEnd: (path, info) =>
+        mutate((d) => {
+          const segs = path.split(".");
+          const target = resolveDropTarget(d, info.center, {
+            base: liveFocus,
+            exclude: segs,
+            topLeft: info.topLeft,
+            sizeGrid: info.sizeGrid,
+          });
+          const currentParent = segs.slice(0, -1).join(".");
+          if (target.parent.join(".") === currentParent)
+            return moveComponent(d, segs, target.at);
+          return reparentComponent(d, segs, target.parent, target.at);
+        }),
+      onDrillIn: (path) => {
+        const segs = path.split(".");
+        const node = findComponent(derived.doc, segs);
+        if (node && node.children.length > 0) {
+          setFocus(segs);
+          setSelection(null);
+        }
+      },
       onSelectNode: (path) => setSelection({ kind: "component", path }),
       onSelectEdge: (index) => {
         const conn = derived.doc.connections[index];
@@ -69,11 +106,11 @@ export function Editor() {
         ),
       onDropType: (tag, pos) =>
         mutate((d) => {
-          const target = resolveDropTarget(d, pos);
+          const target = resolveDropTarget(d, pos, { base: liveFocus });
           return addComponent(d, target.parent, { type: tag, at: target.at }).doc;
         }),
     }),
-    [mutate, derived],
+    [mutate, derived, liveFocus],
   );
 
   // Drop a selection that no longer resolves (component deleted, connection edited away).
@@ -89,8 +126,8 @@ export function Editor() {
 
   const addFromPalette = useCallback(
     (tag: string | undefined) =>
-      mutate((d) => addComponent(d, [], { type: tag }).doc),
-    [mutate],
+      mutate((d) => addComponent(d, liveFocus, { type: tag }).doc),
+    [mutate, liveFocus],
   );
 
   // Global undo/redo, except while typing in a text field (native undo there).
@@ -104,6 +141,7 @@ export function Editor() {
         if (e.shiftKey) redo();
         else undo();
       }
+      if (e.key === "Escape") setFocus((f) => f.slice(0, -1));
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -171,13 +209,42 @@ export function Editor() {
             </ul>
           )}
         </div>
-        <main className="min-w-0 flex-1">
-          <ArchCanvas
-            nodes={flow.nodes}
-            edges={flow.edges}
-            title={derived.doc.title}
-            callbacks={callbacks}
-          />
+        <main className="flex min-w-0 flex-1 flex-col">
+          {liveFocus.length > 0 && (
+            <nav className="flex items-center gap-1 border-b border-slate-200 bg-white px-3 py-1.5 text-[12px]">
+              <button
+                onClick={() => setFocus([])}
+                className="rounded px-1.5 py-0.5 font-medium text-slate-500 hover:bg-slate-100"
+              >
+                {derived.doc.title}
+              </button>
+              {liveFocus.map((seg, i) => (
+                <span key={i} className="flex items-center gap-1">
+                  <span className="text-slate-300">/</span>
+                  <button
+                    onClick={() => setFocus(liveFocus.slice(0, i + 1))}
+                    className={`rounded px-1.5 py-0.5 font-medium hover:bg-slate-100 ${
+                      i === liveFocus.length - 1 ? "text-slate-800" : "text-slate-500"
+                    }`}
+                  >
+                    {seg}
+                  </button>
+                </span>
+              ))}
+              <span className="ml-auto text-[11px] text-slate-400">
+                esc to go up · double-click a container to drill in
+              </span>
+            </nav>
+          )}
+          <div className="min-h-0 flex-1">
+            <ArchCanvas
+              key={liveFocus.join(".")}
+              nodes={flow.nodes}
+              edges={flow.edges}
+              title={derived.doc.title}
+              callbacks={callbacks}
+            />
+          </div>
         </main>
         <DetailPanel
           doc={derived.laidOut}
