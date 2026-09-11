@@ -15,6 +15,7 @@ import {
   reparentComponent,
   type Diagnostic,
 } from "@archlang/lang";
+import Link from "next/link";
 import { lookupType } from "@archlang/catalog";
 import { SAMPLE } from "@/lib/sample";
 import { toFlow } from "@/lib/toFlow";
@@ -46,9 +47,16 @@ function DiagnosticRow({ d }: { d: Diagnostic }) {
 const outermostOnly = (paths: string[]): string[] =>
   paths.filter((p) => !paths.some((q) => q !== p && p.startsWith(q + ".")));
 
-export function Editor() {
+export function Editor({
+  initialSource = SAMPLE,
+  onPersist,
+}: {
+  initialSource?: string;
+  onPersist?: (source: string, title: string) => Promise<void> | void;
+}) {
   const { source, setSource, mutate, undo, redo, canUndo, canRedo } =
-    useArchDoc(SAMPLE);
+    useArchDoc(initialSource);
+  const [saveState, setSaveState] = useState<"idle" | "saving" | "saved">("idle");
   const library = useUserLibrary();
   const customTags = useMemo(
     () => new Set(library.items.map((t) => t.tag)),
@@ -146,6 +154,20 @@ export function Editor() {
     [mutate, liveFocus],
   );
 
+  // Debounced autosave of the source text.
+  const titleForSave = derived.doc.title;
+  useEffect(() => {
+    if (!onPersist || source === initialSource) return;
+    setSaveState("saving");
+    const t = setTimeout(() => {
+      void Promise.resolve(onPersist(source, titleForSave)).then(() =>
+        setSaveState("saved"),
+      );
+    }, 600);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [source, onPersist]);
+
   // Global undo/redo, except while typing in a text field (native undo there).
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -171,7 +193,12 @@ export function Editor() {
   return (
     <div className="flex h-screen flex-col">
       <header className="flex items-center gap-3 border-b border-slate-200 bg-white px-4 py-2.5">
-        <span className="text-[15px] font-bold tracking-tight">Archlang</span>
+        <Link
+          href="/"
+          className="text-[15px] font-bold tracking-tight hover:text-slate-600"
+        >
+          Archlang
+        </Link>
         <span className="truncate text-sm text-slate-500">{derived.doc.title}</span>
         <span
           className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${
@@ -185,6 +212,15 @@ export function Editor() {
             : `${errors.length} error${errors.length === 1 ? "" : "s"}`}
         </span>
         <div className="ml-auto flex items-center gap-2">
+          {onPersist && (
+            <span className="pr-1 text-[11px] text-slate-400">
+              {saveState === "saving"
+                ? "Saving…"
+                : saveState === "saved"
+                  ? "Saved"
+                  : ""}
+            </span>
+          )}
           <button
             onClick={undo}
             disabled={!canUndo}

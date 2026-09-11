@@ -1,6 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useMutation, useQuery } from "convex/react";
+import { api } from "@/convex/_generated/api";
+import { getWorkspaceId } from "./workspace";
 
 export interface CustomType {
   tag: string;
@@ -9,45 +12,39 @@ export interface CustomType {
   glyph: string;
 }
 
-const KEY = "archlang.userLibrary.v1";
-
-const load = (): CustomType[] => {
-  try {
-    const raw = localStorage.getItem(KEY);
-    const parsed = raw ? (JSON.parse(raw) as CustomType[]) : [];
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-};
-
 export interface UserLibrary {
   items: CustomType[];
   add: (t: CustomType) => void;
   remove: (tag: string) => void;
 }
 
+/** Custom component types, stored in Convex per workspace. */
 export function useUserLibrary(): UserLibrary {
-  const [items, setItems] = useState<CustomType[]>([]);
-  useEffect(() => setItems(load()), []);
+  const [workspaceId, setWorkspaceId] = useState<string | null>(null);
+  useEffect(() => setWorkspaceId(getWorkspaceId()), []);
 
-  const persist = useCallback((next: CustomType[]) => {
-    setItems(next);
-    try {
-      localStorage.setItem(KEY, JSON.stringify(next));
-    } catch {
-      // Storage unavailable (private mode etc.) — library stays in-memory.
-    }
-  }, []);
+  const items = useQuery(
+    api.library.list,
+    workspaceId ? { workspaceId } : "skip",
+  );
+  const saveMutation = useMutation(api.library.save);
+  const removeMutation = useMutation(api.library.remove);
 
   const add = useCallback(
-    (t: CustomType) => persist([...load().filter((x) => x.tag !== t.tag), t]),
-    [persist],
+    (t: CustomType) => {
+      if (workspaceId) void saveMutation({ workspaceId, ...t });
+    },
+    [workspaceId, saveMutation],
   );
   const remove = useCallback(
-    (tag: string) => persist(load().filter((x) => x.tag !== tag)),
-    [persist],
+    (tag: string) => {
+      if (workspaceId) void removeMutation({ workspaceId, tag });
+    },
+    [workspaceId, removeMutation],
   );
 
-  return { items, add, remove };
+  return useMemo(
+    () => ({ items: items ?? [], add, remove }),
+    [items, add, remove],
+  );
 }
