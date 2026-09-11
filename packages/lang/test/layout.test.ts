@@ -115,6 +115,24 @@ describe("autoLayout", () => {
     ).toBe(false);
   });
 
+  it("wraps sibling-heavy scopes into multiple columns", () => {
+    const src =
+      HEADER +
+      "component p { component a\ncomponent b\ncomponent c\ncomponent d\ncomponent e\ncomponent f }";
+    const map = layoutMap(autoLayout(parse(src).doc));
+    const xs = new Set(
+      ["a", "b", "c", "d", "e", "f"].map((id) => map.get(`p.${id}`)!.at![0]),
+    );
+    expect(xs.size).toBeGreaterThan(1); // not one endless column
+    const p = map.get("p")!;
+    expect(p.size![1]).toBeLessThan(25); // plane stays roughly rectangular
+    // Still no overlaps.
+    const rs = rects(["a", "b", "c", "d", "e", "f"].map((id) => map.get(`p.${id}`)!));
+    for (let i = 0; i < rs.length; i++)
+      for (let j = i + 1; j < rs.length; j++)
+        expect(overlap(rs[i]!, rs[j]!)).toBe(false);
+  });
+
   it("output validates cleanly and formats idempotently", () => {
     const src = fixture("acme.arch").replace(/layout \{[\s\S]*\}\n/, "");
     const out = autoLayout(parse(src).doc);

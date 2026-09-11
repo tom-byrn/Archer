@@ -13,8 +13,10 @@ export const LEAF_SIZE: [number, number] = [4, 3];
 export const PLANE_INNER_ORIGIN: [number, number] = [1, 2];
 /** Right/bottom inner margin of a plane around its children. */
 export const PLANE_INNER_MARGIN: [number, number] = [1, 1];
-const H_GAP = 2;
-const V_GAP = 1;
+const H_GAP = 3;
+const V_GAP = 2;
+/** A layer taller than this wraps into side-by-side sub-columns. */
+const TARGET_COL_H = 14;
 
 export const layoutMap = (doc: ArchDoc): Map<string, LayoutEntry> =>
   new Map(doc.layout.map((e) => [pathToString(e.path), e]));
@@ -135,46 +137,63 @@ export function autoLayout(doc: ArchDoc): ArchDoc {
       }
     }
 
-    // Column x-offsets per layer, from the widths of auto-placed nodes.
+    // Auto-placed nodes, grouped by layer (declaration order preserved).
     const layers = [...new Set([...layer.values()])].sort((a, b) => a - b);
-    const colWidth = new Map<number, number>();
+    const autoByLayer = new Map<number, ComponentNode[]>();
     for (const n of nodes) {
       const p = prefix === "" ? n.id : `${prefix}.${n.id}`;
       if (existing.get(p)?.at) continue;
       const l = layer.get(n.id)!;
-      colWidth.set(l, Math.max(colWidth.get(l) ?? 0, sizes.get(n.id)![0]));
-    }
-    const colX = new Map<number, number>();
-    let x = origin[0];
-    for (const l of layers) {
-      colX.set(l, x);
-      if (colWidth.has(l)) x += colWidth.get(l)! + H_GAP;
+      autoByLayer.set(l, [...(autoByLayer.get(l) ?? []), n]);
     }
 
-    const nextY = new Map<number, number>();
-    for (const n of nodes) {
-      const p = prefix === "" ? n.id : `${prefix}.${n.id}`;
-      const entry = existing.get(p);
-      if (entry?.at) continue;
-      const l = layer.get(n.id)!;
-      const size = sizes.get(n.id)!;
-      const rect: Rect = {
-        at: [colX.get(l)!, nextY.get(l) ?? origin[1]],
-        size,
-      };
-      while (placed.some((r) => intersects(r, rect))) rect.at = [rect.at[0], rect.at[1] + 1];
-      placed.push(rect);
-      nextY.set(l, rect.at[1] + size[1] + V_GAP);
-      out.set(p, {
-        kind: "layout-entry",
-        path: p.split("."),
-        at: rect.at,
-        size,
-        display: entry?.display,
-        span:
-          entry?.span ??
-          ({ start: { line: 0, col: 0, offset: 0 }, end: { line: 0, col: 0, offset: 0 } } as const),
-      });
+    // Each layer is a vertical band that WRAPS into side-by-side sub-columns
+    // once it grows taller than TARGET_COL_H, so sibling-heavy scopes (e.g. a
+    // plane full of unconnected children) come out roughly rectangular
+    // instead of one endless column.
+    let x = origin[0];
+    for (const l of layers) {
+      const members = autoByLayer.get(l);
+      if (!members || members.length === 0) continue;
+      const totalH = members.reduce(
+        (acc, n) => acc + sizes.get(n.id)![1] + V_GAP,
+        -V_GAP,
+      );
+      const cap = Math.max(
+        Math.ceil(totalH / Math.max(1, Math.ceil(totalH / TARGET_COL_H))),
+        Math.max(...members.map((n) => sizes.get(n.id)![1])),
+      );
+
+      let subX = x;
+      let subW = 0;
+      let y = origin[1];
+      for (const n of members) {
+        const p = prefix === "" ? n.id : `${prefix}.${n.id}`;
+        const entry = existing.get(p);
+        const size = sizes.get(n.id)!;
+        if (y > origin[1] && y - origin[1] + size[1] > cap) {
+          subX += subW + H_GAP;
+          subW = 0;
+          y = origin[1];
+        }
+        const rect: Rect = { at: [subX, y], size };
+        while (placed.some((r) => intersects(r, rect)))
+          rect.at = [rect.at[0], rect.at[1] + 1];
+        placed.push(rect);
+        y = rect.at[1] + size[1] + V_GAP;
+        subW = Math.max(subW, size[0]);
+        out.set(p, {
+          kind: "layout-entry",
+          path: p.split("."),
+          at: rect.at,
+          size,
+          display: entry?.display,
+          span:
+            entry?.span ??
+            ({ start: { line: 0, col: 0, offset: 0 }, end: { line: 0, col: 0, offset: 0 } } as const),
+        });
+      }
+      x = subX + subW + H_GAP;
     }
 
     let w = 0;

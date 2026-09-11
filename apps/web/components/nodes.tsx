@@ -31,10 +31,24 @@ export function Glyph({
   );
 }
 
+// One source + one target handle per side, so edges attach on the side facing
+// the other endpoint (ids chosen by toFlow) and users can start a connection
+// from any side.
+const SIDES = [
+  ["t", Position.Top],
+  ["r", Position.Right],
+  ["b", Position.Bottom],
+  ["l", Position.Left],
+] as const;
+
 const EdgeHandles = () => (
   <>
-    <Handle type="target" position={Position.Left} className="arch-handle" />
-    <Handle type="source" position={Position.Right} className="arch-handle" />
+    {SIDES.map(([id, position]) => (
+      <Handle key={`t${id}`} id={`t${id}`} type="target" position={position} className="arch-handle" />
+    ))}
+    {SIDES.map(([id, position]) => (
+      <Handle key={`s${id}`} id={`s${id}`} type="source" position={position} className="arch-handle" />
+    ))}
   </>
 );
 

@@ -56,11 +56,15 @@ export function toFlow(
   const rootItems =
     focus.length === 0 ? doc.components : (findComponent(doc, focus)?.children ?? []);
 
+  /** Absolute center (px) of each visible node, for edge-side selection. */
+  const centers = new Map<string, { x: number; y: number }>();
+
   const walk = (
     items: ComponentNode[],
     prefix: string,
     parentVisible: boolean,
     collapsedAncestor: string | null,
+    originPx: [number, number],
   ) => {
     for (const c of items) {
       const path = prefix === "" ? c.id : `${prefix}.${c.id}`;
@@ -69,9 +73,17 @@ export function toFlow(
       const isVisible = parentVisible && collapsedAncestor === null;
       visibleAncestor.set(path, collapsedAncestor ?? path);
 
+      const at = entry?.at ?? [0, 0];
+      const size = entry?.size ?? [4, 3];
+      const absPx: [number, number] = [
+        originPx[0] + at[0] * CELL,
+        originPx[1] + at[1] * CELL,
+      ];
       if (isVisible) {
-        const at = entry?.at ?? [0, 0];
-        const size = entry?.size ?? [4, 3];
+        centers.set(path, {
+          x: absPx[0] + (size[0] * CELL) / 2,
+          y: absPx[1] + (size[1] * CELL) / 2,
+        });
         const isPlane = display === "plane" && c.children.length > 0;
         nodes.push({
           id: path,
@@ -99,10 +111,10 @@ export function toFlow(
       const childCollapsed =
         collapsedAncestor ??
         (display === "icon" && c.children.length > 0 ? path : null);
-      walk(c.children, path, isVisible, childCollapsed);
+      walk(c.children, path, isVisible, childCollapsed, absPx);
     }
   };
-  walk(rootItems, rootPrefix, true, null);
+  walk(rootItems, rootPrefix, true, null, [0, 0]);
 
   const edges: Edge[] = [];
   doc.connections.forEach((c, i) => {
@@ -113,10 +125,28 @@ export function toFlow(
       ...(c.type !== undefined ? [`@${c.type}`] : []),
       ...(c.label !== undefined ? [c.label] : []),
     ];
+    // Attach the edge on the sides facing each other (dominant axis wins).
+    const sc = centers.get(source);
+    const tc = centers.get(target);
+    let sourceHandle = "sr";
+    let targetHandle = "tl";
+    if (sc && tc) {
+      const dx = tc.x - sc.x;
+      const dy = tc.y - sc.y;
+      if (Math.abs(dx) >= Math.abs(dy)) {
+        sourceHandle = dx >= 0 ? "sr" : "sl";
+        targetHandle = dx >= 0 ? "tl" : "tr";
+      } else {
+        sourceHandle = dy >= 0 ? "sb" : "st";
+        targetHandle = dy >= 0 ? "tt" : "tb";
+      }
+    }
     edges.push({
       id: `c${i}:${source}->${target}`,
       source,
       target,
+      sourceHandle,
+      targetHandle,
       type: "smoothstep",
       label: labelParts.length > 0 ? labelParts.join("  ") : undefined,
       labelStyle: { fontSize: 11, fill: "#475569" },
