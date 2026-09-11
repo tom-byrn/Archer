@@ -3,12 +3,16 @@
 :root {
   color-scheme: light dark;
   --grid: 40px;
-  --accent: #0d9373;
-  --accent-hover: #0b7c61;
-  --accent-soft: rgba(13, 147, 115, 0.1);
+  /* Tokens sourced from mintlify.com via Context.dev /web/styleguide */
+  --accent: #0c8c5e;
+  --accent-hover: #0a7a52;
+  --accent-soft: rgba(12, 140, 94, 0.1);
+  --ink: #08090a;
+  --ground: #f9f6f3;            /* warm card/canvas ground */
+  --hairline: rgba(8, 9, 10, 0.07); /* #08090a12 */
 
   --bg: #ffffff;
-  --dot: #cbd5e1;
+  --dot: #d9d2c9;
 
   /* Code pane (light) */
   --code-bg: #f8fafc;
@@ -29,6 +33,12 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
+    --accent: #1fbd85;
+    --accent-hover: #34d39b;
+    --ink: #f3f4f6;
+    --ground: #0d0f13;
+    --hairline: rgba(255, 255, 255, 0.09);
+
     --bg: #0b0d12;
     --dot: #2b3444;
 
@@ -58,12 +68,11 @@ body {
 body {
   @apply antialiased;
   background: var(--bg);
-  color: #0f172a;
+  color: var(--ink);
 }
-@media (prefers-color-scheme: dark) {
-  body {
-    color: #e2e8f0;
-  }
+.font-display {
+  font-family: var(--font-display), Georgia, serif;
+  font-weight: 400;
 }
 
 .mono {

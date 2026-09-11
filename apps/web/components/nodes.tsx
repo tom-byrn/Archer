@@ -62,7 +62,7 @@ export function ArchComponentNode({ data, width, height }: NodeProps<ArchNode>) 
   return (
     <div
       style={{ width, height, borderColor: accent ? `${accent}55` : undefined }}
-      className="flex items-center gap-2.5 rounded-xl border-[1.5px] border-slate-300 dark:border-slate-600 bg-white dark:bg-[#12151c] px-3 shadow-sm"
+      className="flex items-center gap-2.5 rounded-xl border border-[var(--hairline)] bg-white dark:bg-[#161a21] px-3"
     >
       <EdgeHandles />
       <div
@@ -96,7 +96,7 @@ export function ArchPlaneNode({ data, width, height }: NodeProps<ArchNode>) {
       <EdgeHandles />
       <div className="flex items-center gap-2 px-3 pt-2.5">
         <div
-          className="flex h-7 w-7 items-center justify-center rounded-md bg-white dark:bg-[#12151c] shadow-sm"
+          className="flex h-7 w-7 items-center justify-center rounded-md bg-white dark:bg-[#161a21]"
           style={{ border: `1px solid ${color}44` }}
         >
           <Glyph tag={data.typeTag} color={data.accent} glyph={data.glyphKey} size={17} />

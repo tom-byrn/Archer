@@ -32,7 +32,7 @@ export default function Home() {
     <div className="mx-auto max-w-2xl px-6 py-12">
       <header className="flex items-center gap-3">
         <img src="/icon.svg" alt="" className="h-8 w-8 rounded-lg" />
-        <h1 className="text-2xl font-bold tracking-tight">Archer</h1>
+        <h1 className="font-display text-3xl">Archer</h1>
         <p className="pt-1 text-sm text-slate-500">
           Architecture canvas → agent-readable code
         </p>
@@ -41,14 +41,13 @@ export default function Home() {
       <div className="flex gap-2 pt-6">
         <button
           onClick={() => void newDoc(BLANK, "Untitled")}
-          style={{ backgroundColor: "var(--accent)" }}
-          className="rounded-full px-4 py-2 text-sm font-semibold text-white shadow-sm hover:opacity-90"
+          className="rounded-[4px] bg-[#08090a] px-4 py-2 text-sm font-medium text-white hover:opacity-85 dark:bg-[#f3f4f6] dark:text-[#08090a]"
         >
           New document
         </button>
         <button
           onClick={() => void newDoc(SAMPLE, "Acme SaaS")}
-          className="rounded-full border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#12151c] px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-600 hover:text-slate-900 dark:hover:text-slate-100"
+          className="rounded-[4px] border border-[var(--hairline)] bg-white dark:bg-[#12151c] px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100"
         >
           New from sample
         </button>

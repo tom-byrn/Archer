@@ -51,7 +51,7 @@ function ExportButton({ title }: { title: string }) {
     const el = document.querySelector<HTMLElement>(".react-flow__viewport");
     if (!el) return;
     void toPng(el, {
-      backgroundColor: isDark ? "#0b0d12" : "#ffffff",
+      backgroundColor: isDark ? "#0d0f13" : "#f9f6f3",
       width,
       height,
       style: {
@@ -70,7 +70,7 @@ function ExportButton({ title }: { title: string }) {
   return (
     <button
       onClick={onExport}
-      className="rounded-full border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#12151c] px-3.5 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-400 shadow-sm hover:border-slate-300 dark:hover:border-slate-600 hover:text-slate-900 dark:hover:text-slate-100"
+      className="rounded-[4px] border border-[var(--hairline)] bg-white dark:bg-[#12151c] px-3.5 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100"
     >
       Export PNG
     </button>
@@ -185,7 +185,7 @@ function CanvasInner({
       deleteKeyCode={["Backspace", "Delete"]}
       selectionKeyCode={null}
     >
-      <Background variant={BackgroundVariant.Dots} gap={CELL} size={1.5} color={isDark ? "#2b3444" : "#cbd5e1"} />
+      <Background variant={BackgroundVariant.Dots} gap={CELL} size={1.5} color={isDark ? "#2b3444" : "#d9d2c9"} />
       <Controls showInteractive={false} />
       <Panel position="top-right">
         <ExportButton title={title} />

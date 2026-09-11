@@ -205,10 +205,10 @@ export function Editor({
       <header className="flex items-center gap-3 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-[#12151c] px-4 py-2.5">
         <Link
           href="/"
-          className="flex items-center gap-2 text-[15px] font-bold tracking-tight hover:opacity-80"
+          className="flex items-center gap-2 hover:opacity-80"
         >
           <img src="/icon.svg" alt="" className="h-5 w-5 rounded-md" />
-          Archer
+          <span className="font-display text-[19px] leading-none">Archer</span>
         </Link>
         <span className="truncate text-sm text-slate-500">{derived.doc.title}</span>
         <span
@@ -235,27 +235,27 @@ export function Editor({
           <button
             onClick={undo}
             disabled={!canUndo}
-            className="rounded-full border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#12151c] px-3 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-600 hover:text-slate-900 dark:hover:text-slate-100 disabled:opacity-40"
+            className="rounded-[4px] border border-[var(--hairline)] bg-white dark:bg-[#12151c] px-3 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 disabled:opacity-40"
           >
             Undo
           </button>
           <button
             onClick={redo}
             disabled={!canRedo}
-            className="rounded-full border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#12151c] px-3 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-600 hover:text-slate-900 dark:hover:text-slate-100 disabled:opacity-40"
+            className="rounded-[4px] border border-[var(--hairline)] bg-white dark:bg-[#12151c] px-3 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 disabled:opacity-40"
           >
             Redo
           </button>
           <button
             onClick={relayout}
-            className="rounded-full border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#12151c] px-3.5 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-600 hover:text-slate-900 dark:hover:text-slate-100"
+            className="rounded-[4px] border border-[var(--hairline)] bg-white dark:bg-[#12151c] px-3.5 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100"
           >
             Auto-layout
           </button>
           <span className="h-5 w-px bg-slate-200" />
           <button
             onClick={() => copy("code")}
-            className="rounded-full border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#12151c] px-3.5 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-600 hover:text-slate-900 dark:hover:text-slate-100"
+            className="rounded-[4px] border border-[var(--hairline)] bg-white dark:bg-[#12151c] px-3.5 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100"
           >
             {copied === "code" ? "Copied!" : "Copy code"}
           </button>
@@ -267,8 +267,7 @@ export function Editor({
                 ? "Copy the architecture as an agent-ready spec (layout stripped, guide prepended)"
                 : "Fix validation errors before exporting for an agent"
             }
-            style={{ backgroundColor: "var(--accent)" }}
-            className="rounded-full px-4 py-1.5 text-xs font-semibold text-white shadow-sm hover:opacity-90 disabled:opacity-40"
+            className="rounded-[4px] bg-[#08090a] px-4 py-1.5 text-xs font-semibold text-white hover:opacity-85 disabled:opacity-40 dark:bg-[#f3f4f6] dark:text-[#08090a]"
           >
             {copied === "agent" ? "Copied!" : "Copy for agent"}
           </button>
@@ -318,7 +317,7 @@ export function Editor({
               </span>
             </nav>
           )}
-          <div className="min-h-0 flex-1">
+          <div className="min-h-0 flex-1" style={{ background: "var(--ground)" }}>
             <ArchCanvas
               key={liveFocus.join(".")}
               nodes={flow.nodes}

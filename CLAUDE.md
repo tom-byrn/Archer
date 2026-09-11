@@ -28,7 +28,12 @@ One API for web data (scraping, search, extraction, brand intelligence).
   (429 Retry-After, one bounded retry on 408/5xx, never on validation).
 - **Route**: `POST /api/brand` (`apps/web/app/api/brand/route.ts`) — body
   `{ query: string }`, returns `{ suggestion: BrandSuggestion | null }`.
-- **Endpoint used**: `POST /brand/retrieve` (10 credits/lookup) via
+- **Endpoints used**:
+  - `GET /web/styleguide` (10 credits) — one-off design-system extraction
+    (`apps/web/scripts/fetch-styleguide.ts`); sourced Archer's theme tokens
+    from mintlify.com. Docs:
+    https://docs.context.dev/api-reference/brand-intelligence/styleguide
+  - `POST /brand/retrieve` (10 credits/lookup) via
   `by_name`/`by_domain` — powers the "Brand" button in the palette's
   new-custom-type form (auto-fills real brand colors for technologies the
   catalog doesn't know). Docs: https://docs.context.dev/guides/get-brand-data

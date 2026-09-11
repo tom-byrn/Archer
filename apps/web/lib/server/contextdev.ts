@@ -5,10 +5,15 @@
  * or REST API from anywhere else, and never import this from client code: the
  * API key (CONTEXT_DEV_API_KEY) is a server-side secret.
  *
- * Endpoint used: POST /brand/retrieve (10 credits/lookup) — resolves a
- * technology/company name or domain into a brand profile (title, canonical
- * domain, brand colors, logos). Archer uses it to auto-style custom component
- * types. Docs: https://docs.context.dev/guides/get-brand-data
+ * Endpoints used:
+ * - POST /brand/retrieve (10 credits/lookup) — resolves a technology/company
+ *   name or domain into a brand profile (title, canonical domain, brand
+ *   colors, logos). Archer uses it to auto-style custom component types.
+ *   Docs: https://docs.context.dev/guides/get-brand-data
+ * - GET /web/styleguide (10 credits) — extracts a site's design system
+ *   (colors, typography, spacing, shadows). Used one-off to source Archer's
+ *   own theme tokens; not on any user-facing path.
+ *   Docs: https://docs.context.dev/api-reference/brand-intelligence/styleguide
  */
 import ContextDev from "context.dev";
 
@@ -31,6 +36,22 @@ export interface BrandSuggestion {
   /** Primary brand color first, all #rrggbb. */
   colors: { hex: string; name?: string }[];
   logoUrl?: string;
+}
+
+/**
+ * Fetch a site's design system (one-off tooling use; 10 credits).
+ * `colorScheme` is part of the cache key — fetch light and dark separately.
+ */
+export async function getStyleguide(
+  domain: string,
+  colorScheme?: "light" | "dark",
+): Promise<unknown> {
+  return getClient().web.extractStyleguide({
+    domain,
+    ...(colorScheme ? { colorScheme } : {}),
+    timeoutMS: 120_000,
+    tags: ["archer:theme"],
+  });
 }
 
 const DOMAIN_RE = /^[a-z0-9-]+(\.[a-z0-9-]+)+$/i;
