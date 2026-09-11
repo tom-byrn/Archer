@@ -5,7 +5,7 @@ import {
   type ConnectionNode,
   type LayoutEntry,
   type PayloadNode,
-} from "./types.js";
+} from "./types";
 
 const INDENT = "  ";
 

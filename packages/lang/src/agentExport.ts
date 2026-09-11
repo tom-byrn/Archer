@@ -1,6 +1,6 @@
-import { format } from "./format.js";
-import { normalizeLayout } from "./validate.js";
-import type { ArchDoc } from "./types.js";
+import { format } from "./format";
+import { normalizeLayout } from "./validate";
+import type { ArchDoc } from "./types";
 
 const PREAMBLE = `# This is an Archlang architecture document — a complete, machine-readable
 # specification of a software system, exported from a canvas the author designed.

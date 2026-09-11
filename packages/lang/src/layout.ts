@@ -4,8 +4,8 @@ import {
   type ComponentNode,
   type DisplayMode,
   type LayoutEntry,
-} from "./types.js";
-import { normalizeLayout } from "./validate.js";
+} from "./types";
+import { normalizeLayout } from "./validate";
 
 /** Default footprint of a leaf / icon-collapsed component, in grid cells. */
 export const LEAF_SIZE: [number, number] = [4, 3];

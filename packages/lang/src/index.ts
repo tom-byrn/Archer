@@ -1,7 +1,7 @@
-export * from "./types.js";
-export { parse, CURRENT_VERSION } from "./parser.js";
-export { lex, dedent } from "./lexer.js";
-export type { Token, TokenType } from "./lexer.js";
+export * from "./types";
+export { parse, CURRENT_VERSION } from "./parser";
+export { lex, dedent } from "./lexer";
+export type { Token, TokenType } from "./lexer";
 export {
   validate,
   validateTable,
@@ -9,11 +9,11 @@ export {
   findComponent,
   normalizeLayout,
   hasErrors,
-} from "./validate.js";
-export type { ValidateOptions } from "./validate.js";
-export { format } from "./format.js";
-export type { FormatOptions } from "./format.js";
-export { compileForAgent } from "./agentExport.js";
+} from "./validate";
+export type { ValidateOptions } from "./validate";
+export { format } from "./format";
+export type { FormatOptions } from "./format";
+export { compileForAgent } from "./agentExport";
 export {
   autoLayout,
   layoutMap,
@@ -21,4 +21,4 @@ export {
   LEAF_SIZE,
   PLANE_INNER_ORIGIN,
   PLANE_INNER_MARGIN,
-} from "./layout.js";
+} from "./layout";

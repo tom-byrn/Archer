@@ -1,4 +1,4 @@
-import { lex, type Token, type TokenType } from "./lexer.js";
+import { lex, type Token, type TokenType } from "./lexer";
 import {
   PAYLOAD_FORMATS,
   type ArchDoc,
@@ -11,7 +11,7 @@ import {
   type ParseResult,
   type PayloadFormat,
   type Span,
-} from "./types.js";
+} from "./types";
 
 class ParseError extends Error {
   constructor(public diagnostic: Diagnostic) {

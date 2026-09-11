@@ -8,8 +8,8 @@ import {
   layoutMap,
   parse,
   validate,
-} from "../src/index.js";
-import type { LayoutEntry } from "../src/index.js";
+} from "../src/index";
+import type { LayoutEntry } from "../src/index";
 
 const fixture = (name: string) =>
   readFileSync(fileURLToPath(new URL(`./fixtures/${name}`, import.meta.url)), "utf8");

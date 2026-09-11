@@ -1,4 +1,4 @@
-import type { Diagnostic, Pos, Span } from "./types.js";
+import type { Diagnostic, Pos, Span } from "./types";
 
 export type TokenType =
   | "ident"

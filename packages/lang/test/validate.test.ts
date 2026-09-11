@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { normalizeLayout, parse, validate } from "../src/index.js";
+import { normalizeLayout, parse, validate } from "../src/index";
 
 const doc = (src: string) => parse(src).doc;
 const codes = (src: string, opts?: Parameters<typeof validate>[1]) =>
