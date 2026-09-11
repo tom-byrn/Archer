@@ -21,6 +21,8 @@ export interface ArchNodeData extends Record<string, unknown> {
   display: DisplayMode;
   childCount: number;
   payloadCount: number;
+  accent?: string;
+  glyphKey?: string;
 }
 
 export type ArchNode = Node<ArchNodeData>;
@@ -28,6 +30,8 @@ export type ArchNode = Node<ArchNodeData>;
 export interface ToFlowOptions {
   /** Render only this component's subtree (drill-down view). */
   focus?: string[];
+  /** Resolve a type tag to visuals (catalog + user library). */
+  resolveType?: (tag: string) => { color: string; glyph: string } | undefined;
 }
 
 /**
@@ -84,6 +88,10 @@ export function toFlow(
             display,
             childCount: c.children.length,
             payloadCount: c.payloads.length,
+            ...(c.type !== undefined ? (() => {
+              const v = opts.resolveType?.(c.type!);
+              return v ? { accent: v.color, glyphKey: v.glyph } : {};
+            })() : {}),
           },
         });
       }

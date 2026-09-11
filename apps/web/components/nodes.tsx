@@ -6,23 +6,27 @@ import type { ArchNode } from "@/lib/toFlow";
 
 export function Glyph({
   tag,
+  color,
+  glyph,
   size = 22,
   className,
 }: {
   tag?: string;
+  color?: string;
+  glyph?: string;
   size?: number;
   className?: string;
 }) {
   const entry = lookupType(tag);
-  const glyph = GLYPHS[entry?.glyph ?? "box"] ?? GLYPHS.box!;
+  const g = GLYPHS[glyph ?? entry?.glyph ?? "box"] ?? GLYPHS.box!;
   return (
     <svg
       width={size}
       height={size}
       viewBox="0 0 24 24"
       className={className}
-      style={{ color: entry?.color ?? "#64748b" }}
-      dangerouslySetInnerHTML={{ __html: glyph }}
+      style={{ color: color ?? entry?.color ?? "#64748b" }}
+      dangerouslySetInnerHTML={{ __html: g }}
     />
   );
 }
@@ -36,18 +40,19 @@ const EdgeHandles = () => (
 
 export function ArchComponentNode({ data, width, height }: NodeProps<ArchNode>) {
   const entry = lookupType(data.typeTag);
+  const accent = data.accent ?? entry?.color;
   const collapsed = data.display === "icon" && data.childCount > 0;
   return (
     <div
-      style={{ width, height, borderColor: entry ? `${entry.color}55` : "#cbd5e1" }}
+      style={{ width, height, borderColor: accent ? `${accent}55` : "#cbd5e1" }}
       className="flex items-center gap-2.5 rounded-xl border-[1.5px] bg-white px-3 shadow-sm"
     >
       <EdgeHandles />
       <div
         className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg"
-        style={{ backgroundColor: `${entry?.color ?? "#64748b"}14` }}
+        style={{ backgroundColor: `${accent ?? "#64748b"}14` }}
       >
-        <Glyph tag={data.typeTag} />
+        <Glyph tag={data.typeTag} color={accent} glyph={data.glyphKey} />
       </div>
       <div className="min-w-0">
         <div className="truncate text-[13px] font-semibold leading-tight">
@@ -64,7 +69,7 @@ export function ArchComponentNode({ data, width, height }: NodeProps<ArchNode>) 
 
 export function ArchPlaneNode({ data, width, height }: NodeProps<ArchNode>) {
   const entry = lookupType(data.typeTag);
-  const color = entry?.color ?? "#64748b";
+  const color = data.accent ?? entry?.color ?? "#64748b";
   return (
     <div
       style={{ width, height, borderColor: `${color}66`, backgroundColor: `${color}09` }}
@@ -76,7 +81,7 @@ export function ArchPlaneNode({ data, width, height }: NodeProps<ArchNode>) {
           className="flex h-7 w-7 items-center justify-center rounded-md bg-white shadow-sm"
           style={{ border: `1px solid ${color}44` }}
         >
-          <Glyph tag={data.typeTag} size={17} />
+          <Glyph tag={data.typeTag} color={data.accent} glyph={data.glyphKey} size={17} />
         </div>
         <span className="text-[12.5px] font-semibold text-slate-700">
           {data.label}

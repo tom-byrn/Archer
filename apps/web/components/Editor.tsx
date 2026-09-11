@@ -15,10 +15,12 @@ import {
   reparentComponent,
   type Diagnostic,
 } from "@archlang/lang";
+import { lookupType } from "@archlang/catalog";
 import { SAMPLE } from "@/lib/sample";
 import { toFlow } from "@/lib/toFlow";
 import { resolveDropTarget } from "@/lib/dropTarget";
 import { deriveDoc, useArchDoc } from "@/lib/useArchDoc";
+import { useUserLibrary } from "@/lib/userLibrary";
 import { ArchCanvas, type CanvasCallbacks } from "./ArchCanvas";
 import { DetailPanel, connectionKey, type Selection } from "./DetailPanel";
 import { Palette } from "./Palette";
@@ -47,7 +49,21 @@ const outermostOnly = (paths: string[]): string[] =>
 export function Editor() {
   const { source, setSource, mutate, undo, redo, canUndo, canRedo } =
     useArchDoc(SAMPLE);
-  const derived = useMemo(() => deriveDoc(source), [source]);
+  const library = useUserLibrary();
+  const customTags = useMemo(
+    () => new Set(library.items.map((t) => t.tag)),
+    [library.items],
+  );
+  const resolveType = useCallback(
+    (tag: string) => {
+      const custom = library.items.find((t) => t.tag === tag);
+      if (custom) return { color: custom.color, glyph: custom.glyph };
+      const entry = lookupType(tag);
+      return entry ? { color: entry.color, glyph: entry.glyph } : undefined;
+    },
+    [library.items],
+  );
+  const derived = useMemo(() => deriveDoc(source, customTags), [source, customTags]);
   const [selection, setSelection] = useState<Selection>(null);
   const [focus, setFocus] = useState<string[]>([]);
 
@@ -61,8 +77,8 @@ export function Editor() {
   );
 
   const flow = useMemo(
-    () => toFlow(derived.laidOut, { focus: liveFocus }),
-    [derived, liveFocus],
+    () => toFlow(derived.laidOut, { focus: liveFocus, resolveType }),
+    [derived, liveFocus, resolveType],
   );
 
   const callbacks: CanvasCallbacks = useMemo(
@@ -193,7 +209,7 @@ export function Editor() {
       </header>
 
       <div className="flex min-h-0 flex-1">
-        <Palette onAdd={addFromPalette} />
+        <Palette onAdd={addFromPalette} library={library} />
         <div className="flex w-[380px] shrink-0 flex-col border-r border-slate-200 bg-white">
           <textarea
             value={source}

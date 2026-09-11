@@ -117,12 +117,16 @@ export interface DerivedDoc {
   valid: boolean;
 }
 
-export function deriveDoc(source: string): DerivedDoc {
+export function deriveDoc(source: string, extraTypes?: ReadonlySet<string>): DerivedDoc {
   const parsed = parse(source);
+  const knownTypes =
+    extraTypes && extraTypes.size > 0
+      ? new Set([...KNOWN_TYPES, ...extraTypes])
+      : KNOWN_TYPES;
   const diagnostics = [
     ...parsed.diagnostics,
     ...validate(parsed.doc, {
-      knownTypes: KNOWN_TYPES,
+      knownTypes,
       knownConnectionTypes: KNOWN_CONNECTION_TYPES,
     }),
   ];
