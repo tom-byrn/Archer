@@ -109,7 +109,7 @@ export default function Home() {
         </div>
         <p className="pt-1.5">
           Connect an agent: <code className="mono">claude mcp add archer --env
-          ARCHLANG_WORKSPACE_ID={workspaceId ?? "<workspace-id>"} -- pnpm --dir
+          ARCHER_WORKSPACE_ID={workspaceId ?? "<workspace-id>"} -- pnpm --dir
           &lt;repo&gt;/packages/mcp start</code> — see docs/mcp.md.
         </p>
       </footer>

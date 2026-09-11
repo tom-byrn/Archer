@@ -2,7 +2,7 @@
 
 `packages/mcp` exposes everything a human can do in the Archer app to AI
 agents over the Model Context Protocol: browse/create/edit/delete projects,
-design architectures in the Archlang language (with the same validation gates
+design architectures in the Archer language (with the same validation gates
 the app enforces), manage the custom component-type library, control canvas
 presentation, and compile agent-ready implementation specs.
 
@@ -18,26 +18,26 @@ Prerequisites: the Convex backend running (`npx convex dev` in `apps/web`) and
 
    ```sh
    claude mcp add archer \
-     --env ARCHLANG_WORKSPACE_ID=<your-workspace-id> \
+     --env ARCHER_WORKSPACE_ID=<your-workspace-id> \
      -- pnpm --dir <absolute-path-to-repo>/packages/mcp start
    ```
 
    Alternatively skip the env var and, in your first session, ask the agent to
-   call `set_workspace` with the id — it persists to `~/.archlang/workspace`.
+   call `set_workspace` with the id — it persists to `~/.archer/workspace`.
 
 ### Environment variables
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
-| `ARCHLANG_WORKSPACE_ID` | `~/.archlang/workspace` file, else unset | Which workspace's projects the server operates on |
+| `ARCHER_WORKSPACE_ID` | `~/.archer/workspace` file, else unset | Which workspace's projects the server operates on |
 | `CONVEX_URL` | `http://127.0.0.1:3210` | The Convex backend |
-| `ARCHLANG_APP_URL` | `http://localhost:3000` | Base for the editor URLs returned by tools |
+| `ARCHER_APP_URL` | `http://localhost:3000` | Base for the editor URLs returned by tools |
 
 ## Tools (17)
 
 **Documentation** — `get_guide` returns the full agent guide (mental model,
 workflows, error reference, complete language spec); also exposed as the MCP
-resource `archlang://guide`. Agents should read it once before writing.
+resource `archer://guide`. Agents should read it once before writing.
 
 **Language (stateless, no workspace needed)** — `validate_source`,
 `format_source`, `compile_for_agent` (also accepts a `project_id`),
@@ -71,7 +71,7 @@ surviving components keep their canvas positions, new ones are auto-placed),
 ## Smoke test
 
 ```sh
-ARCHLANG_WORKSPACE_ID=<id> pnpm --filter @archlang/mcp exec tsx scripts/smoke.ts
+ARCHER_WORKSPACE_ID=<id> pnpm --filter @archer/mcp exec tsx scripts/smoke.ts
 ```
 
 Spawns the server over stdio and exercises all 17 tools against the live

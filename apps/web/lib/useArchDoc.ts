@@ -8,8 +8,8 @@ import {
   validate,
   type ArchDoc,
   type Diagnostic,
-} from "@archlang/lang";
-import { knownConnectionTypes, knownTypes } from "@archlang/catalog";
+} from "@archer/lang";
+import { knownConnectionTypes, knownTypes } from "@archer/catalog";
 
 const KNOWN_TYPES = knownTypes();
 const KNOWN_CONNECTION_TYPES = knownConnectionTypes();
@@ -69,7 +69,7 @@ export function useArchDoc(initial: string): ArchDocState {
           future: [],
         };
       } catch (e) {
-        console.warn("[archlang] transform rejected:", e);
+        console.warn("[archer] transform rejected:", e);
         return s;
       }
     });

@@ -1,5 +1,5 @@
 {
-  "name": "@archlang/web",
+  "name": "@archer/web",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -9,8 +9,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@archlang/catalog": "workspace:*",
-    "@archlang/lang": "workspace:*",
+    "@archer/catalog": "workspace:*",
+    "@archer/lang": "workspace:*",
     "@xyflow/react": "^12.8.0",
     "convex": "^1.45.0",
     "html-to-image": "^1.11.13",

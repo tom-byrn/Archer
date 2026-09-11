@@ -1,5 +1,5 @@
 /**
- * Lightweight Archlang syntax highlighter: emits HTML with tok-* spans,
+ * Lightweight Archer syntax highlighter: emits HTML with tok-* spans,
  * rendered behind a transparent textarea. Line-based with a small state
  * machine for payload fences and triple-quoted strings.
  */
@@ -18,7 +18,7 @@ type State =
   | { kind: "fence"; len: number }
   | { kind: "triple" };
 
-export function highlightArchlang(source: string): string {
+export function highlightArcher(source: string): string {
   const out: string[] = [];
   let state: State = { kind: "normal" };
 

@@ -1,6 +1,6 @@
 import { LANGUAGE_SPEC } from "./languageSpec";
 
-export const BRIEF = `Archer is an architecture-design tool: a drag-and-drop canvas for humans and a strict text language called Archlang (".arch" documents) for agents, compiling losslessly into each other. Through this MCP server you can do everything a human can do in the app: create/read/update/delete projects, design systems (components, connections, nested containers, validated schema payloads), define custom component types, and control presentation.`;
+export const BRIEF = `Archer is an architecture-design tool: a drag-and-drop canvas for humans and a strict text language (".arch" documents) for agents, compiling losslessly into each other. Through this MCP server you can do everything a human can do in the app: create/read/update/delete projects, design systems (components, connections, nested containers, validated schema payloads), define custom component types, and control presentation.`;
 
 export const GUIDE = `# Archer MCP Server — Agent Guide
 
@@ -8,7 +8,7 @@ ${BRIEF}
 
 ## The mental model (read this first)
 
-1. **A project IS one Archlang text document.** There is no separate diagram
+1. **A project IS one Archer text document.** There is no separate diagram
    state: the canvas humans see is rendered from the exact source you read and
    write. Editing the source edits their canvas, live.
 2. **Everything semantic is in the source; everything visual is in the
@@ -48,7 +48,7 @@ ${BRIEF}
    usable immediately in any project of this workspace and visible in the
    human's palette.
 
-## Writing good Archlang (agent-specific advice)
+## Writing good Archer documents (agent-specific advice)
 
 The full language specification is at the end of this guide. Key habits:
 
@@ -119,6 +119,6 @@ export — point users at the "Export PNG" button in the editor.
 
 ---
 
-# Archlang language specification
+# Archer language specification (v0.1)
 
 ${LANGUAGE_SPEC}`;

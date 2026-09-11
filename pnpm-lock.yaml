@@ -10,10 +10,10 @@ importers:
 
   apps/web:
     dependencies:
-      '@archlang/catalog':
+      '@archer/catalog':
         specifier: workspace:*
         version: link:../../packages/catalog
-      '@archlang/lang':
+      '@archer/lang':
         specifier: workspace:*
         version: link:../../packages/lang
       '@xyflow/react':
@@ -87,10 +87,10 @@ importers:
 
   packages/mcp:
     dependencies:
-      '@archlang/catalog':
+      '@archer/catalog':
         specifier: workspace:*
         version: link:../catalog
-      '@archlang/lang':
+      '@archer/lang':
         specifier: workspace:*
         version: link:../lang
       '@modelcontextprotocol/sdk':

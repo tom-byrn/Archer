@@ -1,18 +1,18 @@
 {
-  "name": "@archlang/mcp",
+  "name": "@archer/mcp",
   "version": "1.1.0",
   "private": true,
   "type": "module",
   "bin": {
-    "archlang-mcp": "./src/index.ts"
+    "archer-mcp": "./src/index.ts"
   },
   "scripts": {
     "start": "tsx src/index.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@archlang/catalog": "workspace:*",
-    "@archlang/lang": "workspace:*",
+    "@archer/catalog": "workspace:*",
+    "@archer/lang": "workspace:*",
     "@modelcontextprotocol/sdk": "^1.12.0",
     "convex": "^1.45.0",
     "tsx": "^4.19.0",

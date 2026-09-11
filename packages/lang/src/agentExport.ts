@@ -2,7 +2,7 @@ import { format } from "./format";
 import { normalizeLayout } from "./validate";
 import type { ArchDoc } from "./types";
 
-const PREAMBLE = `# This is an Archlang architecture document — a complete, machine-readable
+const PREAMBLE = `# This is an Archer architecture document — a complete, machine-readable
 # specification of a software system, exported from a canvas the author designed.
 # Treat it as the source of truth for the system's intended architecture.
 #
@@ -18,7 +18,7 @@ const PREAMBLE = `# This is an Archlang architecture document — a complete, ma
 #   referenced by dot-path. \`->\` directed, \`<->\` bidirectional, \`--\` undirected.
 # - When implementing, honor every component, connection, and payload. Ask about
 #   gaps rather than inventing architecture that contradicts this document.
-# - If you write Archlang back, follow the grammar above and NEVER emit a
+# - If you write Archer back, follow the grammar above and NEVER emit a
 #   \`layout\` block — layout is machine-managed presentation, not architecture.
 `;
 

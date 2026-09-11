@@ -1,8 +1,8 @@
 "use client";
 
 import { useMemo, useRef } from "react";
-import type { Diagnostic } from "@archlang/lang";
-import { highlightArchlang } from "@/lib/highlight";
+import type { Diagnostic } from "@archer/lang";
+import { highlightArcher } from "@/lib/highlight";
 
 function DiagnosticRow({ d }: { d: Diagnostic }) {
   const isError = d.severity === "error";
@@ -35,7 +35,7 @@ export function CodePane({
   onToggle: () => void;
 }) {
   const preRef = useRef<HTMLPreElement>(null);
-  const html = useMemo(() => highlightArchlang(source), [source]);
+  const html = useMemo(() => highlightArcher(source), [source]);
   const errorCount = diagnostics.filter((d) => d.severity === "error").length;
 
   if (!open) {

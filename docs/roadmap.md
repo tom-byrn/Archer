@@ -1,4 +1,4 @@
-# Archlang Roadmap — v0.1 → v1.0
+# Archer Roadmap — v0.1 → v1.0
 
 One git commit per version. Every version leaves the repo working (tests green, app
 builds). Versions track the build order from `product-spec.md`: language first, then
@@ -6,7 +6,7 @@ rendering, then editing, then persistence, then the agent handoff.
 
 ## v0.1 — Language core
 Monorepo scaffold (pnpm workspaces: `packages/lang`, `packages/catalog`, `apps/web`
-placeholder). `@archlang/lang`: lexer + recursive-descent parser → typed AST for the
+placeholder). `@archer/lang`: lexer + recursive-descent parser → typed AST for the
 full v0.1 grammar (header, components, desc, payload fences, connections, layout
 block), with positioned parse errors (`E001`). Fixture-based test suite (vitest)
 including the spec's worked example.
@@ -25,7 +25,7 @@ parent's grid. `applyLayout(doc)` returns a doc whose layout block is complete.
 Property tests: every component gets an entry; existing entries are never moved.
 
 ## v0.4 — Read-only web renderer
-`apps/web`: Next.js (App Router, TS, Tailwind) + React Flow. Paste/edit Archlang in a
+`apps/web`: Next.js (App Router, TS, Tailwind) + React Flow. Paste/edit Archer in a
 code pane → live canvas render (custom nodes: generic box, typed icon node, plane
 group; custom edges with type chip + label). Diagnostics panel with error codes.
 PNG export of current view. Starter catalog (~15 types) with icons in

@@ -2,8 +2,6 @@
 
 **An architecture canvas that compiles to an agent-readable language — and back.**
 
-Archer is the app; **Archlang** is its language (`.arch` files).
-
 Design your software architecture on an Excalidraw-style canvas with real
 technology components (AWS, Vercel, Postgres, …), strict connection rules, and
 structured detail inside every node. The whole canvas *is* one `.arch` text
@@ -14,7 +12,7 @@ and one click compiles it into a precise spec you paste to a coding agent.
 
 Coding agents are only as good as the spec you hand them. Diagrams describe
 systems well but export as pixels; diagram-as-code tools describe *pictures*,
-not systems. An Archlang document is a semantic model:
+not systems. An Archer document is a semantic model:
 
 - **Strict** — arrows can't point at nothing (the UI snaps them back; the
   validator rejects them with `E101`), ids must resolve, payloads must parse.
@@ -57,7 +55,7 @@ Docs: [language spec](docs/language-spec.md) · [product spec](docs/product-spec
 
 ```sh
 pnpm install
-pnpm --filter @archlang/lang test     # 66 language tests
+pnpm --filter @archer/lang test     # 66 language tests
 
 # terminal 1 — local Convex backend (no account needed)
 cd apps/web && npx convex dev
@@ -71,7 +69,7 @@ workspace id from the app's home-page footer, then:
 
 ```sh
 claude mcp add archer \
-  --env ARCHLANG_WORKSPACE_ID=<workspace-id> \
+  --env ARCHER_WORKSPACE_ID=<workspace-id> \
   -- pnpm --dir <repo>/packages/mcp start
 ```
 

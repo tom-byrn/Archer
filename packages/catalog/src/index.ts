@@ -1,7 +1,7 @@
 export { GLYPHS } from "./glyphs";
 
 export interface CatalogType {
-  /** The `@tag` used in Archlang source, without the `@`. */
+  /** The `@tag` used in Archer source, without the `@`. */
   tag: string;
   /** Short display name. */
   name: string;

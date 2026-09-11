@@ -1,4 +1,4 @@
-// Core AST and diagnostic types for Archlang. See docs/language-spec.md.
+// Core AST and diagnostic types for Archer. See docs/language-spec.md.
 
 export interface Pos {
   /** 1-based line */

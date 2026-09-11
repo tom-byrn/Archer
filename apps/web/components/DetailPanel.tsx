@@ -19,8 +19,8 @@ import {
   type Arrow,
   type ConnectionNode,
   type PayloadFormat,
-} from "@archlang/lang";
-import { CATALOG, CONNECTION_TYPES } from "@archlang/catalog";
+} from "@archer/lang";
+import { CATALOG, CONNECTION_TYPES } from "@archer/catalog";
 import { Glyph } from "./nodes";
 
 export type Selection =
@@ -211,7 +211,7 @@ function ComponentDetail({
         <div>
           <label className={labelCls}>Type</label>
           <input
-            list="archlang-types"
+            list="archer-types"
             defaultValue={node.type ?? ""}
             placeholder="untyped"
             spellCheck={false}
@@ -226,7 +226,7 @@ function ComponentDetail({
               if (e.key === "Enter") (e.target as HTMLInputElement).blur();
             }}
           />
-          <datalist id="archlang-types">
+          <datalist id="archer-types">
             {CATALOG.map((t) => (
               <option key={t.tag} value={t.tag}>
                 {t.name}
@@ -380,7 +380,7 @@ function ConnectionDetail({
         <div>
           <label className={labelCls}>Type</label>
           <input
-            list="archlang-conn-types"
+            list="archer-conn-types"
             key={connKey}
             defaultValue={conn.type ?? ""}
             placeholder="untyped"
@@ -395,7 +395,7 @@ function ConnectionDetail({
               if (e.key === "Enter") (e.target as HTMLInputElement).blur();
             }}
           />
-          <datalist id="archlang-conn-types">
+          <datalist id="archer-conn-types">
             {CONNECTION_TYPES.map((t) => (
               <option key={t} value={t} />
             ))}

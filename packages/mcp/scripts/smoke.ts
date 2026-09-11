@@ -2,7 +2,7 @@
  * End-to-end smoke test: spawns the MCP server over stdio and exercises every
  * tool group against the real local Convex backend.
  *
- * Usage: ARCHLANG_WORKSPACE_ID=<id> pnpm --filter @archlang/mcp exec tsx scripts/smoke.ts
+ * Usage: ARCHER_WORKSPACE_ID=<id> pnpm --filter @archer/mcp exec tsx scripts/smoke.ts
  */
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
@@ -45,7 +45,7 @@ check("17 tools registered", names.length === 17, names);
 const guide = await call("get_guide");
 check("guide has brief + spec + workflows", guide.text.includes("architecture-design tool") && guide.text.includes("## 2. File structure") && guide.text.includes("Standard workflows"));
 const resources = await client.listResources();
-check("guide resource listed", resources.resources.some((r) => r.uri === "archlang://guide"));
+check("guide resource listed", resources.resources.some((r) => r.uri === "archer://guide"));
 
 // stateless language tools
 const bad = await call("validate_source", { source: 'arch "T" v0.1\ncomponent a\na -> ghost' });
@@ -106,7 +106,7 @@ check("custom tag validates clean (no W301)", !useCustom.isError && got3.json.wa
 const disp = await call("set_display", { project_id: pid, path: "api", display: "icon" });
 check("set_display saves", !disp.isError && disp.json?.saved === true);
 const compiled = await call("compile_for_agent", { project_id: pid });
-check("compile_for_agent: preamble, no layout", compiled.text.includes("Archlang architecture document") && !compiled.text.includes("layout {"));
+check("compile_for_agent: preamble, no layout", compiled.text.includes("Archer architecture document") && !compiled.text.includes("layout {"));
 
 // cleanup: delete custom type + project
 const delType = await call("delete_custom_type", { tag: "custom.smoke_engine" });

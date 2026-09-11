@@ -5,7 +5,7 @@ import {
   PLANE_INNER_ORIGIN,
   type ArchDoc,
   type ComponentNode,
-} from "@archlang/lang";
+} from "@archer/lang";
 import { CELL } from "./toFlow";
 
 export interface DropTarget {

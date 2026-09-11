@@ -1,6 +1,6 @@
-# Archlang — Product Spec v1 (Draft)
+# Archer — Product Spec v1 (Draft)
 
-A web-based architecture canvas that compiles to Archlang (see `language-spec.md`).
+A web-based architecture canvas that compiles to Archer (see `language-spec.md`).
 Excalidraw's feel, real technology components, strict connections, and a one-click
 handoff of the whole architecture to a coding agent as code + image.
 

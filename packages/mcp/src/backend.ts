@@ -21,33 +21,46 @@ import {
   validate,
   type ArchDoc,
   type Diagnostic,
-} from "@archlang/lang";
-import { knownConnectionTypes, knownTypes } from "@archlang/catalog";
+} from "@archer/lang";
+import { knownConnectionTypes, knownTypes } from "@archer/catalog";
 
 export const CONVEX_URL =
   process.env.CONVEX_URL ??
   process.env.NEXT_PUBLIC_CONVEX_URL ??
   "http://127.0.0.1:3210";
-export const APP_URL = process.env.ARCHLANG_APP_URL ?? "http://localhost:3000";
+export const APP_URL =
+  process.env.ARCHER_APP_URL ??
+  process.env.ARCHLANG_APP_URL ??
+  "http://localhost:3000";
 
-const WORKSPACE_FILE = join(homedir(), ".archlang", "workspace");
+const WORKSPACE_FILE = join(homedir(), ".archer", "workspace");
+/** Pre-rename fallbacks so existing setups keep working. */
+const LEGACY_WORKSPACE_FILE = join(homedir(), ".archlang", "workspace");
 
-export function resolveWorkspaceId(): string | null {
-  if (process.env.ARCHLANG_WORKSPACE_ID) return process.env.ARCHLANG_WORKSPACE_ID;
+const readWorkspaceFile = (path: string): string | null => {
   try {
-    const id = readFileSync(WORKSPACE_FILE, "utf8").trim();
+    const id = readFileSync(path, "utf8").trim();
     return id === "" ? null : id;
   } catch {
     return null;
   }
+};
+
+export function resolveWorkspaceId(): string | null {
+  return (
+    process.env.ARCHER_WORKSPACE_ID ??
+    process.env.ARCHLANG_WORKSPACE_ID ??
+    readWorkspaceFile(WORKSPACE_FILE) ??
+    readWorkspaceFile(LEGACY_WORKSPACE_FILE)
+  );
 }
 
 export function persistWorkspaceId(id: string): void {
-  mkdirSync(join(homedir(), ".archlang"), { recursive: true });
+  mkdirSync(join(homedir(), ".archer"), { recursive: true });
   writeFileSync(WORKSPACE_FILE, id + "\n", "utf8");
 }
 
-export const NO_WORKSPACE_MESSAGE = `No workspace is configured, so project tools can't run yet. The workspace id scopes which projects you see — it must match the one the user's browser uses. Ask the user to copy their workspace id from the footer of the Archer home page (${APP_URL}), then call the set_workspace tool with it (persists to ~/.archlang/workspace). Alternatively they can set the ARCHLANG_WORKSPACE_ID environment variable for this MCP server. Language tools (validate_source, format_source, compile_for_agent, auto_layout_source, get_guide) work without a workspace.`;
+export const NO_WORKSPACE_MESSAGE = `No workspace is configured, so project tools can't run yet. The workspace id scopes which projects you see — it must match the one the user's browser uses. Ask the user to copy their workspace id from the footer of the Archer home page (${APP_URL}), then call the set_workspace tool with it (persists to ~/.archer/workspace). Alternatively they can set the ARCHER_WORKSPACE_ID environment variable for this MCP server. Language tools (validate_source, format_source, compile_for_agent, auto_layout_source, get_guide) work without a workspace.`;
 
 const client = new ConvexHttpClient(CONVEX_URL);
 

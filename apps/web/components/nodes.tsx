@@ -1,7 +1,7 @@
 "use client";
 
 import { Handle, Position, type NodeProps } from "@xyflow/react";
-import { GLYPHS, lookupType } from "@archlang/catalog";
+import { GLYPHS, lookupType } from "@archer/catalog";
 import type { ArchNode } from "@/lib/toFlow";
 
 export function Glyph({

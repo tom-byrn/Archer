@@ -2,7 +2,7 @@ import Link from "next/link";
 import { marked } from "marked";
 import { LANGUAGE_SPEC } from "@/lib/languageSpec";
 
-export const metadata = { title: "Archer — Archlang Language Reference" };
+export const metadata = { title: "Archer — Archer Language Reference" };
 
 export default function LanguagePage() {
   const html = marked.parse(LANGUAGE_SPEC, { async: false });
@@ -14,7 +14,7 @@ export default function LanguagePage() {
           Archer
         </Link>
         <span className="px-2 text-slate-300">/</span>
-        <span className="text-slate-500">Archlang language reference</span>
+        <span className="text-slate-500">Archer language reference</span>
       </nav>
       <article
         className="spec prose-slate"

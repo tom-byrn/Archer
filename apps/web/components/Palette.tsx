@@ -1,11 +1,11 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { CATALOG, type CatalogType } from "@archlang/catalog";
+import { CATALOG, type CatalogType } from "@archer/catalog";
 import type { CustomType, UserLibrary } from "@/lib/userLibrary";
 import { Glyph } from "./nodes";
 
-export const DND_MIME = "application/archlang-type";
+export const DND_MIME = "application/archer-type";
 
 function PaletteItem({
   entry,

@@ -8,7 +8,7 @@ import {
   type ArchDoc,
   type ComponentNode,
   type DisplayMode,
-} from "@archlang/lang";
+} from "@archer/lang";
 
 /** One grid cell in pixels. */
 export const CELL = 40;

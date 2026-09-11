@@ -1,14 +1,14 @@
 // Generated from docs/language-spec.md — keep in sync when the spec changes.
-export const LANGUAGE_SPEC = `# Archlang v0.1 — Language Specification (Draft)
+export const LANGUAGE_SPEC = `# Archer v0.1 — Language Specification (Draft)
 
-Archlang is a textual language for describing software architecture. An \`.arch\` file is
+Archer is a textual language for describing software architecture. An \`.arch\` file is
 the **single source of truth** for an architecture document: the canvas renders it, edits
 on the canvas compile back into it, and a stripped form of it is handed to coding agents
 as an implementation spec.
 
 ## 1. Design principles
 
-1. **Agent-first.** The primary readers and writers of raw Archlang are AI coding agents.
+1. **Agent-first.** The primary readers and writers of raw Archer are AI coding agents.
    Humans interact through the canvas. Syntax choices favor unambiguous parsing and
    generation over hand-writing ergonomics, but the language stays Mermaid-adjacent and
    skimmable.
@@ -255,7 +255,7 @@ a dangling connection is never created in the first place.
 1. **Canonical form** — the formatter output the app always saves: fixed section order,
    sorted connections, normalized whitespace. Ensures clean diffs.
 2. **Agent export ("copy as prompt")** — canonical form with the \`layout\` block
-   stripped, prefixed by a short fixed header telling the agent what Archlang is, how to
+   stripped, prefixed by a short fixed header telling the agent what Archer is, how to
    read it, and that this document is the implementation spec. One click, ends up on the
    clipboard.
 3. **Image export** — PNG of the current canvas view, for pasting alongside the code.

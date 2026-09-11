@@ -9,7 +9,7 @@ const inter = Inter({ subsets: ["latin"], display: "swap" });
 export const metadata: Metadata = {
   title: "Archer",
   description:
-    "Architecture canvas that compiles to an agent-readable language (Archlang) — and back.",
+    "Architecture canvas that compiles to an agent-readable language (Archer) — and back.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

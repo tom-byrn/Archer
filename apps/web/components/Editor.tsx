@@ -14,9 +14,9 @@ import {
   removeComponent,
   removeConnection,
   reparentComponent,
-} from "@archlang/lang";
+} from "@archer/lang";
 import Link from "next/link";
-import { lookupType } from "@archlang/catalog";
+import { lookupType } from "@archer/catalog";
 import { SAMPLE } from "@/lib/sample";
 import { toFlow } from "@/lib/toFlow";
 import { resolveDropTarget } from "@/lib/dropTarget";
@@ -61,13 +61,13 @@ export function Editor({
   const [codeOpen, setCodeOpen] = useState(true);
   useEffect(() => {
     try {
-      if (localStorage.getItem("archlang.codeOpen") === "0") setCodeOpen(false);
+      if (localStorage.getItem("archer.codeOpen") === "0") setCodeOpen(false);
     } catch {}
   }, []);
   const toggleCode = useCallback(() => {
     setCodeOpen((open) => {
       try {
-        localStorage.setItem("archlang.codeOpen", open ? "0" : "1");
+        localStorage.setItem("archer.codeOpen", open ? "0" : "1");
       } catch {}
       return !open;
     });
@@ -275,7 +275,7 @@ export function Editor({
             target="_blank"
             className="pl-1 text-xs font-medium text-slate-400 hover:text-[#0d9373]"
           >
-            Archlang ↗
+            Docs ↗
           </a>
         </div>
       </header>

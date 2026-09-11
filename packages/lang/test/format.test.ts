@@ -91,7 +91,7 @@ describe("format", () => {
 describe("compileForAgent", () => {
   it("strips layout and prepends the preamble", () => {
     const out = compileForAgent(parse(fixture("acme.arch")).doc);
-    expect(out).toContain("Archlang architecture document");
+    expect(out).toContain("Archer architecture document");
     expect(out).not.toContain("layout {");
     expect(out).toContain('arch "Acme SaaS" v0.1');
   });
