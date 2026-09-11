@@ -12,6 +12,7 @@
     "@archer/catalog": "workspace:*",
     "@archer/lang": "workspace:*",
     "@xyflow/react": "^12.8.0",
+    "context.dev": "^2.14.0",
     "convex": "^1.45.0",
     "html-to-image": "^1.11.13",
     "marked": "^18.0.12",

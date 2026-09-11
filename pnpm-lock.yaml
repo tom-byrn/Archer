@@ -19,6 +19,9 @@ importers:
       '@xyflow/react':
         specifier: ^12.8.0
         version: 12.11.6(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      context.dev:
+        specifier: ^2.14.0
+        version: 2.14.0
       convex:
         specifier: ^1.45.0
         version: 1.45.0(react@19.3.0)
@@ -1035,6 +1038,9 @@ packages:
   content-type@2.1.0:
     resolution: {integrity: sha512-mj7UPXE0jaqaOsukNZRUEfEi2AcL7C/vwmwcHV0O97eO1E1pxBZuyjlZrx5seTaNBg1U6+o35wpa35Qfcc+7ag==}
     engines: {node: '>=18'}
+
+  context.dev@2.14.0:
+    resolution: {integrity: sha512-cx1kwP5ecCw6FPC3TV8t+JVv+xfpEDmBfs51aQIXoT2UerncizgoMyuRM/EKHp8n6ITe9YEeHJdBPyNBgHav5A==}
 
   convex@1.45.0:
     resolution: {integrity: sha512-AV3B56Ptu/14d76g3urBJ50dwpiZa6uJaLT84OWox5aCwZIJiuAamdjv3lLHDzs8vv5kC31anEZohhUe3qJ2bA==}
@@ -2490,6 +2496,8 @@ snapshots:
   content-type@1.0.5: {}
 
   content-type@2.1.0: {}
+
+  context.dev@2.14.0: {}
 
   convex@1.45.0(react@19.3.0):
     dependencies:

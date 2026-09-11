@@ -63,6 +63,42 @@ function NewTypeForm({
   const [name, setName] = useState("");
   const [glyph, setGlyph] = useState("box");
   const [color, setColor] = useState(COLOR_CHOICES[6]!);
+  const [brandColors, setBrandColors] = useState<string[]>([]);
+  const [brandNote, setBrandNote] = useState<string | null>(null);
+  const [fetching, setFetching] = useState(false);
+
+  const fetchBrand = async () => {
+    if (name.trim() === "" || fetching) return;
+    setFetching(true);
+    setBrandNote(null);
+    try {
+      const res = await fetch("/api/brand", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query: name.trim() }),
+      });
+      const data = (await res.json()) as {
+        suggestion?: { title: string; domain?: string; colors: { hex: string }[] } | null;
+        error?: string;
+      };
+      if (!res.ok) {
+        setBrandNote(data.error ?? "Lookup failed.");
+      } else if (!data.suggestion) {
+        setBrandNote("No brand match found.");
+      } else {
+        const hexes = data.suggestion.colors.map((c) => c.hex).slice(0, 6);
+        setBrandColors(hexes);
+        if (hexes[0]) setColor(hexes[0]);
+        setBrandNote(
+          `Matched ${data.suggestion.title}${data.suggestion.domain ? ` · ${data.suggestion.domain}` : ""}`,
+        );
+      }
+    } catch {
+      setBrandNote("Lookup failed.");
+    } finally {
+      setFetching(false);
+    }
+  };
   const tag = name
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "_")
@@ -70,13 +106,26 @@ function NewTypeForm({
     .replace(/^[0-9]+/, "");
   return (
     <div className="mt-1 rounded-xl border border-slate-200 dark:border-slate-800 p-2">
-      <input
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-        placeholder="Type name"
-        autoFocus
-        className="w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 px-2 py-1.5 text-[12px] outline-none focus:border-slate-400 dark:focus:border-slate-500"
-      />
+      <div className="flex gap-1">
+        <input
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="Type name"
+          autoFocus
+          className="w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 px-2 py-1.5 text-[12px] outline-none focus:border-slate-400 dark:focus:border-slate-500"
+        />
+        <button
+          onClick={() => void fetchBrand()}
+          disabled={name.trim() === "" || fetching}
+          title="Fetch this technology's real brand colors from the web"
+          className="shrink-0 rounded-lg border border-slate-200 dark:border-slate-800 px-2 text-[11px] font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-40"
+        >
+          {fetching ? "…" : "Brand"}
+        </button>
+      </div>
+      {brandNote && (
+        <p className="px-0.5 pt-1 text-[10px] text-slate-400">{brandNote}</p>
+      )}
       {tag !== "" && (
         <p className="mono px-0.5 pt-1 text-[10px] text-slate-400">@{tag}</p>
       )}
@@ -93,7 +142,7 @@ function NewTypeForm({
         ))}
       </div>
       <div className="flex flex-wrap gap-1.5 pt-2">
-        {COLOR_CHOICES.map((c) => (
+        {[...brandColors.filter((c) => !COLOR_CHOICES.includes(c)), ...COLOR_CHOICES].map((c) => (
           <button
             key={c}
             onClick={() => setColor(c)}
