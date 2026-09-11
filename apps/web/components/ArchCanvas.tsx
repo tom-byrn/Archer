@@ -24,6 +24,9 @@ import { nodeTypes } from "./nodes";
 
 export interface CanvasCallbacks {
   onMove: (path: string, at: [number, number]) => void;
+  onSelectNode: (path: string) => void;
+  onSelectEdge: (index: number) => void;
+  onClearSelection: () => void;
   onConnect: (source: string, target: string) => void;
   onDeleteNodes: (paths: string[]) => void;
   onDeleteEdges: (indices: number[]) => void;
@@ -138,6 +141,12 @@ function CanvasInner({
       onConnect={onConnect}
       onNodesDelete={onNodesDelete}
       onEdgesDelete={onEdgesDelete}
+      onNodeClick={(_e, n) => callbacks.onSelectNode(n.id)}
+      onEdgeClick={(_e, edge) => {
+        const i = (edge.data as { index?: number } | undefined)?.index;
+        if (i !== undefined) callbacks.onSelectEdge(i);
+      }}
+      onPaneClick={() => callbacks.onClearSelection()}
       onDrop={onDrop}
       onDragOver={(e) => {
         e.preventDefault();

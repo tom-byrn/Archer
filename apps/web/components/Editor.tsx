@@ -1,10 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   addComponent,
   addConnection,
   autoLayout,
+  componentPaths,
   format,
   moveComponent,
   parse,
@@ -17,6 +18,7 @@ import { toFlow } from "@/lib/toFlow";
 import { resolveDropTarget } from "@/lib/dropTarget";
 import { deriveDoc, useArchDoc } from "@/lib/useArchDoc";
 import { ArchCanvas, type CanvasCallbacks } from "./ArchCanvas";
+import { DetailPanel, connectionKey, type Selection } from "./DetailPanel";
 import { Palette } from "./Palette";
 
 function DiagnosticRow({ d }: { d: Diagnostic }) {
@@ -45,10 +47,17 @@ export function Editor() {
     useArchDoc(SAMPLE);
   const derived = useMemo(() => deriveDoc(source), [source]);
   const flow = useMemo(() => toFlow(derived.laidOut), [derived]);
+  const [selection, setSelection] = useState<Selection>(null);
 
   const callbacks: CanvasCallbacks = useMemo(
     () => ({
       onMove: (path, at) => mutate((d) => moveComponent(d, path.split("."), at)),
+      onSelectNode: (path) => setSelection({ kind: "component", path }),
+      onSelectEdge: (index) => {
+        const conn = derived.doc.connections[index];
+        setSelection(conn ? { kind: "connection", key: connectionKey(conn) } : null);
+      },
+      onClearSelection: () => setSelection(null),
       onConnect: (s, t) => mutate((d) => addConnection(d, s.split("."), t.split("."))),
       onDeleteNodes: (paths) =>
         mutate((d) =>
@@ -64,8 +73,19 @@ export function Editor() {
           return addComponent(d, target.parent, { type: tag, at: target.at }).doc;
         }),
     }),
-    [mutate],
+    [mutate, derived],
   );
+
+  // Drop a selection that no longer resolves (component deleted, connection edited away).
+  const liveSelection: Selection = useMemo(() => {
+    if (selection === null) return null;
+    if (selection.kind === "component") {
+      return componentPaths(derived.doc).has(selection.path) ? selection : null;
+    }
+    return derived.doc.connections.some((c) => connectionKey(c) === selection.key)
+      ? selection
+      : null;
+  }, [selection, derived]);
 
   const addFromPalette = useCallback(
     (tag: string | undefined) =>
@@ -159,6 +179,12 @@ export function Editor() {
             callbacks={callbacks}
           />
         </main>
+        <DetailPanel
+          doc={derived.laidOut}
+          selection={liveSelection}
+          mutate={mutate}
+          onSelect={setSelection}
+        />
       </div>
     </div>
   );

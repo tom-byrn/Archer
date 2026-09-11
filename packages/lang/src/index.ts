@@ -5,6 +5,7 @@ export type { Token, TokenType } from "./lexer";
 export {
   validate,
   validateTable,
+  checkPayload,
   componentPaths,
   findComponent,
   normalizeLayout,
