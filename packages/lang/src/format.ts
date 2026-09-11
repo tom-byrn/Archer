@@ -1,0 +1,112 @@
+import {
+  pathToString,
+  type ArchDoc,
+  type ComponentNode,
+  type ConnectionNode,
+  type LayoutEntry,
+  type PayloadNode,
+} from "./types.js";
+
+const INDENT = "  ";
+
+const quote = (s: string): string =>
+  `"${s.replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/\n/g, "\\n")}"`;
+
+const indentBlock = (text: string, depth: number): string =>
+  text
+    .split("\n")
+    .map((l) => (l === "" ? l : INDENT.repeat(depth) + l))
+    .join("\n");
+
+/** A fence long enough that `content` can't close it early. */
+const fenceFor = (content: string): string => {
+  let longest = 2;
+  for (const m of content.matchAll(/`+/g)) longest = Math.max(longest, m[0].length);
+  return "`".repeat(Math.max(3, longest + 1));
+};
+
+function formatPayload(p: PayloadNode, depth: number): string {
+  const fence = fenceFor(p.content);
+  const open = `${INDENT.repeat(depth)}${p.name} ${p.format} ${fence}`;
+  const body = indentBlock(p.content, depth);
+  return `${open}\n${body}\n${INDENT.repeat(depth)}${fence}`;
+}
+
+function formatDesc(desc: string, depth: number): string {
+  const pad = INDENT.repeat(depth);
+  if (!desc.includes("\n")) return `${pad}desc ${quote(desc)}`;
+  return `${pad}desc """\n${indentBlock(desc, depth + 1)}\n${pad}"""`;
+}
+
+function formatComponent(c: ComponentNode, depth: number): string {
+  const pad = INDENT.repeat(depth);
+  let head = `${pad}component ${c.id}`;
+  if (c.name !== undefined) head += ` ${quote(c.name)}`;
+  if (c.type !== undefined) head += ` @${c.type}`;
+
+  const body: string[] = [];
+  if (c.desc !== undefined) body.push(formatDesc(c.desc, depth + 1));
+  for (const p of c.payloads) body.push(formatPayload(p, depth + 1));
+  for (const child of c.children) body.push(formatComponent(child, depth + 1));
+
+  if (body.length === 0) return head;
+  return `${head} {\n${body.join("\n")}\n${pad}}`;
+}
+
+function connectionSortKey(c: ConnectionNode): string {
+  return [
+    pathToString(c.source),
+    pathToString(c.target),
+    c.arrow,
+    c.type ?? "",
+    c.label ?? "",
+  ].join(" ");
+}
+
+function formatConnection(c: ConnectionNode): string {
+  let line = `${pathToString(c.source)} ${c.arrow} ${pathToString(c.target)}`;
+  if (c.type !== undefined) line += ` @${c.type}`;
+  if (c.label !== undefined) line += ` : ${quote(c.label)}`;
+  return line;
+}
+
+function formatLayoutEntry(e: LayoutEntry): string {
+  const props: string[] = [];
+  if (e.at) props.push(`at: [${e.at[0]}, ${e.at[1]}]`);
+  if (e.size) props.push(`size: [${e.size[0]}, ${e.size[1]}]`);
+  if (e.display) props.push(`display: ${e.display}`);
+  return `${INDENT}${pathToString(e.path)}: { ${props.join(", ")} }`;
+}
+
+export interface FormatOptions {
+  /** Omit the layout block entirely (used by the agent export). */
+  stripLayout?: boolean;
+}
+
+/**
+ * Canonical form: header, components (document order), connections (sorted),
+ * layout (sorted by path). format(parse(format(x))) === format(x).
+ */
+export function format(doc: ArchDoc, opts: FormatOptions = {}): string {
+  const sections: string[] = [`arch ${quote(doc.title)} v${doc.version}`];
+
+  if (doc.components.length > 0) {
+    sections.push(doc.components.map((c) => formatComponent(c, 0)).join("\n\n"));
+  }
+
+  if (doc.connections.length > 0) {
+    const sorted = [...doc.connections].sort((a, b) =>
+      connectionSortKey(a) < connectionSortKey(b) ? -1 : 1,
+    );
+    sections.push(sorted.map(formatConnection).join("\n"));
+  }
+
+  if (!opts.stripLayout && doc.layout.length > 0) {
+    const sorted = [...doc.layout].sort((a, b) =>
+      pathToString(a.path) < pathToString(b.path) ? -1 : 1,
+    );
+    sections.push(`layout {\n${sorted.map(formatLayoutEntry).join("\n")}\n}`);
+  }
+
+  return sections.join("\n\n") + "\n";
+}
