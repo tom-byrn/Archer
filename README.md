@@ -46,6 +46,7 @@ backend.api -> backend.db @sql
 | --- | --- |
 | `packages/lang` | The language: parser, validator (typed error codes), canonical formatter, grid auto-layout, AST transforms, agent-export compiler. Pure TypeScript, no app dependencies. |
 | `packages/catalog` | Curated component catalog (~75 technologies) + glyphs. |
+| `packages/mcp` | MCP server giving agents full human-parity access: projects CRUD, validated writes, custom types, layout control, spec compilation. See [docs/mcp.md](docs/mcp.md). |
 | `apps/web` | Next.js app: React Flow canvas, palette, detail panel, live code pane, drill-down navigation, Convex persistence. |
 
 Docs: [language spec](docs/language-spec.md) · [product spec](docs/product-spec.md) · [roadmap](docs/roadmap.md)
@@ -63,10 +64,20 @@ cd apps/web && npx convex dev
 pnpm dev                              # http://localhost:3000
 ```
 
+Connect Claude Code (or any MCP client) to your projects — copy your
+workspace id from the app's home-page footer, then:
+
+```sh
+claude mcp add archlang \
+  --env ARCHLANG_WORKSPACE_ID=<workspace-id> \
+  -- pnpm --dir <repo>/packages/mcp start
+```
+
 ## Status
 
-v1.0 — the full core loop works: design on the canvas (drag, connect,
+v1.1 — the full core loop works: design on the canvas (drag, connect,
 nest/drill down, detail panels with validated payloads), watch the `.arch`
-file update live, copy code + PNG for an agent. Post-v1: real auth,
-sharing, an MCP server for the app, per-technology payload validation
-(SQL linting etc.), multi-file documents.
+file update live, copy code + PNG for an agent — and agents get the same
+powers over MCP (validated writes, layout-preserving updates, custom types).
+Next: real auth, sharing, per-technology payload validation (SQL linting
+etc.), multi-file documents.

@@ -89,6 +89,28 @@ export default function Home() {
           </li>
         ))}
       </ul>
+
+      <footer className="mt-14 border-t border-slate-200 pt-4 text-xs text-slate-400">
+        <div className="flex items-center gap-2">
+          <span>Workspace</span>
+          <code className="mono rounded bg-slate-100 px-1.5 py-0.5 text-[11px] text-slate-500">
+            {workspaceId ?? "…"}
+          </code>
+          <button
+            onClick={() => {
+              if (workspaceId) void navigator.clipboard.writeText(workspaceId);
+            }}
+            className="rounded border border-slate-200 px-1.5 py-0.5 hover:bg-slate-50"
+          >
+            copy
+          </button>
+        </div>
+        <p className="pt-1.5">
+          Connect an agent: <code className="mono">claude mcp add archlang --env
+          ARCHLANG_WORKSPACE_ID={workspaceId ?? "<workspace-id>"} -- pnpm --dir
+          &lt;repo&gt;/packages/mcp start</code> — see docs/mcp.md.
+        </p>
+      </footer>
     </div>
   );
 }
