@@ -23,7 +23,7 @@ function PaletteItem({
       }}
       onClick={() => onAdd(entry.tag)}
       title={`@${entry.tag} — drag onto the canvas or click to add`}
-      className="flex w-full cursor-grab items-center gap-2 rounded-lg px-2 py-1.5 text-left hover:bg-slate-100 active:cursor-grabbing"
+      className="flex w-full cursor-grab items-center gap-2 rounded-lg px-2 py-1.5 text-left hover:bg-slate-100 dark:hover:bg-slate-800 active:cursor-grabbing"
     >
       <span
         className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md"
@@ -69,13 +69,13 @@ function NewTypeForm({
     .replace(/^_+|_+$/g, "")
     .replace(/^[0-9]+/, "");
   return (
-    <div className="mt-1 rounded-xl border border-slate-200 p-2">
+    <div className="mt-1 rounded-xl border border-slate-200 dark:border-slate-800 p-2">
       <input
         value={name}
         onChange={(e) => setName(e.target.value)}
         placeholder="Type name"
         autoFocus
-        className="w-full rounded-lg border border-slate-200 bg-slate-50 px-2 py-1.5 text-[12px] outline-none focus:border-slate-400"
+        className="w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 px-2 py-1.5 text-[12px] outline-none focus:border-slate-400 dark:focus:border-slate-500"
       />
       {tag !== "" && (
         <p className="mono px-0.5 pt-1 text-[10px] text-slate-400">@{tag}</p>
@@ -85,7 +85,7 @@ function NewTypeForm({
           <button
             key={g}
             onClick={() => setGlyph(g)}
-            className={`rounded-md p-1 ${glyph === g ? "bg-slate-200" : "hover:bg-slate-100"}`}
+            className={`rounded-md p-1 ${glyph === g ? "bg-slate-200" : "hover:bg-slate-100 dark:hover:bg-slate-800"}`}
             title={g}
           >
             <Glyph glyph={g} color={color} size={15} />
@@ -114,7 +114,7 @@ function NewTypeForm({
         </button>
         <button
           onClick={onCancel}
-          className="rounded-lg border border-slate-200 px-2.5 text-[11.5px] text-slate-600 hover:bg-slate-50"
+          className="rounded-lg border border-slate-200 dark:border-slate-800 px-2.5 text-[11.5px] text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800"
         >
           Cancel
         </button>
@@ -150,13 +150,13 @@ export function Palette({
   }, [query]);
 
   return (
-    <aside className="flex w-[210px] shrink-0 flex-col border-r border-slate-200 bg-white">
+    <aside className="flex w-[210px] shrink-0 flex-col border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-[#12151c]">
       <div className="p-2">
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search components…"
-          className="w-full rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-[12px] outline-none focus:border-slate-400"
+          className="w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 px-2.5 py-1.5 text-[12px] outline-none focus:border-slate-400 dark:focus:border-slate-500"
         />
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-2">
@@ -167,9 +167,9 @@ export function Palette({
             e.dataTransfer.setData(DND_MIME, "");
             e.dataTransfer.effectAllowed = "copy";
           }}
-          className="mb-1 flex w-full items-center gap-2 rounded-lg border border-dashed border-slate-300 px-2 py-1.5 text-[12px] font-medium text-slate-600 hover:bg-slate-50"
+          className="mb-1 flex w-full items-center gap-2 rounded-lg border border-dashed border-slate-300 dark:border-slate-600 px-2 py-1.5 text-[12px] font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800"
         >
-          <span className="flex h-7 w-7 items-center justify-center rounded-md bg-slate-100">
+          <span className="flex h-7 w-7 items-center justify-center rounded-md bg-slate-100 dark:bg-slate-800">
             <Glyph size={17} />
           </span>
           Plain component
@@ -181,7 +181,7 @@ export function Palette({
             </span>
             <button
               onClick={() => setCreating(true)}
-              className="ml-auto rounded px-1 text-[13px] leading-none text-slate-400 hover:text-slate-700"
+              className="ml-auto rounded px-1 text-[13px] leading-none text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
               title="New component type"
             >
               +

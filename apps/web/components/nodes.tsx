@@ -3,6 +3,7 @@
 import { Handle, Position, type NodeProps } from "@xyflow/react";
 import { GLYPHS, lookupType } from "@archer/catalog";
 import type { ArchNode } from "@/lib/toFlow";
+import { displayColor, useIsDark } from "@/lib/useIsDark";
 
 export function Glyph({
   tag,
@@ -17,6 +18,7 @@ export function Glyph({
   size?: number;
   className?: string;
 }) {
+  const isDark = useIsDark();
   const entry = lookupType(tag);
   const g = GLYPHS[glyph ?? entry?.glyph ?? "box"] ?? GLYPHS.box!;
   return (
@@ -25,7 +27,7 @@ export function Glyph({
       height={size}
       viewBox="0 0 24 24"
       className={className}
-      style={{ color: color ?? entry?.color ?? "#64748b" }}
+      style={{ color: displayColor(color ?? entry?.color, isDark) ?? "#64748b" }}
       dangerouslySetInnerHTML={{ __html: g }}
     />
   );
@@ -53,13 +55,14 @@ const EdgeHandles = () => (
 );
 
 export function ArchComponentNode({ data, width, height }: NodeProps<ArchNode>) {
+  const isDark = useIsDark();
   const entry = lookupType(data.typeTag);
-  const accent = data.accent ?? entry?.color;
+  const accent = displayColor(data.accent ?? entry?.color, isDark);
   const collapsed = data.display === "icon" && data.childCount > 0;
   return (
     <div
-      style={{ width, height, borderColor: accent ? `${accent}55` : "#cbd5e1" }}
-      className="flex items-center gap-2.5 rounded-xl border-[1.5px] bg-white px-3 shadow-sm"
+      style={{ width, height, borderColor: accent ? `${accent}55` : undefined }}
+      className="flex items-center gap-2.5 rounded-xl border-[1.5px] border-slate-300 dark:border-slate-600 bg-white dark:bg-[#12151c] px-3 shadow-sm"
     >
       <EdgeHandles />
       <div
@@ -82,8 +85,9 @@ export function ArchComponentNode({ data, width, height }: NodeProps<ArchNode>) 
 }
 
 export function ArchPlaneNode({ data, width, height }: NodeProps<ArchNode>) {
+  const isDark = useIsDark();
   const entry = lookupType(data.typeTag);
-  const color = data.accent ?? entry?.color ?? "#64748b";
+  const color = displayColor(data.accent ?? entry?.color, isDark) ?? "#64748b";
   return (
     <div
       style={{ width, height, borderColor: `${color}66`, backgroundColor: `${color}09` }}
@@ -92,12 +96,12 @@ export function ArchPlaneNode({ data, width, height }: NodeProps<ArchNode>) {
       <EdgeHandles />
       <div className="flex items-center gap-2 px-3 pt-2.5">
         <div
-          className="flex h-7 w-7 items-center justify-center rounded-md bg-white shadow-sm"
+          className="flex h-7 w-7 items-center justify-center rounded-md bg-white dark:bg-[#12151c] shadow-sm"
           style={{ border: `1px solid ${color}44` }}
         >
           <Glyph tag={data.typeTag} color={data.accent} glyph={data.glyphKey} size={17} />
         </div>
-        <span className="text-[12.5px] font-semibold text-slate-700">
+        <span className="text-[12.5px] font-semibold text-slate-700 dark:text-slate-300">
           {data.label}
         </span>
         {data.typeTag && (

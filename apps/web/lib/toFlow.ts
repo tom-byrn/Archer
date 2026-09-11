@@ -32,6 +32,8 @@ export interface ToFlowOptions {
   focus?: string[];
   /** Resolve a type tag to visuals (catalog + user library). */
   resolveType?: (tag: string) => { color: string; glyph: string } | undefined;
+  /** OS dark mode — edge labels are drawn with inline colors. */
+  isDark?: boolean;
 }
 
 /**
@@ -149,8 +151,8 @@ export function toFlow(
       targetHandle,
       type: "smoothstep",
       label: labelParts.length > 0 ? labelParts.join("  ") : undefined,
-      labelStyle: { fontSize: 11, fill: "#475569" },
-      labelBgStyle: { fill: "#f8fafc", fillOpacity: 0.9 },
+      labelStyle: { fontSize: 11, fill: opts.isDark ? "#cbd5e1" : "#475569" },
+      labelBgStyle: { fill: opts.isDark ? "#12151c" : "#f8fafc", fillOpacity: 0.9 },
       labelBgPadding: [4, 2],
       labelBgBorderRadius: 4,
       ...(c.arrow !== "--"

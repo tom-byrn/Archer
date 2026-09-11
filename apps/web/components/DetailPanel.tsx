@@ -37,7 +37,7 @@ const ID_RE = /^[a-z][a-z0-9_]*$/;
 const TYPE_RE = /^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)*$/;
 
 const inputCls =
-  "w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[12px] outline-none focus:border-slate-400";
+  "w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#12151c] px-2.5 py-1.5 text-[12px] outline-none focus:border-slate-400 dark:focus:border-slate-500";
 const labelCls =
   "block pb-1 pt-3 text-[10px] font-bold uppercase tracking-wider text-slate-400";
 
@@ -98,9 +98,9 @@ function PayloadEditor({
   const [fmt, setFmt] = useState<PayloadFormat>(format);
   const problem = useMemo(() => checkPayload(fmt, draft), [fmt, draft]);
   return (
-    <div className="mt-2 rounded-xl border border-slate-200">
-      <div className="flex items-center gap-2 border-b border-slate-100 px-2.5 py-1.5">
-        <span className="mono text-[11px] font-bold text-slate-600">{name}</span>
+    <div className="mt-2 rounded-xl border border-slate-200 dark:border-slate-800">
+      <div className="flex items-center gap-2 border-b border-slate-100 dark:border-slate-800 px-2.5 py-1.5">
+        <span className="mono text-[11px] font-bold text-slate-600 dark:text-slate-400">{name}</span>
         <select
           value={fmt}
           onChange={(e) => {
@@ -108,7 +108,7 @@ function PayloadEditor({
             setFmt(f);
             if (checkPayload(f, draft) === null) onChange(f, draft);
           }}
-          className="rounded border border-slate-200 px-1 py-0.5 text-[11px] text-slate-600"
+          className="rounded border border-slate-200 dark:border-slate-800 px-1 py-0.5 text-[11px] text-slate-600 dark:text-slate-400"
         >
           {(["json", "yaml", "table", "markdown"] as const).map((f) => (
             <option key={f}>{f}</option>
@@ -117,8 +117,8 @@ function PayloadEditor({
         <span
           className={`rounded-full px-1.5 text-[10px] font-semibold ${
             problem === null
-              ? "bg-emerald-100 text-emerald-700"
-              : "bg-red-100 text-red-700"
+              ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300"
+              : "bg-red-100 text-red-700 dark:text-red-300 dark:bg-red-950 dark:text-red-300"
           }`}
         >
           {problem === null ? "valid" : "invalid"}
@@ -142,7 +142,7 @@ function PayloadEditor({
         className="mono w-full resize-y rounded-b-xl p-2 text-[11.5px] leading-relaxed outline-none"
       />
       {problem !== null && (
-        <p className="border-t border-red-100 bg-red-50 px-2.5 py-1 text-[11px] text-red-700">
+        <p className="border-t border-red-100 dark:border-red-900 bg-red-50 dark:bg-red-950 px-2.5 py-1 text-[11px] text-red-700 dark:text-red-300">
           {problem}
         </p>
       )}
@@ -172,7 +172,7 @@ function ComponentDetail({
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex items-center gap-2 border-b border-slate-200 px-3 py-2.5">
+      <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 px-3 py-2.5">
         <Glyph tag={node.type} size={18} />
         <span className="truncate text-[13px] font-semibold">
           {node.name ?? node.id}
@@ -180,7 +180,7 @@ function ComponentDetail({
         <span className="mono truncate text-[10.5px] text-slate-400">{path}</span>
         <button
           onClick={onClose}
-          className="ml-auto text-slate-400 hover:text-slate-700"
+          className="ml-auto text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
           aria-label="Close details"
         >
           ✕
@@ -261,7 +261,7 @@ function ComponentDetail({
                   className={`rounded-lg border px-2.5 py-1 text-[11.5px] font-medium ${
                     display === mode
                       ? "text-white"
-                      : "border-slate-200 text-slate-600 hover:bg-slate-50"
+                      : "border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800"
                   }`}
                 >
                   {mode === "plane" ? "Plane (open)" : "Icon (collapsed)"}
@@ -302,7 +302,7 @@ function ComponentDetail({
               mutate((d) => setPayload(d, segments, name, "json", "{}"));
               setNewPayload("");
             }}
-            className="rounded-lg border border-slate-300 px-2.5 text-[11.5px] font-medium text-slate-700 hover:bg-slate-50"
+            className="rounded-lg border border-slate-300 dark:border-slate-600 px-2.5 text-[11.5px] font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
           >
             Add
           </button>
@@ -313,7 +313,7 @@ function ComponentDetail({
             mutate((d) => removeComponent(d, segments));
             onClose();
           }}
-          className="mt-5 w-full rounded-lg border border-red-200 py-1.5 text-[12px] font-medium text-red-600 hover:bg-red-50"
+          className="mt-5 w-full rounded-lg border border-red-200 dark:border-red-900 py-1.5 text-[12px] font-medium text-red-600 hover:bg-red-50 dark:hover:bg-red-950"
         >
           Delete component
         </button>
@@ -347,13 +347,13 @@ function ConnectionDetail({
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex items-center gap-2 border-b border-slate-200 px-3 py-2.5">
+      <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 px-3 py-2.5">
         <span className="mono truncate text-[12px] font-semibold">
           {pathToString(conn.source)} {conn.arrow} {pathToString(conn.target)}
         </span>
         <button
           onClick={onClose}
-          className="ml-auto text-slate-400 hover:text-slate-700"
+          className="ml-auto text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
           aria-label="Close details"
         >
           ✕
@@ -370,7 +370,7 @@ function ConnectionDetail({
               className={`mono rounded-lg border px-3 py-1 text-[12px] font-bold ${
                 conn.arrow === a
                   ? "text-white"
-                  : "border-slate-200 text-slate-600 hover:bg-slate-50"
+                  : "border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800"
               }`}
             >
               {a}
@@ -412,7 +412,7 @@ function ConnectionDetail({
             mutate((d) => removeConnection(d, index));
             onClose();
           }}
-          className="mt-5 w-full rounded-lg border border-red-200 py-1.5 text-[12px] font-medium text-red-600 hover:bg-red-50"
+          className="mt-5 w-full rounded-lg border border-red-200 dark:border-red-900 py-1.5 text-[12px] font-medium text-red-600 hover:bg-red-50 dark:hover:bg-red-950"
         >
           Delete connection
         </button>
@@ -446,7 +446,7 @@ export function DetailPanel({
 }) {
   if (selection === null) return null;
   return (
-    <aside className="w-[300px] shrink-0 border-l border-slate-200 bg-white">
+    <aside className="w-[300px] shrink-0 border-l border-slate-200 dark:border-slate-800 bg-white dark:bg-[#12151c]">
       {selection.kind === "component" ? (
         <ComponentDetail
           key={selection.path}

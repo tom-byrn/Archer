@@ -1,10 +1,53 @@
 @import "tailwindcss";
 
 :root {
+  color-scheme: light dark;
   --grid: 40px;
   --accent: #0d9373;
   --accent-hover: #0b7c61;
   --accent-soft: rgba(13, 147, 115, 0.1);
+
+  --bg: #ffffff;
+  --dot: #cbd5e1;
+
+  /* Code pane (light) */
+  --code-bg: #f8fafc;
+  --code-fg: #334155;
+  --code-border: #e2e8f0;
+  --code-caret: #0f172a;
+  --code-selection: rgba(13, 147, 115, 0.16);
+  --tok-kw: #7c3aed;
+  --tok-string: #047857;
+  --tok-type: #b45309;
+  --tok-arrow: #0f172a;
+  --tok-num: #be185d;
+  --tok-comment: #94a3b8;
+  --tok-fence: #94a3b8;
+  --tok-payload: #64748b;
+  --tok-version: #0e7490;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0b0d12;
+    --dot: #2b3444;
+
+    /* Code pane (dark) */
+    --code-bg: #0f1117;
+    --code-fg: #d1d5db;
+    --code-border: rgba(255, 255, 255, 0.08);
+    --code-caret: #f9fafb;
+    --code-selection: rgba(52, 211, 153, 0.28);
+    --tok-kw: #34d399;
+    --tok-string: #a5d6ff;
+    --tok-type: #7dd3fc;
+    --tok-arrow: #f9fafb;
+    --tok-num: #fca5a5;
+    --tok-comment: #6b7280;
+    --tok-fence: #6b7280;
+    --tok-payload: #9ca3af;
+    --tok-version: #5eead4;
+  }
 }
 
 html,
@@ -13,7 +56,14 @@ body {
 }
 
 body {
-  @apply bg-white text-slate-900 antialiased;
+  @apply antialiased;
+  background: var(--bg);
+  color: #0f172a;
+}
+@media (prefers-color-scheme: dark) {
+  body {
+    color: #e2e8f0;
+  }
 }
 
 .mono {
@@ -37,48 +87,48 @@ body {
 .hl-pre {
   pointer-events: none;
   overflow: hidden;
-  color: #d1d5db;
-  background: #0f1117;
+  color: var(--code-fg);
+  background: var(--code-bg);
 }
 .hl-textarea {
   background: transparent;
   color: transparent;
-  caret-color: #f9fafb;
+  caret-color: var(--code-caret);
   resize: none;
   outline: none;
   overflow: auto;
 }
 .hl-textarea::selection {
-  background: rgba(52, 211, 153, 0.28);
+  background: var(--code-selection);
   color: transparent;
 }
 
-.tok-kw { color: #34d399; font-weight: 600; }
-.tok-string { color: #a5d6ff; }
-.tok-type { color: #7dd3fc; }
-.tok-arrow { color: #f9fafb; font-weight: 700; }
-.tok-num { color: #fca5a5; }
-.tok-comment { color: #6b7280; font-style: italic; }
-.tok-fence { color: #6b7280; }
-.tok-payload { color: #9ca3af; }
-.tok-version { color: #5eead4; }
+.tok-kw { color: var(--tok-kw); font-weight: 600; }
+.tok-string { color: var(--tok-string); }
+.tok-type { color: var(--tok-type); }
+.tok-arrow { color: var(--tok-arrow); font-weight: 700; }
+.tok-num { color: var(--tok-num); }
+.tok-comment { color: var(--tok-comment); font-style: italic; }
+.tok-fence { color: var(--tok-fence); }
+.tok-payload { color: var(--tok-payload); }
+.tok-version { color: var(--tok-version); }
 
 /* Language reference typography */
 .spec h1 { @apply pb-3 text-2xl font-bold tracking-tight; }
 .spec h2 { @apply pb-2 pt-7 text-lg font-bold tracking-tight; }
 .spec h3 { @apply pb-1.5 pt-5 text-[15px] font-bold; }
-.spec p { @apply pb-3 text-[14px] leading-relaxed text-slate-700; }
-.spec li { @apply ml-5 list-disc pb-1 text-[14px] leading-relaxed text-slate-700; }
+.spec p { @apply pb-3 text-[14px] leading-relaxed text-slate-700 dark:text-slate-300; }
+.spec li { @apply ml-5 list-disc pb-1 text-[14px] leading-relaxed text-slate-700 dark:text-slate-300; }
 .spec ol li { @apply list-decimal; }
 .spec code {
-  @apply rounded bg-slate-100 px-1 py-0.5 text-[12.5px];
+  @apply rounded bg-slate-100 px-1 py-0.5 text-[12.5px] dark:bg-slate-800;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 .spec pre { @apply mb-4 overflow-x-auto rounded-xl p-4 text-slate-100; background: #0f1117; }
 .spec pre code { @apply bg-transparent p-0 text-[12.5px] leading-relaxed text-slate-100; }
 .spec table { @apply mb-4 w-full border-collapse text-[13px]; }
-.spec th { @apply border-b-2 border-slate-200 px-2 py-1.5 text-left font-semibold; }
-.spec td { @apply border-b border-slate-100 px-2 py-1.5 text-slate-700; }
+.spec th { @apply border-b-2 border-slate-200 px-2 py-1.5 text-left font-semibold dark:border-slate-700; }
+.spec td { @apply border-b border-slate-100 px-2 py-1.5 text-slate-700 dark:border-slate-800 dark:text-slate-300; }
 
 /* React Flow chrome tweaks */
 .react-flow__attribution {
@@ -101,12 +151,34 @@ body {
   border-radius: 14px;
 }
 
+/* React Flow controls in dark mode */
+@media (prefers-color-scheme: dark) {
+  .react-flow__controls {
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08);
+  }
+  .react-flow__controls button {
+    background: #12151c;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    fill: #cbd5e1;
+    color: #cbd5e1;
+  }
+  .react-flow__controls button:hover {
+    background: #1a1f2a;
+  }
+  .react-flow__edge-path {
+    stroke: #7d8aa0;
+  }
+  .react-flow__arrowhead polyline {
+    stroke: #7d8aa0;
+  }
+}
+
 /* Connection handles: subtle dots, prominent on hover / while connecting */
 .arch-handle {
   width: 9px !important;
   height: 9px !important;
   background: #94a3b8 !important;
-  border: 2px solid #fff !important;
+  border: 2px solid var(--bg) !important;
   opacity: 0;
   transition: opacity 120ms ease;
 }

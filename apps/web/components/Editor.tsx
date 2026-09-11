@@ -22,6 +22,7 @@ import { toFlow } from "@/lib/toFlow";
 import { resolveDropTarget } from "@/lib/dropTarget";
 import { deriveDoc, useArchDoc } from "@/lib/useArchDoc";
 import { useUserLibrary } from "@/lib/userLibrary";
+import { useIsDark } from "@/lib/useIsDark";
 import { ArchCanvas, type CanvasCallbacks } from "./ArchCanvas";
 import { CodePane } from "./CodePane";
 import { DetailPanel, connectionKey, type Selection } from "./DetailPanel";
@@ -42,6 +43,7 @@ export function Editor({
     useArchDoc(initialSource);
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved">("idle");
   const library = useUserLibrary();
+  const isDark = useIsDark();
   const customTags = useMemo(
     () => new Set(library.items.map((t) => t.tag)),
     [library.items],
@@ -83,8 +85,8 @@ export function Editor({
   );
 
   const flow = useMemo(
-    () => toFlow(derived.laidOut, { focus: liveFocus, resolveType }),
-    [derived, liveFocus, resolveType],
+    () => toFlow(derived.laidOut, { focus: liveFocus, resolveType, isDark }),
+    [derived, liveFocus, resolveType, isDark],
   );
 
   const callbacks: CanvasCallbacks = useMemo(
@@ -200,7 +202,7 @@ export function Editor({
 
   return (
     <div className="flex h-screen flex-col">
-      <header className="flex items-center gap-3 border-b border-slate-200 bg-white px-4 py-2.5">
+      <header className="flex items-center gap-3 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-[#12151c] px-4 py-2.5">
         <Link
           href="/"
           className="flex items-center gap-2 text-[15px] font-bold tracking-tight hover:opacity-80"
@@ -212,8 +214,8 @@ export function Editor({
         <span
           className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${
             derived.valid
-              ? "bg-emerald-100 text-emerald-700"
-              : "bg-red-100 text-red-700"
+              ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300"
+              : "bg-red-100 text-red-700 dark:text-red-300 dark:bg-red-950 dark:text-red-300"
           }`}
         >
           {derived.valid
@@ -233,27 +235,27 @@ export function Editor({
           <button
             onClick={undo}
             disabled={!canUndo}
-            className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 hover:border-slate-300 hover:text-slate-900 disabled:opacity-40"
+            className="rounded-full border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#12151c] px-3 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-600 hover:text-slate-900 dark:hover:text-slate-100 disabled:opacity-40"
           >
             Undo
           </button>
           <button
             onClick={redo}
             disabled={!canRedo}
-            className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 hover:border-slate-300 hover:text-slate-900 disabled:opacity-40"
+            className="rounded-full border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#12151c] px-3 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-600 hover:text-slate-900 dark:hover:text-slate-100 disabled:opacity-40"
           >
             Redo
           </button>
           <button
             onClick={relayout}
-            className="rounded-full border border-slate-200 bg-white px-3.5 py-1.5 text-xs font-medium text-slate-600 hover:border-slate-300 hover:text-slate-900"
+            className="rounded-full border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#12151c] px-3.5 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-600 hover:text-slate-900 dark:hover:text-slate-100"
           >
             Auto-layout
           </button>
           <span className="h-5 w-px bg-slate-200" />
           <button
             onClick={() => copy("code")}
-            className="rounded-full border border-slate-200 bg-white px-3.5 py-1.5 text-xs font-medium text-slate-600 hover:border-slate-300 hover:text-slate-900"
+            className="rounded-full border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#12151c] px-3.5 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-600 hover:text-slate-900 dark:hover:text-slate-100"
           >
             {copied === "code" ? "Copied!" : "Copy code"}
           </button>
@@ -291,10 +293,10 @@ export function Editor({
         />
         <main className="flex min-w-0 flex-1 flex-col">
           {liveFocus.length > 0 && (
-            <nav className="flex items-center gap-1 border-b border-slate-200 bg-white px-3 py-1.5 text-[12px]">
+            <nav className="flex items-center gap-1 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-[#12151c] px-3 py-1.5 text-[12px]">
               <button
                 onClick={() => setFocus([])}
-                className="rounded px-1.5 py-0.5 font-medium text-slate-500 hover:bg-slate-100"
+                className="rounded px-1.5 py-0.5 font-medium text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
               >
                 {derived.doc.title}
               </button>
@@ -303,8 +305,8 @@ export function Editor({
                   <span className="text-slate-300">/</span>
                   <button
                     onClick={() => setFocus(liveFocus.slice(0, i + 1))}
-                    className={`rounded px-1.5 py-0.5 font-medium hover:bg-slate-100 ${
-                      i === liveFocus.length - 1 ? "text-slate-800" : "text-slate-500"
+                    className={`rounded px-1.5 py-0.5 font-medium hover:bg-slate-100 dark:hover:bg-slate-800 ${
+                      i === liveFocus.length - 1 ? "text-slate-800 dark:text-slate-200" : "text-slate-500"
                     }`}
                   >
                     {seg}
@@ -323,6 +325,7 @@ export function Editor({
               edges={flow.edges}
               title={derived.doc.title}
               callbacks={callbacks}
+              isDark={isDark}
             />
           </div>
         </main>

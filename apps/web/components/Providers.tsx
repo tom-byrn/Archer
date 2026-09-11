@@ -10,7 +10,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
   }, []);
   if (!client) {
     return (
-      <div className="grid h-screen place-items-center p-8 text-center text-sm text-slate-600">
+      <div className="grid h-screen place-items-center p-8 text-center text-sm text-slate-600 dark:text-slate-400">
         <div>
           <p className="font-semibold">Convex is not configured.</p>
           <p className="pt-1">

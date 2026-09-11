@@ -43,7 +43,7 @@ export default function DocumentPage({
       <div className="grid h-screen place-items-center text-sm text-slate-500">
         <div className="text-center">
           <p>Document not found.</p>
-          <Link href="/" className="pt-2 text-slate-800 underline">
+          <Link href="/" className="pt-2 text-slate-800 dark:text-slate-200 underline">
             Back to documents
           </Link>
         </div>

@@ -48,7 +48,7 @@ export default function Home() {
         </button>
         <button
           onClick={() => void newDoc(SAMPLE, "Acme SaaS")}
-          className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-600 hover:border-slate-300 hover:text-slate-900"
+          className="rounded-full border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#12151c] px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-600 hover:text-slate-900 dark:hover:text-slate-100"
         >
           New from sample
         </button>
@@ -66,13 +66,13 @@ export default function Home() {
         {docs?.map((d) => (
           <li
             key={d._id}
-            className="group flex items-center gap-3 border-b border-slate-200 py-3"
+            className="group flex items-center gap-3 border-b border-slate-200 dark:border-slate-800 py-3"
           >
             <button
               onClick={() => router.push(`/d/${d._id}`)}
               className="min-w-0 flex-1 text-left"
             >
-              <span className="block truncate text-[15px] font-medium text-slate-800 group-hover:underline">
+              <span className="block truncate text-[15px] font-medium text-slate-800 dark:text-slate-200 group-hover:underline">
                 {d.title}
               </span>
               <span className="text-xs text-slate-400">
@@ -84,7 +84,7 @@ export default function Home() {
                 if (workspaceId && confirm(`Delete "${d.title}"?`))
                   void remove({ id: d._id as Id<"documents">, workspaceId });
               }}
-              className="hidden rounded-lg border border-red-200 px-2.5 py-1 text-xs text-red-600 hover:bg-red-50 group-hover:block"
+              className="hidden rounded-lg border border-red-200 dark:border-red-900 px-2.5 py-1 text-xs text-red-600 hover:bg-red-50 dark:hover:bg-red-950 group-hover:block"
             >
               Delete
             </button>
@@ -92,17 +92,17 @@ export default function Home() {
         ))}
       </ul>
 
-      <footer className="mt-14 border-t border-slate-200 pt-4 text-xs text-slate-400">
+      <footer className="mt-14 border-t border-slate-200 dark:border-slate-800 pt-4 text-xs text-slate-400">
         <div className="flex items-center gap-2">
           <span>Workspace</span>
-          <code className="mono rounded bg-slate-100 px-1.5 py-0.5 text-[11px] text-slate-500">
+          <code className="mono rounded bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 text-[11px] text-slate-500">
             {workspaceId ?? "…"}
           </code>
           <button
             onClick={() => {
               if (workspaceId) void navigator.clipboard.writeText(workspaceId);
             }}
-            className="rounded border border-slate-200 px-1.5 py-0.5 hover:bg-slate-50"
+            className="rounded border border-slate-200 dark:border-slate-800 px-1.5 py-0.5 hover:bg-slate-50 dark:hover:bg-slate-800"
           >
             copy
           </button>
