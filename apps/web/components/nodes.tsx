@@ -10,8 +10,9 @@ import {
   type NodeProps,
 } from "@xyflow/react";
 import { GLYPHS, lookupType } from "@archer/catalog";
-import type { ArchEdge, ArchNode } from "@/lib/toFlow";
+import type { ArchEdge, ArchNode, NodeMarks } from "@/lib/toFlow";
 import { displayColor, useIsDark } from "@/lib/useIsDark";
+import { Icon, cx } from "./ui";
 
 /** Neutral fallback for untyped components (matches `--ink-3`-ish gray). */
 const NEUTRAL = "#8a8479";
@@ -71,18 +72,84 @@ const EdgeHandles = () => (
   </>
 );
 
+/** Root class for a node's diff status (styled in canvas.css). */
+const diffClass = (marks: NodeMarks | undefined): string | undefined =>
+  marks?.diff ? `arch-diff-${marks.diff}` : undefined;
+
+/**
+ * Overlay badges: agent-touched + open questions stack from the top-right;
+ * drift sits top-left. Pointer-events off so dragging is unaffected.
+ */
+function Badges({ marks }: { marks: NodeMarks | undefined }) {
+  if (!marks) return null;
+  const right: React.ReactNode[] = [];
+  if (marks.touched) {
+    right.push(
+      <span
+        key="touched"
+        className="arch-badge bg-accent text-accent-ink"
+        title="Changed by an agent since you last reviewed"
+      >
+        <Icon.Bot />
+      </span>,
+    );
+  }
+  if (marks.questions && marks.questions > 0) {
+    right.push(
+      <span
+        key="questions"
+        className="arch-badge arch-badge-count border border-line-2 bg-surface text-ink-2"
+        title={`${marks.questions} open question${marks.questions === 1 ? "" : "s"}`}
+      >
+        <Icon.Chat />
+        <span className="text-[10px] font-semibold leading-none">{marks.questions}</span>
+      </span>,
+    );
+  }
+  return (
+    <>
+      {right.length > 0 && <span className="arch-badges arch-badges-right">{right}</span>}
+      {marks.drift && (
+        <span className="arch-badges arch-badges-left">
+          <span
+            className={cx(
+              "arch-badge text-white",
+              marks.drift === "missing" ? "bg-danger" : "bg-warn",
+            )}
+            title={
+              marks.drift === "missing"
+                ? "Not found in the code"
+                : "Code differs from this component"
+            }
+          >
+            <Icon.Alert />
+          </span>
+        </span>
+      )}
+    </>
+  );
+}
+
+const SrcHint = ({ src }: { src: string | undefined }) =>
+  src ? <Icon.Link className="ml-1 inline h-[10px] w-[10px] align-[-1px] text-ink-3" /> : null;
+
 export function ArchComponentNode({ data, width, height }: NodeProps<ArchNode>) {
   const isDark = useIsDark();
   const entry = lookupType(data.typeTag);
   const accent = displayColor(data.accent ?? entry?.color, isDark);
   const tile = accent ?? NEUTRAL;
   const collapsed = data.display === "icon" && data.childCount > 0;
+  const marks = data.marks;
   return (
     <div
       style={{ width, height }}
-      className="arch-node arch-node-component flex items-center gap-2.5 rounded-md border bg-surface px-2.5"
+      className={cx(
+        "arch-node arch-node-component relative flex items-center gap-2.5 rounded-md border bg-surface px-2.5",
+        diffClass(marks),
+      )}
     >
       <EdgeHandles />
+      <Badges marks={marks} />
       <div
         className="flex h-8 w-8 shrink-0 items-center justify-center rounded-sm"
         style={{ backgroundColor: alpha(tile, 0.14) }}
@@ -90,14 +157,15 @@ export function ArchComponentNode({ data, width, height }: NodeProps<ArchNode>) 
         <Glyph tag={data.typeTag} color={accent} glyph={data.glyphKey} size={18} />
       </div>
       <div className="min-w-0">
-        <div className="truncate text-base font-semibold leading-tight text-ink">
+        <div className="arch-node-label truncate text-base font-semibold leading-tight text-ink">
           {data.label}
         </div>
-        <div className="truncate text-xs leading-tight text-ink-3">
+        <div className="truncate text-xs leading-tight text-ink-3" title={marks?.src}>
           <span className={data.typeTag ? "mono" : undefined}>
             {data.typeTag ?? "component"}
           </span>
           {collapsed ? ` · ${data.childCount} inside` : ""}
+          <SrcHint src={marks?.src} />
         </div>
       </div>
     </div>
@@ -110,6 +178,7 @@ export function ArchPlaneNode({ data, width, height }: NodeProps<ArchNode>) {
   const accent = displayColor(data.accent ?? entry?.color, isDark);
   const typed = accent !== undefined;
   const color = accent ?? NEUTRAL;
+  const marks = data.marks;
   return (
     <div
       style={{
@@ -118,18 +187,24 @@ export function ArchPlaneNode({ data, width, height }: NodeProps<ArchNode>) {
         borderColor: alpha(color, 0.35),
         backgroundColor: typed ? alpha(color, 0.05) : undefined,
       }}
-      className={`arch-node arch-node-plane rounded-lg border ${typed ? "" : "arch-plane-untyped"}`}
+      className={cx(
+        "arch-node arch-node-plane relative rounded-lg border",
+        typed ? "" : "arch-plane-untyped",
+        diffClass(marks),
+      )}
     >
       <EdgeHandles />
+      <Badges marks={marks} />
       <div
         className="flex h-8 items-center gap-2 px-2.5"
         style={{ borderBottom: `1px solid ${alpha(color, 0.2)}` }}
       >
         <Glyph tag={data.typeTag} color={accent} glyph={data.glyphKey} size={16} />
-        <span className="truncate text-sm font-semibold text-ink">{data.label}</span>
+        <span className="arch-node-label truncate text-sm font-semibold text-ink">{data.label}</span>
         {data.typeTag && (
           <span className="mono truncate text-xs text-ink-3">{data.typeTag}</span>
         )}
+        <SrcHint src={marks?.src} />
       </div>
     </div>
   );
@@ -180,22 +255,37 @@ export function ArchEdgeComponent({
   });
   const arrow = data?.arrow ?? "->";
   const hasLabel = data?.protocol !== undefined || data?.label !== undefined;
+  const diff = data?.diff;
+  const diffCls = diff ? `arch-edge-diff-${diff}` : "";
   return (
     <>
-      <BaseEdge id={id} path={path} className="arch-edge-path" interactionWidth={16} />
+      <BaseEdge
+        id={id}
+        path={path}
+        className={cx("arch-edge-path", diffCls)}
+        interactionWidth={16}
+      />
       {arrow !== "--" && (
-        <polygon className="arch-edge-arrow" points={arrowhead(targetX, targetY, targetPosition)} />
+        <polygon
+          className={cx("arch-edge-arrow", diffCls)}
+          points={arrowhead(targetX, targetY, targetPosition)}
+        />
       )}
       {arrow === "<->" && (
-        <polygon className="arch-edge-arrow" points={arrowhead(sourceX, sourceY, sourcePosition)} />
+        <polygon
+          className={cx("arch-edge-arrow", diffCls)}
+          points={arrowhead(sourceX, sourceY, sourcePosition)}
+        />
       )}
       {hasLabel && (
         <EdgeLabelRenderer>
           <div
             style={{ transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)` }}
-            className={`arch-edge-chip nodrag nopan pointer-events-auto absolute flex h-[18px] items-center gap-1 rounded-sm border bg-surface px-1.5 text-xs leading-none ${
-              selected ? "border-accent" : "border-line"
-            }`}
+            className={cx(
+              "arch-edge-chip nodrag nopan pointer-events-auto absolute flex h-[18px] items-center gap-1 rounded-sm border bg-surface px-1.5 text-xs leading-none",
+              diff === "added" ? "border-accent" : selected ? "border-accent" : "border-line",
+              diffCls,
+            )}
           >
             {data?.protocol !== undefined && (
               <span className="mono text-ink-2">{data.protocol}</span>

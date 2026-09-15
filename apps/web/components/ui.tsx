@@ -488,6 +488,33 @@ export const Icon = {
   Pencil: (p: { className?: string }) => (
     <I {...p}><path d="M10.5 2.5l3 3-8 8H2.5v-3z" /><path d="M9 4l3 3" /></I>
   ),
+  History: (p: { className?: string }) => (
+    <I {...p}><path d="M2.5 8a5.5 5.5 0 105.5-5.5A5.6 5.6 0 003.6 5.2" /><path d="M2.5 2.5v3h3" /><path d="M8 5.5V8l2 1.5" /></I>
+  ),
+  Bot: (p: { className?: string }) => (
+    <I {...p}><rect x="3" y="5.5" width="10" height="7.5" rx="2" /><path d="M8 3v2.5M6 9v.01M10 9v.01" /><path d="M1.5 9.5v1M14.5 9.5v1" /></I>
+  ),
+  User: (p: { className?: string }) => (
+    <I {...p}><circle cx="8" cy="5.5" r="2.75" /><path d="M2.75 14a5.25 5.25 0 0110.5 0" /></I>
+  ),
+  Chat: (p: { className?: string }) => (
+    <I {...p}><path d="M2.5 3.5h11v7h-6L4.5 13v-2.5h-2z" /></I>
+  ),
+  Link: (p: { className?: string }) => (
+    <I {...p}><path d="M6.5 9.5l3-3" /><path d="M7 4.5l1-1a2.5 2.5 0 013.5 3.5l-1 1" /><path d="M9 11.5l-1 1a2.5 2.5 0 01-3.5-3.5l1-1" /></I>
+  ),
+  Alert: (p: { className?: string }) => (
+    <I {...p}><circle cx="8" cy="8" r="5.75" /><path d="M8 5v3.5M8 11v.01" /></I>
+  ),
+  Restore: (p: { className?: string }) => (
+    <I {...p}><path d="M3 8a5 5 0 109.5-2.2" /><path d="M3 3.5V7h3.5" /></I>
+  ),
+  Diff: (p: { className?: string }) => (
+    <I {...p}><path d="M5 2.5v5M2.5 5h5" /><path d="M2.5 11.5h5" /><path d="M11 2.5v11" /></I>
+  ),
+  Send: (p: { className?: string }) => (
+    <I {...p}><path d="M13.5 2.5L2.5 6.75l5 1.75 1.75 5z" /><path d="M13.5 2.5L7.5 8.5" /></I>
+  ),
   Command: (p: { className?: string }) => (
     <I {...p}><path d="M6 6H4.5a1.5 1.5 0 110-3A1.5 1.5 0 016 4.5V6zm0 4H4.5a1.5 1.5 0 100 3A1.5 1.5 0 006 11.5V10zm4-4h1.5a1.5 1.5 0 100-3A1.5 1.5 0 0010 4.5V6zm0 4h1.5a1.5 1.5 0 110 3 1.5 1.5 0 01-1.5-1.5V10zM6 6h4v4H6z" /></I>
   ),

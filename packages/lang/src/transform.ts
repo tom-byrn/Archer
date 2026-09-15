@@ -138,6 +138,7 @@ export interface ComponentMeta {
   name?: string | null;
   type?: string | null;
   desc?: string | null;
+  src?: string | null;
 }
 
 export function setComponentMeta(
@@ -148,7 +149,7 @@ export function setComponentMeta(
   const next = clone(doc);
   const node = findComponent(next, path);
   if (!node) throw new Error(`No component at '${path.join(".")}'`);
-  for (const key of ["name", "type", "desc"] as const) {
+  for (const key of ["name", "type", "desc", "src"] as const) {
     const v = meta[key];
     if (v === undefined) continue;
     if (v === null) delete node[key];

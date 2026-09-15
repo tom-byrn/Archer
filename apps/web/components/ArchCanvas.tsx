@@ -50,6 +50,8 @@ export interface ArchCanvasProps {
   selectedPath?: string | null;
   /** Receives a function that downloads the canvas as a PNG. */
   exportRef?: MutableRefObject<(() => void) | null>;
+  /** Diff / history view: no dragging, connecting, dropping or deleting. */
+  readOnly?: boolean;
 }
 
 type Hover = { kind: "node"; id: string } | { kind: "edge"; id: string } | null;
@@ -64,6 +66,7 @@ function CanvasInner({
   callbacks,
   selectedPath,
   exportRef,
+  readOnly = false,
 }: ArchCanvasProps) {
   const [nodes, setNodes, onNodesChange] = useNodesState<ArchNode>(derivedNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState<ArchEdge>(derivedEdges);
@@ -244,7 +247,9 @@ function CanvasInner({
         if (i !== undefined) callbacks.onSelectEdge(i);
       }}
       onPaneClick={() => callbacks.onClearSelection()}
-      onDrop={onDrop}
+      onDrop={readOnly ? undefined : onDrop}
+      nodesDraggable={!readOnly}
+      nodesConnectable={!readOnly}
       onDragOver={(e) => {
         e.preventDefault();
         e.dataTransfer.dropEffect = "copy";
@@ -255,7 +260,7 @@ function CanvasInner({
       snapToGrid
       snapGrid={[CELL, CELL]}
       connectionRadius={36}
-      deleteKeyCode={["Backspace", "Delete"]}
+      deleteKeyCode={readOnly ? null : ["Backspace", "Delete"]}
       selectionKeyCode={null}
       proOptions={{ hideAttribution: false }}
     >

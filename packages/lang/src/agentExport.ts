@@ -11,6 +11,8 @@ const PREAMBLE = `# This is an Archer architecture document — a complete, mach
 #   Components nest; a child lives inside its parent. \`@type\` tags a real
 #   technology (e.g. @aws.s3, @postgres); untyped components are logical parts.
 # - \`desc\` is the author's human-readable intent for that component.
+# - \`src\` points at where the component lives in code (a repo path or URL).
+#   Start there when implementing or verifying that component.
 # - Named payload blocks (json | yaml | table | markdown) carry structured detail
 #   such as schemas, endpoint lists, or env vars. json/yaml/table payloads are
 #   syntactically validated — trust them as authored data.

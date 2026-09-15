@@ -45,3 +45,17 @@ export type {
   ConnectionOptions,
   ConnectionMeta,
 } from "./transform";
+export {
+  diffDocs,
+  summarizeDiff,
+  isEmptyDiff,
+  mergeForDiff,
+  connectionKey,
+} from "./diff";
+export type {
+  ChangeKind,
+  ComponentChange,
+  ConnectionChange,
+  DocDiff,
+  DiffSummary,
+} from "./diff";

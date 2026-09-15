@@ -48,6 +48,47 @@ ${BRIEF}
    usable immediately in any project of this workspace and visible in the
    human's palette.
 
+### Review what changed
+1. \`get_history\` lists revisions newest-first with who saved (the human, or an
+   agent by its client name), when, their one-line summary, and counts of
+   components/connections added, removed and changed.
+2. \`diff_project\` returns the structured diff — by default the latest change
+   (current document vs. the revision before it); pass revision ids for any
+   two points. \`get_revision\` fetches a past source; to roll back, send it to
+   \`update_project\`.
+3. Humans see the same feed in the app, and every write you make is
+   attributed to your client name — so **always pass a \`summary\`** to
+   \`create_project\`/\`update_project\` saying what you changed and why.
+
+### Ask instead of guessing
+- When the architecture is ambiguous or a decision is the user's to make,
+  call \`ask_question\` on the relevant component. It shows as a badge on that
+  component in their canvas and they answer inline.
+- At the start of a session read \`open_questions\` from \`get_project\` (or
+  \`list_questions\`): humans leave questions for agents too. Answer what you
+  can with \`answer_question\`, and \`resolve_question\` once the decision has
+  been applied to the document.
+
+### Link components to code
+- The \`src "…"\` field inside a component body records where it lives:
+  a repo-relative path (\`src "apps/api/src/billing"\`) or a URL. Set it
+  whenever you know the location — humans jump to it from the canvas, and
+  drift checks start there. Keep it up to date when you move code.
+
+### Drift check (does the code still match the architecture?)
+1. \`get_project\` — read every component, its \`desc\`, payloads and \`src\`.
+2. For each component, find the implementation: follow \`src\`, else search
+   the repo. Compare what you find with the component's \`desc\`/payloads
+   (schemas, endpoints, env vars).
+3. \`report_drift\` with ONE finding per discrepancy: \`missing\` (declared,
+   no implementation found), \`changed\` (implementation differs — say how in
+   \`note\`), \`extra\` (in the code, not in the document — suggest a \`name\`
+   and the \`src\` where you found it). Send an EMPTY list when everything
+   matches so the human sees a green state.
+4. Never modify the document during a drift check unless the user asked;
+   they act on the findings from the canvas (badges + an "add to document"
+   action for extras).
+
 ## Writing good Archer documents (agent-specific advice)
 
 The full language specification is at the end of this guide. Key habits:
@@ -72,6 +113,8 @@ The full language specification is at the end of this guide. Key habits:
 
 - **Use \`desc\` on every non-obvious component** — it is what humans read in
   the detail panel and what agents rely on when implementing.
+- **Add \`src\` when you know where a component lives in code** — it is how
+  the next agent (or you, later) finds the implementation.
 - **Nest for containment** ("runs inside / belongs to"), connect for
   communication. Both are allowed across any depth.
 - **Type tags are optional.** An unknown tag is only a warning (renders as a
@@ -113,9 +156,12 @@ Everything a human can do in the app maps to a tool: browse projects
 components, connections, descriptions, payloads, nesting — (\`update_project\`
 with full source), manage the custom component library
 (\`create_custom_type\`/\`delete_custom_type\`), arrange the canvas
-(\`auto_layout\`, \`set_display\`, or explicit layout entries), and export the
-agent spec (\`compile_for_agent\`). The only human-app-exclusive feature is PNG
-export — point users at the "Export PNG" button in the editor.
+(\`auto_layout\`, \`set_display\`, or explicit layout entries), review history
+(\`get_history\`/\`get_revision\`/\`diff_project\`), discuss components
+(\`ask_question\`/\`list_questions\`/\`answer_question\`/\`resolve_question\`),
+report drift (\`report_drift\`/\`get_drift\`), and export the agent spec
+(\`compile_for_agent\`). The only human-app-exclusive feature is PNG export —
+point users at the Export menu in the editor.
 
 ---
 

@@ -27,11 +27,13 @@ import { json } from "@codemirror/lang-json";
 import { yaml } from "@codemirror/lang-yaml";
 import { markdown } from "@codemirror/lang-markdown";
 import type { UserLibrary } from "@/lib/userLibrary";
+import { authorLabel, type DocumentActivity, type Thread } from "@/lib/activity";
 import { displayColor, useIsDark } from "@/lib/useIsDark";
 import { CodeEditor } from "./CodeMirror";
 import { Glyph } from "./nodes";
 import { TypeCombobox } from "./TypeCombobox";
 import {
+  Button,
   Chip,
   Icon,
   IconButton,
@@ -42,6 +44,7 @@ import {
   Segmented,
   TextArea,
   cx,
+  relativeTime,
 } from "./ui";
 
 export type Selection =
@@ -183,6 +186,159 @@ function PayloadCard({
   );
 }
 
+/* -------------------------------------------------------------- Questions */
+
+const isHttpUrl = (v: string): boolean => /^https?:\/\//i.test(v.trim());
+
+function Avatar({ kind }: { kind: "user" | "agent" }) {
+  return (
+    <span
+      className={cx(
+        "flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full [&>svg]:h-3 [&>svg]:w-3",
+        kind === "agent" ? "bg-accent-soft text-accent" : "bg-surface-2 text-ink-2",
+      )}
+    >
+      {kind === "agent" ? <Icon.Bot /> : <Icon.User />}
+    </span>
+  );
+}
+
+function ThreadCard({ thread, activity }: { thread: Thread; activity: DocumentActivity }) {
+  const [reply, setReply] = useState("");
+  const resolved = thread.status === "resolved";
+  const send = () => {
+    const text = reply.trim();
+    if (text === "") return;
+    void activity.reply(thread._id, text);
+    setReply("");
+  };
+  return (
+    <div className={cx("mt-2 rounded-md border border-line first:mt-0", resolved && "opacity-60")}>
+      <div className="flex flex-col gap-2 px-2.5 pt-2.5">
+        {thread.messages.map((m, i) => (
+          <div key={i} className="flex gap-2">
+            <Avatar kind={m.author.kind} />
+            <div className="min-w-0 flex-1">
+              <div className="flex items-baseline gap-1.5">
+                <span className="text-xs font-medium">{authorLabel(m.author)}</span>
+                <span className="text-xs text-ink-3">{relativeTime(m.at)}</span>
+                {i === 0 && resolved && <Chip className="ml-auto">Resolved</Chip>}
+              </div>
+              <p className="whitespace-pre-wrap break-words text-sm text-ink">{m.text}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="flex items-center gap-1 px-2.5 pt-2">
+        <Input
+          value={reply}
+          placeholder="Reply…"
+          onChange={(e) => setReply(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") send();
+          }}
+        />
+        <IconButton label="Send reply" size="sm" onClick={send} disabled={reply.trim() === ""}>
+          <Icon.Send />
+        </IconButton>
+      </div>
+      <div className="flex items-center px-1.5 py-1">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => void activity.setThreadStatus(thread._id, resolved ? "open" : "resolved")}
+        >
+          {resolved ? "Reopen" : "Resolve"}
+        </Button>
+        <Button
+          variant="danger"
+          size="sm"
+          className="ml-auto"
+          onClick={() => void activity.removeThread(thread._id)}
+        >
+          Delete
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function QuestionsSection({ path, activity }: { path: string; activity: DocumentActivity }) {
+  const [asking, setAsking] = useState(false);
+  const [draft, setDraft] = useState("");
+  const threads = useMemo(() => {
+    const mine = activity.threads.filter((t) => t.path === path);
+    return [
+      ...mine.filter((t) => t.status === "open"),
+      ...mine.filter((t) => t.status === "resolved"),
+    ];
+  }, [activity.threads, path]);
+
+  const ask = () => {
+    const text = draft.trim();
+    if (text === "") return;
+    void activity.askQuestion(path, text);
+    setDraft("");
+    setAsking(false);
+  };
+
+  return (
+    <Section
+      title="Questions"
+      action={
+        <IconButton
+          label="Ask a question"
+          size="sm"
+          active={asking}
+          onClick={() => setAsking((a) => !a)}
+        >
+          <Icon.Plus />
+        </IconButton>
+      }
+    >
+      {asking && (
+        <div className="pb-2">
+          <TextArea
+            autoFocus
+            rows={2}
+            value={draft}
+            placeholder="Ask an agent or leave a note for one…"
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") {
+                setAsking(false);
+                setDraft("");
+              }
+              if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) ask();
+            }}
+          />
+          <div className="flex items-center gap-1.5 pt-1.5">
+            <Button variant="primary" size="sm" onClick={ask} disabled={draft.trim() === ""}>
+              Ask
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setAsking(false);
+                setDraft("");
+              }}
+            >
+              Cancel
+            </Button>
+          </div>
+        </div>
+      )}
+      {threads.length === 0 && !asking && (
+        <p className="text-sm text-ink-3">No questions on this component.</p>
+      )}
+      {threads.map((t) => (
+        <ThreadCard key={t._id} thread={t} activity={activity} />
+      ))}
+    </Section>
+  );
+}
+
 /* ------------------------------------------------------------- Component */
 
 function ComponentInspector({
@@ -192,6 +348,7 @@ function ComponentInspector({
   onSelect,
   onClose,
   library,
+  activity,
 }: {
   doc: ArchDoc;
   path: string;
@@ -199,6 +356,7 @@ function ComponentInspector({
   onSelect: (s: Selection) => void;
   onClose: () => void;
   library: UserLibrary;
+  activity: DocumentActivity;
 }) {
   const isDark = useIsDark();
   const segments = path.split(".");
@@ -315,6 +473,38 @@ function ComponentInspector({
               }}
             />
           </PropertyRow>
+          <PropertyRow label="Source">
+            <div className="flex items-center gap-1">
+              <CommitInput
+                key={`${path}-src`}
+                mono
+                defaultValue={node.src ?? ""}
+                placeholder="apps/api/src/billing or https://…"
+                onCommit={(v) =>
+                  mutate((d) => setComponentMeta(d, segments, { src: v.trim() === "" ? null : v.trim() }))
+                }
+              />
+              {node.src !== undefined && isHttpUrl(node.src) && (
+                <IconButton
+                  label="Open"
+                  size="sm"
+                  onClick={() => window.open(node.src, "_blank", "noopener,noreferrer")}
+                >
+                  <Icon.External />
+                </IconButton>
+              )}
+              {node.src !== undefined && !isHttpUrl(node.src) && (
+                <IconButton
+                  label="Copy path"
+                  size="sm"
+                  onClick={() => void navigator.clipboard.writeText(node.src ?? "")}
+                >
+                  <Icon.Copy />
+                </IconButton>
+              )}
+            </div>
+          </PropertyRow>
+          <p className="pl-[100px] text-xs text-ink-3">Where this lives in the codebase. Agents start here.</p>
         </Section>
 
         <Section
@@ -368,6 +558,8 @@ function ComponentInspector({
             />
           ))}
         </Section>
+
+        <QuestionsSection path={path} activity={activity} />
       </div>
     </div>
   );
@@ -483,12 +675,14 @@ export function DetailPanel({
   mutate,
   onSelect,
   library,
+  activity,
 }: {
   doc: ArchDoc;
   selection: Selection;
   mutate: (fn: (d: ArchDoc) => ArchDoc) => void;
   onSelect: (s: Selection) => void;
   library: UserLibrary;
+  activity: DocumentActivity;
 }) {
   if (selection === null) return null;
   return (
@@ -502,6 +696,7 @@ export function DetailPanel({
           onSelect={onSelect}
           onClose={() => onSelect(null)}
           library={library}
+          activity={activity}
         />
       ) : (
         <ConnectionInspector

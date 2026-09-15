@@ -126,11 +126,27 @@ export function parse(source: string): ParseResult {
             } else {
               fail(`Expected a string after 'desc', got ${describe(t)}.`, t.span);
             }
+          } else if (at("ident", "src")) {
+            const kwTok = next();
+            const t = peek();
+            if (t.type !== "string") {
+              fail(`Expected a string after 'src', got ${describe(t)}.`, t.span);
+            }
+            const value = next().value;
+            if (node.src !== undefined) {
+              diagnostics.push({
+                code: "E004",
+                severity: "error",
+                message: `Component '${node.id}' has more than one 'src'.`,
+                span: { start: kwTok.span.start, end: t.span.end },
+              });
+            }
+            node.src = value;
           } else if (at("ident")) {
             node.payloads.push(parsePayload());
           } else {
             fail(
-              `Expected 'desc', 'component', or a payload inside a component body, got ${describe(peek())}.`,
+              `Expected 'desc', 'src', 'component', or a payload inside a component body, got ${describe(peek())}.`,
               peek().span,
             );
           }
@@ -239,6 +255,7 @@ export function parse(source: string): ParseResult {
       !at("rbrace") &&
       !at("ident", "component") &&
       !at("ident", "desc") &&
+      !at("ident", "src") &&
       !at("ident", "layout")
     ) {
       next();

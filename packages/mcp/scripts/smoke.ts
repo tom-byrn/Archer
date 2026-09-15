@@ -39,7 +39,7 @@ const safeJson = (t: string) => {
 // tools/list
 const tools = await client.listTools();
 const names = tools.tools.map((t) => t.name).sort();
-check("17 tools registered", names.length === 17, names);
+check("26 tools registered", names.length === 26, names);
 
 // guide + resource
 const guide = await call("get_guide");
@@ -82,7 +82,8 @@ const dbLayoutLine = (got.json.source as string).split("\n").find((l: string) =>
 // update WITHOUT layout: db position must survive (layout merge)
 const updated = await call("update_project", {
   project_id: pid,
-  source: 'arch "Smoke Test" v0.1\n\ncomponent api "API" @vercel.functions\ncomponent db "DB" @postgres\ncomponent cache "Cache" @redis\n\napi -> db @sql\napi -> cache\n',
+  source: 'arch "Smoke Test" v0.1\n\ncomponent api "API" @vercel.functions {\n  src "apps/api"\n}\ncomponent db "DB" @postgres\ncomponent cache "Cache" @redis\n\napi -> db @sql\napi -> cache\n',
+  summary: "Added a cache",
 });
 check("update_project succeeds", !updated.isError && updated.json?.saved === true, updated.text);
 const got2 = await call("get_project", { project_id: pid });
@@ -107,6 +108,57 @@ const disp = await call("set_display", { project_id: pid, path: "api", display: 
 check("set_display saves", !disp.isError && disp.json?.saved === true);
 const compiled = await call("compile_for_agent", { project_id: pid });
 check("compile_for_agent: preamble, no layout", compiled.text.includes("Archer architecture document") && !compiled.text.includes("layout {"));
+
+// history & attribution
+const history = await call("get_history", { project_id: pid });
+check("get_history lists revisions", Array.isArray(history.json) && history.json.length >= 2, history.text);
+const cacheRev = (history.json as { summary?: string; author: { kind: string; name?: string }; changes: { added: number } }[]).find((r) => r.summary === "Added a cache");
+check("agent-attributed revision with summary + changes", cacheRev?.author.kind === "agent" && !!cacheRev.author.name && cacheRev.changes.added >= 1, cacheRev);
+const rev = await call("get_revision", { revision_id: (history.json as { revision_id: string }[])[0].revision_id });
+check("get_revision returns source", typeof rev.json?.source === "string" && rev.json.source.startsWith("arch "));
+const diff = await call("diff_project", { project_id: pid });
+check("diff_project default has summary + diff", diff.json?.summary != null && Array.isArray(diff.json?.diff?.components), diff.text);
+const diffSpan = await call("diff_project", {
+  project_id: pid,
+  from_revision_id: (history.json as { revision_id: string }[]).at(-1)!.revision_id,
+});
+check("diff_project from oldest sees cache added", diffSpan.json?.diff.components.some((c: { path: string; kind: string }) => c.path === "cache" && c.kind === "added"), diffSpan.text);
+check("get_project has src line", (got3.json.source as string).includes('src "apps/api"'));
+
+// questions round trip
+const badAsk = await call("ask_question", { project_id: pid, path: "nope", text: "?" });
+check("ask_question rejects unknown path", badAsk.isError);
+const asked = await call("ask_question", { project_id: pid, path: "db", text: "Which Postgres version?" });
+check("ask_question creates thread", !asked.isError && typeof asked.json?.question_id === "string", asked.text);
+const qid = asked.json.question_id as string;
+const gotQ = await call("get_project", { project_id: pid });
+check("get_project shows open question", gotQ.json?.open_questions.some((q: { question_id: string }) => q.question_id === qid), gotQ.json?.open_questions);
+const answered = await call("answer_question", { question_id: qid, text: "16" });
+check("answer_question", !answered.isError);
+const listedQ = await call("list_questions", { project_id: pid });
+check("list_questions has 2 messages", listedQ.json?.find((q: { question_id: string }) => q.question_id === qid)?.messages.length === 2, listedQ.text);
+const resolved = await call("resolve_question", { question_id: qid });
+check("resolve_question", !resolved.isError && resolved.json?.status === "resolved");
+const openAfter = await call("list_questions", { project_id: pid });
+check("resolved thread not in open list", !openAfter.json?.some((q: { question_id: string }) => q.question_id === qid));
+
+// drift
+const badDrift = await call("report_drift", { project_id: pid, findings: [{ status: "missing", path: "ghost" }] });
+check("report_drift rejects unknown path", badDrift.isError);
+const drifted = await call("report_drift", {
+  project_id: pid,
+  findings: [
+    { status: "missing", path: "cache", note: "No cache client in the repo" },
+    { status: "extra", name: "Email worker", src: "apps/worker/email" },
+  ],
+});
+check("report_drift accepted", !drifted.isError && drifted.json?.missing === 1 && drifted.json?.extra === 1, drifted.text);
+const driftGot = await call("get_drift", { project_id: pid });
+check("get_drift returns findings", driftGot.json?.report?.findings.length === 2, driftGot.text);
+const gotD = await call("get_project", { project_id: pid });
+check("get_project shows drift count", gotD.json?.drift?.findings_count === 2, gotD.json?.drift);
+const synced = await call("report_drift", { project_id: pid, findings: [] });
+check("empty report = in sync", synced.json?.in_sync === true);
 
 // cleanup: delete custom type + project
 const delType = await call("delete_custom_type", { tag: "custom.smoke_engine" });

@@ -7,13 +7,16 @@ import {
   autoLayout,
   compileForAgent,
   componentPaths,
+  diffDocs,
   findComponent,
   format,
+  mergeForDiff,
   moveComponent,
   parse,
   removeComponent,
   removeConnection,
   reparentComponent,
+  type ArchDoc,
 } from "@archer/lang";
 import Link from "next/link";
 import { lookupType } from "@archer/catalog";
@@ -23,12 +26,46 @@ import { resolveDropTarget } from "@/lib/dropTarget";
 import { deriveDoc, useArchDoc } from "@/lib/useArchDoc";
 import { useUserLibrary } from "@/lib/userLibrary";
 import { useIsDark } from "@/lib/useIsDark";
+import type { Id } from "@/convex/_generated/dataModel";
+import { authorLabel, useDocumentActivity } from "@/lib/activity";
+import type { NodeMarks } from "@/lib/toFlow";
+import { ActivityPanel, type ActivityTab } from "./ActivityPanel";
 import { ArchCanvas, type CanvasCallbacks } from "./ArchCanvas";
 import { CodePane } from "./CodePane";
 import { CommandPalette } from "./CommandPalette";
 import { DetailPanel, connectionKey, type Selection } from "./DetailPanel";
 import { Palette } from "./Palette";
-import { Button, Chip, Icon, IconButton, Input, Kbd, Menu, cx } from "./ui";
+import { Button, Chip, Icon, IconButton, Input, Kbd, Menu, cx, relativeTime } from "./ui";
+
+/** What the canvas is comparing against, when in diff mode. */
+type DiffView =
+  | { kind: "revision"; id: Id<"revisions"> }
+  /** Everything agents changed since the user last reviewed. */
+  | { kind: "sinceSeen" }
+  | null;
+
+const EMPTY_DOC = (like: ArchDoc): ArchDoc => ({
+  ...like,
+  components: [],
+  connections: [],
+  layout: [],
+});
+
+/** Return a component tree with `src` set on the node at `path`. */
+function setSrc(
+  items: ArchDoc["components"],
+  path: readonly string[],
+  src: string,
+): ArchDoc["components"] {
+  const [head, ...rest] = path;
+  return items.map((c) =>
+    c.id !== head
+      ? c
+      : rest.length === 0
+        ? { ...c, src }
+        : { ...c, children: setSrc(c.children, rest, src) },
+  );
+}
 
 /** Drop paths that sit inside another path in the same set (delete parent deletes them). */
 const outermostOnly = (paths: string[]): string[] =>
@@ -78,9 +115,16 @@ function TitleField({ value, onCommit }: { value: string; onCommit: (v: string) 
 export function Editor({
   initialSource = SAMPLE,
   onPersist,
+  documentId = null,
+  workspaceId = null,
+  seenRevisionAt,
 }: {
   initialSource?: string;
   onPersist?: (source: string, title: string) => Promise<void> | void;
+  /** Persisted documents get history, questions and drift; unset = scratch editor. */
+  documentId?: Id<"documents"> | null;
+  workspaceId?: string | null;
+  seenRevisionAt?: number;
 }) {
   const { source, setSource, mutate, undo, redo, canUndo, canRedo } =
     useArchDoc(initialSource);
@@ -106,6 +150,9 @@ export function Editor({
   const [codeOpen, setCodeOpen] = useState(true);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const exportRef = useRef<(() => void) | null>(null);
+  const activity = useDocumentActivity(documentId, workspaceId, seenRevisionAt);
+  const [panel, setPanel] = useState<ActivityTab | null>(null);
+  const [diffView, setDiffView] = useState<DiffView>(null);
 
   useEffect(() => {
     try {
@@ -130,9 +177,72 @@ export function Editor({
     [focus, derived],
   );
 
+  // Diff mode: the doc to draw plus per-path/per-connection statuses.
+  const diff = useMemo(() => {
+    if (!diffView) return null;
+    let base: ArchDoc | null = null;
+    let next: ArchDoc | null = null;
+    if (diffView.kind === "revision") {
+      const i = activity.revisions.findIndex((r) => r._id === diffView.id);
+      const rev = activity.revisions[i];
+      if (!rev) return null;
+      next = parse(rev.source).doc;
+      const older = activity.revisions[i + 1];
+      base = older ? parse(older.source).doc : EMPTY_DOC(next);
+    } else {
+      if (!activity.baseline) return null;
+      base = parse(activity.baseline.source).doc;
+      next = derived.doc;
+    }
+    const merged = mergeForDiff(base, next);
+    return {
+      doc: autoLayout(merged.doc),
+      components: merged.components,
+      connections: merged.connections,
+      summary: diffDocs(base, next),
+    };
+  }, [diffView, activity.revisions, activity.baseline, derived.doc]);
+
+  // Agent edits since the user last reviewed → "touched" badges.
+  const touched = useMemo(() => {
+    if (activity.unseenAgentRevisions.length === 0 || !activity.baseline) return new Set<string>();
+    const d = diffDocs(parse(activity.baseline.source).doc, derived.doc);
+    return new Set(d.components.filter((c) => c.kind !== "removed").map((c) => c.path));
+  }, [activity.unseenAgentRevisions.length, activity.baseline, derived.doc]);
+
+  const marks = useCallback(
+    (path: string, c: { src?: string }): NodeMarks | undefined => {
+      const m: NodeMarks = {};
+      const d = diff?.components.get(path);
+      if (d) m.diff = d;
+      if (!diff && touched.has(path)) m.touched = true;
+      const q = activity.openThreadsByPath.get(path)?.length ?? 0;
+      if (q > 0) m.questions = q;
+      const f = activity.driftByPath.get(path);
+      if (f && (f.status === "missing" || f.status === "changed")) m.drift = f.status;
+      if (c.src) m.src = c.src;
+      return Object.keys(m).length > 0 ? m : undefined;
+    },
+    [diff, touched, activity.openThreadsByPath, activity.driftByPath],
+  );
+
+  const displayDoc = diff ? diff.doc : derived.laidOut;
   const flow = useMemo(
-    () => toFlow(derived.laidOut, { focus: liveFocus, resolveType, isDark }),
-    [derived, liveFocus, resolveType, isDark],
+    () =>
+      toFlow(displayDoc, {
+        focus: liveFocus,
+        resolveType,
+        isDark,
+        marks,
+        edgeDiff: diff
+          ? new Map(
+              [...diff.connections].filter(
+                (e): e is [string, "added" | "removed"] => e[1] !== "changed",
+              ),
+            )
+          : undefined,
+      }),
+    [displayDoc, liveFocus, resolveType, isDark, marks, diff],
   );
 
   const callbacks: CanvasCallbacks = useMemo(
@@ -201,15 +311,26 @@ export function Editor({
     [mutate, liveFocus],
   );
 
+  // The last text known to be stored. Remote saves (an agent over MCP) arrive
+  // as a new `initialSource`; adopt them so the canvas and banners stay live.
+  const persisted = useRef(initialSource);
+  useEffect(() => {
+    if (initialSource === persisted.current) return;
+    persisted.current = initialSource;
+    setSource(initialSource);
+  }, [initialSource, setSource]);
+
   // Debounced autosave of the source text.
   const titleForSave = derived.doc.title;
   useEffect(() => {
-    if (!onPersist || source === initialSource) return;
+    if (!onPersist || source === persisted.current) return;
     setSaveState("saving");
     const t = setTimeout(() => {
-      void Promise.resolve(onPersist(source, titleForSave)).then(() =>
-        setSaveState("saved"),
-      );
+      const text = source;
+      void Promise.resolve(onPersist(text, titleForSave)).then(() => {
+        persisted.current = text;
+        setSaveState("saved");
+      });
     }, 600);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -233,7 +354,13 @@ export function Editor({
         if (e.shiftKey) redo();
         else undo();
       }
-      if (e.key === "Escape") setFocus((f) => f.slice(0, -1));
+      if (e.key === "Escape") {
+        setDiffView((v) => {
+          if (v) return null;
+          setFocus((f) => f.slice(0, -1));
+          return v;
+        });
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -257,6 +384,26 @@ export function Editor({
       notify(kind === "agent" ? "Copied for agent" : "Copied .arch source"),
     );
   };
+
+  const restore = (text: string) => {
+    mutate(() => parse(text).doc);
+    setDiffView(null);
+  };
+  const addFromDrift = (name: string, src?: string) =>
+    mutate((d) => {
+      const { doc: next, path } = addComponent(d, liveFocus, { name });
+      return src
+        ? { ...next, components: setSrc(next.components, path, src) }
+        : next;
+    });
+  const openPanel = (tab: ActivityTab) => {
+    setPanel(tab);
+    setSelection(null);
+  };
+  const unseen = activity.unseenAgentRevisions;
+  const latestAgent = unseen[0];
+  const openQuestions = activity.openThreadsByPath.size;
+  const viewingRevisionId = diffView?.kind === "revision" ? diffView.id : null;
 
   return (
     <div className="flex h-screen flex-col bg-bg">
@@ -321,6 +468,24 @@ export function Editor({
           <IconButton label="Add component (⌘K)" onClick={() => setPaletteOpen(true)}>
             <Icon.Plus />
           </IconButton>
+          {documentId && (
+            <IconButton
+              label={`Activity · ${activity.revisions.length} revisions${openQuestions > 0 ? ` · ${openQuestions} open questions` : ""}`}
+              onClick={() => (panel ? setPanel(null) : openPanel("history"))}
+              active={panel !== null}
+              className="relative"
+            >
+              <Icon.History />
+              {(unseen.length > 0 || openQuestions > 0) && (
+                <span
+                  className={cx(
+                    "absolute right-1 top-1 h-2 w-2 rounded-full ring-2 ring-surface",
+                    unseen.length > 0 ? "bg-accent" : "bg-warn",
+                  )}
+                />
+              )}
+            </IconButton>
+          )}
           <span className="mx-1.5 h-4 w-px bg-line" />
           <IconButton label={codeOpen ? "Hide code" : "Show code"} onClick={toggleCode} active={codeOpen}>
             <Icon.Code />
@@ -420,7 +585,67 @@ export function Editor({
               </span>
             </nav>
           )}
-          <div className="min-h-0 flex-1 bg-ground">
+          <div className="relative min-h-0 flex-1 bg-ground">
+            {diff ? (
+              <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex justify-center p-3">
+                <div className="pointer-events-auto flex h-9 items-center gap-2 rounded-lg border border-line bg-surface pl-3 pr-1.5 shadow-md">
+                  <Icon.Diff className="h-4 w-4 text-ink-2" />
+                  <span className="whitespace-nowrap text-sm text-ink">
+                    {diffView?.kind === "sinceSeen"
+                      ? "Agent changes since you last reviewed"
+                      : "Viewing a past revision"}
+                  </span>
+                  <span className="flex items-center gap-1">
+                    {diff.summary.components.filter((c) => c.kind === "added").length > 0 && (
+                      <Chip tone="accent">+{diff.summary.components.filter((c) => c.kind === "added").length}</Chip>
+                    )}
+                    {diff.summary.components.filter((c) => c.kind === "removed").length > 0 && (
+                      <Chip tone="danger">−{diff.summary.components.filter((c) => c.kind === "removed").length}</Chip>
+                    )}
+                    {diff.summary.components.filter((c) => c.kind === "changed").length > 0 && (
+                      <Chip tone="warn">~{diff.summary.components.filter((c) => c.kind === "changed").length}</Chip>
+                    )}
+                  </span>
+                  <span className="mx-1 h-4 w-px bg-line" />
+                  {diffView?.kind === "sinceSeen" && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => {
+                        void activity.markSeen();
+                        setDiffView(null);
+                      }}
+                    >
+                      Mark reviewed
+                    </Button>
+                  )}
+                  <Button size="sm" variant="ghost" onClick={() => setDiffView(null)}>
+                    Exit
+                    <Kbd>esc</Kbd>
+                  </Button>
+                </div>
+              </div>
+            ) : latestAgent ? (
+              <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex justify-center p-3">
+                <div className="pointer-events-auto flex h-9 items-center gap-2 rounded-lg border border-line bg-surface pl-2 pr-1.5 shadow-md">
+                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-accent-soft text-accent">
+                    <Icon.Bot className="h-3.5 w-3.5" />
+                  </span>
+                  <span className="whitespace-nowrap text-sm text-ink">
+                    <span className="font-medium">{authorLabel(latestAgent.author)}</span>
+                    {" "}made {unseen.length} change{unseen.length === 1 ? "" : "s"}
+                    <span className="text-ink-3"> · {relativeTime(latestAgent.createdAt)}</span>
+                  </span>
+                  <span className="mx-1 h-4 w-px bg-line" />
+                  <Button size="sm" variant="secondary" onClick={() => setDiffView({ kind: "sinceSeen" })}>
+                    Review
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => void activity.markSeen()}>
+                    Dismiss
+                  </Button>
+                </div>
+              </div>
+            ) : null}
             <ArchCanvas
               key={liveFocus.join(".")}
               nodes={flow.nodes}
@@ -430,16 +655,34 @@ export function Editor({
               isDark={isDark}
               selectedPath={selectedPath}
               exportRef={exportRef}
+              readOnly={diff !== null}
             />
           </div>
         </main>
-        <DetailPanel
-          doc={derived.laidOut}
-          selection={liveSelection}
-          mutate={mutate}
-          onSelect={setSelection}
-          library={library}
-        />
+        {panel && documentId && workspaceId ? (
+          <ActivityPanel
+            tab={panel}
+            onTabChange={setPanel}
+            onClose={() => setPanel(null)}
+            activity={activity}
+            documentId={documentId}
+            title={derived.doc.title}
+            viewingRevisionId={viewingRevisionId}
+            onViewRevision={(id) => setDiffView(id ? { kind: "revision", id } : null)}
+            onRestore={restore}
+            onSelectPath={(path) => setSelection({ kind: "component", path })}
+            onAddComponent={addFromDrift}
+          />
+        ) : (
+          <DetailPanel
+            doc={derived.laidOut}
+            selection={liveSelection}
+            mutate={mutate}
+            onSelect={setSelection}
+            library={library}
+            activity={activity}
+          />
+        )}
       </div>
 
       <CommandPalette

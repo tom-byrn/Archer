@@ -32,8 +32,9 @@ Prerequisites: the Convex backend running (`npx convex dev` in `apps/web`) and
 | `ARCHER_WORKSPACE_ID` | `~/.archer/workspace` file, else unset | Which workspace's projects the server operates on |
 | `CONVEX_URL` | `http://127.0.0.1:3210` | The Convex backend |
 | `ARCHER_APP_URL` | `http://localhost:3000` | Base for the editor URLs returned by tools |
+| `ARCHER_AGENT_NAME` | the MCP client's declared name, else `agent` | How the agent's edits, questions and drift reports are attributed in the app |
 
-## Tools (17)
+## Tools (26)
 
 **Documentation** — `get_guide` returns the full agent guide (mental model,
 workflows, error reference, complete language spec); also exposed as the MCP
@@ -56,8 +57,45 @@ surviving components keep their canvas positions, new ones are auto-placed),
 **Presentation** — `set_display` (collapse/expand a container to icon/plane),
 `auto_layout_project` (`reset: true` re-arranges everything).
 
+**History** — `get_history` (revisions with author, summary, and change
+counts), `get_revision` (past source), `diff_project` (structured diff between
+any two revisions; defaults to the latest change).
+
+**Questions** — `ask_question`, `list_questions`, `answer_question`,
+`resolve_question`.
+
+**Drift** — `report_drift`, `get_drift`.
+
 **Workspace** — `get_workspace_info` (config + reachability + counts),
 `set_workspace` (persist an id the user provides).
+
+### Agent identity & history
+
+Every write (`create_project`, `update_project`, `set_display`,
+`auto_layout_project`) is recorded as a revision attributed to the agent —
+`ARCHER_AGENT_NAME`, else the name the MCP client declares in the handshake
+(e.g. `claude-code`). `create_project`/`update_project` accept a one-line
+`summary`; the app's activity feed shows it next to the agent's name and
+highlights the components the agent touched until the human reviews them.
+`get_history` and `diff_project` expose the same history to agents (the diff
+ignores layout moves — only architecture counts).
+
+### Questions
+
+`ask_question` attaches a thread to a component path. It appears as a badge
+on that component in the canvas; the human answers inline (and can ask
+agents questions the same way). `get_project` returns the open threads as
+`open_questions` so agents see them at the start of every session.
+
+### Drift
+
+An agent compares each component (via its `src` path, or by searching the
+repo) with the implementation and calls `report_drift` with one finding per
+discrepancy: `missing`, `changed`, or `extra` (in the code but not in the
+document; carries a suggested `name`/`src`). The report replaces the
+previous one and an empty list means "in sync". Findings render as badges on
+the canvas and in the editor's Drift panel; the human can add `extra`
+findings to the document with one click.
 
 ## Guarantees
 
@@ -74,6 +112,7 @@ surviving components keep their canvas positions, new ones are auto-placed),
 ARCHER_WORKSPACE_ID=<id> pnpm --filter @archer/mcp exec tsx scripts/smoke.ts
 ```
 
-Spawns the server over stdio and exercises all 17 tools against the live
-backend (24 checks), including the reject-invalid-write and layout-preservation
-guarantees.
+Spawns the server over stdio and exercises all 26 tools against the live
+backend, including the reject-invalid-write and layout-preservation
+guarantees, agent attribution in history, the question round trip, and drift
+reporting.

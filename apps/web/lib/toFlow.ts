@@ -13,6 +13,24 @@ import {
 /** One grid cell in pixels. */
 export const CELL = 40;
 
+/** Position-independent identity of a connection (mirrors @archer/lang connectionKey). */
+const edgeKey = (c: ArchDoc["connections"][number]): string =>
+  [pathToString(c.source), c.arrow, pathToString(c.target), c.type ?? "", c.label ?? ""].join("|");
+
+/** Overlay badges drawn on a node (all optional; absent = plain node). */
+export interface NodeMarks {
+  /** Diff view: how this component differs from the comparison base. */
+  diff?: "added" | "removed" | "changed";
+  /** An agent changed this component since the user last reviewed. */
+  touched?: boolean;
+  /** Number of open question threads on this component. */
+  questions?: number;
+  /** Latest drift report says the code is out of sync with this component. */
+  drift?: "missing" | "changed";
+  /** `src` field is set (renders a link affordance). */
+  src?: string;
+}
+
 export interface ArchNodeData extends Record<string, unknown> {
   path: string;
   label: string;
@@ -23,6 +41,7 @@ export interface ArchNodeData extends Record<string, unknown> {
   payloadCount: number;
   accent?: string;
   glyphKey?: string;
+  marks?: NodeMarks;
 }
 
 export type ArchNode = Node<ArchNodeData>;
@@ -34,6 +53,8 @@ export interface ArchEdgeData extends Record<string, unknown> {
   /** Protocol tag without the `@`, e.g. "http". */
   protocol?: string;
   label?: string;
+  /** Diff view: connection added or removed relative to the comparison base. */
+  diff?: "added" | "removed";
 }
 
 export type ArchEdge = Edge<ArchEdgeData>;
@@ -45,6 +66,10 @@ export interface ToFlowOptions {
   resolveType?: (tag: string) => { color: string; glyph: string } | undefined;
   /** OS dark mode (kept for API compatibility; colors are token-driven). */
   isDark?: boolean;
+  /** Per-path overlay badges (diff status, agent-touched, questions, drift). */
+  marks?: (path: string, component: ComponentNode) => NodeMarks | undefined;
+  /** Per-connection diff status, keyed by `connectionKey()` from @archer/lang. */
+  edgeDiff?: Map<string, "added" | "removed">;
 }
 
 /**
@@ -117,6 +142,10 @@ export function toFlow(
               const v = opts.resolveType?.(c.type!);
               return v ? { accent: v.color, glyphKey: v.glyph } : {};
             })() : {}),
+            ...(() => {
+              const m = opts.marks?.(path, c);
+              return m && Object.keys(m).length > 0 ? { marks: m } : {};
+            })(),
           },
         });
       }
@@ -162,6 +191,10 @@ export function toFlow(
         arrow: c.arrow,
         ...(c.type !== undefined ? { protocol: c.type } : {}),
         ...(c.label !== undefined ? { label: c.label } : {}),
+        ...(() => {
+          const d = opts.edgeDiff?.get(edgeKey(c));
+          return d ? { diff: d } : {};
+        })(),
       },
     });
   });

@@ -51,5 +51,14 @@ export default function DocumentPage({
       </div>
     );
   }
-  return <Editor key={doc._id} initialSource={doc.source} onPersist={persist} />;
+  return (
+    <Editor
+      key={doc._id}
+      initialSource={doc.source}
+      onPersist={persist}
+      documentId={doc._id}
+      workspaceId={workspaceId}
+      seenRevisionAt={doc.seenRevisionAt}
+    />
+  );
 }

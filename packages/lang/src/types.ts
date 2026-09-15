@@ -39,6 +39,12 @@ export interface ComponentNode {
   /** Type tag without the leading `@`, e.g. "aws.s3". */
   type?: string;
   desc?: string;
+  /**
+   * Where this component lives in code: a repo-relative path (e.g.
+   * `apps/api/src/billing`) or a URL. Lets agents and humans jump from the
+   * diagram to the implementation.
+   */
+  src?: string;
   payloads: PayloadNode[];
   children: ComponentNode[];
   span: Span;

@@ -5,12 +5,11 @@ import { ConvexHttpClient } from "convex/browser";
 import { anyApi, type FunctionReference } from "convex/server";
 
 // Untyped references into apps/web/convex functions (validated server-side).
-const fn = (module: "documents" | "library", name: string): unknown =>
+type Module = "documents" | "library" | "revisions" | "threads" | "drift";
+const fn = (module: Module, name: string): unknown =>
   (anyApi as Record<string, Record<string, unknown>>)[module]![name];
-const qref = (m: "documents" | "library", n: string) =>
-  fn(m, n) as FunctionReference<"query">;
-const mref = (m: "documents" | "library", n: string) =>
-  fn(m, n) as FunctionReference<"mutation">;
+const qref = (m: Module, n: string) => fn(m, n) as FunctionReference<"query">;
+const mref = (m: Module, n: string) => fn(m, n) as FunctionReference<"mutation">;
 import {
   autoLayout,
   format,
@@ -64,6 +63,23 @@ export const NO_WORKSPACE_MESSAGE = `No workspace is configured, so project tool
 
 const client = new ConvexHttpClient(CONVEX_URL);
 
+// ---------------------------------------------------------------------------
+// Agent identity: every write is attributed to the agent so humans can review
+// what changed and by whom. ARCHER_AGENT_NAME wins; otherwise the MCP client's
+// declared name (set by the server after the handshake); otherwise "agent".
+
+let clientName: string | null = null;
+export function setClientName(name: string | undefined | null): void {
+  clientName = name && name.trim() !== "" ? name.trim() : null;
+}
+export function agentName(): string {
+  const env = process.env.ARCHER_AGENT_NAME?.trim();
+  return env && env !== "" ? env : (clientName ?? "agent");
+}
+export function agentAuthor(): { kind: "agent"; name: string } {
+  return { kind: "agent", name: agentName() };
+}
+
 export interface ProjectSummary {
   _id: string;
   title: string;
@@ -78,16 +94,71 @@ export interface CustomTypeRow {
   color: string;
   glyph: string;
 }
+export interface Author {
+  kind: "user" | "agent";
+  name?: string;
+}
+export interface RevisionRow {
+  _id: string;
+  documentId: string;
+  source: string;
+  title: string;
+  createdAt: number;
+  author: Author;
+  summary?: string;
+}
+export interface ThreadMessage {
+  author: Author;
+  text: string;
+  at: number;
+}
+export interface ThreadRow {
+  _id: string;
+  documentId: string;
+  path: string;
+  status: "open" | "resolved";
+  createdAt: number;
+  updatedAt: number;
+  messages: ThreadMessage[];
+}
+export type DriftStatus = "missing" | "changed" | "extra";
+export interface DriftFinding {
+  status: DriftStatus;
+  path?: string;
+  name?: string;
+  src?: string;
+  note?: string;
+}
+export interface DriftRow {
+  _id: string;
+  documentId: string;
+  reportedAt: number;
+  author: Author;
+  findings: DriftFinding[];
+}
 
 export const db = {
   listProjects: (workspaceId: string) =>
     client.query(qref("documents", "list"), { workspaceId }) as Promise<ProjectSummary[]>,
   getProject: (workspaceId: string, id: string) =>
     client.query(qref("documents", "get"), { workspaceId, id }) as Promise<ProjectDoc | null>,
-  createProject: (workspaceId: string, title: string, source: string) =>
-    client.mutation(mref("documents", "create"), { workspaceId, title, source }) as Promise<string>,
-  updateProject: (workspaceId: string, id: string, title: string, source: string) =>
-    client.mutation(mref("documents", "updateSource"), { workspaceId, id, title, source }) as Promise<void>,
+  createProject: (workspaceId: string, title: string, source: string, summary?: string) =>
+    client.mutation(mref("documents", "create"), {
+      workspaceId,
+      title,
+      source,
+      author: agentAuthor(),
+      ...(summary ? { summary } : {}),
+    }) as Promise<string>,
+  updateProject: (workspaceId: string, id: string, title: string, source: string, summary?: string) =>
+    client.mutation(mref("documents", "updateSource"), {
+      workspaceId,
+      id,
+      title,
+      source,
+      author: agentAuthor(),
+      ...(summary ? { summary } : {}),
+    }) as Promise<void>,
   deleteProject: (workspaceId: string, id: string) =>
     client.mutation(mref("documents", "remove"), { workspaceId, id }) as Promise<void>,
   listCustomTypes: (workspaceId: string) =>
@@ -96,6 +167,28 @@ export const db = {
     client.mutation(mref("library", "save"), { workspaceId, ...t }) as Promise<void>,
   deleteCustomType: (workspaceId: string, tag: string) =>
     client.mutation(mref("library", "remove"), { workspaceId, tag }) as Promise<void>,
+
+  // revisions
+  listRevisions: (workspaceId: string, documentId: string, limit?: number) =>
+    client.query(qref("revisions", "listFull"), { workspaceId, documentId, limit }) as Promise<RevisionRow[]>,
+  getRevision: (workspaceId: string, id: string) =>
+    client.query(qref("revisions", "get"), { workspaceId, id }) as Promise<RevisionRow | null>,
+
+  // question threads
+  listThreads: (workspaceId: string, documentId: string, status?: "open" | "resolved") =>
+    client.query(qref("threads", "list"), { workspaceId, documentId, ...(status ? { status } : {}) }) as Promise<ThreadRow[]>,
+  createThread: (workspaceId: string, documentId: string, path: string, text: string) =>
+    client.mutation(mref("threads", "create"), { workspaceId, documentId, path, text, author: agentAuthor() }) as Promise<string>,
+  replyThread: (workspaceId: string, id: string, text: string) =>
+    client.mutation(mref("threads", "reply"), { workspaceId, id, text, author: agentAuthor() }) as Promise<void>,
+  setThreadStatus: (workspaceId: string, id: string, status: "open" | "resolved") =>
+    client.mutation(mref("threads", "setStatus"), { workspaceId, id, status }) as Promise<void>,
+
+  // drift
+  getDrift: (workspaceId: string, documentId: string) =>
+    client.query(qref("drift", "get"), { workspaceId, documentId }) as Promise<DriftRow | null>,
+  reportDrift: (workspaceId: string, documentId: string, findings: DriftFinding[]) =>
+    client.mutation(mref("drift", "report"), { workspaceId, documentId, findings, author: agentAuthor() }) as Promise<string>,
 };
 
 // ---------------------------------------------------------------------------

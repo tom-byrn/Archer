@@ -26,6 +26,66 @@
   box-shadow: var(--shadow-md);
 }
 
+/* ---- Diff view ---- */
+.arch-node.arch-diff-added {
+  box-shadow: 0 0 0 2px var(--accent);
+  background-color: var(--accent-soft);
+}
+.arch-node.arch-diff-changed {
+  box-shadow: 0 0 0 2px var(--warn);
+  background-color: var(--warn-soft);
+}
+.arch-node.arch-diff-removed {
+  border: 1.5px dashed var(--danger);
+  background-color: var(--danger-soft);
+  opacity: 0.7;
+}
+.arch-node.arch-diff-removed .arch-node-label {
+  text-decoration: line-through;
+}
+.react-flow__node.selected .arch-node.arch-diff-added,
+.react-flow__node.arch-selected .arch-node.arch-diff-added,
+.react-flow__node.selected .arch-node.arch-diff-changed,
+.react-flow__node.arch-selected .arch-node.arch-diff-changed {
+  box-shadow:
+    0 0 0 2px var(--ground),
+    0 0 0 4px var(--accent);
+}
+
+/* ---- Badges (agent-touched, questions, drift) ---- */
+.arch-badges {
+  position: absolute;
+  top: -6px;
+  display: flex;
+  gap: 4px;
+  pointer-events: none;
+  z-index: 2;
+}
+.arch-badges-right {
+  right: -6px;
+}
+.arch-badges-left {
+  left: -6px;
+}
+.arch-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  height: 16px;
+  min-width: 16px;
+  padding: 0 3px;
+  border-radius: 999px;
+  box-shadow: var(--shadow-sm);
+}
+.arch-badge > svg {
+  width: 10px;
+  height: 10px;
+}
+.arch-badge-count {
+  padding: 0 4px 0 3px;
+}
+
 /* ---- Edges ---- */
 .react-flow__edge .arch-edge-path,
 .react-flow__edge-path {
@@ -56,6 +116,25 @@
   transition:
     border-color 120ms ease,
     opacity 120ms ease;
+}
+.react-flow__edge .arch-edge-path.arch-edge-diff-added {
+  stroke: var(--accent);
+  stroke-width: 2;
+}
+.arch-edge-arrow.arch-edge-diff-added {
+  fill: var(--accent);
+}
+.react-flow__edge .arch-edge-path.arch-edge-diff-removed {
+  stroke: var(--danger);
+  stroke-width: 2;
+  stroke-dasharray: 6 4;
+}
+.arch-edge-arrow.arch-edge-diff-removed {
+  fill: var(--danger);
+}
+.arch-edge-chip.arch-edge-diff-removed {
+  border-color: var(--danger);
+  text-decoration: line-through;
 }
 .react-flow__connection-path {
   stroke: var(--accent);

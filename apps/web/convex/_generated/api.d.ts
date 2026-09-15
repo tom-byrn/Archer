@@ -9,7 +9,10 @@
  */
 
 import type * as documents from "../documents.js";
+import type * as drift from "../drift.js";
 import type * as library from "../library.js";
+import type * as revisions from "../revisions.js";
+import type * as threads from "../threads.js";
 
 import type {
   ApiFromModules,
@@ -19,7 +22,10 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   documents: typeof documents;
+  drift: typeof drift;
   library: typeof library;
+  revisions: typeof revisions;
+  threads: typeof threads;
 }>;
 
 /**

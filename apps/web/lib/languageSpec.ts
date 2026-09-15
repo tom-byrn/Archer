@@ -70,6 +70,10 @@ component <id> ["Display Name"] [@<type>] [{ <body> }]
 - Body — optional \`{ ... }\` block containing, in any mix:
   - \`desc "..."\` — human-readable description (shown in the detail view). One per
     component. Multiline via triple quotes: \`desc """ ... """\`.
+  - \`src "..."\` — where the component lives in code: a repo-relative path
+    (\`apps/api/src/billing\`) or a URL. Single-line string only, at most one per
+    component (a second one is error \`E004\`). Agents start here when implementing
+    or verifying the component; the app renders it as a link.
   - Child \`component\` declarations — components nest arbitrarily deep, with JSON-object
     nesting semantics.
   - Payload blocks (§4).
@@ -237,6 +241,7 @@ A document is **valid** when:
 | \`E001\` | file parses (header, declarations, fences)                      | error    |
 | \`E002\` | component ids unique within their scope                         | error    |
 | \`E003\` | payload names unique per component                              | error    |
+| \`E004\` | at most one \`src\` per component                                 | error    |
 | \`E101\` | every connection endpoint resolves to a declared component      | error    |
 | \`E201\` | \`json\` / \`yaml\` / \`table\` payloads parse in their format        | error    |
 | \`W301\` | type tag resolves in the catalog                                | warning  |
@@ -266,6 +271,7 @@ arch "Acme SaaS" v0.1
 
 component web "Next.js App" @vercel.nextjs {
   desc "App shell + marketing. RSC, deployed on Vercel."
+  src "apps/web"
 }
 
 component backend "Backend" @vercel {
@@ -322,8 +328,9 @@ layout {
 file        = header { component | connection } [ layout ] ;
 header      = "arch" string version ;
 component   = "component" id [ string ] [ type ] [ "{" { bodyitem } "}" ] ;
-bodyitem    = desc | component | payload ;
+bodyitem    = desc | src | component | payload ;
 desc        = "desc" ( string | tripleString ) ;
+src         = "src" string ;
 payload     = id format fence ;
 format      = "json" | "yaml" | "table" | "markdown" ;
 connection  = path arrow path [ type ] [ ":" string ] ;
