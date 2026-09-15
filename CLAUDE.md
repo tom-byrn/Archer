@@ -12,6 +12,14 @@ Router + React Flow + Convex).
   mock wrapper modules).
 - Every canvas edit must go through `packages/lang` transforms → `format()`;
   the `.arch` text is the single source of truth.
+- UI conventions (`apps/web`): all colors, radii and text sizes come from the
+  tokens in `app/globals.css` (exposed as Tailwind utilities: `bg-surface`,
+  `text-ink-2`, `border-line`, `rounded-md`, `text-sm`…). Never use the raw
+  Tailwind palette (`slate-*`) or `dark:` variants — dark mode is handled by
+  the tokens. Build controls from `components/ui.tsx` (Button, IconButton,
+  Input, Menu, Dialog, Section, PropertyRow, Chip, Icon). Code editing goes
+  through `components/CodeMirror.tsx`. React Flow chrome lives in
+  `components/canvas.css`.
 - Language/product specs live in `docs/`; keep `docs/language-spec.md` in
   sync with `packages/*/src/languageSpec.ts` copies when the grammar changes.
 

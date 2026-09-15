@@ -44,7 +44,7 @@ backend.api -> stripe @http : "checkout sessions"
 layout {
   web: { at: [0, 3], size: [4, 3] }
   auth: { at: [0, 8], size: [4, 3] }
-  backend: { at: [6, 0], size: [13, 10], display: plane }
+  backend: { at: [6, 0], size: [13, 6], display: plane }
   backend.api: { at: [1, 2], size: [4, 3] }
   backend.db: { at: [8, 2], size: [4, 3] }
   cognito: { at: [0, 13], size: [4, 3] }

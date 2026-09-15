@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   addComponent,
   addConnection,
@@ -25,12 +25,55 @@ import { useUserLibrary } from "@/lib/userLibrary";
 import { useIsDark } from "@/lib/useIsDark";
 import { ArchCanvas, type CanvasCallbacks } from "./ArchCanvas";
 import { CodePane } from "./CodePane";
+import { CommandPalette } from "./CommandPalette";
 import { DetailPanel, connectionKey, type Selection } from "./DetailPanel";
 import { Palette } from "./Palette";
+import { Button, Chip, Icon, IconButton, Input, Kbd, Menu, cx } from "./ui";
 
 /** Drop paths that sit inside another path in the same set (delete parent deletes them). */
 const outermostOnly = (paths: string[]): string[] =>
   paths.filter((p) => !paths.some((q) => q !== p && p.startsWith(q + ".")));
+
+/** Click-to-edit document title. Commits on blur / Enter, reverts on Escape. */
+function TitleField({ value, onCommit }: { value: string; onCommit: (v: string) => void }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(value);
+  useEffect(() => setDraft(value), [value]);
+  if (!editing) {
+    return (
+      <button
+        type="button"
+        onClick={() => setEditing(true)}
+        title="Rename document"
+        className="h-7 max-w-[320px] truncate rounded-md px-2 text-base font-medium text-ink transition-colors hover:bg-surface-2"
+      >
+        {value}
+      </button>
+    );
+  }
+  return (
+    <Input
+      autoFocus
+      value={draft}
+      onChange={(e) => setDraft(e.target.value)}
+      onFocus={(e) => e.target.select()}
+      onBlur={() => {
+        setEditing(false);
+        const v = draft.trim();
+        if (v !== "" && v !== value) onCommit(v);
+        else setDraft(value);
+      }}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+        if (e.key === "Escape") {
+          setDraft(value);
+          setEditing(false);
+        }
+      }}
+      className="w-[260px] font-medium"
+    />
+  );
+}
 
 export function Editor({
   initialSource = SAMPLE,
@@ -61,6 +104,9 @@ export function Editor({
   const [selection, setSelection] = useState<Selection>(null);
   const [focus, setFocus] = useState<string[]>([]);
   const [codeOpen, setCodeOpen] = useState(true);
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  const exportRef = useRef<(() => void) | null>(null);
+
   useEffect(() => {
     try {
       if (localStorage.getItem("archer.codeOpen") === "0") setCodeOpen(false);
@@ -147,6 +193,7 @@ export function Editor({
       ? selection
       : null;
   }, [selection, derived]);
+  const selectedPath = liveSelection?.kind === "component" ? liveSelection.path : null;
 
   const addFromPalette = useCallback(
     (tag: string | undefined) =>
@@ -168,12 +215,19 @@ export function Editor({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [source, onPersist]);
 
-  // Global undo/redo, except while typing in a text field (native undo there).
+  // Global shortcuts: undo/redo (except while typing), ⌘K, Escape to go up a level.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const el = e.target as HTMLElement;
-      if (el.tagName === "TEXTAREA" || el.tagName === "INPUT" || el.isContentEditable)
+      const typing =
+        el.tagName === "TEXTAREA" || el.tagName === "INPUT" || el.isContentEditable ||
+        !!el.closest?.(".cm-editor");
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setPaletteOpen((o) => !o);
         return;
+      }
+      if (typing) return;
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "z") {
         e.preventDefault();
         if (e.shiftKey) redo();
@@ -186,97 +240,138 @@ export function Editor({
   }, [undo, redo]);
 
   const errors = derived.diagnostics.filter((d) => d.severity === "error");
+  const warnings = derived.diagnostics.length - errors.length;
 
   const relayout = () =>
     mutate((d) => autoLayout({ ...parse(format(d)).doc, layout: [] }));
 
-  const [copied, setCopied] = useState<"code" | "agent" | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
+  const notify = (msg: string) => {
+    setToast(msg);
+    setTimeout(() => setToast(null), 1600);
+  };
   const copy = (kind: "code" | "agent") => {
     const text =
       kind === "agent" ? compileForAgent(derived.doc) : format(derived.doc);
-    void navigator.clipboard.writeText(text).then(() => {
-      setCopied(kind);
-      setTimeout(() => setCopied(null), 1500);
-    });
+    void navigator.clipboard.writeText(text).then(() =>
+      notify(kind === "agent" ? "Copied for agent" : "Copied .arch source"),
+    );
   };
 
   return (
-    <div className="flex h-screen flex-col">
-      <header className="flex items-center gap-3 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-[#12151c] px-4 py-2.5">
+    <div className="flex h-screen flex-col bg-bg">
+      <header className="flex h-10 shrink-0 items-center gap-1 border-b border-line bg-surface px-2">
         <Link
           href="/"
-          className="flex items-center gap-2 hover:opacity-80"
+          className="flex h-7 items-center gap-2 rounded-md px-1.5 transition-colors hover:bg-surface-2"
+          title="All documents"
         >
-          <img src="/icon.svg" alt="" className="h-5 w-5 rounded-md" />
-          <span className="font-display text-[19px] leading-none">Archer</span>
+          <img src="/icon.svg" alt="" className="h-5 w-5 rounded-[5px]" />
+          <span className="font-display text-[17px] leading-none">Archer</span>
         </Link>
-        <span className="truncate text-sm text-slate-500">{derived.doc.title}</span>
-        <span
-          className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+        <span className="mx-1 h-4 w-px bg-line" />
+        <TitleField
+          value={derived.doc.title}
+          onCommit={(title) => mutate((d) => ({ ...d, title }))}
+        />
+        <button
+          type="button"
+          onClick={() => {
+            if (!codeOpen) toggleCode();
+          }}
+          title={
             derived.valid
-              ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300"
-              : "bg-red-100 text-red-700 dark:text-red-300 dark:bg-red-950 dark:text-red-300"
-          }`}
+              ? warnings > 0
+                ? `Valid · ${warnings} warning${warnings === 1 ? "" : "s"}`
+                : "Valid — every edit is compiled back to .arch"
+              : "Show errors in the code pane"
+          }
+          className="ml-1 flex h-7 items-center rounded-md px-1 transition-colors hover:bg-surface-2"
         >
-          {derived.valid
-            ? "valid"
-            : `${errors.length} error${errors.length === 1 ? "" : "s"}`}
-        </span>
-        <div className="ml-auto flex items-center gap-2">
-          {onPersist && (
-            <span className="pr-1 text-[11px] text-slate-400">
-              {saveState === "saving"
-                ? "Saving…"
-                : saveState === "saved"
-                  ? "Saved"
-                  : ""}
+          {derived.valid ? (
+            <span className={cx("flex items-center gap-1 text-xs", warnings > 0 ? "text-warn" : "text-accent")}>
+              <Icon.CheckCircle className="h-3.5 w-3.5" />
+              {warnings > 0 && <span className="font-medium">{warnings}</span>}
             </span>
+          ) : (
+            <Chip tone="danger">
+              <Icon.Warning className="h-3 w-3" />
+              {errors.length} error{errors.length === 1 ? "" : "s"}
+            </Chip>
           )}
-          <button
-            onClick={undo}
-            disabled={!canUndo}
-            className="rounded-[4px] border border-[var(--hairline)] bg-white dark:bg-[#12151c] px-3 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 disabled:opacity-40"
-          >
-            Undo
-          </button>
-          <button
-            onClick={redo}
-            disabled={!canRedo}
-            className="rounded-[4px] border border-[var(--hairline)] bg-white dark:bg-[#12151c] px-3 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 disabled:opacity-40"
-          >
-            Redo
-          </button>
-          <button
-            onClick={relayout}
-            className="rounded-[4px] border border-[var(--hairline)] bg-white dark:bg-[#12151c] px-3.5 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100"
-          >
-            Auto-layout
-          </button>
-          <span className="h-5 w-px bg-slate-200" />
-          <button
-            onClick={() => copy("code")}
-            className="rounded-[4px] border border-[var(--hairline)] bg-white dark:bg-[#12151c] px-3.5 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100"
-          >
-            {copied === "code" ? "Copied!" : "Copy code"}
-          </button>
-          <button
-            onClick={() => copy("agent")}
-            disabled={!derived.valid}
-            title={
-              derived.valid
-                ? "Copy the architecture as an agent-ready spec (layout stripped, guide prepended)"
-                : "Fix validation errors before exporting for an agent"
-            }
-            className="rounded-[4px] bg-[#08090a] px-4 py-1.5 text-xs font-semibold text-white hover:opacity-85 disabled:opacity-40 dark:bg-[#f3f4f6] dark:text-[#08090a]"
-          >
-            {copied === "agent" ? "Copied!" : "Copy for agent"}
-          </button>
+        </button>
+
+        <div className="ml-auto flex items-center gap-1.5">
+          {toast ? (
+            <span className="pr-2 text-xs text-accent">{toast}</span>
+          ) : onPersist && saveState !== "idle" ? (
+            <span className="pr-2 text-xs text-ink-3">
+              {saveState === "saving" ? "Saving…" : "Saved"}
+            </span>
+          ) : null}
+          <IconButton label="Undo (⌘Z)" onClick={undo} disabled={!canUndo}>
+            <Icon.Undo />
+          </IconButton>
+          <IconButton label="Redo (⇧⌘Z)" onClick={redo} disabled={!canRedo}>
+            <Icon.Redo />
+          </IconButton>
+          <IconButton label="Auto-layout" onClick={relayout}>
+            <Icon.Layout />
+          </IconButton>
+          <IconButton label="Add component (⌘K)" onClick={() => setPaletteOpen(true)}>
+            <Icon.Plus />
+          </IconButton>
+          <span className="mx-1.5 h-4 w-px bg-line" />
+          <IconButton label={codeOpen ? "Hide code" : "Show code"} onClick={toggleCode} active={codeOpen}>
+            <Icon.Code />
+          </IconButton>
+          <Menu
+            width={260}
+            items={[
+              {
+                label: "Copy for agent",
+                hint: derived.valid
+                  ? "Layout stripped, language guide prepended"
+                  : "Fix validation errors first",
+                icon: <Icon.Sparkle />,
+                disabled: !derived.valid,
+                onSelect: () => copy("agent"),
+              },
+              {
+                label: "Copy .arch source",
+                hint: "Exactly what the code pane shows",
+                icon: <Icon.Copy />,
+                onSelect: () => copy("code"),
+              },
+              "separator",
+              {
+                label: "Download PNG",
+                hint: "Current view, theme colors",
+                icon: <Icon.Download />,
+                onSelect: () => exportRef.current?.(),
+              },
+            ]}
+            trigger={({ open, toggle }) => (
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={toggle}
+                aria-expanded={open}
+                className="ml-1 pr-2"
+              >
+                Export
+                <Icon.ChevronDown className="h-3.5 w-3.5 opacity-70" />
+              </Button>
+            )}
+          />
           <a
             href="/language"
             target="_blank"
-            className="pl-1 text-xs font-medium text-slate-400 hover:text-[#0d9373]"
+            rel="noreferrer"
+            title="Language reference"
+            className="ml-0.5 inline-flex h-7 w-7 items-center justify-center rounded-md text-ink-3 transition-colors hover:bg-surface-2 hover:text-ink [&>svg]:h-4 [&>svg]:w-4"
           >
-            Docs ↗
+            <Icon.External />
           </a>
         </div>
       </header>
@@ -287,37 +382,45 @@ export function Editor({
           source={source}
           onChange={setSource}
           diagnostics={derived.diagnostics}
+          doc={derived.doc}
           open={codeOpen}
           onToggle={toggleCode}
+          selectedPath={selectedPath}
+          onSelectPath={(path) =>
+            setSelection(path === null ? null : { kind: "component", path })
+          }
         />
-        <main className="flex min-w-0 flex-1 flex-col">
+        <main className="relative flex min-w-0 flex-1 flex-col">
           {liveFocus.length > 0 && (
-            <nav className="flex items-center gap-1 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-[#12151c] px-3 py-1.5 text-[12px]">
+            <nav className="flex h-8 shrink-0 items-center gap-0.5 border-b border-line bg-surface px-2 text-sm">
               <button
+                type="button"
                 onClick={() => setFocus([])}
-                className="rounded px-1.5 py-0.5 font-medium text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
+                className="rounded-sm px-1.5 py-0.5 text-ink-2 transition-colors hover:bg-surface-2 hover:text-ink"
               >
                 {derived.doc.title}
               </button>
               {liveFocus.map((seg, i) => (
-                <span key={i} className="flex items-center gap-1">
-                  <span className="text-slate-300">/</span>
+                <span key={i} className="flex items-center gap-0.5">
+                  <Icon.ChevronRight className="h-3 w-3 text-ink-3" />
                   <button
+                    type="button"
                     onClick={() => setFocus(liveFocus.slice(0, i + 1))}
-                    className={`rounded px-1.5 py-0.5 font-medium hover:bg-slate-100 dark:hover:bg-slate-800 ${
-                      i === liveFocus.length - 1 ? "text-slate-800 dark:text-slate-200" : "text-slate-500"
-                    }`}
+                    className={cx(
+                      "rounded-sm px-1.5 py-0.5 transition-colors hover:bg-surface-2",
+                      i === liveFocus.length - 1 ? "font-medium text-ink" : "text-ink-2 hover:text-ink",
+                    )}
                   >
                     {seg}
                   </button>
                 </span>
               ))}
-              <span className="ml-auto text-[11px] text-slate-400">
-                esc to go up · double-click a container to drill in
+              <span className="ml-auto flex items-center gap-1.5 text-xs text-ink-3">
+                <Kbd>esc</Kbd> up a level
               </span>
             </nav>
           )}
-          <div className="min-h-0 flex-1" style={{ background: "var(--ground)" }}>
+          <div className="min-h-0 flex-1 bg-ground">
             <ArchCanvas
               key={liveFocus.join(".")}
               nodes={flow.nodes}
@@ -325,6 +428,8 @@ export function Editor({
               title={derived.doc.title}
               callbacks={callbacks}
               isDark={isDark}
+              selectedPath={selectedPath}
+              exportRef={exportRef}
             />
           </div>
         </main>
@@ -333,8 +438,16 @@ export function Editor({
           selection={liveSelection}
           mutate={mutate}
           onSelect={setSelection}
+          library={library}
         />
       </div>
+
+      <CommandPalette
+        open={paletteOpen}
+        onClose={() => setPaletteOpen(false)}
+        onAdd={addFromPalette}
+        library={library}
+      />
     </div>
   );
 }

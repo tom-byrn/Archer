@@ -1,11 +1,10 @@
 "use client";
 
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useMemo, useState, type MutableRefObject } from "react";
 import {
   Background,
   BackgroundVariant,
   Controls,
-  Panel,
   ReactFlow,
   ReactFlowProvider,
   getNodesBounds,
@@ -18,9 +17,10 @@ import {
   type OnConnect,
 } from "@xyflow/react";
 import { toPng } from "html-to-image";
-import { CELL, type ArchNode } from "@/lib/toFlow";
+import { CELL, type ArchEdge, type ArchNode } from "@/lib/toFlow";
 import { DND_MIME } from "./Palette";
-import { nodeTypes } from "./nodes";
+import { edgeTypes, nodeTypes } from "./nodes";
+import "./canvas.css";
 
 export interface DragEndInfo {
   topLeft: { x: number; y: number };
@@ -40,65 +40,130 @@ export interface CanvasCallbacks {
   onDropType: (tag: string | undefined, flowPos: { x: number; y: number }) => void;
 }
 
-function ExportButton({ title }: { title: string }) {
-  const isDark = window.matchMedia?.("(prefers-color-scheme: dark)").matches ?? false;
-  const { getNodes } = useReactFlow();
-  const onExport = useCallback(() => {
-    const bounds = getNodesBounds(getNodes());
-    const width = Math.min(2400, Math.max(800, Math.ceil(bounds.width) + 160));
-    const height = Math.min(1800, Math.max(600, Math.ceil(bounds.height) + 160));
-    const viewport = getViewportForBounds(bounds, width, height, 0.2, 2, 0.08);
-    const el = document.querySelector<HTMLElement>(".react-flow__viewport");
-    if (!el) return;
-    void toPng(el, {
-      backgroundColor: isDark ? "#0d0f13" : "#f9f6f3",
-      width,
-      height,
-      style: {
-        width: `${width}px`,
-        height: `${height}px`,
-        transform: `translate(${viewport.x}px, ${viewport.y}px) scale(${viewport.zoom})`,
-      },
-    }).then((dataUrl) => {
-      const a = document.createElement("a");
-      a.download = `${title.replace(/[^a-z0-9-_]+/gi, "_").toLowerCase() || "archer"}.png`;
-      a.href = dataUrl;
-      a.click();
-    });
-  }, [getNodes, title, isDark]);
-
-  return (
-    <button
-      onClick={onExport}
-      className="rounded-[4px] border border-[var(--hairline)] bg-white dark:bg-[#12151c] px-3.5 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100"
-    >
-      Export PNG
-    </button>
-  );
+export interface ArchCanvasProps {
+  nodes: ArchNode[];
+  edges: ArchEdge[];
+  title: string;
+  callbacks: CanvasCallbacks;
+  isDark?: boolean;
+  /** Highlight this node as selected (in addition to React Flow's own selection). */
+  selectedPath?: string | null;
+  /** Receives a function that downloads the canvas as a PNG. */
+  exportRef?: MutableRefObject<(() => void) | null>;
 }
+
+type Hover = { kind: "node"; id: string } | { kind: "edge"; id: string } | null;
+
+const joinCls = (...parts: Array<string | undefined | false>) =>
+  parts.filter(Boolean).join(" ") || undefined;
 
 function CanvasInner({
   nodes: derivedNodes,
   edges: derivedEdges,
   title,
   callbacks,
-  isDark,
-}: {
-  nodes: ArchNode[];
-  edges: Edge[];
-  title: string;
-  callbacks: CanvasCallbacks;
-  isDark?: boolean;
-}) {
-  const [nodes, setNodes, onNodesChange] = useNodesState(derivedNodes);
-  const [edges, setEdges, onEdgesChange] = useEdgesState(derivedEdges);
-  const { screenToFlowPosition } = useReactFlow();
+  selectedPath,
+  exportRef,
+}: ArchCanvasProps) {
+  const [nodes, setNodes, onNodesChange] = useNodesState<ArchNode>(derivedNodes);
+  const [edges, setEdges, onEdgesChange] = useEdgesState<ArchEdge>(derivedEdges);
+  const { screenToFlowPosition, getNodes } = useReactFlow();
+  const [hover, setHover] = useState<Hover>(null);
+  const [busy, setBusy] = useState(false); // dragging or connecting
 
   useEffect(() => setNodes(derivedNodes), [derivedNodes, setNodes]);
   useEffect(() => setEdges(derivedEdges), [derivedEdges, setEdges]);
 
+  // PNG export, exposed to the chrome via exportRef.
+  useEffect(() => {
+    if (!exportRef) return;
+    exportRef.current = () => {
+      const bounds = getNodesBounds(getNodes());
+      const width = Math.min(2400, Math.max(800, Math.ceil(bounds.width) + 160));
+      const height = Math.min(1800, Math.max(600, Math.ceil(bounds.height) + 160));
+      const viewport = getViewportForBounds(bounds, width, height, 0.2, 2, 0.08);
+      const el = document.querySelector<HTMLElement>(".react-flow__viewport");
+      if (!el) return;
+      const ground =
+        getComputedStyle(document.documentElement).getPropertyValue("--ground").trim() ||
+        "#f7f5f1";
+      void toPng(el, {
+        backgroundColor: ground,
+        width,
+        height,
+        style: {
+          width: `${width}px`,
+          height: `${height}px`,
+          transform: `translate(${viewport.x}px, ${viewport.y}px) scale(${viewport.zoom})`,
+        },
+      }).then((dataUrl) => {
+        const a = document.createElement("a");
+        a.download = `${title.replace(/[^a-z0-9-_]+/gi, "_").toLowerCase() || "archer"}.png`;
+        a.href = dataUrl;
+        a.click();
+      });
+    };
+    return () => {
+      exportRef.current = null;
+    };
+  }, [exportRef, getNodes, title]);
+
+  // Hover dimming: everything not connected to the hovered node/edge fades.
+  const lit = useMemo(() => {
+    if (hover === null || busy) return null;
+    const litNodes = new Set<string>();
+    const litEdges = new Set<string>();
+    if (hover.kind === "node") {
+      litNodes.add(hover.id);
+      for (const e of edges) {
+        if (e.source === hover.id || e.target === hover.id) {
+          litEdges.add(e.id);
+          litNodes.add(e.source);
+          litNodes.add(e.target);
+        }
+      }
+    } else {
+      const e = edges.find((x) => x.id === hover.id);
+      if (!e) return null;
+      litEdges.add(e.id);
+      litNodes.add(e.source);
+      litNodes.add(e.target);
+    }
+    // Keep ancestors (planes) of lit nodes visible so context isn't lost.
+    const byId = new Map(nodes.map((n) => [n.id, n]));
+    for (const id of [...litNodes]) {
+      let p = byId.get(id)?.parentId;
+      while (p) {
+        litNodes.add(p);
+        p = byId.get(p)?.parentId;
+      }
+    }
+    return { nodes: litNodes, edges: litEdges };
+  }, [hover, busy, nodes, edges]);
+
+  const styledNodes = useMemo(
+    () =>
+      nodes.map((n) => ({
+        ...n,
+        className: joinCls(
+          lit !== null && !lit.nodes.has(n.id) && "dim",
+          selectedPath === n.id && "arch-selected",
+        ),
+      })),
+    [nodes, lit, selectedPath],
+  );
+  const styledEdges = useMemo(
+    () =>
+      edges.map((e) => ({
+        ...e,
+        className: joinCls(lit !== null && !lit.edges.has(e.id) && "dim"),
+      })),
+    [edges, lit],
+  );
+
   const onNodeDragStop = useCallback(
     (_e: unknown, node: Node) => {
+      setBusy(false);
       // Absolute position within the current view = position + ancestor chain.
       const byId = new Map(nodes.map((n) => [n.id, n]));
       let x = node.position.x;
@@ -155,15 +220,23 @@ function CanvasInner({
 
   return (
     <ReactFlow
-      nodes={nodes}
-      edges={edges}
+      nodes={styledNodes}
+      edges={styledEdges}
       nodeTypes={nodeTypes}
+      edgeTypes={edgeTypes}
       onNodesChange={onNodesChange}
       onEdgesChange={onEdgesChange}
+      onNodeDragStart={() => setBusy(true)}
       onNodeDragStop={onNodeDragStop}
+      onConnectStart={() => setBusy(true)}
+      onConnectEnd={() => setBusy(false)}
       onConnect={onConnect}
       onNodesDelete={onNodesDelete}
       onEdgesDelete={onEdgesDelete}
+      onNodeMouseEnter={(_e, n) => setHover({ kind: "node", id: n.id })}
+      onNodeMouseLeave={() => setHover(null)}
+      onEdgeMouseEnter={(_e, edge) => setHover({ kind: "edge", id: edge.id })}
+      onEdgeMouseLeave={() => setHover(null)}
       onNodeClick={(_e, n) => callbacks.onSelectNode(n.id)}
       onNodeDoubleClick={(_e, n) => callbacks.onDrillIn(n.id)}
       onEdgeClick={(_e, edge) => {
@@ -177,30 +250,22 @@ function CanvasInner({
         e.dataTransfer.dropEffect = "copy";
       }}
       fitView
-      fitViewOptions={{ padding: 0.15, maxZoom: 1.2 }}
+      fitViewOptions={{ padding: 0.2, maxZoom: 1 }}
       minZoom={0.15}
       snapToGrid
       snapGrid={[CELL, CELL]}
       connectionRadius={36}
       deleteKeyCode={["Backspace", "Delete"]}
       selectionKeyCode={null}
+      proOptions={{ hideAttribution: false }}
     >
-      <Background variant={BackgroundVariant.Dots} gap={CELL} size={1.5} color={isDark ? "#2b3444" : "#d9d2c9"} />
-      <Controls showInteractive={false} />
-      <Panel position="top-right">
-        <ExportButton title={title} />
-      </Panel>
+      <Background variant={BackgroundVariant.Dots} gap={CELL} size={1.5} color="var(--dot)" />
+      <Controls showInteractive={false} position="bottom-left" />
     </ReactFlow>
   );
 }
 
-export function ArchCanvas(props: {
-  nodes: ArchNode[];
-  edges: Edge[];
-  title: string;
-  callbacks: CanvasCallbacks;
-  isDark?: boolean;
-}) {
+export function ArchCanvas(props: ArchCanvasProps) {
   return (
     <ReactFlowProvider>
       <CanvasInner {...props} />

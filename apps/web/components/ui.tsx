@@ -1,0 +1,513 @@
+"use client";
+
+/**
+ * Shared UI primitives. Every control in the app is built from these so that
+ * borders, radii, sizes and hover/focus states stay identical everywhere.
+ * Dependency-free; styled only with the tokens in globals.css.
+ */
+
+import {
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type ButtonHTMLAttributes,
+  type InputHTMLAttributes,
+  type ReactNode,
+  type TextareaHTMLAttributes,
+} from "react";
+
+export const cx = (...parts: Array<string | false | null | undefined>): string =>
+  parts.filter(Boolean).join(" ");
+
+/* ------------------------------------------------------------------ Buttons */
+
+type Variant = "primary" | "secondary" | "ghost" | "danger";
+type Size = "sm" | "md";
+
+const VARIANT: Record<Variant, string> = {
+  primary:
+    "bg-ink text-bg hover:opacity-90 border border-transparent shadow-sm",
+  secondary:
+    "bg-surface text-ink border border-line hover:bg-surface-2 hover:border-line-2 shadow-sm",
+  ghost: "bg-transparent text-ink-2 border border-transparent hover:bg-surface-2 hover:text-ink",
+  danger:
+    "bg-transparent text-danger border border-transparent hover:bg-danger-soft",
+};
+const SIZE: Record<Size, string> = {
+  sm: "h-7 px-2.5 text-sm gap-1.5",
+  md: "h-8 px-3 text-sm gap-2",
+};
+
+export function Button({
+  variant = "secondary",
+  size = "md",
+  icon,
+  className,
+  children,
+  ...rest
+}: ButtonHTMLAttributes<HTMLButtonElement> & {
+  variant?: Variant;
+  size?: Size;
+  icon?: ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      {...rest}
+      className={cx(
+        "inline-flex select-none items-center justify-center whitespace-nowrap rounded-md font-medium transition-colors duration-100 disabled:cursor-not-allowed disabled:opacity-40",
+        VARIANT[variant],
+        SIZE[size],
+        className,
+      )}
+    >
+      {icon && <span className="-ml-0.5 flex shrink-0 items-center [&>svg]:h-3.5 [&>svg]:w-3.5">{icon}</span>}
+      {children}
+    </button>
+  );
+}
+
+/** Square icon-only button. Always pass `label` (used as tooltip + a11y name). */
+export function IconButton({
+  label,
+  size = "md",
+  active,
+  className,
+  children,
+  ...rest
+}: ButtonHTMLAttributes<HTMLButtonElement> & {
+  label: string;
+  size?: Size;
+  active?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      title={label}
+      {...rest}
+      className={cx(
+        "inline-flex shrink-0 items-center justify-center rounded-md text-ink-2 transition-colors duration-100 hover:bg-surface-2 hover:text-ink disabled:cursor-not-allowed disabled:opacity-40",
+        size === "sm" ? "h-6 w-6 [&>svg]:h-3.5 [&>svg]:w-3.5" : "h-8 w-8 [&>svg]:h-[18px] [&>svg]:w-[18px]",
+        active && "bg-surface-3 text-ink",
+        className,
+      )}
+    >
+      {children}
+    </button>
+  );
+}
+
+/* -------------------------------------------------------------------- Inputs */
+
+export const inputCls =
+  "w-full rounded-md border border-line bg-surface px-2.5 text-base text-ink placeholder:text-ink-3 transition-colors duration-100 hover:border-line-2 focus:border-ink-3 focus:outline-none focus:shadow-none disabled:opacity-50";
+
+export function Input({
+  className,
+  mono,
+  invalid,
+  ...rest
+}: InputHTMLAttributes<HTMLInputElement> & { mono?: boolean; invalid?: boolean }) {
+  return (
+    <input
+      spellCheck={false}
+      {...rest}
+      className={cx(inputCls, "h-7", mono && "mono text-sm", invalid && "!border-danger", className)}
+    />
+  );
+}
+
+export function TextArea({
+  className,
+  mono,
+  invalid,
+  ...rest
+}: TextareaHTMLAttributes<HTMLTextAreaElement> & { mono?: boolean; invalid?: boolean }) {
+  return (
+    <textarea
+      spellCheck={false}
+      {...rest}
+      className={cx(inputCls, "resize-y py-1.5 leading-snug", mono && "mono text-sm", invalid && "!border-danger", className)}
+    />
+  );
+}
+
+/** Two-column property row: label on the left, control on the right. */
+export function PropertyRow({
+  label,
+  hint,
+  align = "center",
+  children,
+}: {
+  label: string;
+  hint?: string;
+  align?: "center" | "start";
+  children: ReactNode;
+}) {
+  return (
+    <div className={cx("grid grid-cols-[88px_1fr] gap-x-3 py-1", align === "start" ? "items-start" : "items-center")}>
+      <div className={cx("min-w-0 truncate text-sm text-ink-2", align === "start" && "pt-1.5")} title={hint}>
+        {label}
+      </div>
+      <div className="min-w-0">{children}</div>
+    </div>
+  );
+}
+
+/** Panel section with an eyebrow header and optional trailing action. */
+export function Section({
+  title,
+  action,
+  children,
+  className,
+}: {
+  title: string;
+  action?: ReactNode;
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <section className={cx("border-b border-line px-3 py-2.5 last:border-b-0", className)}>
+      <div className="flex h-6 items-center">
+        <span className="eyebrow">{title}</span>
+        {action && <span className="ml-auto">{action}</span>}
+      </div>
+      <div className="pt-1">{children}</div>
+    </section>
+  );
+}
+
+/** Segmented control. */
+export function Segmented<T extends string>({
+  value,
+  options,
+  onChange,
+  mono,
+}: {
+  value: T;
+  options: { value: T; label: string; title?: string }[];
+  onChange: (v: T) => void;
+  mono?: boolean;
+}) {
+  return (
+    <div className="inline-flex h-7 rounded-md border border-line bg-surface-2 p-0.5">
+      {options.map((o) => (
+        <button
+          key={o.value}
+          type="button"
+          title={o.title}
+          onClick={() => onChange(o.value)}
+          className={cx(
+            "rounded-[4px] px-2.5 text-sm font-medium transition-colors duration-100",
+            mono && "mono",
+            o.value === value
+              ? "bg-surface text-ink shadow-sm"
+              : "text-ink-2 hover:text-ink",
+          )}
+        >
+          {o.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------- Status chips */
+
+export function Chip({
+  tone = "neutral",
+  className,
+  children,
+}: {
+  tone?: "neutral" | "accent" | "danger" | "warn";
+  className?: string;
+  children: ReactNode;
+}) {
+  const tones = {
+    neutral: "bg-surface-2 text-ink-2",
+    accent: "bg-accent-soft text-accent",
+    danger: "bg-danger-soft text-danger",
+    warn: "bg-warn-soft text-warn",
+  };
+  return (
+    <span
+      className={cx(
+        "inline-flex h-5 items-center gap-1 rounded-sm px-1.5 text-xs font-semibold",
+        tones[tone],
+        className,
+      )}
+    >
+      {children}
+    </span>
+  );
+}
+
+export function Kbd({ children }: { children: ReactNode }) {
+  return (
+    <kbd className="inline-flex h-5 min-w-5 items-center justify-center rounded-sm border border-line bg-surface px-1.5 font-sans text-[11px] font-medium leading-none tracking-wide text-ink-2 shadow-[inset_0_-1px_0_var(--line)]">
+      {children}
+    </kbd>
+  );
+}
+
+/* --------------------------------------------------------------------- Menu */
+
+export interface MenuItem {
+  label: string;
+  hint?: string;
+  shortcut?: string;
+  icon?: ReactNode;
+  danger?: boolean;
+  disabled?: boolean;
+  onSelect: () => void;
+}
+
+/**
+ * Dropdown menu anchored to its trigger. `trigger` receives the open state and
+ * a toggle handler. Closes on outside click, Escape, or selection.
+ */
+export function Menu({
+  trigger,
+  items,
+  align = "end",
+  width = 220,
+}: {
+  trigger: (props: { open: boolean; toggle: () => void }) => ReactNode;
+  items: (MenuItem | "separator")[];
+  align?: "start" | "end";
+  width?: number;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  return (
+    <div ref={ref} className="relative">
+      {trigger({ open, toggle: () => setOpen((o) => !o) })}
+      {open && (
+        <div
+          role="menu"
+          style={{ width }}
+          className={cx(
+            "absolute top-[calc(100%+4px)] z-50 rounded-lg border border-line bg-surface p-1 shadow-md",
+            align === "end" ? "right-0" : "left-0",
+          )}
+        >
+          {items.map((item, i) =>
+            item === "separator" ? (
+              <div key={i} className="my-1 h-px bg-line" />
+            ) : (
+              <button
+                key={i}
+                type="button"
+                role="menuitem"
+                disabled={item.disabled}
+                onClick={() => {
+                  setOpen(false);
+                  item.onSelect();
+                }}
+                className={cx(
+                  "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors duration-75 disabled:opacity-40",
+                  item.danger
+                    ? "text-danger hover:bg-danger-soft"
+                    : "text-ink hover:bg-surface-2",
+                )}
+              >
+                {item.icon && (
+                  <span className="flex w-4 shrink-0 items-center justify-center text-ink-2 [&>svg]:h-3.5 [&>svg]:w-3.5">
+                    {item.icon}
+                  </span>
+                )}
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate">{item.label}</span>
+                  {item.hint && (
+                    <span className="block truncate text-xs text-ink-3">{item.hint}</span>
+                  )}
+                </span>
+                {item.shortcut && <Kbd>{item.shortcut}</Kbd>}
+              </button>
+            ),
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------- Dialog */
+
+export function Dialog({
+  open,
+  onClose,
+  title,
+  width = 480,
+  children,
+}: {
+  open: boolean;
+  onClose: () => void;
+  title: string;
+  width?: number;
+  children: ReactNode;
+}) {
+  const id = useId();
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [open, onClose]);
+  if (!open) return null;
+  return (
+    <div
+      className="fixed inset-0 z-[100] grid place-items-center bg-[rgba(10,10,8,0.45)] p-4 backdrop-blur-[2px]"
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <div
+        role="dialog"
+        aria-modal
+        aria-labelledby={id}
+        style={{ width, maxWidth: "100%" }}
+        className="rounded-xl border border-line bg-surface shadow-md"
+      >
+        <div className="flex items-center border-b border-line px-4 py-3">
+          <h2 id={id} className="text-lg font-semibold">
+            {title}
+          </h2>
+          <IconButton label="Close" onClick={onClose} className="ml-auto">
+            <Icon.Close />
+          </IconButton>
+        </div>
+        <div className="px-4 py-3">{children}</div>
+      </div>
+    </div>
+  );
+}
+
+/* -------------------------------------------------------------------- Icons */
+/* 16px, 1.5px stroke, currentColor. Keep this set small and consistent. */
+
+const I = ({ children, ...rest }: { children: ReactNode; className?: string }) => (
+  <svg
+    viewBox="0 0 16 16"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.5"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden
+    {...rest}
+  >
+    {children}
+  </svg>
+);
+
+export const Icon = {
+  Close: (p: { className?: string }) => (
+    <I {...p}><path d="M4 4l8 8M12 4l-8 8" /></I>
+  ),
+  Plus: (p: { className?: string }) => (
+    <I {...p}><path d="M8 3v10M3 8h10" /></I>
+  ),
+  Check: (p: { className?: string }) => (
+    <I {...p}><path d="M3 8.5l3 3 7-7" /></I>
+  ),
+  ChevronDown: (p: { className?: string }) => (
+    <I {...p}><path d="M4 6l4 4 4-4" /></I>
+  ),
+  ChevronRight: (p: { className?: string }) => (
+    <I {...p}><path d="M6 4l4 4-4 4" /></I>
+  ),
+  ChevronLeft: (p: { className?: string }) => (
+    <I {...p}><path d="M10 4L6 8l4 4" /></I>
+  ),
+  Undo: (p: { className?: string }) => (
+    <I {...p}><path d="M6 4L3 7l3 3" /><path d="M3 7h6.5a3.5 3.5 0 010 7H8" /></I>
+  ),
+  Redo: (p: { className?: string }) => (
+    <I {...p}><path d="M10 4l3 3-3 3" /><path d="M13 7H6.5a3.5 3.5 0 000 7H8" /></I>
+  ),
+  Layout: (p: { className?: string }) => (
+    <I {...p}><rect x="2" y="2.5" width="5" height="5" rx="1" /><rect x="9" y="2.5" width="5" height="5" rx="1" /><rect x="2" y="9.5" width="5" height="4" rx="1" /><rect x="9" y="9.5" width="5" height="4" rx="1" /></I>
+  ),
+  Code: (p: { className?: string }) => (
+    <I {...p}><path d="M5.5 4.5L2 8l3.5 3.5M10.5 4.5L14 8l-3.5 3.5" /></I>
+  ),
+  Copy: (p: { className?: string }) => (
+    <I {...p}><rect x="5.5" y="5.5" width="8" height="8" rx="1.5" /><path d="M10.5 5.5v-2a1 1 0 00-1-1h-6a1 1 0 00-1 1v6a1 1 0 001 1h2" /></I>
+  ),
+  Download: (p: { className?: string }) => (
+    <I {...p}><path d="M8 2.5v8M4.5 7L8 10.5 11.5 7" /><path d="M2.5 12.5v1h11v-1" /></I>
+  ),
+  Sparkle: (p: { className?: string }) => (
+    <I {...p}><path d="M8 2l1.4 3.6L13 7l-3.6 1.4L8 12l-1.4-3.6L3 7l3.6-1.4z" /></I>
+  ),
+  Search: (p: { className?: string }) => (
+    <I {...p}><circle cx="7" cy="7" r="4" /><path d="M10 10l3.5 3.5" /></I>
+  ),
+  More: (p: { className?: string }) => (
+    <I {...p}><circle cx="3.5" cy="8" r="0.9" fill="currentColor" stroke="none" /><circle cx="8" cy="8" r="0.9" fill="currentColor" stroke="none" /><circle cx="12.5" cy="8" r="0.9" fill="currentColor" stroke="none" /></I>
+  ),
+  Trash: (p: { className?: string }) => (
+    <I {...p}><path d="M3 4.5h10M6.5 4.5v-1a1 1 0 011-1h1a1 1 0 011 1v1" /><path d="M4.5 4.5l.6 8a1 1 0 001 .9h3.8a1 1 0 001-.9l.6-8" /></I>
+  ),
+  Warning: (p: { className?: string }) => (
+    <I {...p}><path d="M8 2.5l6 11H2z" /><path d="M8 6.5v3M8 11.5v.01" /></I>
+  ),
+  CheckCircle: (p: { className?: string }) => (
+    <I {...p}><circle cx="8" cy="8" r="5.75" /><path d="M5.5 8.2l1.8 1.8 3.4-3.6" /></I>
+  ),
+  External: (p: { className?: string }) => (
+    <I {...p}><path d="M7 3.5H4a1 1 0 00-1 1V12a1 1 0 001 1h7.5a1 1 0 001-1V9" /><path d="M9.5 2.5H13.5V6.5M13.5 2.5L7.5 8.5" /></I>
+  ),
+  Plug: (p: { className?: string }) => (
+    <I {...p}><path d="M5.5 2v3M10.5 2v3M4 5h8v2.5a4 4 0 01-8 0z" /><path d="M8 11.5V14" /></I>
+  ),
+  Duplicate: (p: { className?: string }) => (
+    <I {...p}><rect x="2.5" y="2.5" width="8" height="8" rx="1.5" /><path d="M13.5 6v6a1.5 1.5 0 01-1.5 1.5H6" /></I>
+  ),
+  Pencil: (p: { className?: string }) => (
+    <I {...p}><path d="M10.5 2.5l3 3-8 8H2.5v-3z" /><path d="M9 4l3 3" /></I>
+  ),
+  Command: (p: { className?: string }) => (
+    <I {...p}><path d="M6 6H4.5a1.5 1.5 0 110-3A1.5 1.5 0 016 4.5V6zm0 4H4.5a1.5 1.5 0 100 3A1.5 1.5 0 006 11.5V10zm4-4h1.5a1.5 1.5 0 100-3A1.5 1.5 0 0010 4.5V6zm0 4h1.5a1.5 1.5 0 110 3 1.5 1.5 0 01-1.5-1.5V10zM6 6h4v4H6z" /></I>
+  ),
+};
+
+/** Relative time, e.g. "just now", "3 min ago", "2 days ago", "Mar 4". */
+export function relativeTime(ts: number, now = Date.now()): string {
+  const diff = Math.max(0, now - ts);
+  const min = Math.round(diff / 60_000);
+  if (min < 1) return "just now";
+  if (min < 60) return `${min} min ago`;
+  const hr = Math.round(min / 60);
+  if (hr < 24) return `${hr} hour${hr === 1 ? "" : "s"} ago`;
+  const day = Math.round(hr / 24);
+  if (day < 7) return `${day} day${day === 1 ? "" : "s"} ago`;
+  const d = new Date(ts);
+  const sameYear = d.getFullYear() === new Date(now).getFullYear();
+  return d.toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    ...(sameYear ? {} : { year: "numeric" }),
+  });
+}

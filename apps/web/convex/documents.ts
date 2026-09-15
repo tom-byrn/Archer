@@ -10,7 +10,7 @@ export const list = query({
       .collect();
     return docs
       .sort((a, b) => b.updatedAt - a.updatedAt)
-      .map(({ _id, title, updatedAt }) => ({ _id, title, updatedAt }));
+      .map(({ _id, title, updatedAt, source }) => ({ _id, title, updatedAt, source }));
   },
 });
 

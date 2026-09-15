@@ -1,0 +1,144 @@
+/* React Flow chrome, token-driven. Imported from ArchCanvas.tsx. */
+
+/* ---- Nodes ---- */
+.arch-node {
+  transition:
+    border-color 120ms ease,
+    box-shadow 120ms ease,
+    opacity 120ms ease;
+}
+.arch-node-component {
+  border-color: var(--line-2);
+}
+.arch-plane-untyped {
+  background-color: color-mix(in srgb, var(--surface-2) 50%, transparent);
+}
+.react-flow__node:hover .arch-node-component {
+  border-color: color-mix(in srgb, var(--edge-strong) 40%, transparent);
+}
+.react-flow__node.selected .arch-node,
+.react-flow__node.arch-selected .arch-node {
+  box-shadow:
+    0 0 0 2px var(--ground),
+    0 0 0 4px var(--accent);
+}
+.react-flow__node.dragging .arch-node {
+  box-shadow: var(--shadow-md);
+}
+
+/* ---- Edges ---- */
+.react-flow__edge .arch-edge-path,
+.react-flow__edge-path {
+  stroke: var(--edge);
+  stroke-width: 1.5;
+  fill: none;
+  transition: stroke 120ms ease;
+}
+.arch-edge-arrow {
+  fill: var(--edge);
+  stroke: none;
+  transition: fill 120ms ease;
+}
+.react-flow__edge:hover .arch-edge-path {
+  stroke: var(--edge-strong);
+}
+.react-flow__edge:hover .arch-edge-arrow {
+  fill: var(--edge-strong);
+}
+.react-flow__edge.selected .arch-edge-path {
+  stroke: var(--accent);
+  stroke-width: 2;
+}
+.react-flow__edge.selected .arch-edge-arrow {
+  fill: var(--accent);
+}
+.arch-edge-chip {
+  transition:
+    border-color 120ms ease,
+    opacity 120ms ease;
+}
+.react-flow__connection-path {
+  stroke: var(--accent);
+  stroke-width: 1.5;
+  stroke-dasharray: 4 3;
+}
+
+/* ---- Hover dimming ---- */
+.react-flow__node.dim,
+.react-flow__edge.dim,
+.react-flow__edge.dim .arch-edge-chip {
+  opacity: 0.3;
+}
+.react-flow__node,
+.react-flow__edge {
+  transition: opacity 120ms ease;
+}
+
+/* ---- Handles ---- */
+.arch-handle {
+  width: 8px !important;
+  height: 8px !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  background: var(--edge) !important;
+  border: 1.5px solid var(--surface) !important;
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+.react-flow__node:hover .arch-handle,
+.react-flow__node.selected .arch-handle,
+.react-flow .connecting .arch-handle,
+.react-flow__handle.connectingto,
+.react-flow__handle.valid {
+  opacity: 1;
+}
+.react-flow__handle.connectingto,
+.react-flow__handle.valid {
+  background: var(--accent) !important;
+}
+
+/* ---- Controls ---- */
+.react-flow__controls {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+.react-flow__controls-button {
+  background: var(--surface);
+  border: none;
+  border-bottom: 1px solid var(--line);
+  color: var(--ink-2);
+  fill: var(--ink-2);
+  width: 26px;
+  height: 26px;
+}
+.react-flow__controls-button:last-child {
+  border-bottom: none;
+}
+.react-flow__controls-button:hover {
+  background: var(--surface-2);
+  color: var(--ink);
+  fill: var(--ink);
+}
+.react-flow__controls-button svg {
+  max-width: 12px;
+  max-height: 12px;
+}
+
+/* ---- Attribution ---- */
+.react-flow__attribution {
+  background: transparent;
+  opacity: 0.35;
+}
+.react-flow__attribution a {
+  color: var(--ink-3);
+}
+
+/* ---- Selection rectangle ---- */
+.react-flow__selection,
+.react-flow__nodesselection-rect {
+  background: var(--accent-soft);
+  border: 1px solid var(--accent);
+}

@@ -33,17 +33,18 @@ export default function DocumentPage({
 
   if (doc === undefined || workspaceId === null) {
     return (
-      <div className="grid h-screen place-items-center text-sm text-slate-400">
-        Loading…
+      <div className="grid h-screen place-items-center bg-bg text-sm text-ink-3">
+        <span className="animate-pulse">Loading document…</span>
       </div>
     );
   }
   if (doc === null) {
     return (
-      <div className="grid h-screen place-items-center text-sm text-slate-500">
+      <div className="grid h-screen place-items-center bg-bg text-base text-ink-2">
         <div className="text-center">
-          <p>Document not found.</p>
-          <Link href="/" className="pt-2 text-slate-800 dark:text-slate-200 underline">
+          <p className="font-display text-xl text-ink">Document not found</p>
+          <p className="pt-1 text-sm text-ink-3">It may have been deleted, or it belongs to another workspace.</p>
+          <Link href="/" className="mt-4 inline-block rounded-md border border-line bg-surface px-3 py-1.5 text-sm font-medium text-ink hover:bg-surface-2">
             Back to documents
           </Link>
         </div>

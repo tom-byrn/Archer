@@ -1,15 +1,20 @@
 import type { Metadata } from "next";
-import { Inter, Instrument_Serif } from "next/font/google";
+import { Inter, Playfair_Display } from "next/font/google";
 import "@xyflow/react/dist/style.css";
 import "./globals.css";
 import { Providers } from "@/components/Providers";
 
-const inter = Inter({ subsets: ["latin"], display: "swap" });
-const instrument = Instrument_Serif({
+const inter = Inter({
   subsets: ["latin"],
-  weight: "400",
   display: "swap",
-  variable: "--font-display",
+  variable: "--font-inter",
+});
+// One serif for the whole product: the "A" mark, the wordmark, document titles.
+const playfair = Playfair_Display({
+  subsets: ["latin"],
+  weight: ["700", "900"],
+  display: "swap",
+  variable: "--font-playfair",
 });
 
 export const metadata: Metadata = {
@@ -20,8 +25,8 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
-      <body className={`${inter.className} ${instrument.variable}`}>
+    <html lang="en" className={`${inter.variable} ${playfair.variable}`}>
+      <body>
         <Providers>{children}</Providers>
       </body>
     </html>

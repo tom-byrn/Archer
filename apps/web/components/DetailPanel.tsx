@@ -1,9 +1,11 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
   checkPayload,
+  effectiveDisplay,
   findComponent,
+  layoutMap,
   pathToString,
   removeComponent,
   removeConnection,
@@ -13,15 +15,34 @@ import {
   setConnectionMeta,
   setDisplay,
   setPayload,
-  effectiveDisplay,
-  layoutMap,
   type ArchDoc,
   type Arrow,
   type ConnectionNode,
   type PayloadFormat,
 } from "@archer/lang";
-import { CATALOG, CONNECTION_TYPES } from "@archer/catalog";
+import { lookupType } from "@archer/catalog";
+import { EditorView } from "@codemirror/view";
+import type { Extension } from "@codemirror/state";
+import { json } from "@codemirror/lang-json";
+import { yaml } from "@codemirror/lang-yaml";
+import { markdown } from "@codemirror/lang-markdown";
+import type { UserLibrary } from "@/lib/userLibrary";
+import { displayColor, useIsDark } from "@/lib/useIsDark";
+import { CodeEditor } from "./CodeMirror";
 import { Glyph } from "./nodes";
+import { TypeCombobox } from "./TypeCombobox";
+import {
+  Chip,
+  Icon,
+  IconButton,
+  Input,
+  Menu,
+  PropertyRow,
+  Section,
+  Segmented,
+  TextArea,
+  cx,
+} from "./ui";
 
 export type Selection =
   | { kind: "component"; path: string }
@@ -34,22 +55,21 @@ export const connectionKey = (c: ConnectionNode): string =>
   );
 
 const ID_RE = /^[a-z][a-z0-9_]*$/;
-const TYPE_RE = /^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)*$/;
 
-const inputCls =
-  "w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#12151c] px-2.5 py-1.5 text-[12px] outline-none focus:border-slate-400 dark:focus:border-slate-500";
-const labelCls =
-  "block pb-1 pt-3 text-[10px] font-bold uppercase tracking-wider text-slate-400";
+const FORMATS: PayloadFormat[] = ["json", "yaml", "table", "markdown"];
 
-function TextField({
-  label,
+const langFor = (f: PayloadFormat): Extension =>
+  f === "json" ? json() : f === "yaml" ? yaml() : f === "markdown" ? markdown() : [];
+
+/* ------------------------------------------------------------ Text fields */
+
+function CommitInput({
   defaultValue,
   placeholder,
   mono,
   validate,
   onCommit,
 }: {
-  label: string;
   defaultValue: string;
   placeholder?: string;
   mono?: boolean;
@@ -59,29 +79,29 @@ function TextField({
   const [error, setError] = useState<string | null>(null);
   return (
     <div>
-      <label className={labelCls}>{label}</label>
-      <input
+      <Input
         defaultValue={defaultValue}
         placeholder={placeholder}
-        spellCheck={false}
-        className={`${inputCls} ${mono ? "mono" : ""} ${error ? "!border-red-400" : ""}`}
+        mono={mono}
+        invalid={error !== null}
         onChange={(e) => setError(validate ? validate(e.target.value) : null)}
         onBlur={(e) => {
           if (e.target.value === defaultValue) return;
-          const problem = validate ? validate(e.target.value) : null;
-          if (problem) return;
+          if (validate && validate(e.target.value)) return;
           onCommit(e.target.value);
         }}
         onKeyDown={(e) => {
           if (e.key === "Enter") (e.target as HTMLInputElement).blur();
         }}
       />
-      {error && <p className="pt-1 text-[11px] text-red-600">{error}</p>}
+      {error && <p className="pt-1 text-xs text-danger">{error}</p>}
     </div>
   );
 }
 
-function PayloadEditor({
+/* --------------------------------------------------------------- Payloads */
+
+function PayloadCard({
   name,
   format,
   content,
@@ -96,53 +116,66 @@ function PayloadEditor({
 }) {
   const [draft, setDraft] = useState(content);
   const [fmt, setFmt] = useState<PayloadFormat>(format);
+  const draftRef = useRef(draft);
+  draftRef.current = draft;
+  const fmtRef = useRef(fmt);
+  fmtRef.current = fmt;
+  const committedRef = useRef({ format, content });
   const problem = useMemo(() => checkPayload(fmt, draft), [fmt, draft]);
+
+  const commit = (f: PayloadFormat, c: string) => {
+    const last = committedRef.current;
+    if (last.format === f && last.content === c) return;
+    if (checkPayload(f, c) !== null) return;
+    committedRef.current = { format: f, content: c };
+    onChange(f, c);
+  };
+
+  const extensions = useMemo<Extension>(
+    () => [
+      langFor(fmt),
+      EditorView.domEventHandlers({
+        blur: () => {
+          commit(fmtRef.current, draftRef.current);
+          return false;
+        },
+      }),
+    ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [fmt],
+  );
+
   return (
-    <div className="mt-2 rounded-xl border border-slate-200 dark:border-slate-800">
-      <div className="flex items-center gap-2 border-b border-slate-100 dark:border-slate-800 px-2.5 py-1.5">
-        <span className="mono text-[11px] font-bold text-slate-600 dark:text-slate-400">{name}</span>
-        <select
+    <div className="mt-2 overflow-hidden rounded-md border border-line first:mt-0">
+      <div className="flex h-7 items-center gap-1.5 border-b border-line bg-surface-2 pl-2.5 pr-1">
+        <span className="mono min-w-0 flex-1 truncate text-sm font-semibold">{name}</span>
+        <Segmented
+          mono
           value={fmt}
-          onChange={(e) => {
-            const f = e.target.value as PayloadFormat;
+          options={FORMATS.map((f) => ({ value: f, label: f }))}
+          onChange={(f) => {
             setFmt(f);
-            if (checkPayload(f, draft) === null) onChange(f, draft);
+            commit(f, draft);
           }}
-          className="rounded border border-slate-200 dark:border-slate-800 px-1 py-0.5 text-[11px] text-slate-600 dark:text-slate-400"
-        >
-          {(["json", "yaml", "table", "markdown"] as const).map((f) => (
-            <option key={f}>{f}</option>
-          ))}
-        </select>
-        <span
-          className={`rounded-full px-1.5 text-[10px] font-semibold ${
-            problem === null
-              ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300"
-              : "bg-red-100 text-red-700 dark:text-red-300 dark:bg-red-950 dark:text-red-300"
-          }`}
-        >
+        />
+        <Chip tone={problem === null ? "accent" : "danger"}>
           {problem === null ? "valid" : "invalid"}
-        </span>
-        <button
-          onClick={onDelete}
-          className="ml-auto text-[11px] text-slate-400 hover:text-red-600"
-          title="Delete payload"
-        >
-          delete
-        </button>
+        </Chip>
+        <IconButton label="Delete payload" size="sm" onClick={onDelete}>
+          <Icon.Trash />
+        </IconButton>
       </div>
-      <textarea
-        value={draft}
-        spellCheck={false}
-        onChange={(e) => setDraft(e.target.value)}
-        onBlur={() => {
-          if (draft !== content) onChange(fmt, draft);
-        }}
-        rows={Math.min(12, Math.max(4, draft.split("\n").length + 1))}
-        className="mono w-full resize-y rounded-b-xl p-2 text-[11.5px] leading-relaxed outline-none"
-      />
+      <div style={{ minHeight: 96, maxHeight: 280, overflow: "auto" }}>
+        <CodeEditor
+          value={draft}
+          onChange={setDraft}
+          extensions={extensions}
+          lineNumbers={false}
+          style={{ minHeight: 96 }}
+        />
+      </div>
       {problem !== null && (
-        <p className="border-t border-red-100 dark:border-red-900 bg-red-50 dark:bg-red-950 px-2.5 py-1 text-[11px] text-red-700 dark:text-red-300">
+        <p className="border-t border-line bg-danger-soft px-2.5 py-1 text-xs text-danger">
           {problem}
         </p>
       )}
@@ -150,179 +183,211 @@ function PayloadEditor({
   );
 }
 
-function ComponentDetail({
+/* ------------------------------------------------------------- Component */
+
+function ComponentInspector({
   doc,
   path,
   mutate,
   onSelect,
   onClose,
+  library,
 }: {
   doc: ArchDoc;
   path: string;
   mutate: (fn: (d: ArchDoc) => ArchDoc) => void;
   onSelect: (s: Selection) => void;
   onClose: () => void;
+  library: UserLibrary;
 }) {
+  const isDark = useIsDark();
   const segments = path.split(".");
   const node = findComponent(doc, segments);
+  const [addingPayload, setAddingPayload] = useState(false);
   const [newPayload, setNewPayload] = useState("");
   if (!node) return null;
   const entry = layoutMap(doc).get(path);
   const display = effectiveDisplay(node, entry);
+  const isContainer = node.children.length > 0;
+  const custom = library.items.find((t) => t.tag === node.type);
+  const accent = displayColor(custom?.color ?? lookupType(node.type)?.color, isDark) ?? "#64748b";
+  const payloadNameError = newPayload === "" ? null : ID_RE.test(newPayload) ? null : "snake_case required";
+
+  const addPayload = () => {
+    const name = newPayload.trim();
+    if (!ID_RE.test(name) || node.payloads.some((p) => p.name === name)) return;
+    mutate((d) => setPayload(d, segments, name, "json", "{}"));
+    setNewPayload("");
+    setAddingPayload(false);
+  };
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 px-3 py-2.5">
-        <Glyph tag={node.type} size={18} />
-        <span className="truncate text-[13px] font-semibold">
-          {node.name ?? node.id}
+      <div className="flex h-11 shrink-0 items-center gap-2.5 border-b border-line px-3">
+        <span
+          className="flex h-6 w-6 shrink-0 items-center justify-center rounded-sm"
+          style={{ backgroundColor: `${accent}1a` }}
+        >
+          <Glyph tag={node.type} color={custom?.color} glyph={custom?.glyph} size={15} />
         </span>
-        <span className="mono truncate text-[10.5px] text-slate-400">{path}</span>
-        <button
-          onClick={onClose}
-          className="ml-auto text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
-          aria-label="Close details"
-        >
-          ✕
-        </button>
+        <div className="min-w-0 flex-1 leading-tight">
+          <div className="truncate text-base font-semibold">{node.name ?? node.id}</div>
+          <div className="mono truncate text-xs text-ink-3">{path}</div>
+        </div>
+        <Menu
+          trigger={({ open, toggle }) => (
+            <IconButton label="More" active={open} onClick={toggle}>
+              <Icon.More />
+            </IconButton>
+          )}
+          items={[
+            ...(isContainer
+              ? [
+                  {
+                    label: display === "plane" ? "Collapse to icon" : "Expand to plane",
+                    icon: <Icon.Layout />,
+                    onSelect: () =>
+                      mutate((d) => setDisplay(d, segments, display === "plane" ? "icon" : "plane")),
+                  },
+                  "separator" as const,
+                ]
+              : []),
+            {
+              label: "Delete component",
+              icon: <Icon.Trash />,
+              danger: true,
+              onSelect: () => {
+                mutate((d) => removeComponent(d, segments));
+                onClose();
+              },
+            },
+          ]}
+        />
+        <IconButton label="Close" onClick={onClose}>
+          <Icon.Close />
+        </IconButton>
       </div>
-      <div className="min-h-0 flex-1 overflow-y-auto px-3 pb-4">
-        <TextField
-          label="Display name"
-          defaultValue={node.name ?? ""}
-          placeholder={node.id}
-          onCommit={(v) =>
-            mutate((d) => setComponentMeta(d, segments, { name: v === "" ? null : v }))
+
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        <Section title="Component">
+          <PropertyRow label="Name">
+            <CommitInput
+              defaultValue={node.name ?? ""}
+              placeholder={node.id}
+              onCommit={(v) =>
+                mutate((d) => setComponentMeta(d, segments, { name: v === "" ? null : v }))
+              }
+            />
+          </PropertyRow>
+          <PropertyRow label="ID" align="start">
+            <CommitInput
+              mono
+              defaultValue={node.id}
+              validate={(v) => (ID_RE.test(v) ? null : "snake_case required")}
+              onCommit={(v) => {
+                mutate((d) => renameComponent(d, segments, v));
+                onSelect({
+                  kind: "component",
+                  path: [...segments.slice(0, -1), v].join("."),
+                });
+              }}
+            />
+          </PropertyRow>
+          <PropertyRow label="Type">
+            <TypeCombobox
+              value={node.type}
+              library={library}
+              onChange={(tag) =>
+                mutate((d) => setComponentMeta(d, segments, { type: tag ?? null }))
+              }
+            />
+          </PropertyRow>
+          <PropertyRow label="Description" align="start">
+            <TextArea
+              key={`${path}-desc`}
+              defaultValue={node.desc ?? ""}
+              placeholder="What is this component for?"
+              rows={3}
+              onBlur={(e) => {
+                const v = e.target.value;
+                if (v === (node.desc ?? "")) return;
+                mutate((d) => setComponentMeta(d, segments, { desc: v === "" ? null : v }));
+              }}
+            />
+          </PropertyRow>
+        </Section>
+
+        <Section
+          title="Payloads"
+          action={
+            <IconButton
+              label="Add payload"
+              size="sm"
+              active={addingPayload}
+              onClick={() => setAddingPayload((a) => !a)}
+            >
+              <Icon.Plus />
+            </IconButton>
           }
-        />
-        <TextField
-          label="Id"
-          mono
-          defaultValue={node.id}
-          validate={(v) => (ID_RE.test(v) ? null : "snake_case required")}
-          onCommit={(v) => {
-            mutate((d) => renameComponent(d, segments, v));
-            onSelect({
-              kind: "component",
-              path: [...segments.slice(0, -1), v].join("."),
-            });
-          }}
-        />
-        <div>
-          <label className={labelCls}>Type</label>
-          <input
-            list="archer-types"
-            defaultValue={node.type ?? ""}
-            placeholder="untyped"
-            spellCheck={false}
-            className={`${inputCls} mono`}
-            onBlur={(e) => {
-              const v = e.target.value.trim();
-              if (v === (node.type ?? "")) return;
-              if (v !== "" && !TYPE_RE.test(v)) return;
-              mutate((d) => setComponentMeta(d, segments, { type: v === "" ? null : v }));
-            }}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") (e.target as HTMLInputElement).blur();
-            }}
-          />
-          <datalist id="archer-types">
-            {CATALOG.map((t) => (
-              <option key={t.tag} value={t.tag}>
-                {t.name}
-              </option>
-            ))}
-          </datalist>
-        </div>
-        <div>
-          <label className={labelCls}>Description</label>
-          <textarea
-            key={`${path}-desc`}
-            defaultValue={node.desc ?? ""}
-            placeholder="What is this component for?"
-            rows={3}
-            className={`${inputCls} resize-y`}
-            onBlur={(e) => {
-              const v = e.target.value;
-              if (v === (node.desc ?? "")) return;
-              mutate((d) => setComponentMeta(d, segments, { desc: v === "" ? null : v }));
-            }}
-          />
-        </div>
-        {node.children.length > 0 && (
-          <div>
-            <label className={labelCls}>Display</label>
-            <div className="flex gap-1">
-              {(["plane", "icon"] as const).map((mode) => (
-                <button
-                  key={mode}
-                  onClick={() => mutate((d) => setDisplay(d, segments, mode))}
-                  style={display === mode ? { backgroundColor: "var(--accent)", borderColor: "var(--accent)" } : undefined}
-                  className={`rounded-lg border px-2.5 py-1 text-[11.5px] font-medium ${
-                    display === mode
-                      ? "text-white"
-                      : "border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800"
-                  }`}
-                >
-                  {mode === "plane" ? "Plane (open)" : "Icon (collapsed)"}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        <label className={labelCls}>Payloads</label>
-        {node.payloads.length === 0 && (
-          <p className="text-[11.5px] text-slate-400">
-            Structured detail — a schema, endpoints, env vars…
-          </p>
-        )}
-        {node.payloads.map((p) => (
-          <PayloadEditor
-            key={`${path}-${p.name}`}
-            name={p.name}
-            format={p.format}
-            content={p.content}
-            onChange={(f, c) => mutate((d) => setPayload(d, segments, p.name, f, c))}
-            onDelete={() => mutate((d) => removePayload(d, segments, p.name))}
-          />
-        ))}
-        <div className="mt-2 flex gap-1.5">
-          <input
-            value={newPayload}
-            onChange={(e) => setNewPayload(e.target.value)}
-            placeholder="payload_name"
-            spellCheck={false}
-            className={`${inputCls} mono flex-1`}
-          />
-          <button
-            onClick={() => {
-              const name = newPayload.trim();
-              if (!ID_RE.test(name)) return;
-              mutate((d) => setPayload(d, segments, name, "json", "{}"));
-              setNewPayload("");
-            }}
-            className="rounded-lg border border-slate-300 dark:border-slate-600 px-2.5 text-[11.5px] font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
-          >
-            Add
-          </button>
-        </div>
-
-        <button
-          onClick={() => {
-            mutate((d) => removeComponent(d, segments));
-            onClose();
-          }}
-          className="mt-5 w-full rounded-lg border border-red-200 dark:border-red-900 py-1.5 text-[12px] font-medium text-red-600 hover:bg-red-50 dark:hover:bg-red-950"
         >
-          Delete component
-        </button>
+          {addingPayload && (
+            <div className="pb-2">
+              <Input
+                autoFocus
+                mono
+                value={newPayload}
+                placeholder="payload_name"
+                invalid={payloadNameError !== null}
+                onChange={(e) => setNewPayload(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") addPayload();
+                  if (e.key === "Escape") {
+                    setAddingPayload(false);
+                    setNewPayload("");
+                  }
+                }}
+              />
+              <p className={cx("pt-1 text-xs", payloadNameError ? "text-danger" : "text-ink-3")}>
+                {payloadNameError ?? "Enter to create a json payload"}
+              </p>
+            </div>
+          )}
+          {node.payloads.length === 0 && !addingPayload && (
+            <p className="text-sm text-ink-3">
+              Structured detail — a schema, endpoints, env vars…
+            </p>
+          )}
+          {node.payloads.map((p) => (
+            <PayloadCard
+              key={`${path}-${p.name}`}
+              name={p.name}
+              format={p.format}
+              content={p.content}
+              onChange={(f, c) => mutate((d) => setPayload(d, segments, p.name, f, c))}
+              onDelete={() => mutate((d) => removePayload(d, segments, p.name))}
+            />
+          ))}
+        </Section>
       </div>
     </div>
   );
 }
 
-function ConnectionDetail({
+/* ------------------------------------------------------------ Connection */
+
+const normalizeMeta = (meta: {
+  arrow?: Arrow;
+  type?: string | null;
+  label?: string | null;
+}) => {
+  const out: Record<string, unknown> = {};
+  if (meta.arrow !== undefined) out.arrow = meta.arrow;
+  if (meta.type !== undefined) out.type = meta.type ?? undefined;
+  if (meta.label !== undefined) out.label = meta.label ?? undefined;
+  return out;
+};
+
+function ConnectionInspector({
   doc,
   connKey,
   mutate,
@@ -347,117 +412,99 @@ function ConnectionDetail({
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 px-3 py-2.5">
-        <span className="mono truncate text-[12px] font-semibold">
-          {pathToString(conn.source)} {conn.arrow} {pathToString(conn.target)}
+      <div className="flex h-11 shrink-0 items-center gap-2 border-b border-line px-3">
+        <span className="mono min-w-0 flex-1 truncate text-sm font-semibold">
+          {pathToString(conn.source)}
+          <span className="px-1.5 text-ink-3">{conn.arrow === "<->" ? "↔" : conn.arrow === "--" ? "—" : "→"}</span>
+          {pathToString(conn.target)}
         </span>
-        <button
-          onClick={onClose}
-          className="ml-auto text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
-          aria-label="Close details"
-        >
-          ✕
-        </button>
-      </div>
-      <div className="min-h-0 flex-1 overflow-y-auto px-3 pb-4">
-        <label className={labelCls}>Direction</label>
-        <div className="flex gap-1">
-          {(["->", "<->", "--"] as Arrow[]).map((a) => (
-            <button
-              key={a}
-              onClick={() => commit({ arrow: a })}
-              style={conn.arrow === a ? { backgroundColor: "var(--accent)", borderColor: "var(--accent)" } : undefined}
-              className={`mono rounded-lg border px-3 py-1 text-[12px] font-bold ${
-                conn.arrow === a
-                  ? "text-white"
-                  : "border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800"
-              }`}
-            >
-              {a}
-            </button>
-          ))}
-        </div>
-        <div>
-          <label className={labelCls}>Type</label>
-          <input
-            list="archer-conn-types"
-            key={connKey}
-            defaultValue={conn.type ?? ""}
-            placeholder="untyped"
-            spellCheck={false}
-            className={`${inputCls} mono`}
-            onBlur={(e) => {
-              const v = e.target.value.trim();
-              if (v === (conn.type ?? "") || (v !== "" && !TYPE_RE.test(v))) return;
-              commit({ type: v === "" ? null : v });
-            }}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") (e.target as HTMLInputElement).blur();
-            }}
-          />
-          <datalist id="archer-conn-types">
-            {CONNECTION_TYPES.map((t) => (
-              <option key={t} value={t} />
-            ))}
-          </datalist>
-        </div>
-        <TextField
-          label="Label"
-          defaultValue={conn.label ?? ""}
-          placeholder="e.g. checkout sessions"
-          onCommit={(v) => commit({ label: v === "" ? null : v })}
+        <Menu
+          trigger={({ open, toggle }) => (
+            <IconButton label="More" active={open} onClick={toggle}>
+              <Icon.More />
+            </IconButton>
+          )}
+          items={[
+            {
+              label: "Delete connection",
+              icon: <Icon.Trash />,
+              danger: true,
+              onSelect: () => {
+                mutate((d) => removeConnection(d, index));
+                onClose();
+              },
+            },
+          ]}
         />
-        <button
-          onClick={() => {
-            mutate((d) => removeConnection(d, index));
-            onClose();
-          }}
-          className="mt-5 w-full rounded-lg border border-red-200 dark:border-red-900 py-1.5 text-[12px] font-medium text-red-600 hover:bg-red-50 dark:hover:bg-red-950"
-        >
-          Delete connection
-        </button>
+        <IconButton label="Close" onClick={onClose}>
+          <Icon.Close />
+        </IconButton>
+      </div>
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        <Section title="Connection">
+          <PropertyRow label="Direction">
+            <Segmented
+              mono
+              value={conn.arrow}
+              options={(["->", "<->", "--"] as Arrow[]).map((a) => ({
+                value: a,
+                label: a,
+                title: a === "->" ? "One way" : a === "<->" ? "Both ways" : "Undirected",
+              }))}
+              onChange={(a) => commit({ arrow: a })}
+            />
+          </PropertyRow>
+          <PropertyRow label="Type">
+            <TypeCombobox
+              key={connKey}
+              mode="connection"
+              value={conn.type}
+              onChange={(t) => commit({ type: t ?? null })}
+            />
+          </PropertyRow>
+          <PropertyRow label="Label">
+            <CommitInput
+              defaultValue={conn.label ?? ""}
+              placeholder="e.g. checkout sessions"
+              onCommit={(v) => commit({ label: v === "" ? null : v })}
+            />
+          </PropertyRow>
+        </Section>
       </div>
     </div>
   );
 }
 
-const normalizeMeta = (meta: {
-  arrow?: Arrow;
-  type?: string | null;
-  label?: string | null;
-}) => {
-  const out: Record<string, unknown> = {};
-  if (meta.arrow !== undefined) out.arrow = meta.arrow;
-  if (meta.type !== undefined) out.type = meta.type ?? undefined;
-  if (meta.label !== undefined) out.label = meta.label ?? undefined;
-  return out;
-};
+/* ---------------------------------------------------------------- Panel */
 
 export function DetailPanel({
   doc,
   selection,
   mutate,
   onSelect,
+  library,
 }: {
   doc: ArchDoc;
   selection: Selection;
   mutate: (fn: (d: ArchDoc) => ArchDoc) => void;
   onSelect: (s: Selection) => void;
+  library: UserLibrary;
 }) {
   if (selection === null) return null;
   return (
-    <aside className="w-[300px] shrink-0 border-l border-slate-200 dark:border-slate-800 bg-white dark:bg-[#12151c]">
+    <aside className="h-full w-[300px] shrink-0 border-l border-line bg-surface">
       {selection.kind === "component" ? (
-        <ComponentDetail
+        <ComponentInspector
           key={selection.path}
           doc={doc}
           path={selection.path}
           mutate={mutate}
           onSelect={onSelect}
           onClose={() => onSelect(null)}
+          library={library}
         />
       ) : (
-        <ConnectionDetail
+        <ConnectionInspector
           key={selection.key}
           doc={doc}
           connKey={selection.key}

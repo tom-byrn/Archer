@@ -1,11 +1,11 @@
 import type { Edge, Node } from "@xyflow/react";
-import { MarkerType } from "@xyflow/react";
 import {
   effectiveDisplay,
   findComponent,
   layoutMap,
   pathToString,
   type ArchDoc,
+  type Arrow,
   type ComponentNode,
   type DisplayMode,
 } from "@archer/lang";
@@ -27,12 +27,23 @@ export interface ArchNodeData extends Record<string, unknown> {
 
 export type ArchNode = Node<ArchNodeData>;
 
+export interface ArchEdgeData extends Record<string, unknown> {
+  /** Index into `doc.connections`. */
+  index: number;
+  arrow: Arrow;
+  /** Protocol tag without the `@`, e.g. "http". */
+  protocol?: string;
+  label?: string;
+}
+
+export type ArchEdge = Edge<ArchEdgeData>;
+
 export interface ToFlowOptions {
   /** Render only this component's subtree (drill-down view). */
   focus?: string[];
   /** Resolve a type tag to visuals (catalog + user library). */
   resolveType?: (tag: string) => { color: string; glyph: string } | undefined;
-  /** OS dark mode — edge labels are drawn with inline colors. */
+  /** OS dark mode (kept for API compatibility; colors are token-driven). */
   isDark?: boolean;
 }
 
@@ -47,7 +58,7 @@ export interface ToFlowOptions {
 export function toFlow(
   doc: ArchDoc,
   opts: ToFlowOptions = {},
-): { nodes: ArchNode[]; edges: Edge[] } {
+): { nodes: ArchNode[]; edges: ArchEdge[] } {
   const layout = layoutMap(doc);
   const nodes: ArchNode[] = [];
   /** path -> deepest visible ancestor path (itself when visible). */
@@ -118,15 +129,11 @@ export function toFlow(
   };
   walk(rootItems, rootPrefix, true, null, [0, 0]);
 
-  const edges: Edge[] = [];
+  const edges: ArchEdge[] = [];
   doc.connections.forEach((c, i) => {
     const source = visibleAncestor.get(pathToString(c.source));
     const target = visibleAncestor.get(pathToString(c.target));
     if (source === undefined || target === undefined || source === target) return;
-    const labelParts = [
-      ...(c.type !== undefined ? [`@${c.type}`] : []),
-      ...(c.label !== undefined ? [c.label] : []),
-    ];
     // Attach the edge on the sides facing each other (dominant axis wins).
     const sc = centers.get(source);
     const tc = centers.get(target);
@@ -149,19 +156,13 @@ export function toFlow(
       target,
       sourceHandle,
       targetHandle,
-      type: "smoothstep",
-      label: labelParts.length > 0 ? labelParts.join("  ") : undefined,
-      labelStyle: { fontSize: 11, fill: opts.isDark ? "#cbd5e1" : "#475569" },
-      labelBgStyle: { fill: opts.isDark ? "#12151c" : "#f8fafc", fillOpacity: 0.9 },
-      labelBgPadding: [4, 2],
-      labelBgBorderRadius: 4,
-      ...(c.arrow !== "--"
-        ? { markerEnd: { type: MarkerType.ArrowClosed, color: "#64748b" } }
-        : {}),
-      ...(c.arrow === "<->"
-        ? { markerStart: { type: MarkerType.ArrowClosed, color: "#64748b" } }
-        : {}),
-      data: { index: i },
+      type: "archEdge",
+      data: {
+        index: i,
+        arrow: c.arrow,
+        ...(c.type !== undefined ? { protocol: c.type } : {}),
+        ...(c.label !== undefined ? { label: c.label } : {}),
+      },
     });
   });
 

@@ -1,110 +1,227 @@
 "use client";
 
-import { useMemo, useRef } from "react";
-import type { Diagnostic } from "@archer/lang";
-import { highlightArcher } from "@/lib/highlight";
+import { useCallback, useEffect, useMemo, useRef } from "react";
+import type { ArchDoc, Diagnostic } from "@archer/lang";
+import { EditorView, Decoration, type DecorationSet } from "@codemirror/view";
+import { StateEffect, StateField, EditorSelection } from "@codemirror/state";
+import { lintGutter, setDiagnostics } from "@codemirror/lint";
+import { CodeEditor } from "./CodeMirror";
+import { Chip, Icon, IconButton, cx } from "./ui";
+import {
+  archLanguage,
+  archerLinter,
+  componentAtPath,
+  componentPathAtOffset,
+} from "@/lib/archLanguage";
 
-function DiagnosticRow({ d }: { d: Diagnostic }) {
-  const isError = d.severity === "error";
-  return (
-    <li className="flex items-start gap-2 py-1 text-xs">
-      <span
-        className={`mono mt-px shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold ${
-          isError ? "bg-red-100 text-red-700 dark:text-red-300 dark:bg-red-950 dark:text-red-300" : "bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300"
-        }`}
-      >
-        {d.code}
-        {d.span ? ` · L${d.span.start.line}` : ""}
-      </span>
-      <span className="text-slate-600 dark:text-slate-400">{d.message}</span>
-    </li>
-  );
+/* ---------------------------------------------- selected-component highlight */
+
+const setSelectedLines = StateEffect.define<{ from: number; to: number } | null>();
+
+const selectedLineDeco = Decoration.line({ class: "cm-archSelected" });
+
+const selectedLinesField = StateField.define<DecorationSet>({
+  create: () => Decoration.none,
+  update(value, tr) {
+    let next = value.map(tr.changes);
+    for (const e of tr.effects) {
+      if (!e.is(setSelectedLines)) continue;
+      if (e.value === null) {
+        next = Decoration.none;
+        continue;
+      }
+      const { from, to } = e.value;
+      const doc = tr.state.doc;
+      const first = doc.lineAt(Math.min(from, doc.length)).number;
+      const last = doc.lineAt(Math.min(to, doc.length)).number;
+      const marks = [];
+      for (let n = first; n <= last; n++) {
+        marks.push(selectedLineDeco.range(doc.line(n).from));
+      }
+      next = Decoration.set(marks);
+    }
+    return next;
+  },
+  provide: (f) => EditorView.decorations.from(f),
+});
+
+const selectedLinesTheme = EditorView.baseTheme({
+  ".cm-archSelected": { backgroundColor: "var(--accent-soft)" },
+});
+
+/* ------------------------------------------------------------- component */
+
+export interface CodePaneProps {
+  source: string;
+  onChange: (text: string) => void;
+  diagnostics: Diagnostic[];
+  doc: ArchDoc;
+  open: boolean;
+  onToggle: () => void;
+  selectedPath: string | null;
+  onSelectPath: (path: string | null) => void;
 }
 
 export function CodePane({
   source,
   onChange,
   diagnostics,
+  doc,
   open,
   onToggle,
-}: {
-  source: string;
-  onChange: (text: string) => void;
-  diagnostics: Diagnostic[];
-  open: boolean;
-  onToggle: () => void;
-}) {
-  const preRef = useRef<HTMLPreElement>(null);
-  const html = useMemo(() => highlightArcher(source), [source]);
-  const errorCount = diagnostics.filter((d) => d.severity === "error").length;
+  selectedPath,
+  onSelectPath,
+}: CodePaneProps) {
+  const viewRef = useRef<EditorView | null>(null);
+  const lastEmittedPath = useRef<string | null>(null);
+  const docRef = useRef(doc);
+  docRef.current = doc;
+  const selectedPathRef = useRef(selectedPath);
+  selectedPathRef.current = selectedPath;
+  const onSelectPathRef = useRef(onSelectPath);
+  onSelectPathRef.current = onSelectPath;
 
-  if (!open) {
-    return (
-      <button
-        onClick={onToggle}
-        title="Show code"
-        className="flex w-9 shrink-0 flex-col items-center gap-2 border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-[#12151c] pt-3 hover:bg-slate-50 dark:hover:bg-slate-800"
-      >
-        <span className="mono text-[13px] font-bold text-slate-500">{"</>"}</span>
-        {errorCount > 0 && (
-          <span className="rounded-full bg-red-100 px-1.5 text-[10px] font-bold text-red-700 dark:text-red-300">
-            {errorCount}
-          </span>
-        )}
-        <span
-          className="text-[10px] font-semibold uppercase tracking-widest text-slate-400"
-          style={{ writingMode: "vertical-rl" }}
-        >
-          Code
-        </span>
-      </button>
-    );
-  }
+  const extensions = useMemo(
+    () => [archLanguage(), lintGutter(), selectedLinesField, selectedLinesTheme],
+    [],
+  );
+
+  const errorCount = diagnostics.filter((d) => d.severity === "error").length;
+  const warnCount = diagnostics.length - errorCount;
+
+  // Diagnostics come from props, not a linter source.
+  useEffect(() => {
+    const view = viewRef.current;
+    if (!view || !open) return;
+    view.dispatch(setDiagnostics(view.state, archerLinter(diagnostics, view.state.doc)));
+  }, [diagnostics, open]);
+
+  // Canvas → code: highlight the selected component's lines and scroll to it,
+  // unless this selection originated from the editor's own cursor.
+  useEffect(() => {
+    const view = viewRef.current;
+    if (!view || !open) return;
+    if (selectedPath === null) {
+      lastEmittedPath.current = null;
+      view.dispatch({ effects: setSelectedLines.of(null) });
+      return;
+    }
+    const node = componentAtPath(doc, selectedPath);
+    if (!node) {
+      view.dispatch({ effects: setSelectedLines.of(null) });
+      return;
+    }
+    const from = Math.min(node.span.start.offset, view.state.doc.length);
+    const to = Math.min(node.span.end.offset, view.state.doc.length);
+    const fromEditor = lastEmittedPath.current === selectedPath;
+    view.dispatch({
+      effects: [
+        setSelectedLines.of({ from, to }),
+        ...(fromEditor ? [] : [EditorView.scrollIntoView(from, { y: "center" })]),
+      ],
+    });
+    if (!fromEditor) lastEmittedPath.current = null;
+  }, [selectedPath, doc, open]);
+
+  const diagnosticsRef = useRef(diagnostics);
+  diagnosticsRef.current = diagnostics;
+
+  const onViewReady = useCallback((view: EditorView) => {
+    viewRef.current = view;
+    view.dispatch(setDiagnostics(view.state, archerLinter(diagnosticsRef.current, view.state.doc)));
+  }, []);
+
+  // Code → canvas: cursor moved by the user into a component. Registered as
+  // an extension so we see the real ViewUpdate (user-event flags).
+  const selectionListener = useMemo(
+    () =>
+      EditorView.updateListener.of((u) => {
+        if (!u.selectionSet) return;
+        const userDriven = u.transactions.some(
+          (tr) => tr.isUserEvent("select") || tr.isUserEvent("input") || tr.isUserEvent("delete"),
+        );
+        if (!userDriven) return;
+        const offset = u.state.selection.main.head;
+        const path = componentPathAtOffset(docRef.current, offset);
+        if (path === null || path === selectedPathRef.current) return;
+        lastEmittedPath.current = path;
+        onSelectPathRef.current(path);
+      }),
+    [],
+  );
+
+  const allExtensions = useMemo(
+    () => [extensions, selectionListener],
+    [extensions, selectionListener],
+  );
+
+  const jumpTo = (d: Diagnostic) => {
+    const view = viewRef.current;
+    if (!view) return;
+    const pos = Math.min(d.span?.start.offset ?? 0, view.state.doc.length);
+    view.dispatch({
+      selection: EditorSelection.cursor(pos),
+      effects: EditorView.scrollIntoView(pos, { y: "center" }),
+    });
+    view.focus();
+  };
+
+  if (!open) return null;
 
   return (
-    <div className="flex w-[380px] shrink-0 flex-col border-r border-slate-200 dark:border-slate-800 bg-[var(--code-bg)]">
-      <div className="flex items-center border-b border-[var(--code-border)] px-3 py-1">
-        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-          Code
-        </span>
-        <span className="mono pl-2 text-[10px] text-slate-400 dark:text-slate-600">.arch</span>
-        <button
-          onClick={onToggle}
-          title="Hide code"
-          className="ml-auto rounded px-1.5 py-0.5 text-[12px] text-slate-400 hover:bg-slate-200 hover:text-slate-700 dark:text-slate-500 dark:hover:bg-white/10 dark:hover:text-slate-200"
-        >
-          ⟨
-        </button>
+    <div
+      className="flex w-[400px] shrink-0 flex-col border-r border-line"
+      style={{ background: "var(--code-bg)" }}
+    >
+      <div className="flex h-8 shrink-0 items-center gap-2 border-b border-line px-3">
+        <span className="mono text-xs text-ink-3">.arch</span>
+        {errorCount > 0 && (
+          <Chip tone="danger">
+            {errorCount} error{errorCount === 1 ? "" : "s"}
+          </Chip>
+        )}
+        {warnCount > 0 && (
+          <Chip tone="warn">
+            {warnCount} warning{warnCount === 1 ? "" : "s"}
+          </Chip>
+        )}
+        <IconButton label="Hide code" size="sm" onClick={onToggle} className="ml-auto">
+          <Icon.ChevronLeft />
+        </IconButton>
       </div>
-      <div className="relative min-h-0 flex-1">
-        <pre
-          ref={preRef}
-          aria-hidden
-          className="hl-pre mono"
-          dangerouslySetInnerHTML={{ __html: html }}
-        />
-        <textarea
+      <div className="min-h-0 flex-1">
+        <CodeEditor
           value={source}
-          onChange={(e) => onChange(e.target.value)}
-          onScroll={(e) => {
-            const el = e.currentTarget;
-            if (preRef.current) {
-              preRef.current.scrollTop = el.scrollTop;
-              preRef.current.scrollLeft = el.scrollLeft;
-            }
-          }}
-          spellCheck={false}
-          wrap="off"
-          autoCapitalize="off"
-          autoCorrect="off"
-          className="hl-textarea mono"
+          onChange={onChange}
+          onViewReady={onViewReady}
+          extensions={allExtensions}
+          className="h-full"
         />
       </div>
       {diagnostics.length > 0 && (
-        <ul className="max-h-40 overflow-y-auto border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-[#12151c] px-3 py-1.5">
-          {diagnostics.map((d, i) => (
-            <DiagnosticRow key={i} d={d} />
-          ))}
+        <ul className="max-h-40 shrink-0 overflow-y-auto border-t border-line bg-surface py-1">
+          {diagnostics.map((d, i) => {
+            const isError = d.severity === "error";
+            return (
+              <li key={i}>
+                <button
+                  type="button"
+                  onClick={() => jumpTo(d)}
+                  className={cx(
+                    "flex h-[26px] w-full items-center gap-2 px-3 text-left transition-colors duration-75 hover:bg-surface-2",
+                  )}
+                >
+                  <Chip tone={isError ? "danger" : "warn"} className="mono shrink-0">
+                    {d.code}
+                  </Chip>
+                  <span className="min-w-0 flex-1 truncate text-sm text-ink-2">{d.message}</span>
+                  {d.span && (
+                    <span className="mono shrink-0 text-xs text-ink-3">L{d.span.start.line}</span>
+                  )}
+                </button>
+              </li>
+            );
+          })}
         </ul>
       )}
     </div>
