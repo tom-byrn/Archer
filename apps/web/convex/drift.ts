@@ -1,4 +1,5 @@
 import { mutation, query } from "./_generated/server";
+import { requireWorkspace } from "./access";
 import { v } from "convex/values";
 import { author, driftStatus } from "./schema";
 
@@ -12,8 +13,9 @@ export const finding = v.object({
 
 /** The latest drift report for a document, or null. */
 export const get = query({
-  args: { documentId: v.id("documents"), workspaceId: v.string() },
-  handler: async (ctx, { documentId, workspaceId }) => {
+  args: { documentId: v.id("documents"), workspaceId: v.string(), apiKey: v.optional(v.string()) },
+  handler: async (ctx, { documentId, workspaceId, apiKey }) => {
+    await requireWorkspace(ctx, workspaceId, apiKey);
     const doc = await ctx.db.get(documentId);
     if (!doc || doc.workspaceId !== workspaceId) return null;
     return ctx.db
@@ -29,10 +31,12 @@ export const report = mutation({
   args: {
     documentId: v.id("documents"),
     workspaceId: v.string(),
+    apiKey: v.optional(v.string()),
     findings: v.array(finding),
     author: v.optional(author),
   },
-  handler: async (ctx, { documentId, workspaceId, findings, author: who }) => {
+  handler: async (ctx, { documentId, workspaceId, findings, author: who, apiKey }) => {
+    await requireWorkspace(ctx, workspaceId, apiKey);
     const doc = await ctx.db.get(documentId);
     if (!doc || doc.workspaceId !== workspaceId) throw new Error("Document not found");
     const old = await ctx.db
@@ -52,8 +56,9 @@ export const report = mutation({
 
 /** Drop one finding (e.g. after the user acted on it). */
 export const dismiss = mutation({
-  args: { id: v.id("drift"), workspaceId: v.string(), index: v.number() },
-  handler: async (ctx, { id, workspaceId, index }) => {
+  args: { id: v.id("drift"), workspaceId: v.string(), apiKey: v.optional(v.string()), index: v.number() },
+  handler: async (ctx, { id, workspaceId, index, apiKey }) => {
+    await requireWorkspace(ctx, workspaceId, apiKey);
     const r = await ctx.db.get(id);
     if (!r || r.workspaceId !== workspaceId) return;
     await ctx.db.patch(id, { findings: r.findings.filter((_, i) => i !== index) });
@@ -61,8 +66,9 @@ export const dismiss = mutation({
 });
 
 export const clear = mutation({
-  args: { documentId: v.id("documents"), workspaceId: v.string() },
-  handler: async (ctx, { documentId, workspaceId }) => {
+  args: { documentId: v.id("documents"), workspaceId: v.string(), apiKey: v.optional(v.string()) },
+  handler: async (ctx, { documentId, workspaceId, apiKey }) => {
+    await requireWorkspace(ctx, workspaceId, apiKey);
     const rows = await ctx.db
       .query("drift")
       .withIndex("by_document", (q) => q.eq("documentId", documentId))

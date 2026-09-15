@@ -1,11 +1,11 @@
-import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
+import { chmodSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { ConvexHttpClient } from "convex/browser";
 import { anyApi, type FunctionReference } from "convex/server";
 
 // Untyped references into apps/web/convex functions (validated server-side).
-type Module = "documents" | "library" | "revisions" | "threads" | "drift";
+type Module = "documents" | "library" | "revisions" | "threads" | "drift" | "apiKeys";
 const fn = (module: Module, name: string): unknown =>
   (anyApi as Record<string, Record<string, unknown>>)[module]![name];
 const qref = (m: Module, n: string) => fn(m, n) as FunctionReference<"query">;
@@ -32,34 +32,90 @@ export const APP_URL =
   process.env.ARCHLANG_APP_URL ??
   "http://localhost:3000";
 
-const WORKSPACE_FILE = join(homedir(), ".archer", "workspace");
-/** Pre-rename fallbacks so existing setups keep working. */
-const LEGACY_WORKSPACE_FILE = join(homedir(), ".archlang", "workspace");
+const ARCHER_DIR = join(homedir(), ".archer");
+const KEY_FILE = join(ARCHER_DIR, "key");
+/** Pre-auth config locations — only read to give a migration hint. */
+const LEGACY_WORKSPACE_FILES = [
+  join(ARCHER_DIR, "workspace"),
+  join(homedir(), ".archlang", "workspace"),
+];
 
-const readWorkspaceFile = (path: string): string | null => {
+const readFile = (path: string): string | null => {
   try {
-    const id = readFileSync(path, "utf8").trim();
-    return id === "" ? null : id;
+    const v = readFileSync(path, "utf8").trim();
+    return v === "" ? null : v;
   } catch {
     return null;
   }
 };
 
-export function resolveWorkspaceId(): string | null {
+/** The configured API key: ARCHER_API_KEY, else ~/.archer/key. */
+export function resolveApiKey(): string | null {
+  const env = process.env.ARCHER_API_KEY?.trim();
+  if (env) return env;
+  return readFile(KEY_FILE);
+}
+
+/** True when the user still has a pre-auth workspace id configured. */
+export function hasLegacyWorkspaceConfig(): boolean {
   return (
-    process.env.ARCHER_WORKSPACE_ID ??
-    process.env.ARCHLANG_WORKSPACE_ID ??
-    readWorkspaceFile(WORKSPACE_FILE) ??
-    readWorkspaceFile(LEGACY_WORKSPACE_FILE)
+    !!process.env.ARCHER_WORKSPACE_ID ||
+    !!process.env.ARCHLANG_WORKSPACE_ID ||
+    LEGACY_WORKSPACE_FILES.some((f) => readFile(f) !== null)
   );
 }
 
-export function persistWorkspaceId(id: string): void {
-  mkdirSync(join(homedir(), ".archer"), { recursive: true });
-  writeFileSync(WORKSPACE_FILE, id + "\n", "utf8");
+export function persistApiKey(key: string): void {
+  mkdirSync(ARCHER_DIR, { recursive: true });
+  writeFileSync(KEY_FILE, key + "\n", { encoding: "utf8", mode: 0o600 });
+  try {
+    chmodSync(KEY_FILE, 0o600);
+  } catch {
+    // best effort (e.g. Windows)
+  }
+  workspaceCache = undefined;
 }
 
-export const NO_WORKSPACE_MESSAGE = `No workspace is configured, so project tools can't run yet. The workspace id scopes which projects you see — it must match the one the user's browser uses. Ask the user to copy their workspace id from the footer of the Archer home page (${APP_URL}), then call the set_workspace tool with it (persists to ~/.archer/workspace). Alternatively they can set the ARCHER_WORKSPACE_ID environment variable for this MCP server. Language tools (validate_source, format_source, compile_for_agent, auto_layout_source, get_guide) work without a workspace.`;
+/** A resolved credential: the key and the workspace it unlocks. */
+export interface Workspace {
+  workspaceId: string;
+  apiKey: string;
+}
+
+let workspaceCache: Promise<Workspace | null> | undefined;
+
+/**
+ * Resolve the configured API key to its workspace (one backend round trip,
+ * cached for the process; invalidated by persistApiKey). Null when no key is
+ * configured or the key is invalid.
+ */
+export function resolveWorkspace(): Promise<Workspace | null> {
+  if (workspaceCache === undefined) {
+    const apiKey = resolveApiKey();
+    workspaceCache = apiKey ? lookupKey(apiKey) : Promise.resolve(null);
+    // Don't cache transient backend failures.
+    workspaceCache.catch(() => {
+      workspaceCache = undefined;
+    });
+  }
+  return workspaceCache;
+}
+
+/** Resolve an arbitrary key without touching the cache. */
+export async function lookupKey(apiKey: string): Promise<Workspace | null> {
+  const res = (await client.query(qref("apiKeys", "resolve"), { apiKey })) as
+    | { workspaceId: string }
+    | null;
+  return res ? { workspaceId: res.workspaceId, apiKey } : null;
+}
+
+const MIGRATION_HINT = hasLegacyWorkspaceConfig()
+  ? " NOTE: a pre-auth workspace id (ARCHER_WORKSPACE_ID / ~/.archer/workspace) is still configured — Archer now uses API keys instead; that id is ignored. Create a key in the app under \"Connect an agent\"."
+  : "";
+
+export const NO_WORKSPACE_MESSAGE = `No API key is configured, so project tools can't run yet. An API key identifies the user's workspace — it must be created by the user in the Archer app: open ${APP_URL}, sign in with GitHub, click "Connect an agent", and create an API key. Then either set the ARCHER_API_KEY environment variable for this MCP server, or ask the user for the key and call the set_api_key tool with it (persists to ~/.archer/key). Never invent or guess a key. Language tools (validate_source, format_source, compile_for_agent, auto_layout_source, get_guide) work without one.${MIGRATION_HINT}`;
+
+export const INVALID_KEY_MESSAGE = `The configured API key was rejected by the backend (revoked, mistyped, or from a different deployment). Ask the user to create a new key in the Archer app (${APP_URL} → Connect an agent) and set ARCHER_API_KEY or call set_api_key.`;
 
 const client = new ConvexHttpClient(CONVEX_URL);
 
@@ -137,58 +193,60 @@ export interface DriftRow {
   findings: DriftFinding[];
 }
 
+const auth = (ws: Workspace) => ({ workspaceId: ws.workspaceId, apiKey: ws.apiKey });
+
 export const db = {
-  listProjects: (workspaceId: string) =>
-    client.query(qref("documents", "list"), { workspaceId }) as Promise<ProjectSummary[]>,
-  getProject: (workspaceId: string, id: string) =>
-    client.query(qref("documents", "get"), { workspaceId, id }) as Promise<ProjectDoc | null>,
-  createProject: (workspaceId: string, title: string, source: string, summary?: string) =>
+  listProjects: (ws: Workspace) =>
+    client.query(qref("documents", "list"), { ...auth(ws) }) as Promise<ProjectSummary[]>,
+  getProject: (ws: Workspace, id: string) =>
+    client.query(qref("documents", "get"), { ...auth(ws), id }) as Promise<ProjectDoc | null>,
+  createProject: (ws: Workspace, title: string, source: string, summary?: string) =>
     client.mutation(mref("documents", "create"), {
-      workspaceId,
+      ...auth(ws),
       title,
       source,
       author: agentAuthor(),
       ...(summary ? { summary } : {}),
     }) as Promise<string>,
-  updateProject: (workspaceId: string, id: string, title: string, source: string, summary?: string) =>
+  updateProject: (ws: Workspace, id: string, title: string, source: string, summary?: string) =>
     client.mutation(mref("documents", "updateSource"), {
-      workspaceId,
+      ...auth(ws),
       id,
       title,
       source,
       author: agentAuthor(),
       ...(summary ? { summary } : {}),
     }) as Promise<void>,
-  deleteProject: (workspaceId: string, id: string) =>
-    client.mutation(mref("documents", "remove"), { workspaceId, id }) as Promise<void>,
-  listCustomTypes: (workspaceId: string) =>
-    client.query(qref("library", "list"), { workspaceId }) as Promise<CustomTypeRow[]>,
-  saveCustomType: (workspaceId: string, t: CustomTypeRow) =>
-    client.mutation(mref("library", "save"), { workspaceId, ...t }) as Promise<void>,
-  deleteCustomType: (workspaceId: string, tag: string) =>
-    client.mutation(mref("library", "remove"), { workspaceId, tag }) as Promise<void>,
+  deleteProject: (ws: Workspace, id: string) =>
+    client.mutation(mref("documents", "remove"), { ...auth(ws), id }) as Promise<void>,
+  listCustomTypes: (ws: Workspace) =>
+    client.query(qref("library", "list"), { ...auth(ws) }) as Promise<CustomTypeRow[]>,
+  saveCustomType: (ws: Workspace, t: CustomTypeRow) =>
+    client.mutation(mref("library", "save"), { ...auth(ws), ...t }) as Promise<void>,
+  deleteCustomType: (ws: Workspace, tag: string) =>
+    client.mutation(mref("library", "remove"), { ...auth(ws), tag }) as Promise<void>,
 
   // revisions
-  listRevisions: (workspaceId: string, documentId: string, limit?: number) =>
-    client.query(qref("revisions", "listFull"), { workspaceId, documentId, limit }) as Promise<RevisionRow[]>,
-  getRevision: (workspaceId: string, id: string) =>
-    client.query(qref("revisions", "get"), { workspaceId, id }) as Promise<RevisionRow | null>,
+  listRevisions: (ws: Workspace, documentId: string, limit?: number) =>
+    client.query(qref("revisions", "listFull"), { ...auth(ws), documentId, limit }) as Promise<RevisionRow[]>,
+  getRevision: (ws: Workspace, id: string) =>
+    client.query(qref("revisions", "get"), { ...auth(ws), id }) as Promise<RevisionRow | null>,
 
   // question threads
-  listThreads: (workspaceId: string, documentId: string, status?: "open" | "resolved") =>
-    client.query(qref("threads", "list"), { workspaceId, documentId, ...(status ? { status } : {}) }) as Promise<ThreadRow[]>,
-  createThread: (workspaceId: string, documentId: string, path: string, text: string) =>
-    client.mutation(mref("threads", "create"), { workspaceId, documentId, path, text, author: agentAuthor() }) as Promise<string>,
-  replyThread: (workspaceId: string, id: string, text: string) =>
-    client.mutation(mref("threads", "reply"), { workspaceId, id, text, author: agentAuthor() }) as Promise<void>,
-  setThreadStatus: (workspaceId: string, id: string, status: "open" | "resolved") =>
-    client.mutation(mref("threads", "setStatus"), { workspaceId, id, status }) as Promise<void>,
+  listThreads: (ws: Workspace, documentId: string, status?: "open" | "resolved") =>
+    client.query(qref("threads", "list"), { ...auth(ws), documentId, ...(status ? { status } : {}) }) as Promise<ThreadRow[]>,
+  createThread: (ws: Workspace, documentId: string, path: string, text: string) =>
+    client.mutation(mref("threads", "create"), { ...auth(ws), documentId, path, text, author: agentAuthor() }) as Promise<string>,
+  replyThread: (ws: Workspace, id: string, text: string) =>
+    client.mutation(mref("threads", "reply"), { ...auth(ws), id, text, author: agentAuthor() }) as Promise<void>,
+  setThreadStatus: (ws: Workspace, id: string, status: "open" | "resolved") =>
+    client.mutation(mref("threads", "setStatus"), { ...auth(ws), id, status }) as Promise<void>,
 
   // drift
-  getDrift: (workspaceId: string, documentId: string) =>
-    client.query(qref("drift", "get"), { workspaceId, documentId }) as Promise<DriftRow | null>,
-  reportDrift: (workspaceId: string, documentId: string, findings: DriftFinding[]) =>
-    client.mutation(mref("drift", "report"), { workspaceId, documentId, findings, author: agentAuthor() }) as Promise<string>,
+  getDrift: (ws: Workspace, documentId: string) =>
+    client.query(qref("drift", "get"), { ...auth(ws), documentId }) as Promise<DriftRow | null>,
+  reportDrift: (ws: Workspace, documentId: string, findings: DriftFinding[]) =>
+    client.mutation(mref("drift", "report"), { ...auth(ws), documentId, findings, author: agentAuthor() }) as Promise<string>,
 };
 
 // ---------------------------------------------------------------------------
@@ -197,12 +255,12 @@ export const formatDiagnostic = (d: Diagnostic): string =>
   `${d.code} [${d.severity}]${d.span ? ` line ${d.span.start.line}` : ""}: ${d.message}`;
 
 export async function knownTypesFor(
-  workspaceId: string | null,
+  ws: Workspace | null,
 ): Promise<Set<string>> {
   const types = knownTypes();
-  if (workspaceId) {
+  if (ws) {
     try {
-      for (const t of await db.listCustomTypes(workspaceId)) types.add(t.tag);
+      for (const t of await db.listCustomTypes(ws)) types.add(t.tag);
     } catch {
       // Backend unreachable — validate against the static catalog only.
     }
@@ -219,13 +277,13 @@ export interface Analysis {
 
 export async function analyze(
   source: string,
-  workspaceId: string | null,
+  ws: Workspace | null,
 ): Promise<Analysis> {
   const parsed = parse(source);
   const diagnostics = [
     ...parsed.diagnostics,
     ...validate(parsed.doc, {
-      knownTypes: await knownTypesFor(workspaceId),
+      knownTypes: await knownTypesFor(ws),
       knownConnectionTypes: knownConnectionTypes(),
     }),
   ];
@@ -253,13 +311,13 @@ export function mergeLayout(previous: ArchDoc, next: ArchDoc): ArchDoc {
 /** Validate-gate a write; returns canonical text or the blocking errors. */
 export async function prepareWrite(
   source: string,
-  workspaceId: string | null,
+  ws: Workspace | null,
   previousSource?: string,
 ): Promise<
   | { ok: true; text: string; title: string; warnings: Diagnostic[] }
   | { ok: false; errors: Diagnostic[]; warnings: Diagnostic[] }
 > {
-  const analysis = await analyze(source, workspaceId);
+  const analysis = await analyze(source, ws);
   if (analysis.errors.length > 0) {
     return { ok: false, errors: analysis.errors, warnings: analysis.warnings };
   }

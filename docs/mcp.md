@@ -11,25 +11,32 @@ presentation, and compile agent-ready implementation specs.
 Prerequisites: the Convex backend running (`npx convex dev` in `apps/web`) and
 `pnpm install` done at the repo root.
 
-1. **Get your workspace id** — open Archer (http://localhost:3000) and copy it
-   from the footer of the home page. This scopes the server to the same
-   projects your browser sees.
+1. **Create an API key** — open Archer (http://localhost:3000), sign in with
+   GitHub, open **Connect an agent** from your avatar menu, and create a key.
+   The key unlocks your workspace (your projects, custom types, history,
+   questions, drift). It is shown once; only its hash is stored.
 2. **Register the server** with your MCP client. For Claude Code:
 
    ```sh
    claude mcp add archer \
-     --env ARCHER_WORKSPACE_ID=<your-workspace-id> \
+     --env ARCHER_API_KEY=<key> \
      -- pnpm --dir <absolute-path-to-repo>/packages/mcp start
    ```
 
-   Alternatively skip the env var and, in your first session, ask the agent to
-   call `set_workspace` with the id — it persists to `~/.archer/workspace`.
+   Alternatively skip the env var and, in your first session, give the agent
+   the key and have it call `set_api_key` — it persists to `~/.archer/key`
+   (mode 0600). Revoke keys any time from the same dialog.
+
+   Upgrading from a pre-auth setup? `ARCHER_WORKSPACE_ID` and
+   `~/.archer/workspace` are now ignored (the server says so in its error);
+   sign in once so the app claims your old anonymous workspace, then create a
+   key.
 
 ### Environment variables
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
-| `ARCHER_WORKSPACE_ID` | `~/.archer/workspace` file, else unset | Which workspace's projects the server operates on |
+| `ARCHER_API_KEY` | `~/.archer/key` file, else unset | API key created in the app; determines whose workspace the server operates on (replaces `ARCHER_WORKSPACE_ID`, now ignored) |
 | `CONVEX_URL` | `http://127.0.0.1:3210` | The Convex backend |
 | `ARCHER_APP_URL` | `http://localhost:3000` | Base for the editor URLs returned by tools |
 | `ARCHER_AGENT_NAME` | the MCP client's declared name, else `agent` | How the agent's edits, questions and drift reports are attributed in the app |
@@ -66,8 +73,9 @@ any two revisions; defaults to the latest change).
 
 **Drift** — `report_drift`, `get_drift`.
 
-**Workspace** — `get_workspace_info` (config + reachability + counts),
-`set_workspace` (persist an id the user provides).
+**Workspace** — `get_workspace_info` (key prefix + validity, workspace id,
+reachability, counts, setup instructions when unconfigured), `set_api_key`
+(validate and persist a key the user provides).
 
 ### Agent identity & history
 
@@ -109,10 +117,12 @@ findings to the document with one click.
 ## Smoke test
 
 ```sh
-ARCHER_WORKSPACE_ID=<id> pnpm --filter @archer/mcp exec tsx scripts/smoke.ts
+ARCHER_API_KEY=<key> pnpm --filter @archer/mcp exec tsx scripts/smoke.ts
 ```
 
 Spawns the server over stdio and exercises all 26 tools against the live
 backend, including the reject-invalid-write and layout-preservation
-guarantees, agent attribution in history, the question round trip, and drift
-reporting.
+guarantees, agent attribution in history, the question round trip, drift
+reporting, and API-key handling (`get_workspace_info` shows the key prefix; a
+bogus `set_api_key` is rejected without touching the persisted key). Use a
+throwaway key: the test creates and deletes its own project and custom type.

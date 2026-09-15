@@ -1,5 +1,6 @@
 import { mutation, query, type MutationCtx } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
+import { requireWorkspace } from "./access";
 import { v, type Infer } from "convex/values";
 import { author } from "./schema";
 
@@ -10,8 +11,9 @@ const USER_AUTHOR: Author = { kind: "user" };
 const COALESCE_MS = 5 * 60_000;
 
 export const list = query({
-  args: { workspaceId: v.string() },
-  handler: async (ctx, { workspaceId }) => {
+  args: { workspaceId: v.string(), apiKey: v.optional(v.string()) },
+  handler: async (ctx, { workspaceId, apiKey }) => {
+    await requireWorkspace(ctx, workspaceId, apiKey);
     const docs = await ctx.db
       .query("documents")
       .withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId))
@@ -23,8 +25,9 @@ export const list = query({
 });
 
 export const get = query({
-  args: { id: v.id("documents"), workspaceId: v.string() },
-  handler: async (ctx, { id, workspaceId }) => {
+  args: { id: v.id("documents"), workspaceId: v.string(), apiKey: v.optional(v.string()) },
+  handler: async (ctx, { id, workspaceId, apiKey }) => {
+    await requireWorkspace(ctx, workspaceId, apiKey);
     const doc = await ctx.db.get(id);
     if (!doc || doc.workspaceId !== workspaceId) return null;
     return doc;
@@ -88,12 +91,14 @@ export async function recordRevision(
 export const create = mutation({
   args: {
     workspaceId: v.string(),
+    apiKey: v.optional(v.string()),
     title: v.string(),
     source: v.string(),
     author: v.optional(author),
     summary: v.optional(v.string()),
   },
-  handler: async (ctx, { workspaceId, title, source, author: who, summary }) => {
+  handler: async (ctx, { workspaceId, title, source, author: who, summary, apiKey }) => {
+    await requireWorkspace(ctx, workspaceId, apiKey);
     const now = Date.now();
     const id = await ctx.db.insert("documents", {
       workspaceId,
@@ -119,12 +124,14 @@ export const updateSource = mutation({
   args: {
     id: v.id("documents"),
     workspaceId: v.string(),
+    apiKey: v.optional(v.string()),
     source: v.string(),
     title: v.string(),
     author: v.optional(author),
     summary: v.optional(v.string()),
   },
-  handler: async (ctx, { id, workspaceId, source, title, author: who, summary }) => {
+  handler: async (ctx, { id, workspaceId, source, title, author: who, summary, apiKey }) => {
+    await requireWorkspace(ctx, workspaceId, apiKey);
     const doc = await ctx.db.get(id);
     if (!doc || doc.workspaceId !== workspaceId) return;
     if (doc.source === source && doc.title === title) return;
@@ -143,8 +150,9 @@ export const updateSource = mutation({
 
 /** The user has reviewed every agent change up to now. */
 export const markSeen = mutation({
-  args: { id: v.id("documents"), workspaceId: v.string() },
-  handler: async (ctx, { id, workspaceId }) => {
+  args: { id: v.id("documents"), workspaceId: v.string(), apiKey: v.optional(v.string()) },
+  handler: async (ctx, { id, workspaceId, apiKey }) => {
+    await requireWorkspace(ctx, workspaceId, apiKey);
     const doc = await ctx.db.get(id);
     if (!doc || doc.workspaceId !== workspaceId) return;
     await ctx.db.patch(id, { seenRevisionAt: Date.now() });
@@ -152,8 +160,9 @@ export const markSeen = mutation({
 });
 
 export const remove = mutation({
-  args: { id: v.id("documents"), workspaceId: v.string() },
-  handler: async (ctx, { id, workspaceId }) => {
+  args: { id: v.id("documents"), workspaceId: v.string(), apiKey: v.optional(v.string()) },
+  handler: async (ctx, { id, workspaceId, apiKey }) => {
+    await requireWorkspace(ctx, workspaceId, apiKey);
     const doc = await ctx.db.get(id);
     if (!doc || doc.workspaceId !== workspaceId) return;
     for (const table of ["revisions", "threads", "drift"] as const) {

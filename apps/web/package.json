@@ -11,6 +11,7 @@
   "dependencies": {
     "@archer/catalog": "workspace:*",
     "@archer/lang": "workspace:*",
+    "@clerk/nextjs": "^7.9.2",
     "@codemirror/commands": "^6.11.0",
     "@codemirror/lang-json": "^6.0.2",
     "@codemirror/lang-markdown": "^6.5.2",

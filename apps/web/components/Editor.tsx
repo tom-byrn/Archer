@@ -29,6 +29,7 @@ import { useIsDark } from "@/lib/useIsDark";
 import type { Id } from "@/convex/_generated/dataModel";
 import { authorLabel, useDocumentActivity } from "@/lib/activity";
 import type { NodeMarks } from "@/lib/toFlow";
+import { AccountMenu } from "./AccountMenu";
 import { ActivityPanel, type ActivityTab } from "./ActivityPanel";
 import { ArchCanvas, type CanvasCallbacks } from "./ArchCanvas";
 import { CodePane } from "./CodePane";
@@ -538,6 +539,12 @@ export function Editor({
           >
             <Icon.External />
           </a>
+          {documentId && (
+            <>
+              <span className="mx-1 h-4 w-px bg-line" />
+              <AccountMenu />
+            </>
+          )}
         </div>
       </header>
 

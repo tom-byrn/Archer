@@ -1,9 +1,11 @@
 import { mutation, query } from "./_generated/server";
+import { requireWorkspace } from "./access";
 import { v } from "convex/values";
 
 export const list = query({
-  args: { workspaceId: v.string() },
-  handler: async (ctx, { workspaceId }) => {
+  args: { workspaceId: v.string(), apiKey: v.optional(v.string()) },
+  handler: async (ctx, { workspaceId, apiKey }) => {
+    await requireWorkspace(ctx, workspaceId, apiKey);
     const items = await ctx.db
       .query("libraryTypes")
       .withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId))
@@ -15,12 +17,14 @@ export const list = query({
 export const save = mutation({
   args: {
     workspaceId: v.string(),
+    apiKey: v.optional(v.string()),
     tag: v.string(),
     name: v.string(),
     color: v.string(),
     glyph: v.string(),
   },
-  handler: async (ctx, { workspaceId, tag, name, color, glyph }) => {
+  handler: async (ctx, { workspaceId, tag, name, color, glyph, apiKey }) => {
+    await requireWorkspace(ctx, workspaceId, apiKey);
     const existing = await ctx.db
       .query("libraryTypes")
       .withIndex("by_workspace_tag", (q) =>
@@ -33,8 +37,9 @@ export const save = mutation({
 });
 
 export const remove = mutation({
-  args: { workspaceId: v.string(), tag: v.string() },
-  handler: async (ctx, { workspaceId, tag }) => {
+  args: { workspaceId: v.string(), apiKey: v.optional(v.string()), tag: v.string() },
+  handler: async (ctx, { workspaceId, tag, apiKey }) => {
+    await requireWorkspace(ctx, workspaceId, apiKey);
     const existing = await ctx.db
       .query("libraryTypes")
       .withIndex("by_workspace_tag", (q) =>

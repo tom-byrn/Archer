@@ -1,19 +1,31 @@
 "use client";
 
-const KEY = "archer.workspaceId";
-/** Pre-rename key — migrated on first read so existing documents stay linked. */
-const LEGACY_KEY = "archlang.workspaceId";
+import { useAuth } from "@clerk/nextjs";
 
-/** Client-generated workspace identity (stand-in for real auth, post-v1). */
-export function getWorkspaceId(): string {
+/** localStorage key of the pre-auth anonymous workspace id. */
+export const LEGACY_KEY = "archer.workspaceId";
+const OLDER_LEGACY_KEY = "archlang.workspaceId";
+
+/**
+ * The signed-in user's workspace id (their Clerk user id), or null while
+ * Clerk is loading or the user is signed out.
+ */
+export function useWorkspaceId(): string | null {
+  const { userId, isLoaded } = useAuth();
+  return isLoaded ? (userId ?? null) : null;
+}
+
+/**
+ * Read — and remove — the anonymous workspace id this browser used before
+ * sign-in existed, so it can be claimed into the user's account once.
+ */
+export function takeLegacyWorkspaceId(): string | null {
   try {
-    let id = localStorage.getItem(KEY);
-    if (!id) {
-      id = localStorage.getItem(LEGACY_KEY) ?? crypto.randomUUID();
-      localStorage.setItem(KEY, id);
-    }
-    return id;
+    const id = localStorage.getItem(LEGACY_KEY) ?? localStorage.getItem(OLDER_LEGACY_KEY);
+    localStorage.removeItem(LEGACY_KEY);
+    localStorage.removeItem(OLDER_LEGACY_KEY);
+    return id && id.trim() !== "" ? id : null;
   } catch {
-    return "anonymous";
+    return null;
   }
 }

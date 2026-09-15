@@ -1,13 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMutation, useQuery } from "convex/react";
 import { format, parse } from "@archer/lang";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
-import { getWorkspaceId } from "@/lib/workspace";
+import { useWorkspaceId } from "@/lib/workspace";
+import { AccountMenu } from "@/components/AccountMenu";
 import { SAMPLE } from "@/lib/sample";
 import { DocPreview } from "@/lib/preview";
 import { ConnectAgentDialog } from "@/components/ConnectAgentDialog";
@@ -192,8 +193,7 @@ function Skeletons() {
 
 export default function Home() {
   const router = useRouter();
-  const [workspaceId, setWorkspaceId] = useState<string | null>(null);
-  useEffect(() => setWorkspaceId(getWorkspaceId()), []);
+  const workspaceId = useWorkspaceId();
 
   const docs = useQuery(
     api.documents.list,
@@ -253,6 +253,8 @@ export default function Home() {
             Connect an agent
           </Button>
           {!empty && createButtons}
+          <span className="mx-1 h-4 w-px bg-line" />
+          <AccountMenu />
         </div>
       </header>
 
@@ -296,11 +298,7 @@ export default function Home() {
         </>
       )}
 
-      <ConnectAgentDialog
-        open={connectOpen}
-        onClose={() => setConnectOpen(false)}
-        workspaceId={workspaceId}
-      />
+      <ConnectAgentDialog open={connectOpen} onClose={() => setConnectOpen(false)} />
       {pending?.kind === "rename" && (
         <RenameDialog
           doc={pending.doc}

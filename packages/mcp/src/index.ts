@@ -18,16 +18,20 @@ import { CATALOG, CONNECTION_TYPES, GLYPHS } from "@archer/catalog";
 import {
   APP_URL,
   CONVEX_URL,
+  INVALID_KEY_MESSAGE,
   NO_WORKSPACE_MESSAGE,
   agentName,
   analyze,
   db,
   formatDiagnostic,
-  persistWorkspaceId,
+  lookupKey,
+  persistApiKey,
   prepareWrite,
-  resolveWorkspaceId,
+  resolveApiKey,
+  resolveWorkspace,
   setClientName,
   type DriftFinding,
+  type Workspace,
   type RevisionRow,
   type ThreadRow,
 } from "./backend";
@@ -45,10 +49,17 @@ const text = (value: unknown) => ({
 });
 const fail = (value: unknown) => ({ ...text(value), isError: true });
 
-const requireWorkspace = (): string => {
-  const id = resolveWorkspaceId();
-  if (!id) throw new Error(NO_WORKSPACE_MESSAGE);
-  return id;
+const requireWorkspace = async (): Promise<Workspace> => {
+  if (!resolveApiKey()) throw new Error(NO_WORKSPACE_MESSAGE);
+  const ws = await resolveWorkspace();
+  if (!ws) throw new Error(INVALID_KEY_MESSAGE);
+  return ws;
+};
+
+/** Best-effort workspace for tools that also work without one. */
+const optionalWorkspace = async (): Promise<Workspace | null> => {
+  if (!resolveApiKey()) return null;
+  return resolveWorkspace().catch(() => null);
 };
 
 const wrap =
@@ -104,8 +115,8 @@ const revisionView = (r: RevisionRow, previous: ArchDoc | null) => {
   };
 };
 
-const requireProject = async (workspaceId: string, projectId: string) => {
-  const doc = await db.getProject(workspaceId, projectId);
+const requireProject = async (ws: Workspace, projectId: string) => {
+  const doc = await db.getProject(ws, projectId);
   if (!doc) throw new Error(`No project with id ${projectId}. Use list_projects.`);
   return doc;
 };
@@ -146,7 +157,7 @@ server.registerTool(
     inputSchema: { source: z.string().describe("Full Archer document text") },
   },
   wrap(async ({ source }) => {
-    const a = await analyze(source, resolveWorkspaceId());
+    const a = await analyze(source, await optionalWorkspace());
     return text({
       valid: a.errors.length === 0,
       errors: diagnosticsReport(a.errors),
@@ -181,11 +192,11 @@ server.registerTool(
     let src = source;
     if (src === undefined) {
       if (!project_id) throw new Error("Pass either source or project_id.");
-      const doc = await db.getProject(requireWorkspace(), project_id);
+      const doc = await db.getProject(await requireWorkspace(), project_id);
       if (!doc) throw new Error(`No project with id ${project_id}.`);
       src = doc.source;
     }
-    const a = await analyze(src, resolveWorkspaceId());
+    const a = await analyze(src, await optionalWorkspace());
     if (a.errors.length > 0)
       return fail({
         message: "Document has validation errors; fix them before compiling.",
@@ -231,16 +242,16 @@ server.registerTool(
       t.tag.includes(q) ||
       t.name.toLowerCase().includes(q) ||
       (t.namespace ?? "").includes(q);
-    const workspaceId = resolveWorkspaceId();
-    const custom = workspaceId ? await db.listCustomTypes(workspaceId) : [];
+    const ws = await optionalWorkspace();
+    const custom = ws ? await db.listCustomTypes(ws) : [];
     return text({
       catalog: CATALOG.filter(match).map(({ tag, name, namespace }) => ({ tag, name, namespace })),
       custom_types: custom.filter(match),
       connection_types: CONNECTION_TYPES,
       glyphs_for_custom_types: Object.keys(GLYPHS),
-      note: workspaceId
+      note: ws
         ? undefined
-        : "No workspace configured — custom types not listed. See get_workspace_info.",
+        : "No API key configured — custom types not listed. See get_workspace_info.",
     });
   }),
 );
@@ -259,7 +270,7 @@ server.registerTool(
     },
   },
   wrap(async ({ name, glyph, color, tag }) => {
-    const workspaceId = requireWorkspace();
+    const ws = await requireWorkspace();
     const g = glyph ?? "box";
     if (!(g in GLYPHS))
       throw new Error(`Unknown glyph '${g}'. Valid: ${Object.keys(GLYPHS).join(", ")}`);
@@ -274,7 +285,7 @@ server.registerTool(
     if (!/^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)*$/.test(slug))
       throw new Error(`Cannot derive a valid tag from '${tag ?? name}'.`);
     const fullTag = `custom.${slug}`;
-    await db.saveCustomType(workspaceId, { tag: fullTag, name: name.trim(), color: c, glyph: g });
+    await db.saveCustomType(ws, { tag: fullTag, name: name.trim(), color: c, glyph: g });
     return text({ created: fullTag, usage: `component my_id "${name.trim()}" @${fullTag}` });
   }),
 );
@@ -290,7 +301,7 @@ server.registerTool(
   wrap(async ({ tag }) => {
     if (!tag.startsWith("custom."))
       throw new Error("Only custom.* types can be deleted.");
-    await db.deleteCustomType(requireWorkspace(), tag);
+    await db.deleteCustomType(await requireWorkspace(), tag);
     return text({ deleted: tag });
   }),
 );
@@ -306,8 +317,8 @@ server.registerTool(
     inputSchema: {},
   },
   wrap(async () => {
-    const workspaceId = requireWorkspace();
-    const projects = await db.listProjects(workspaceId);
+    const ws = await requireWorkspace();
+    const projects = await db.listProjects(ws);
     return text(
       projects.map((p) => ({
         id: p._id,
@@ -328,13 +339,13 @@ server.registerTool(
     inputSchema: { project_id: z.string() },
   },
   wrap(async ({ project_id }) => {
-    const workspaceId = requireWorkspace();
-    const doc = await db.getProject(workspaceId, project_id);
+    const ws = await requireWorkspace();
+    const doc = await db.getProject(ws, project_id);
     if (!doc) throw new Error(`No project with id ${project_id}. Use list_projects.`);
     const [a, threads, drift] = await Promise.all([
-      analyze(doc.source, workspaceId),
-      db.listThreads(workspaceId, project_id, "open"),
-      db.getDrift(workspaceId, project_id),
+      analyze(doc.source, ws),
+      db.listThreads(ws, project_id, "open"),
+      db.getDrift(ws, project_id),
     ]);
     return text({
       id: project_id,
@@ -362,15 +373,15 @@ server.registerTool(
     },
   },
   wrap(async ({ source, summary }) => {
-    const workspaceId = requireWorkspace();
-    const prep = await prepareWrite(source, workspaceId);
+    const ws = await requireWorkspace();
+    const prep = await prepareWrite(source, ws);
     if (!prep.ok)
       return fail({
         message: "REJECTED — fix these errors and retry.",
         errors: diagnosticsReport(prep.errors),
         warnings: diagnosticsReport(prep.warnings),
       });
-    const id = await db.createProject(workspaceId, prep.title, prep.text, summary ?? "Created the project");
+    const id = await db.createProject(ws, prep.title, prep.text, summary ?? "Created the project");
     return text({
       id,
       title: prep.title,
@@ -393,17 +404,17 @@ server.registerTool(
     },
   },
   wrap(async ({ project_id, source, summary }) => {
-    const workspaceId = requireWorkspace();
-    const existing = await db.getProject(workspaceId, project_id);
+    const ws = await requireWorkspace();
+    const existing = await db.getProject(ws, project_id);
     if (!existing) throw new Error(`No project with id ${project_id}. Use list_projects.`);
-    const prep = await prepareWrite(source, workspaceId, existing.source);
+    const prep = await prepareWrite(source, ws, existing.source);
     if (!prep.ok)
       return fail({
         message: "REJECTED — nothing was saved. Fix these errors and retry.",
         errors: diagnosticsReport(prep.errors),
         warnings: diagnosticsReport(prep.warnings),
       });
-    await db.updateProject(workspaceId, project_id, prep.title, prep.text, summary);
+    await db.updateProject(ws, project_id, prep.title, prep.text, summary);
     return text({
       id: project_id,
       title: prep.title,
@@ -427,10 +438,10 @@ server.registerTool(
     },
   },
   wrap(async ({ project_id }) => {
-    const workspaceId = requireWorkspace();
-    const existing = await db.getProject(workspaceId, project_id);
+    const ws = await requireWorkspace();
+    const existing = await db.getProject(ws, project_id);
     if (!existing) throw new Error(`No project with id ${project_id}.`);
-    await db.deleteProject(workspaceId, project_id);
+    await db.deleteProject(ws, project_id);
     return text({ deleted: project_id, title: existing.title });
   }),
 );
@@ -450,13 +461,13 @@ server.registerTool(
     },
   },
   wrap(async ({ project_id, path, display }) => {
-    const workspaceId = requireWorkspace();
-    const existing = await db.getProject(workspaceId, project_id);
+    const ws = await requireWorkspace();
+    const existing = await db.getProject(ws, project_id);
     if (!existing) throw new Error(`No project with id ${project_id}.`);
     const doc = parse(existing.source).doc;
     const next = format(autoLayout(setDisplay(doc, path.split("."), display)));
     await db.updateProject(
-      workspaceId, project_id, doc.title, next,
+      ws, project_id, doc.title, next,
       `${display === "icon" ? "Collapsed" : "Expanded"} ${path} to ${display}`,
     );
     return text({ id: project_id, path, display, saved: true });
@@ -475,13 +486,13 @@ server.registerTool(
     },
   },
   wrap(async ({ project_id, reset }) => {
-    const workspaceId = requireWorkspace();
-    const existing = await db.getProject(workspaceId, project_id);
+    const ws = await requireWorkspace();
+    const existing = await db.getProject(ws, project_id);
     if (!existing) throw new Error(`No project with id ${project_id}.`);
     const doc = parse(existing.source).doc;
     const next = format(autoLayout(reset ? { ...doc, layout: [] } : doc));
     await db.updateProject(
-      workspaceId, project_id, doc.title, next,
+      ws, project_id, doc.title, next,
       reset ? "Re-arranged the canvas" : "Placed unpositioned components",
     );
     return text({ id: project_id, reset: reset ?? false, saved: true });
@@ -502,11 +513,11 @@ server.registerTool(
     },
   },
   wrap(async ({ project_id, limit }) => {
-    const workspaceId = requireWorkspace();
-    await requireProject(workspaceId, project_id);
+    const ws = await requireWorkspace();
+    await requireProject(ws, project_id);
     const n = limit ?? 20;
     // Fetch one extra so the oldest returned entry can be diffed too.
-    const rows = await db.listRevisions(workspaceId, project_id, n + 1);
+    const rows = await db.listRevisions(ws, project_id, n + 1);
     const shown = rows.slice(0, n);
     return text(
       shown.map((r, i) => {
@@ -526,8 +537,8 @@ server.registerTool(
     inputSchema: { revision_id: z.string() },
   },
   wrap(async ({ revision_id }) => {
-    const workspaceId = requireWorkspace();
-    const r = await db.getRevision(workspaceId, revision_id);
+    const ws = await requireWorkspace();
+    const r = await db.getRevision(ws, revision_id);
     if (!r) throw new Error(`No revision with id ${revision_id}. Use get_history.`);
     return text({
       revision_id: r._id,
@@ -553,9 +564,9 @@ server.registerTool(
     },
   },
   wrap(async ({ project_id, from_revision_id, to_revision_id }) => {
-    const workspaceId = requireWorkspace();
-    const project = await requireProject(workspaceId, project_id);
-    const revisions = await db.listRevisions(workspaceId, project_id, 200);
+    const ws = await requireWorkspace();
+    const project = await requireProject(ws, project_id);
+    const revisions = await db.listRevisions(ws, project_id, 200);
     const byId = new Map(revisions.map((r) => [r._id, r]));
     const pick = (id: string) => {
       const r = byId.get(id);
@@ -622,11 +633,11 @@ server.registerTool(
     },
   },
   wrap(async ({ project_id, path, text: body }) => {
-    const workspaceId = requireWorkspace();
-    const project = await requireProject(workspaceId, project_id);
+    const ws = await requireWorkspace();
+    const project = await requireProject(ws, project_id);
     if (!componentPaths(parse(project.source).doc).has(path))
       throw new Error(`No component at path '${path}' in this project.`);
-    const id = await db.createThread(workspaceId, project_id, path, body.trim());
+    const id = await db.createThread(ws, project_id, path, body.trim());
     return text({ question_id: id, path, status: "open", asked_as: agentName() });
   }),
 );
@@ -643,10 +654,10 @@ server.registerTool(
     },
   },
   wrap(async ({ project_id, status }) => {
-    const workspaceId = requireWorkspace();
-    await requireProject(workspaceId, project_id);
+    const ws = await requireWorkspace();
+    await requireProject(ws, project_id);
     const st = status ?? "open";
-    const rows = await db.listThreads(workspaceId, project_id, st === "all" ? undefined : st);
+    const rows = await db.listThreads(ws, project_id, st === "all" ? undefined : st);
     return text(rows.map(threadView));
   }),
 );
@@ -663,8 +674,8 @@ server.registerTool(
     },
   },
   wrap(async ({ question_id, text: body }) => {
-    const workspaceId = requireWorkspace();
-    await db.replyThread(workspaceId, question_id, body.trim());
+    const ws = await requireWorkspace();
+    await db.replyThread(ws, question_id, body.trim());
     return text({ question_id, replied_as: agentName() });
   }),
 );
@@ -681,9 +692,9 @@ server.registerTool(
     },
   },
   wrap(async ({ question_id, resolved }) => {
-    const workspaceId = requireWorkspace();
+    const ws = await requireWorkspace();
     const status = resolved === false ? "open" : "resolved";
-    await db.setThreadStatus(workspaceId, question_id, status);
+    await db.setThreadStatus(ws, question_id, status);
     return text({ question_id, status });
   }),
 );
@@ -710,8 +721,8 @@ server.registerTool(
     },
   },
   wrap(async ({ project_id, findings }) => {
-    const workspaceId = requireWorkspace();
-    const project = await requireProject(workspaceId, project_id);
+    const ws = await requireWorkspace();
+    const project = await requireProject(ws, project_id);
     const paths = componentPaths(parse(project.source).doc);
     const problems: string[] = [];
     findings.forEach((f, i) => {
@@ -729,7 +740,7 @@ server.registerTool(
       ...(f.src ? { src: f.src } : {}),
       ...(f.note ? { note: f.note } : {}),
     }));
-    await db.reportDrift(workspaceId, project_id, clean);
+    await db.reportDrift(ws, project_id, clean);
     const count = (s: DriftFinding["status"]) => clean.filter((f) => f.status === s).length;
     return text({
       project_id,
@@ -751,9 +762,9 @@ server.registerTool(
     inputSchema: { project_id: z.string() },
   },
   wrap(async ({ project_id }) => {
-    const workspaceId = requireWorkspace();
-    await requireProject(workspaceId, project_id);
-    const r = await db.getDrift(workspaceId, project_id);
+    const ws = await requireWorkspace();
+    await requireProject(ws, project_id);
+    const r = await db.getDrift(ws, project_id);
     if (!r) return text({ report: null });
     return text({
       report: {
@@ -773,55 +784,70 @@ server.registerTool(
   {
     title: "Workspace status",
     description:
-      "Report this server's configuration: which workspace id is active (or how to set one), the Convex backend URL, whether the backend is reachable, and project/custom-type counts. Call this first if any project tool errors.",
+      "Report this server's configuration: whether an API key is configured (and its prefix), which workspace it unlocks, the Convex backend URL, whether the backend is reachable, and project/custom-type counts. Call this first if any project tool errors. If no key is configured, the response explains how the user creates one.",
     inputSchema: {},
   },
   wrap(async () => {
-    const workspaceId = resolveWorkspaceId();
-    let reachable = false;
+    const apiKey = resolveApiKey();
+    let ws: Workspace | null = null;
+    let reachable: boolean | undefined;
+    let keyValid: boolean | undefined;
     let projectCount: number | null = null;
     let customTypeCount: number | null = null;
-    if (workspaceId) {
+    if (apiKey) {
       try {
-        const [projects, types] = await Promise.all([
-          db.listProjects(workspaceId),
-          db.listCustomTypes(workspaceId),
-        ]);
+        ws = await resolveWorkspace();
         reachable = true;
-        projectCount = projects.length;
-        customTypeCount = types.length;
+        keyValid = ws !== null;
+        if (ws) {
+          const [projects, types] = await Promise.all([
+            db.listProjects(ws),
+            db.listCustomTypes(ws),
+          ]);
+          projectCount = projects.length;
+          customTypeCount = types.length;
+        }
       } catch {
         reachable = false;
       }
     }
     return text({
-      workspace_id: workspaceId,
+      api_key_configured: apiKey !== null,
+      api_key_prefix: apiKey ? apiKey.slice(0, 14) : null,
+      api_key_valid: keyValid,
+      workspace_id: ws?.workspaceId ?? null,
+      agent_name: agentName(),
       convex_url: CONVEX_URL,
       app_url: APP_URL,
-      backend_reachable: workspaceId ? reachable : undefined,
+      backend_reachable: reachable,
       project_count: projectCount,
       custom_type_count: customTypeCount,
-      ...(workspaceId ? {} : { how_to_configure: NO_WORKSPACE_MESSAGE }),
+      ...(apiKey ? {} : { how_to_configure: NO_WORKSPACE_MESSAGE }),
+      ...(apiKey && keyValid === false ? { how_to_fix: INVALID_KEY_MESSAGE } : {}),
     });
   }),
 );
 
 server.registerTool(
-  "set_workspace",
+  "set_api_key",
   {
-    title: "Set the active workspace",
+    title: "Set the API key",
     description:
-      "Point this server at a workspace id (persisted to ~/.archer/workspace for future sessions). The id must come from the user — it's shown in the footer of the Archer home page — so their browser and your tools see the same projects. Never invent one: a made-up id silently creates an empty parallel workspace.",
+      "Authenticate this server with an Archer API key (persisted to ~/.archer/key, mode 0600, for future sessions). The key must come from the user — they create it in the Archer app under \"Connect an agent\" after signing in with GitHub — and it determines whose projects you see. Never invent or guess one; an invalid key is rejected and nothing is saved.",
     inputSchema: {
-      workspace_id: z.string().min(1).describe("Workspace id copied by the user from the app's home page footer"),
+      api_key: z.string().min(1).describe("API key the user created in the app (starts with archer_)"),
     },
   },
-  wrap(async ({ workspace_id }) => {
-    persistWorkspaceId(workspace_id.trim());
-    const projects = await db.listProjects(workspace_id.trim()).catch(() => null);
+  wrap(async ({ api_key }) => {
+    const key = api_key.trim();
+    const ws = await lookupKey(key);
+    if (!ws) throw new Error("That API key is not valid for this backend. Nothing was saved. " + INVALID_KEY_MESSAGE);
+    persistApiKey(key);
+    const projects = await db.listProjects(ws).catch(() => null);
     return text({
-      workspace_id: workspace_id.trim(),
-      persisted_to: "~/.archer/workspace",
+      api_key_prefix: key.slice(0, 14),
+      workspace_id: ws.workspaceId,
+      persisted_to: "~/.archer/key",
       visible_projects: projects?.length ?? "backend unreachable",
     });
   }),
@@ -833,4 +859,4 @@ await server.connect(new StdioServerTransport());
 setClientName(server.server.getClientVersion()?.name);
 // The handshake may complete after connect() resolves; re-read lazily too.
 server.server.oninitialized = () => setClientName(server.server.getClientVersion()?.name);
-console.error(`[archer-mcp] ready — convex: ${CONVEX_URL}, workspace: ${resolveWorkspaceId() ?? "(not set)"}, agent: ${agentName()}`);
+console.error(`[archer-mcp] ready — convex: ${CONVEX_URL}, api key: ${resolveApiKey() ? resolveApiKey()!.slice(0, 14) + "…" : "(not set)"}, agent: ${agentName()}`);

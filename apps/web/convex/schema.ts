@@ -1,8 +1,9 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
-// `workspaceId` is a client-generated id identifying this user's workspace
-// (v1 is a solo tool; swapping this for real auth identities is post-v1).
+// `workspaceId` is the owner's Clerk user id. Rows created before auth carry
+// the browser-generated UUID they were made with until `workspaces.claimLegacy`
+// moves them. Every function checks access via `requireWorkspace`.
 
 /** Who made a change: the human in the browser, or an agent over MCP. */
 export const author = v.object({
@@ -37,7 +38,9 @@ export default defineSchema({
     author,
     /** One-line description of the change (agents supply it; users rarely). */
     summary: v.optional(v.string()),
-  }).index("by_document", ["documentId", "createdAt"]),
+  })
+    .index("by_document", ["documentId", "createdAt"])
+    .index("by_workspace", ["workspaceId"]),
 
   /** A question / discussion attached to one component path. */
   threads: defineTable({
@@ -54,7 +57,9 @@ export default defineSchema({
         at: v.number(),
       }),
     ),
-  }).index("by_document", ["documentId", "updatedAt"]),
+  })
+    .index("by_document", ["documentId", "updatedAt"])
+    .index("by_workspace", ["workspaceId"]),
 
   /** Latest drift report for a document (replaced on every report). */
   drift: defineTable({
@@ -74,7 +79,21 @@ export default defineSchema({
         note: v.optional(v.string()),
       }),
     ),
-  }).index("by_document", ["documentId"]),
+  })
+    .index("by_document", ["documentId"])
+    .index("by_workspace", ["workspaceId"]),
+
+  /** Agent credentials: only the SHA-256 of the key is stored. */
+  apiKeys: defineTable({
+    workspaceId: v.string(),
+    name: v.string(),
+    hash: v.string(),
+    /** First characters of the key, for display. */
+    prefix: v.string(),
+    createdAt: v.number(),
+  })
+    .index("by_workspace", ["workspaceId"])
+    .index("by_hash", ["hash"]),
 
   libraryTypes: defineTable({
     workspaceId: v.string(),

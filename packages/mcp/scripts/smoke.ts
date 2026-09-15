@@ -2,10 +2,21 @@
  * End-to-end smoke test: spawns the MCP server over stdio and exercises every
  * tool group against the real local Convex backend.
  *
- * Usage: ARCHER_WORKSPACE_ID=<id> pnpm --filter @archer/mcp exec tsx scripts/smoke.ts
+ * Usage: ARCHER_API_KEY=<key> pnpm --filter @archer/mcp exec tsx scripts/smoke.ts
  */
+import { existsSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
+import { homedir } from "node:os";
+import { join } from "node:path";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
+
+const API_KEY = process.env.ARCHER_API_KEY?.trim();
+if (!API_KEY) {
+  console.error(
+    "ARCHER_API_KEY is not set. Create a key in the Archer app (sign in → Connect an agent → Create API key) and run:\n  ARCHER_API_KEY=<key> pnpm --filter @archer/mcp exec tsx scripts/smoke.ts",
+  );
+  process.exit(2);
+}
 
 const transport = new StdioClientTransport({
   command: "tsx",
@@ -59,9 +70,20 @@ check("auto_layout_source adds layout", laid.text.includes("layout {"));
 const types = await call("list_types", { search: "postgres" });
 check("list_types finds postgres", types.json?.catalog.some((t: { tag: string }) => t.tag === "postgres"), types.json);
 
-// projects (needs workspace)
+// workspace / api key
 const info = await call("get_workspace_info");
-check("workspace configured + reachable", info.json?.workspace_id != null && info.json?.backend_reachable === true, info.json);
+check("api key resolves to a workspace + backend reachable", info.json?.api_key_valid === true && typeof info.json?.workspace_id === "string" && info.json?.backend_reachable === true, info.json);
+check("get_workspace_info shows the key prefix", info.json?.api_key_prefix === API_KEY.slice(0, 14), info.json?.api_key_prefix);
+
+// a bogus key must be rejected and must not touch the persisted key file
+const KEY_FILE = join(homedir(), ".archer", "key");
+const keyFileBefore = existsSync(KEY_FILE) ? readFileSync(KEY_FILE, "utf8") : null;
+const bogus = await call("set_api_key", { api_key: "archer_not_a_real_key" });
+const keyFileAfter = existsSync(KEY_FILE) ? readFileSync(KEY_FILE, "utf8") : null;
+check("set_api_key rejects a bogus key", bogus.isError && bogus.text.includes("not valid"), bogus.text);
+check("bogus set_api_key leaves ~/.archer/key untouched", keyFileBefore === keyFileAfter);
+const infoAfter = await call("get_workspace_info");
+check("workspace unchanged after bogus key", infoAfter.json?.workspace_id === info.json?.workspace_id);
 
 const rejected = await call("create_project", { source: 'arch "Smoke" v0.1\ncomponent a\na -> ghost' });
 check("create rejects invalid source", rejected.isError && rejected.text.includes("E101"));
@@ -167,6 +189,13 @@ const delProj = await call("delete_project", { project_id: pid, confirm: true })
 check("delete_project", !delProj.isError && delProj.json?.deleted === pid);
 const listedAfter = await call("list_projects");
 check("project gone after delete", !listedAfter.json?.some((p: { id: string }) => p.id === pid));
+
+// restore the key file exactly as we found it (belt and braces)
+if (keyFileBefore === null) {
+  if (existsSync(KEY_FILE)) unlinkSync(KEY_FILE);
+} else {
+  writeFileSync(KEY_FILE, keyFileBefore, { encoding: "utf8", mode: 0o600 });
+}
 
 await client.close();
 console.log(failures === 0 ? "\nALL SMOKE TESTS PASSED" : `\n${failures} FAILURES`);

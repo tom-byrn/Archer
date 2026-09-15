@@ -8,6 +8,16 @@ pure TS, no app deps), `packages/catalog` (component types + glyphs),
 Router + React Flow + Convex).
 
 - Run: `npx convex dev` and `pnpm dev`, both in `apps/web`.
+- Auth: Clerk (GitHub login) via `ConvexProviderWithClerk`; Convex validates
+  Clerk JWTs (`convex/auth.config.ts`, template "convex"). A workspace IS a
+  user: `workspaceId` == Clerk user id. Every workspace-scoped Convex function
+  calls `requireWorkspace(ctx, workspaceId, apiKey?)` from `convex/access.ts`
+  — a signed-in browser session, or an API key (hashed in `apiKeys`) for the
+  MCP server. Pre-auth anonymous workspaces are claimed on first sign-in
+  (`workspaces.claimLegacy`); `admin:transferWorkspace` (internal, CLI only)
+  moves data between workspaces. Env: `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` +
+  `CLERK_SECRET_KEY` in `.env.local`, `CLERK_JWT_ISSUER_DOMAIN` on the Convex
+  deployment (`npx convex env set`).
 - Tests: `pnpm --filter @archer/lang test` (never hit live APIs in tests —
   mock wrapper modules).
 - Every canvas edit must go through `packages/lang` transforms → `format()`;

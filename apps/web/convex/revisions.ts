@@ -1,10 +1,12 @@
 import { query } from "./_generated/server";
+import { requireWorkspace } from "./access";
 import { v } from "convex/values";
 
 /** Revision metadata, newest first (no sources — use `get`/`listFull`). */
 export const list = query({
-  args: { documentId: v.id("documents"), workspaceId: v.string() },
-  handler: async (ctx, { documentId, workspaceId }) => {
+  args: { documentId: v.id("documents"), workspaceId: v.string(), apiKey: v.optional(v.string()) },
+  handler: async (ctx, { documentId, workspaceId, apiKey }) => {
+    await requireWorkspace(ctx, workspaceId, apiKey);
     const doc = await ctx.db.get(documentId);
     if (!doc || doc.workspaceId !== workspaceId) return [];
     const rows = await ctx.db
@@ -27,9 +29,11 @@ export const listFull = query({
   args: {
     documentId: v.id("documents"),
     workspaceId: v.string(),
+    apiKey: v.optional(v.string()),
     limit: v.optional(v.number()),
   },
-  handler: async (ctx, { documentId, workspaceId, limit }) => {
+  handler: async (ctx, { documentId, workspaceId, limit, apiKey }) => {
+    await requireWorkspace(ctx, workspaceId, apiKey);
     const doc = await ctx.db.get(documentId);
     if (!doc || doc.workspaceId !== workspaceId) return [];
     return ctx.db
@@ -41,8 +45,9 @@ export const listFull = query({
 });
 
 export const get = query({
-  args: { id: v.id("revisions"), workspaceId: v.string() },
-  handler: async (ctx, { id, workspaceId }) => {
+  args: { id: v.id("revisions"), workspaceId: v.string(), apiKey: v.optional(v.string()) },
+  handler: async (ctx, { id, workspaceId, apiKey }) => {
+    await requireWorkspace(ctx, workspaceId, apiKey);
     const rev = await ctx.db.get(id);
     if (!rev || rev.workspaceId !== workspaceId) return null;
     return rev;
@@ -55,8 +60,9 @@ export const get = query({
  * everything agents changed since the user last looked.
  */
 export const baseline = query({
-  args: { documentId: v.id("documents"), workspaceId: v.string() },
-  handler: async (ctx, { documentId, workspaceId }) => {
+  args: { documentId: v.id("documents"), workspaceId: v.string(), apiKey: v.optional(v.string()) },
+  handler: async (ctx, { documentId, workspaceId, apiKey }) => {
+    await requireWorkspace(ctx, workspaceId, apiKey);
     const doc = await ctx.db.get(documentId);
     if (!doc || doc.workspaceId !== workspaceId) return null;
     if (doc.seenRevisionAt !== undefined) {

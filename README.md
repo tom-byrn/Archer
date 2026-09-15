@@ -55,7 +55,7 @@ Docs: [language spec](docs/language-spec.md) · [product spec](docs/product-spec
 
 ```sh
 pnpm install
-pnpm --filter @archer/lang test     # 66 language tests
+pnpm --filter @archer/lang test     # 82 language tests
 
 # terminal 1 — local Convex backend (no account needed)
 cd apps/web && npx convex dev
@@ -64,12 +64,21 @@ cd apps/web && npx convex dev
 pnpm dev                              # http://localhost:3000
 ```
 
-Connect Claude Code (or any MCP client) to your projects — copy your
-workspace id from the app's home-page footer, then:
+Sign-in is GitHub via [Clerk](https://clerk.com). One-time setup:
+
+1. Create a Clerk application, enable **GitHub** under *SSO connections*, and
+   add a **JWT template** named `convex`.
+2. Put `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` and `CLERK_SECRET_KEY` in
+   `apps/web/.env.local` (template in `.env.example`).
+3. Point Convex at your Clerk instance:
+   `npx convex env set CLERK_JWT_ISSUER_DOMAIN https://<your-slug>.clerk.accounts.dev`
+
+Connect Claude Code (or any MCP client) to your projects — sign in, open
+**Connect an agent** from your avatar menu, create an API key, then:
 
 ```sh
 claude mcp add archer \
-  --env ARCHER_WORKSPACE_ID=<workspace-id> \
+  --env ARCHER_API_KEY=<key> \
   -- pnpm --dir <repo>/packages/mcp start
 ```
 

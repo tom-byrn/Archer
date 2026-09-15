@@ -1,9 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { getWorkspaceId } from "./workspace";
+import { useWorkspaceId } from "./workspace";
 
 export interface CustomType {
   tag: string;
@@ -20,8 +20,7 @@ export interface UserLibrary {
 
 /** Custom component types, stored in Convex per workspace. */
 export function useUserLibrary(): UserLibrary {
-  const [workspaceId, setWorkspaceId] = useState<string | null>(null);
-  useEffect(() => setWorkspaceId(getWorkspaceId()), []);
+  const workspaceId = useWorkspaceId();
 
   const items = useQuery(
     api.library.list,
