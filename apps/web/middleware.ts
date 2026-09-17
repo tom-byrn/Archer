@@ -1,9 +1,9 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 
-// Everything is private except the sign-in flow and the language reference
-// (which users hand to agents as a docs link).
-const isPublic = createRouteMatcher(["/sign-in(.*)", "/language(.*)"]);
+// Everything is private except the sign-in flow, the language reference
+// (which users hand to agents as a docs link), and shared-link views.
+const isPublic = createRouteMatcher(["/sign-in(.*)", "/language(.*)", "/s(.*)"]);
 
 const configured =
   !!process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY && !!process.env.CLERK_SECRET_KEY;

@@ -30,6 +30,7 @@ import type { Id } from "@/convex/_generated/dataModel";
 import { authorLabel, useDocumentActivity } from "@/lib/activity";
 import type { NodeMarks } from "@/lib/toFlow";
 import { AccountMenu } from "./AccountMenu";
+import { ShareDialog } from "./ShareDialog";
 import { ActivityPanel, type ActivityTab } from "./ActivityPanel";
 import { ArchCanvas, type CanvasCallbacks } from "./ArchCanvas";
 import { CodePane } from "./CodePane";
@@ -119,6 +120,7 @@ export function Editor({
   documentId = null,
   workspaceId = null,
   seenRevisionAt,
+  publicSlug = null,
 }: {
   initialSource?: string;
   onPersist?: (source: string, title: string) => Promise<void> | void;
@@ -126,6 +128,8 @@ export function Editor({
   documentId?: Id<"documents"> | null;
   workspaceId?: string | null;
   seenRevisionAt?: number;
+  /** Share slug when "anyone with the link" is on. */
+  publicSlug?: string | null;
 }) {
   const { source, setSource, mutate, undo, redo, canUndo, canRedo } =
     useArchDoc(initialSource);
@@ -153,6 +157,7 @@ export function Editor({
   const exportRef = useRef<(() => void) | null>(null);
   const activity = useDocumentActivity(documentId, workspaceId, seenRevisionAt);
   const [panel, setPanel] = useState<ActivityTab | null>(null);
+  const [shareOpen, setShareOpen] = useState(false);
   const [diffView, setDiffView] = useState<DiffView>(null);
 
   useEffect(() => {
@@ -491,6 +496,11 @@ export function Editor({
           <IconButton label={codeOpen ? "Hide code" : "Show code"} onClick={toggleCode} active={codeOpen}>
             <Icon.Code />
           </IconButton>
+          {documentId && (
+            <Button size="sm" icon={<Icon.Link />} onClick={() => setShareOpen(true)} className="ml-1">
+              Share
+            </Button>
+          )}
           <Menu
             width={260}
             items={[
@@ -692,6 +702,15 @@ export function Editor({
         )}
       </div>
 
+      {documentId && workspaceId && (
+        <ShareDialog
+          open={shareOpen}
+          onClose={() => setShareOpen(false)}
+          documentId={documentId}
+          workspaceId={workspaceId}
+          publicSlug={publicSlug}
+        />
+      )}
       <CommandPalette
         open={paletteOpen}
         onClose={() => setPaletteOpen(false)}

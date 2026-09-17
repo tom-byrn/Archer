@@ -1,16 +1,15 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
-import { generateKey, hashKey, requireUser, workspaceForKey } from "./access";
+import { generateKey, hashKey, requireWorkspace, workspaceForKey } from "./access";
 
-/** Keys of the signed-in user (never the secret itself). */
+/** Keys of a workspace (never the secret itself). Editors and owners may look. */
 export const list = query({
-  args: {},
-  handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) return [];
+  args: { workspaceId: v.string() },
+  handler: async (ctx, { workspaceId }) => {
+    await requireWorkspace(ctx, workspaceId, undefined, "editor");
     const rows = await ctx.db
       .query("apiKeys")
-      .withIndex("by_workspace", (q) => q.eq("workspaceId", identity.subject))
+      .withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId))
       .collect();
     return rows
       .sort((a, b) => b.createdAt - a.createdAt)
@@ -18,11 +17,11 @@ export const list = query({
   },
 });
 
-/** Mint a key. The plaintext is returned exactly once. */
+/** Mint a key for a workspace. The plaintext is returned exactly once. */
 export const create = mutation({
-  args: { name: v.string() },
-  handler: async (ctx, { name }) => {
-    const workspaceId = await requireUser(ctx);
+  args: { workspaceId: v.string(), name: v.string() },
+  handler: async (ctx, { workspaceId, name }) => {
+    await requireWorkspace(ctx, workspaceId, undefined, "editor");
     const key = generateKey();
     const id = await ctx.db.insert("apiKeys", {
       workspaceId,
@@ -38,9 +37,9 @@ export const create = mutation({
 export const revoke = mutation({
   args: { id: v.id("apiKeys") },
   handler: async (ctx, { id }) => {
-    const workspaceId = await requireUser(ctx);
     const row = await ctx.db.get(id);
-    if (!row || row.workspaceId !== workspaceId) return;
+    if (!row) return;
+    await requireWorkspace(ctx, row.workspaceId, undefined, "editor");
     await ctx.db.delete(id);
   },
 });

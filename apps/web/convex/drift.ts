@@ -36,7 +36,7 @@ export const report = mutation({
     author: v.optional(author),
   },
   handler: async (ctx, { documentId, workspaceId, findings, author: who, apiKey }) => {
-    await requireWorkspace(ctx, workspaceId, apiKey);
+    await requireWorkspace(ctx, workspaceId, apiKey, "editor");
     const doc = await ctx.db.get(documentId);
     if (!doc || doc.workspaceId !== workspaceId) throw new Error("Document not found");
     const old = await ctx.db
@@ -58,7 +58,7 @@ export const report = mutation({
 export const dismiss = mutation({
   args: { id: v.id("drift"), workspaceId: v.string(), apiKey: v.optional(v.string()), index: v.number() },
   handler: async (ctx, { id, workspaceId, index, apiKey }) => {
-    await requireWorkspace(ctx, workspaceId, apiKey);
+    await requireWorkspace(ctx, workspaceId, apiKey, "editor");
     const r = await ctx.db.get(id);
     if (!r || r.workspaceId !== workspaceId) return;
     await ctx.db.patch(id, { findings: r.findings.filter((_, i) => i !== index) });
@@ -68,7 +68,7 @@ export const dismiss = mutation({
 export const clear = mutation({
   args: { documentId: v.id("documents"), workspaceId: v.string(), apiKey: v.optional(v.string()) },
   handler: async (ctx, { documentId, workspaceId, apiKey }) => {
-    await requireWorkspace(ctx, workspaceId, apiKey);
+    await requireWorkspace(ctx, workspaceId, apiKey, "editor");
     const rows = await ctx.db
       .query("drift")
       .withIndex("by_document", (q) => q.eq("documentId", documentId))

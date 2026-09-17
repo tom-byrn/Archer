@@ -7,18 +7,21 @@ import { useMutation, useQuery } from "convex/react";
 import { format, parse } from "@archer/lang";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
-import { useWorkspaceId } from "@/lib/workspace";
+import { useWorkspace, type WorkspaceSummary } from "@/lib/workspace";
 import { AccountMenu } from "@/components/AccountMenu";
+import { MembersDialog } from "@/components/MembersDialog";
 import { SAMPLE } from "@/lib/sample";
 import { DocPreview } from "@/lib/preview";
 import { ConnectAgentDialog } from "@/components/ConnectAgentDialog";
 import {
   Button,
+  Chip,
   Dialog,
   Icon,
   IconButton,
   Input,
   Menu,
+  type MenuItem,
   relativeTime,
 } from "@/components/ui";
 
@@ -48,11 +51,13 @@ const withTitle = (source: string, title: string): string => {
 
 function DocCard({
   doc,
+  readOnly,
   onRename,
   onDuplicate,
   onDelete,
 }: {
   doc: DocRow;
+  readOnly: boolean;
   onRename: () => void;
   onDuplicate: () => void;
   onDelete: () => void;
@@ -86,13 +91,17 @@ function DocCard({
               <Icon.More />
             </IconButton>
           )}
-          items={[
-            { label: "Open", icon: <Icon.External />, onSelect: () => router.push(`/d/${doc._id}`) },
-            { label: "Rename", icon: <Icon.Pencil />, onSelect: onRename },
-            { label: "Duplicate", icon: <Icon.Duplicate />, onSelect: onDuplicate },
-            "separator",
-            { label: "Delete", icon: <Icon.Trash />, danger: true, onSelect: onDelete },
-          ]}
+          items={
+            readOnly
+              ? [{ label: "Open", icon: <Icon.External />, onSelect: () => router.push(`/d/${doc._id}`) }]
+              : [
+                  { label: "Open", icon: <Icon.External />, onSelect: () => router.push(`/d/${doc._id}`) },
+                  { label: "Rename", icon: <Icon.Pencil />, onSelect: onRename },
+                  { label: "Duplicate", icon: <Icon.Duplicate />, onSelect: onDuplicate },
+                  "separator",
+                  { label: "Delete", icon: <Icon.Trash />, danger: true, onSelect: onDelete },
+                ]
+          }
         />
       </div>
     </div>
@@ -175,6 +184,222 @@ function DeleteDialog({
   );
 }
 
+function NameDialog({
+  title,
+  initial,
+  submitLabel,
+  onClose,
+  onSave,
+}: {
+  title: string;
+  initial: string;
+  submitLabel: string;
+  onClose: () => void;
+  onSave: (name: string) => Promise<void>;
+}) {
+  const [name, setName] = useState(initial);
+  const [busy, setBusy] = useState(false);
+  const trimmed = name.trim();
+  return (
+    <Dialog open onClose={onClose} title={title} width={400}>
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (trimmed === "" || busy) return;
+          setBusy(true);
+          void onSave(trimmed).then(onClose).finally(() => setBusy(false));
+        }}
+      >
+        <Input value={name} autoFocus placeholder="Team name" onChange={(e) => setName(e.target.value)} />
+        <div className="flex justify-end gap-2 pt-3">
+          <Button variant="ghost" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button type="submit" variant="primary" disabled={trimmed === "" || busy}>
+            {submitLabel}
+          </Button>
+        </div>
+      </form>
+    </Dialog>
+  );
+}
+
+function ConfirmDialog({
+  title,
+  body,
+  confirmLabel,
+  onClose,
+  onConfirm,
+}: {
+  title: string;
+  body: React.ReactNode;
+  confirmLabel: string;
+  onClose: () => void;
+  onConfirm: () => Promise<void>;
+}) {
+  const [busy, setBusy] = useState(false);
+  return (
+    <Dialog open onClose={onClose} title={title} width={420}>
+      <p className="text-base text-ink-2">{body}</p>
+      <div className="flex justify-end gap-2 pt-4">
+        <Button variant="ghost" onClick={onClose}>
+          Cancel
+        </Button>
+        <Button
+          variant="danger"
+          className="border-danger"
+          disabled={busy}
+          onClick={() => {
+            setBusy(true);
+            void onConfirm().then(onClose).finally(() => setBusy(false));
+          }}
+        >
+          {confirmLabel}
+        </Button>
+      </div>
+    </Dialog>
+  );
+}
+
+const ROLE_LABEL = { owner: "Owner", editor: "Editor", viewer: "Viewer" } as const;
+
+type WorkspaceDialog =
+  | { kind: "create" }
+  | { kind: "rename" }
+  | { kind: "delete" }
+  | { kind: "leave" }
+  | { kind: "members" }
+  | null;
+
+/** Header control: current workspace name → menu of workspaces and actions. */
+function WorkspaceSwitcher({
+  workspaces,
+  current,
+  onSelect,
+}: {
+  workspaces: WorkspaceSummary[];
+  current: WorkspaceSummary | undefined;
+  onSelect: (id: string) => void;
+}) {
+  const createWs = useMutation(api.workspaces.create);
+  const renameWs = useMutation(api.workspaces.rename);
+  const removeWs = useMutation(api.workspaces.remove);
+  const leaveWs = useMutation(api.workspaces.leave);
+  const [dialog, setDialog] = useState<WorkspaceDialog>(null);
+
+  const isTeam = current?.kind === "team";
+  const isOwner = current?.role === "owner";
+  const teamId = current?.id as Id<"workspaces"> | undefined;
+
+  const items: (MenuItem | "separator")[] = [
+    ...workspaces.map((w) => ({
+      label: w.name,
+      hint: w.pending ? "Invited — open to join" : w.kind === "team" ? ROLE_LABEL[w.role] : undefined,
+      icon: w.id === current?.id ? <Icon.Check /> : undefined,
+      onSelect: () => onSelect(w.id),
+    })),
+    "separator" as const,
+    { label: "New team workspace…", icon: <Icon.Plus />, onSelect: () => setDialog({ kind: "create" }) },
+    ...(isTeam
+      ? [
+          { label: "Members…", icon: <Icon.User />, onSelect: () => setDialog({ kind: "members" }) },
+          ...(isOwner
+            ? [
+                { label: "Rename…", icon: <Icon.Pencil />, onSelect: () => setDialog({ kind: "rename" }) },
+                {
+                  label: "Delete workspace…",
+                  icon: <Icon.Trash />,
+                  danger: true,
+                  onSelect: () => setDialog({ kind: "delete" }),
+                },
+              ]
+            : [
+                {
+                  label: "Leave workspace",
+                  icon: <Icon.External />,
+                  danger: true,
+                  onSelect: () => setDialog({ kind: "leave" }),
+                },
+              ]),
+        ]
+      : []),
+  ];
+
+  return (
+    <>
+      <Menu
+        width={260}
+        align="start"
+        items={items}
+        trigger={({ open, toggle }) => (
+          <Button onClick={toggle} aria-expanded={open} className="max-w-[240px] pr-2">
+            <span className="truncate">{current?.name ?? "Workspace"}</span>
+            {isTeam && current && <Chip className="ml-0.5">{ROLE_LABEL[current.role]}</Chip>}
+            <Icon.ChevronDown className="h-3.5 w-3.5 shrink-0 text-ink-3" />
+          </Button>
+        )}
+      />
+      {dialog?.kind === "create" && (
+        <NameDialog
+          title="New team workspace"
+          initial=""
+          submitLabel="Create"
+          onClose={() => setDialog(null)}
+          onSave={async (name) => {
+            const id = await createWs({ name });
+            onSelect(id);
+          }}
+        />
+      )}
+      {dialog?.kind === "rename" && teamId && (
+        <NameDialog
+          title="Rename workspace"
+          initial={current?.name ?? ""}
+          submitLabel="Save"
+          onClose={() => setDialog(null)}
+          onSave={async (name) => {
+            await renameWs({ workspaceId: teamId, name });
+          }}
+        />
+      )}
+      {dialog?.kind === "delete" && teamId && (
+        <ConfirmDialog
+          title="Delete workspace"
+          body={
+            <>
+              Delete <span className="font-medium text-ink">{current?.name}</span> and every document,
+              revision, question and API key in it? Members lose access immediately. This cannot be undone.
+            </>
+          }
+          confirmLabel="Delete workspace"
+          onClose={() => setDialog(null)}
+          onConfirm={async () => {
+            await removeWs({ workspaceId: teamId });
+            const personal = workspaces.find((w) => w.kind === "personal");
+            if (personal) onSelect(personal.id);
+          }}
+        />
+      )}
+      {dialog?.kind === "leave" && teamId && (
+        <ConfirmDialog
+          title="Leave workspace"
+          body={<>Leave <span className="font-medium text-ink">{current?.name}</span>? An owner can invite you back.</>}
+          confirmLabel="Leave"
+          onClose={() => setDialog(null)}
+          onConfirm={async () => {
+            await leaveWs({ workspaceId: teamId });
+            const personal = workspaces.find((w) => w.kind === "personal");
+            if (personal) onSelect(personal.id);
+          }}
+        />
+      )}
+      {dialog?.kind === "members" && teamId && (
+        <MembersDialog open onClose={() => setDialog(null)} workspaceId={teamId} canManage={!!isOwner} />
+      )}
+    </>
+  );
+}
+
 function Skeletons() {
   return (
     <>
@@ -193,7 +418,9 @@ function Skeletons() {
 
 export default function Home() {
   const router = useRouter();
-  const workspaceId = useWorkspaceId();
+  const { workspaceId, role, workspaces, select } = useWorkspace();
+  const current = workspaces.find((w) => w.id === workspaceId);
+  const canEdit = role === "owner" || role === "editor";
 
   const docs = useQuery(
     api.documents.list,
@@ -248,11 +475,15 @@ export default function Home() {
       <header className="flex items-center gap-3">
         <img src="/icon.svg" alt="" className="h-7 w-7 rounded-md" />
         <span className="font-display text-[22px] leading-none text-ink">Archer</span>
+        <span className="mx-2 h-4 w-px bg-line" />
+        <WorkspaceSwitcher workspaces={workspaces} current={current} onSelect={select} />
         <div className="ml-auto flex items-center gap-2">
-          <Button icon={<Icon.Plug />} onClick={() => setConnectOpen(true)}>
-            Connect an agent
-          </Button>
-          {!empty && createButtons}
+          {canEdit && (
+            <Button icon={<Icon.Plug />} onClick={() => setConnectOpen(true)}>
+              Connect an agent
+            </Button>
+          )}
+          {!empty && canEdit && createButtons}
           <span className="mx-1 h-4 w-px bg-line" />
           <AccountMenu />
         </div>
@@ -271,7 +502,11 @@ export default function Home() {
               Every box and arrow on the canvas compiles to a small text language that
               coding agents read and write, so the diagram and the code never drift.
             </p>
-            <div className="flex justify-center gap-2 pt-6">{createButtons}</div>
+            {canEdit ? (
+              <div className="flex justify-center gap-2 pt-6">{createButtons}</div>
+            ) : (
+              <p className="pt-6 text-sm text-ink-3">You have view access. Ask an owner to add documents.</p>
+            )}
           </div>
         </section>
       ) : (
@@ -288,6 +523,7 @@ export default function Home() {
                 <DocCard
                   key={d._id}
                   doc={d}
+                  readOnly={!canEdit}
                   onRename={() => setPending({ kind: "rename", doc: d })}
                   onDuplicate={() => void duplicate(d)}
                   onDelete={() => setPending({ kind: "delete", doc: d })}
@@ -298,7 +534,12 @@ export default function Home() {
         </>
       )}
 
-      <ConnectAgentDialog open={connectOpen} onClose={() => setConnectOpen(false)} />
+      <ConnectAgentDialog
+        open={connectOpen}
+        onClose={() => setConnectOpen(false)}
+        workspaceId={workspaceId}
+        workspaceName={current?.name ?? "this workspace"}
+      />
       {pending?.kind === "rename" && (
         <RenameDialog
           doc={pending.doc}

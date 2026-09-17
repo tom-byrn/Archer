@@ -5,8 +5,10 @@ import Link from "next/link";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
+import { useAuth } from "@clerk/nextjs";
 import { useWorkspaceId } from "@/lib/workspace";
 import { Editor } from "@/components/Editor";
+import { DocumentViewer } from "@/components/DocumentViewer";
 
 export default function DocumentPage({
   params,
@@ -15,6 +17,7 @@ export default function DocumentPage({
 }) {
   const { id } = use(params);
   const workspaceId = useWorkspaceId();
+  const { isSignedIn } = useAuth();
 
   const doc = useQuery(
     api.documents.get,
@@ -50,6 +53,16 @@ export default function DocumentPage({
       </div>
     );
   }
+  if (doc.role === "viewer") {
+    return (
+      <DocumentViewer
+        title={doc.title}
+        source={doc.source}
+        updatedAt={doc.updatedAt}
+        signedIn={!!isSignedIn}
+      />
+    );
+  }
   return (
     <Editor
       key={doc._id}
@@ -58,6 +71,7 @@ export default function DocumentPage({
       documentId={doc._id}
       workspaceId={workspaceId}
       seenRevisionAt={doc.seenRevisionAt}
+      publicSlug={doc.publicSlug ?? null}
     />
   );
 }

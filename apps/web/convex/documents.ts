@@ -1,6 +1,6 @@
 import { mutation, query, type MutationCtx } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
-import { requireWorkspace } from "./access";
+import { generateSlug, requireWorkspace, roleFor } from "./access";
 import { v, type Infer } from "convex/values";
 import { author } from "./schema";
 
@@ -27,10 +27,44 @@ export const list = query({
 export const get = query({
   args: { id: v.id("documents"), workspaceId: v.string(), apiKey: v.optional(v.string()) },
   handler: async (ctx, { id, workspaceId, apiKey }) => {
-    await requireWorkspace(ctx, workspaceId, apiKey);
+    const role = await requireWorkspace(ctx, workspaceId, apiKey);
     const doc = await ctx.db.get(id);
     if (!doc || doc.workspaceId !== workspaceId) return null;
-    return doc;
+    return { ...doc, role };
+  },
+});
+
+/** A document shared with "anyone with the link". No auth. */
+export const getPublic = query({
+  args: { slug: v.string() },
+  handler: async (ctx, { slug }) => {
+    if (slug.length < 8) return null;
+    const doc = await ctx.db
+      .query("documents")
+      .withIndex("by_public_slug", (q) => q.eq("publicSlug", slug))
+      .unique();
+    if (!doc) return null;
+    // Members get an "open in editor" affordance; everyone else just views.
+    const role = await roleFor(ctx, doc.workspaceId);
+    return { _id: doc._id, title: doc.title, source: doc.source, updatedAt: doc.updatedAt, role };
+  },
+});
+
+/** Toggle "anyone with the link can view". Returns the slug (or null). */
+export const setPublic = mutation({
+  args: { id: v.id("documents"), workspaceId: v.string(), enabled: v.boolean() },
+  handler: async (ctx, { id, workspaceId, enabled }) => {
+    await requireWorkspace(ctx, workspaceId, undefined, "editor");
+    const doc = await ctx.db.get(id);
+    if (!doc || doc.workspaceId !== workspaceId) throw new Error("Document not found");
+    if (!enabled) {
+      await ctx.db.patch(id, { publicSlug: undefined });
+      return null;
+    }
+    if (doc.publicSlug) return doc.publicSlug;
+    const slug = generateSlug();
+    await ctx.db.patch(id, { publicSlug: slug });
+    return slug;
   },
 });
 
@@ -98,7 +132,7 @@ export const create = mutation({
     summary: v.optional(v.string()),
   },
   handler: async (ctx, { workspaceId, title, source, author: who, summary, apiKey }) => {
-    await requireWorkspace(ctx, workspaceId, apiKey);
+    await requireWorkspace(ctx, workspaceId, apiKey, "editor");
     const now = Date.now();
     const id = await ctx.db.insert("documents", {
       workspaceId,
@@ -131,7 +165,7 @@ export const updateSource = mutation({
     summary: v.optional(v.string()),
   },
   handler: async (ctx, { id, workspaceId, source, title, author: who, summary, apiKey }) => {
-    await requireWorkspace(ctx, workspaceId, apiKey);
+    await requireWorkspace(ctx, workspaceId, apiKey, "editor");
     const doc = await ctx.db.get(id);
     if (!doc || doc.workspaceId !== workspaceId) return;
     if (doc.source === source && doc.title === title) return;
@@ -152,7 +186,7 @@ export const updateSource = mutation({
 export const markSeen = mutation({
   args: { id: v.id("documents"), workspaceId: v.string(), apiKey: v.optional(v.string()) },
   handler: async (ctx, { id, workspaceId, apiKey }) => {
-    await requireWorkspace(ctx, workspaceId, apiKey);
+    await requireWorkspace(ctx, workspaceId, apiKey, "editor");
     const doc = await ctx.db.get(id);
     if (!doc || doc.workspaceId !== workspaceId) return;
     await ctx.db.patch(id, { seenRevisionAt: Date.now() });
@@ -162,7 +196,7 @@ export const markSeen = mutation({
 export const remove = mutation({
   args: { id: v.id("documents"), workspaceId: v.string(), apiKey: v.optional(v.string()) },
   handler: async (ctx, { id, workspaceId, apiKey }) => {
-    await requireWorkspace(ctx, workspaceId, apiKey);
+    await requireWorkspace(ctx, workspaceId, apiKey, "editor");
     const doc = await ctx.db.get(id);
     if (!doc || doc.workspaceId !== workspaceId) return;
     for (const table of ["revisions", "threads", "drift"] as const) {

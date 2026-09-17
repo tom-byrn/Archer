@@ -9,19 +9,20 @@ Router + React Flow + Convex).
 
 - Run: `npx convex dev` and `pnpm dev`, both in `apps/web`.
 - Auth: Clerk (GitHub login) via `ConvexProviderWithClerk`; Convex validates
-  Clerk JWTs (`convex/auth.config.ts`, template "convex"). A workspace IS a
-  user: `workspaceId` == Clerk user id. Every workspace-scoped Convex function
-  calls `requireWorkspace(ctx, workspaceId, apiKey?)` from `convex/access.ts`
-  — a signed-in browser session, or an API key (hashed in `apiKeys`) for the
-  MCP server. Pre-auth anonymous workspaces are claimed on first sign-in
-  (`workspaces.claimLegacy`); `admin:transferWorkspace` (internal, CLI only)
-  moves data between workspaces. Env: `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` +
-  `CLERK_SECRET_KEY` in `.env.local`, `CLERK_JWT_ISSUER_DOMAIN` on the Convex
-  deployment (`npx convex env set`).
-- Tests: `pnpm --filter @archer/lang test` (never hit live APIs in tests —
-  mock wrapper modules).
-- Every canvas edit must go through `packages/lang` transforms → `format()`;
-  the `.arch` text is the single source of truth.
+  Clerk JWTs (`convex/auth.config.ts`, template "convex"). Workspaces:
+  personal (id == Clerk user id, owner) and team (`workspaces` rows, roles
+  owner/editor/viewer via `members`, invites by email). Every workspace-scoped
+  Convex function calls `requireWorkspace(ctx, workspaceId, apiKey?, need)`
+  from `convex/access.ts` — queries need viewer, document mutations editor,
+  member/workspace management owner. API keys (hashed in `apiKeys`, per
+  workspace) act as editors; that is how the MCP server authenticates.
+  Public share links: `documents.publicSlug` → `/s/<slug>` (viewer UI) and
+  `/s/<slug>/image.svg` (server-rendered SVG from `lib/svg.ts`). Pre-auth
+  anonymous workspaces are claimed on first sign-in (`workspaces.claimLegacy`);
+  `admin:transferWorkspace` (internal, CLI only) moves data between
+  workspaces. Env: `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` + `CLERK_SECRET_KEY` in
+  `.env.local`, `CLERK_JWT_ISSUER_DOMAIN` on the Convex deployment. Deploy
+  runbook: `docs/deploy.md`.
 - UI conventions (`apps/web`): all colors, radii and text sizes come from the
   tokens in `app/globals.css` (exposed as Tailwind utilities: `bg-surface`,
   `text-ink-2`, `border-line`, `rounded-md`, `text-sm`…). Never use the raw

@@ -73,6 +73,8 @@ Sign-in is GitHub via [Clerk](https://clerk.com). One-time setup:
 3. Point Convex at your Clerk instance:
    `npx convex env set CLERK_JWT_ISSUER_DOMAIN https://<your-slug>.clerk.accounts.dev`
 
+Deploying to Convex cloud + Vercel: see [docs/deploy.md](docs/deploy.md).
+
 Connect Claude Code (or any MCP client) to your projects — sign in, open
 **Connect an agent** from your avatar menu, create an API key, then:
 

@@ -24,7 +24,7 @@ export const save = mutation({
     glyph: v.string(),
   },
   handler: async (ctx, { workspaceId, tag, name, color, glyph, apiKey }) => {
-    await requireWorkspace(ctx, workspaceId, apiKey);
+    await requireWorkspace(ctx, workspaceId, apiKey, "editor");
     const existing = await ctx.db
       .query("libraryTypes")
       .withIndex("by_workspace_tag", (q) =>
@@ -39,7 +39,7 @@ export const save = mutation({
 export const remove = mutation({
   args: { workspaceId: v.string(), apiKey: v.optional(v.string()), tag: v.string() },
   handler: async (ctx, { workspaceId, tag, apiKey }) => {
-    await requireWorkspace(ctx, workspaceId, apiKey);
+    await requireWorkspace(ctx, workspaceId, apiKey, "editor");
     const existing = await ctx.db
       .query("libraryTypes")
       .withIndex("by_workspace_tag", (q) =>

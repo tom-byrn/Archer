@@ -27,8 +27,18 @@ function CopyButton({ text, label }: { text: string; label: string }) {
 const commandFor = (key: string) =>
   `claude mcp add archer --env ARCHER_API_KEY=${key} -- pnpm --dir <repo>/packages/mcp start`;
 
-export function ConnectAgentDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const keys = useQuery(api.apiKeys.list, open ? {} : "skip");
+export function ConnectAgentDialog({
+  open,
+  onClose,
+  workspaceId,
+  workspaceName,
+}: {
+  open: boolean;
+  onClose: () => void;
+  workspaceId: string | null;
+  workspaceName: string;
+}) {
+  const keys = useQuery(api.apiKeys.list, open && workspaceId ? { workspaceId } : "skip");
   const create = useMutation(api.apiKeys.create);
   const revoke = useMutation(api.apiKeys.revoke);
   const [name, setName] = useState("Claude Code");
@@ -36,10 +46,10 @@ export function ConnectAgentDialog({ open, onClose }: { open: boolean; onClose: 
   const [fresh, setFresh] = useState<{ id: Id<"apiKeys">; key: string } | null>(null);
 
   const mint = async () => {
-    if (creating) return;
+    if (creating || !workspaceId) return;
     setCreating(true);
     try {
-      const res = await create({ name });
+      const res = await create({ workspaceId, name });
       setFresh(res);
     } finally {
       setCreating(false);
@@ -55,8 +65,9 @@ export function ConnectAgentDialog({ open, onClose }: { open: boolean; onClose: 
     <Dialog open={open} onClose={close} title="Connect an agent" width={540}>
       <p className="text-base text-ink-2">
         Agents reach Archer through its MCP server and authenticate with an API key.
-        A key grants full access to every document in your workspace, so treat it
-        like a password.
+        Keys grant editor access to every document in{" "}
+        <span className="font-medium text-ink">{workspaceName}</span>, so treat them
+        like passwords.
       </p>
 
       {fresh && (

@@ -35,7 +35,7 @@ export const create = mutation({
     author: v.optional(author),
   },
   handler: async (ctx, { documentId, workspaceId, path, text, author: who, apiKey }) => {
-    await requireWorkspace(ctx, workspaceId, apiKey);
+    await requireWorkspace(ctx, workspaceId, apiKey, "editor");
     const doc = await ctx.db.get(documentId);
     if (!doc || doc.workspaceId !== workspaceId) throw new Error("Document not found");
     const now = Date.now();
@@ -60,7 +60,7 @@ export const reply = mutation({
     author: v.optional(author),
   },
   handler: async (ctx, { id, workspaceId, text, author: who, apiKey }) => {
-    await requireWorkspace(ctx, workspaceId, apiKey);
+    await requireWorkspace(ctx, workspaceId, apiKey, "editor");
     const t = await ctx.db.get(id);
     if (!t || t.workspaceId !== workspaceId) throw new Error("Thread not found");
     const now = Date.now();
@@ -79,7 +79,7 @@ export const setStatus = mutation({
     status: v.union(v.literal("open"), v.literal("resolved")),
   },
   handler: async (ctx, { id, workspaceId, status, apiKey }) => {
-    await requireWorkspace(ctx, workspaceId, apiKey);
+    await requireWorkspace(ctx, workspaceId, apiKey, "editor");
     const t = await ctx.db.get(id);
     if (!t || t.workspaceId !== workspaceId) throw new Error("Thread not found");
     await ctx.db.patch(id, { status, updatedAt: Date.now() });
@@ -89,7 +89,7 @@ export const setStatus = mutation({
 export const remove = mutation({
   args: { id: v.id("threads"), workspaceId: v.string(), apiKey: v.optional(v.string()) },
   handler: async (ctx, { id, workspaceId, apiKey }) => {
-    await requireWorkspace(ctx, workspaceId, apiKey);
+    await requireWorkspace(ctx, workspaceId, apiKey, "editor");
     const t = await ctx.db.get(id);
     if (!t || t.workspaceId !== workspaceId) return;
     await ctx.db.delete(id);

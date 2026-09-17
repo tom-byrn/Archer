@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useClerk, useUser } from "@clerk/nextjs";
+import { useWorkspace } from "@/lib/workspace";
 import { ConnectAgentDialog } from "./ConnectAgentDialog";
 import { Icon, Menu, cx } from "./ui";
 
@@ -17,7 +18,10 @@ export function AccountMenu({ className }: { className?: string }) {
   const { user, isLoaded } = useUser();
   const { signOut } = useClerk();
   const [connectOpen, setConnectOpen] = useState(false);
+  const ws = useWorkspace();
   if (!isLoaded || !user) return null;
+  const current = ws.workspaces.find((w) => w.id === ws.workspaceId);
+  const canConnect = ws.role === "owner" || ws.role === "editor";
 
   const name = user.fullName ?? user.username ?? null;
   const email = user.primaryEmailAddress?.emailAddress ?? null;
@@ -37,8 +41,9 @@ export function AccountMenu({ className }: { className?: string }) {
           "separator",
           {
             label: "Connect an agent",
-            hint: "API keys for the MCP server",
+            hint: canConnect ? `API keys for ${current?.name ?? "this workspace"}` : "Editors and owners only",
             icon: <Icon.Plug />,
+            disabled: !canConnect,
             onSelect: () => setConnectOpen(true),
           },
           "separator",
@@ -70,7 +75,12 @@ export function AccountMenu({ className }: { className?: string }) {
           </button>
         )}
       />
-      <ConnectAgentDialog open={connectOpen} onClose={() => setConnectOpen(false)} />
+      <ConnectAgentDialog
+        open={connectOpen}
+        onClose={() => setConnectOpen(false)}
+        workspaceId={ws.workspaceId}
+        workspaceName={current?.name ?? "this workspace"}
+      />
     </>
   );
 }

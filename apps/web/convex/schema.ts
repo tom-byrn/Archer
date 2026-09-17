@@ -12,6 +12,8 @@ export const author = v.object({
   name: v.optional(v.string()),
 });
 
+export const role = v.union(v.literal("owner"), v.literal("editor"), v.literal("viewer"));
+
 export const driftStatus = v.union(
   v.literal("missing"), // declared in the document, not found in the code
   v.literal("changed"), // found, but the code differs from desc/payloads
@@ -26,7 +28,37 @@ export default defineSchema({
     updatedAt: v.number(),
     /** Timestamp up to which the user has reviewed agent revisions. */
     seenRevisionAt: v.optional(v.number()),
-  }).index("by_workspace", ["workspaceId"]),
+    /** Set when "anyone with the link can view" is on. */
+    publicSlug: v.optional(v.string()),
+  })
+    .index("by_workspace", ["workspaceId"])
+    .index("by_public_slug", ["publicSlug"]),
+
+  /**
+   * Team workspaces. A user's personal workspace has no row: its id is the
+   * user id itself. Team workspace ids are this table's document ids.
+   */
+  workspaces: defineTable({
+    name: v.string(),
+    ownerId: v.string(),
+    createdAt: v.number(),
+  }).index("by_owner", ["ownerId"]),
+
+  /** Membership in a team workspace. Invites are rows with no userId yet. */
+  members: defineTable({
+    workspaceId: v.string(),
+    /** Clerk user id once the invitee has signed in; absent while pending. */
+    userId: v.optional(v.string()),
+    email: v.string(),
+    role,
+    invitedBy: v.string(),
+    createdAt: v.number(),
+  })
+    .index("by_workspace", ["workspaceId"])
+    .index("by_workspace_user", ["workspaceId", "userId"])
+    .index("by_workspace_email", ["workspaceId", "email"])
+    .index("by_user", ["userId"])
+    .index("by_email", ["email"]),
 
   /** Snapshot of a document after every save (user saves coalesce). */
   revisions: defineTable({
