@@ -28,6 +28,8 @@ import { yaml } from "@codemirror/lang-yaml";
 import { markdown } from "@codemirror/lang-markdown";
 import type { UserLibrary } from "@/lib/userLibrary";
 import { authorLabel, type DocumentActivity, type Thread } from "@/lib/activity";
+import { githubTreeUrl } from "@/lib/githubApi";
+import type { RepoLink } from "@/lib/github";
 import { displayColor, useIsDark } from "@/lib/useIsDark";
 import { CodeEditor } from "./CodeMirror";
 import { Glyph } from "./nodes";
@@ -349,6 +351,7 @@ function ComponentInspector({
   onClose,
   library,
   activity,
+  repo,
 }: {
   doc: ArchDoc;
   path: string;
@@ -357,6 +360,7 @@ function ComponentInspector({
   onClose: () => void;
   library: UserLibrary;
   activity: DocumentActivity;
+  repo: RepoLink | null;
 }) {
   const isDark = useIsDark();
   const segments = path.split(".");
@@ -493,7 +497,22 @@ function ComponentInspector({
                   <Icon.External />
                 </IconButton>
               )}
-              {node.src !== undefined && !isHttpUrl(node.src) && (
+              {node.src !== undefined && !isHttpUrl(node.src) && repo && (
+                <IconButton
+                  label="Open on GitHub"
+                  size="sm"
+                  onClick={() =>
+                    window.open(
+                      githubTreeUrl(repo.owner, repo.name, repo.branch, node.src ?? ""),
+                      "_blank",
+                      "noopener,noreferrer",
+                    )
+                  }
+                >
+                  <Icon.External />
+                </IconButton>
+              )}
+              {node.src !== undefined && !isHttpUrl(node.src) && !repo && (
                 <IconButton
                   label="Copy path"
                   size="sm"
@@ -676,6 +695,7 @@ export function DetailPanel({
   onSelect,
   library,
   activity,
+  repo = null,
 }: {
   doc: ArchDoc;
   selection: Selection;
@@ -683,6 +703,8 @@ export function DetailPanel({
   onSelect: (s: Selection) => void;
   library: UserLibrary;
   activity: DocumentActivity;
+  /** Linked repository: turns relative `src` paths into GitHub links. */
+  repo?: RepoLink | null;
 }) {
   if (selection === null) return null;
   return (
@@ -697,6 +719,7 @@ export function DetailPanel({
           onClose={() => onSelect(null)}
           library={library}
           activity={activity}
+          repo={repo}
         />
       ) : (
         <ConnectionInspector

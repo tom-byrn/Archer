@@ -141,8 +141,17 @@ export interface ProjectSummary {
   title: string;
   updatedAt: number;
 }
+export interface RepoLink {
+  owner: string;
+  name: string;
+  branch: string;
+  path?: string;
+  linkedAt: number;
+}
 export interface ProjectDoc extends ProjectSummary {
   source: string;
+  /** Linked GitHub repository, if the human (or an agent) set one. */
+  repo?: RepoLink;
 }
 export interface CustomTypeRow {
   tag: string;
@@ -208,6 +217,8 @@ export const db = {
       author: agentAuthor(),
       ...(summary ? { summary } : {}),
     }) as Promise<string>,
+  setRepo: (ws: Workspace, id: string, repo: { owner: string; name: string; branch: string } | null) =>
+    client.mutation(mref("documents", "setRepo"), { ...auth(ws), id, repo }) as Promise<RepoLink | null>,
   updateProject: (ws: Workspace, id: string, title: string, source: string, summary?: string) =>
     client.mutation(mref("documents", "updateSource"), {
       ...auth(ws),

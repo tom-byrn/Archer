@@ -9,6 +9,8 @@ import { yaml } from "@codemirror/lang-yaml";
 import { markdown } from "@codemirror/lang-markdown";
 import type { Extension } from "@codemirror/state";
 import { archLanguage } from "@/lib/archLanguage";
+import { githubTreeUrl } from "@/lib/githubApi";
+import type { RepoLink } from "@/lib/github";
 import { toFlow } from "@/lib/toFlow";
 import { deriveDoc } from "@/lib/useArchDoc";
 import { displayColor, useIsDark } from "@/lib/useIsDark";
@@ -39,6 +41,7 @@ export function DocumentViewer({
   editHref,
   backHref,
   signedIn,
+  repo = null,
 }: {
   title: string;
   source: string;
@@ -47,6 +50,8 @@ export function DocumentViewer({
   editHref?: string;
   backHref?: string;
   signedIn: boolean;
+  /** Linked repository: shown in the header, turns `src` paths into GitHub links. */
+  repo?: RepoLink | null;
 }) {
   const isDark = useIsDark();
   const derived = useMemo(() => deriveDoc(source), [source]);
@@ -123,6 +128,18 @@ export function DocumentViewer({
         <span className="mx-1 h-4 w-px bg-line" />
         <span className="max-w-[320px] truncate px-1 text-base font-medium text-ink">{title}</span>
         <Chip className="ml-1">View only</Chip>
+        {repo && (
+          <a
+            href={`https://github.com/${repo.owner}/${repo.name}/tree/${encodeURIComponent(repo.branch)}`}
+            target="_blank"
+            rel="noreferrer"
+            className="mono ml-2 hidden max-w-[260px] truncate text-xs text-ink-3 hover:text-ink hover:underline md:inline"
+            title="Linked repository"
+          >
+            {repo.owner}/{repo.name}
+            <span className="opacity-70">@{repo.branch}</span>
+          </a>
+        )}
         <div className="ml-auto flex items-center gap-1.5">
           {toast ? (
             <span className="pr-2 text-xs text-accent">{toast}</span>
@@ -235,7 +252,7 @@ export function DocumentViewer({
           </div>
         </main>
         {node && selectedPath && (
-          <Details path={selectedPath} node={node} onClose={() => setSelected(null)} />
+          <Details path={selectedPath} node={node} onClose={() => setSelected(null)} repo={repo} />
         )}
       </div>
     </div>
@@ -246,15 +263,24 @@ function Details({
   path,
   node,
   onClose,
+  repo,
 }: {
   path: string;
   node: NonNullable<ReturnType<typeof findComponent>>;
   onClose: () => void;
+  repo: RepoLink | null;
 }) {
   const isDark = useIsDark();
   const entry = lookupType(node.type);
   const accent = displayColor(entry?.color, isDark) ?? "#64748b";
   const isUrl = node.src ? /^https?:\/\//.test(node.src) : false;
+  const srcHref = node.src
+    ? isUrl
+      ? node.src
+      : repo
+        ? githubTreeUrl(repo.owner, repo.name, repo.branch, node.src)
+        : null
+    : null;
   return (
     <aside className="flex w-[300px] shrink-0 flex-col border-l border-line bg-surface">
       <div className="flex h-11 shrink-0 items-center gap-2.5 border-b border-line px-3">
@@ -296,9 +322,9 @@ function Details({
               <>
                 <dt className="text-ink-2">Source</dt>
                 <dd className="min-w-0">
-                  {isUrl ? (
+                  {srcHref ? (
                     <a
-                      href={node.src}
+                      href={srcHref}
                       target="_blank"
                       rel="noreferrer"
                       className="mono inline-flex max-w-full items-center gap-1 truncate text-xs text-accent hover:underline"

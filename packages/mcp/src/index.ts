@@ -37,7 +37,7 @@ import {
 } from "./backend";
 import { BRIEF, GUIDE } from "./guide";
 
-const server = new McpServer({ name: "archer", version: "1.5.0" });
+const server = new McpServer({ name: "archer", version: "1.6.0" });
 
 const text = (value: unknown) => ({
   content: [
@@ -356,7 +356,57 @@ server.registerTool(
       warnings: diagnosticsReport(a.warnings),
       open_questions: threads.map(threadView),
       drift: drift ? { reported_at: iso(drift.reportedAt), findings_count: drift.findings.length } : null,
+      repository: doc.repo
+        ? {
+            full_name: `${doc.repo.owner}/${doc.repo.name}`,
+            branch: doc.repo.branch,
+            url: `https://github.com/${doc.repo.owner}/${doc.repo.name}/tree/${doc.repo.branch}`,
+            hint: "Drift checks and `src` paths refer to this repository at this branch.",
+          }
+        : null,
       source: doc.source,
+    });
+  }),
+);
+
+server.registerTool(
+  "link_repository",
+  {
+    title: "Link the project to a GitHub repository",
+    description:
+      "Record which GitHub repository (and branch) this architecture describes — the same as the human clicking 'Link repository' in the app's History panel. Once linked, the app shows the repo's commits alongside architecture revisions, `src` paths deep-link into the repo, and drift checks are understood to be against that branch. Use it when the user tells you which repo a project belongs to. Pass repository: null to unlink.",
+    inputSchema: {
+      project_id: z.string(),
+      repository: z
+        .union([
+          z.object({
+            full_name: z.string().describe("owner/name, e.g. acme/platform"),
+            branch: z.string().optional().describe("Branch to track (default main)"),
+          }),
+          z.null(),
+        ])
+        .describe("The repository to link, or null to unlink"),
+    },
+  },
+  wrap(async ({ project_id, repository }) => {
+    const ws = await requireWorkspace();
+    const existing = await db.getProject(ws, project_id);
+    if (!existing) throw new Error(`No project with id ${project_id}.`);
+    if (repository === null) {
+      await db.setRepo(ws, project_id, null);
+      return text({ id: project_id, repository: null, unlinked: true });
+    }
+    const m = /^([A-Za-z0-9_.-]+)\/([A-Za-z0-9_.-]+?)(?:\.git)?$/.exec(repository.full_name.trim());
+    if (!m) throw new Error("full_name must look like owner/name.");
+    const link = await db.setRepo(ws, project_id, {
+      owner: m[1]!,
+      name: m[2]!,
+      branch: repository.branch?.trim() || "main",
+    });
+    return text({
+      id: project_id,
+      repository: link ? { full_name: `${link.owner}/${link.name}`, branch: link.branch } : null,
+      note: "Commits from this repository now appear in the human's History panel next to your revisions.",
     });
   }),
 );

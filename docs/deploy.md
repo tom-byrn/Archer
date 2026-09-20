@@ -30,7 +30,10 @@ deployment; nothing changes there.
 
 1. Create the application at clerk.com (or move the dev one to production:
    Configure → Production instance; production needs a real domain).
-2. **SSO connections** → enable **GitHub**.
+2. **SSO connections** → enable **GitHub**. To let users link *private*
+   repositories (commit timeline, `src` deep links), open the GitHub
+   connection → *Use custom credentials* and add the `repo` scope; public
+   repos work with the default scopes.
 3. **JWT templates** → New → **Convex**. The template must be named `convex`.
    Its *Issuer* is the value for `CLERK_JWT_ISSUER_DOMAIN` above.
 4. **Domains** → add the Vercel domain (and your custom domain, if any).

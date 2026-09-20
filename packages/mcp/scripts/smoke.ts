@@ -50,7 +50,7 @@ const safeJson = (t: string) => {
 // tools/list
 const tools = await client.listTools();
 const names = tools.tools.map((t) => t.name).sort();
-check("26 tools registered", names.length === 26, names);
+check("27 tools registered", names.length === 27, names);
 
 // guide + resource
 const guide = await call("get_guide");
@@ -163,6 +163,18 @@ const resolved = await call("resolve_question", { question_id: qid });
 check("resolve_question", !resolved.isError && resolved.json?.status === "resolved");
 const openAfter = await call("list_questions", { project_id: pid });
 check("resolved thread not in open list", !openAfter.json?.some((q: { question_id: string }) => q.question_id === qid));
+
+// repository link
+const badRepo = await call("link_repository", { project_id: pid, repository: { full_name: "not a repo" } });
+check("link_repository rejects malformed name", badRepo.isError);
+const linked = await call("link_repository", { project_id: pid, repository: { full_name: "acme/platform", branch: "develop" } });
+check("link_repository links", !linked.isError && linked.json?.repository?.full_name === "acme/platform" && linked.json?.repository?.branch === "develop", linked.text);
+const gotR = await call("get_project", { project_id: pid });
+check("get_project shows repository", gotR.json?.repository?.full_name === "acme/platform", gotR.text?.slice(0, 200));
+const unlinked = await call("link_repository", { project_id: pid, repository: null });
+check("link_repository unlinks", !unlinked.isError && unlinked.json?.unlinked === true);
+const gotR2 = await call("get_project", { project_id: pid });
+check("get_project repository null after unlink", gotR2.json?.repository === null);
 
 // drift
 const badDrift = await call("report_drift", { project_id: pid, findings: [{ status: "missing", path: "ghost" }] });

@@ -14,6 +14,15 @@ export const author = v.object({
 
 export const role = v.union(v.literal("owner"), v.literal("editor"), v.literal("viewer"));
 
+export const repoLink = v.object({
+  owner: v.string(),
+  name: v.string(),
+  branch: v.string(),
+  /** Reserved for the .arch file sync: path of the file inside the repo. */
+  path: v.optional(v.string()),
+  linkedAt: v.number(),
+});
+
 export const driftStatus = v.union(
   v.literal("missing"), // declared in the document, not found in the code
   v.literal("changed"), // found, but the code differs from desc/payloads
@@ -30,6 +39,8 @@ export default defineSchema({
     seenRevisionAt: v.optional(v.number()),
     /** Set when "anyone with the link can view" is on. */
     publicSlug: v.optional(v.string()),
+    /** Linked GitHub repository (commit timeline, src deep links). */
+    repo: v.optional(repoLink),
   })
     .index("by_workspace", ["workspaceId"])
     .index("by_public_slug", ["publicSlug"]),

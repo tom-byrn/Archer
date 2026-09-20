@@ -6,7 +6,7 @@
  * question threads, and the latest drift report.
  */
 
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { diffDocs, parse, summarizeDiff, type DiffSummary } from "@archer/lang";
 import type { Id } from "@/convex/_generated/dataModel";
 import {
@@ -18,6 +18,7 @@ import {
   type Revision,
   type Thread,
 } from "@/lib/activity";
+import { repoKey, useCommits, type CommitsState, type GitHubCommit, type RepoLink } from "@/lib/github";
 import {
   Button,
   Chip,
@@ -46,9 +47,47 @@ export interface ActivityPanelProps {
   onRestore: (source: string) => void;
   onSelectPath: (path: string) => void;
   onAddComponent: (name: string, src?: string) => void;
+  /** Linked GitHub repository, or null. */
+  repo: RepoLink | null;
+  /** Open the link-a-repository dialog (owned by the editor). */
+  onLinkRepo: () => void;
 }
 
+type HistoryFilter = "all" | "architecture" | "code";
+const FILTER_KEY = "archer.history.filter";
+
 /* ------------------------------------------------------------------ Shared */
+
+function GitHubMark({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden className={className}>
+      <path d="M8 .2a8 8 0 0 0-2.53 15.59c.4.07.55-.17.55-.38v-1.33c-2.23.48-2.7-1.08-2.7-1.08-.36-.92-.89-1.17-.89-1.17-.73-.5.06-.49.06-.49.8.06 1.23.83 1.23.83.71 1.22 1.87.87 2.33.66.07-.52.28-.87.5-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.88.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.6 7.6 0 0 1 4 0c1.53-1.03 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48v2.2c0 .21.15.46.55.38A8 8 0 0 0 8 .2Z" />
+    </svg>
+  );
+}
+
+function CommitAvatar({ commit }: { commit: GitHubCommit }) {
+  const label = commit.authorLogin ?? commit.authorName;
+  if (commit.authorAvatar) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={commit.authorAvatar}
+        alt=""
+        title={label}
+        className="h-6 w-6 shrink-0 rounded-full bg-surface-2"
+      />
+    );
+  }
+  return (
+    <span
+      className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-surface-2 text-[10px] font-semibold text-ink-2"
+      title={label}
+    >
+      {label.slice(0, 2).toUpperCase()}
+    </span>
+  );
+}
 
 function Avatar({ author }: { author: Author }) {
   const agent = author.kind === "agent";
@@ -110,18 +149,41 @@ function ChangeChips({ summary }: { summary: DiffSummary | null }) {
   return <span className="flex flex-wrap gap-1">{chips}</span>;
 }
 
+type TimelineItem =
+  | { kind: "revision"; at: number; rev: Revision }
+  | { kind: "commit"; at: number; commit: GitHubCommit };
+
 function HistoryTab({
   revisions,
   viewingRevisionId,
   onViewRevision,
   onRestore,
+  repo,
+  onLinkRepo,
+  commits,
 }: {
   revisions: Revision[];
   viewingRevisionId: Id<"revisions"> | null;
   onViewRevision: (id: Id<"revisions"> | null) => void;
   onRestore: (source: string) => void;
+  repo: RepoLink | null;
+  onLinkRepo: () => void;
+  commits: CommitsState;
 }) {
   const [confirmRestore, setConfirmRestore] = useState(false);
+  const [filter, setFilter] = useState<HistoryFilter>("all");
+  useEffect(() => {
+    try {
+      const v = localStorage.getItem(FILTER_KEY);
+      if (v === "all" || v === "architecture" || v === "code") setFilter(v);
+    } catch {}
+  }, []);
+  const changeFilter = (f: HistoryFilter) => {
+    setFilter(f);
+    try {
+      localStorage.setItem(FILTER_KEY, f);
+    } catch {}
+  };
   const now = Date.now();
 
   // Diff each revision against the next-older one (list is newest first).
@@ -142,17 +204,67 @@ function HistoryTab({
     return m;
   }, [revisions]);
 
+  const items = useMemo<TimelineItem[]>(() => {
+    const out: TimelineItem[] = [];
+    if (filter !== "code")
+      for (const rev of revisions) out.push({ kind: "revision", at: rev.createdAt, rev });
+    if (filter !== "architecture" && repo)
+      for (const commit of commits.commits)
+        out.push({ kind: "commit", at: new Date(commit.date).getTime(), commit });
+    return out.sort((a, b) => b.at - a.at);
+  }, [revisions, commits.commits, filter, repo]);
+
   const viewing = viewingRevisionId ? revisions.find((r) => r._id === viewingRevisionId) : undefined;
 
-  if (revisions.length === 0) {
-    return (
-      <Empty>Every save lands here. Agent edits are listed by name so you can review them.</Empty>
-    );
-  }
+  const repoHeader = (
+    <div className="border-b border-line px-3 py-2">
+      {repo ? (
+        <div className="flex items-center gap-1.5">
+          <GitHubMark className="h-3.5 w-3.5 shrink-0 text-ink-2" />
+          <a
+            href={`https://github.com/${repo.owner}/${repo.name}/tree/${encodeURIComponent(repo.branch)}`}
+            target="_blank"
+            rel="noreferrer"
+            className="mono min-w-0 truncate text-xs text-ink hover:underline"
+            title={`${repoKey(repo)} @ ${repo.branch}`}
+          >
+            {repoKey(repo)}
+            <span className="text-ink-3">@{repo.branch}</span>
+          </a>
+          <Button size="sm" variant="ghost" className="ml-auto" onClick={onLinkRepo}>
+            Change
+          </Button>
+        </div>
+      ) : (
+        <div>
+          <Button size="sm" icon={<Icon.Link />} onClick={onLinkRepo}>
+            Link repository
+          </Button>
+          <p className="pt-1.5 text-xs text-ink-3">
+            See code commits alongside architecture changes.
+          </p>
+        </div>
+      )}
+      {repo && (
+        <div className="pt-2">
+          <Segmented<HistoryFilter>
+            value={filter}
+            onChange={changeFilter}
+            options={[
+              { value: "all", label: "All" },
+              { value: "architecture", label: "Architecture" },
+              { value: "code", label: "Code" },
+            ]}
+          />
+        </div>
+      )}
+    </div>
+  );
 
   let lastDay = "";
   return (
     <div className="min-h-0 flex-1 overflow-y-auto">
+      {repoHeader}
       {viewing && (
         <div className="sticky top-0 z-10 border-b border-line bg-surface px-3 py-2">
           <p className="text-xs text-ink-2">
@@ -192,11 +304,50 @@ function HistoryTab({
           </Dialog>
         </div>
       )}
+      {items.length === 0 && !commits.loading && (
+        <Empty>
+          {filter === "code"
+            ? "No commits on this branch yet."
+            : "Every save lands here. Agent edits are listed by name so you can review them."}
+        </Empty>
+      )}
       <ul className="pb-3">
-        {revisions.map((rev) => {
-          const day = dayLabel(rev.createdAt, now);
+        {items.map((item) => {
+          const day = dayLabel(item.at, now);
           const header = day !== lastDay;
           lastDay = day;
+          if (item.kind === "commit") {
+            const c = item.commit;
+            const firstLine = c.message.split("\n")[0] ?? c.message;
+            return (
+              <li key={`c-${c.sha}`}>
+                {header && <div className="eyebrow px-3 pb-1 pt-3">{day}</div>}
+                <div className="flex items-start gap-2.5 border-l-2 border-line px-3 py-2">
+                  <CommitAvatar commit={c} />
+                  <span className="min-w-0 flex-1">
+                    <span className="line-clamp-2 block text-sm text-ink">{firstLine}</span>
+                    <span className="flex items-center gap-1 pt-0.5 text-xs text-ink-3">
+                      <span className="truncate">{c.authorLogin ?? c.authorName}</span>
+                      <span>·</span>
+                      <span className="shrink-0">{relativeTime(item.at, now)}</span>
+                      <span>·</span>
+                      <a
+                        href={c.htmlUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="mono inline-flex shrink-0 items-center gap-0.5 hover:text-ink hover:underline"
+                        title="Open commit on GitHub"
+                      >
+                        {c.sha.slice(0, 7)}
+                        <Icon.External className="h-2.5 w-2.5" />
+                      </a>
+                    </span>
+                  </span>
+                </div>
+              </li>
+            );
+          }
+          const rev = item.rev;
           const active = rev._id === viewingRevisionId;
           return (
             <li key={rev._id}>
@@ -231,6 +382,18 @@ function HistoryTab({
           );
         })}
       </ul>
+      {repo && filter !== "architecture" && (
+        <div className="px-3 pb-3">
+          {commits.error && <p className="pb-1 text-xs text-danger">{commits.error}</p>}
+          {commits.loading ? (
+            <p className="text-xs text-ink-3">Loading commits…</p>
+          ) : commits.hasMore ? (
+            <Button size="sm" variant="ghost" onClick={commits.loadMore}>
+              Load older commits
+            </Button>
+          ) : null}
+        </div>
+      )}
     </div>
   );
 }
@@ -409,17 +572,28 @@ function DriftTab({
   title,
   onSelectPath,
   onAddComponent,
+  repo,
+  commits,
 }: {
   activity: DocumentActivity;
   documentId: string;
   title: string;
   onSelectPath: (path: string) => void;
   onAddComponent: (name: string, src?: string) => void;
+  repo: RepoLink | null;
+  commits: CommitsState;
 }) {
   const [copied, copy] = useCopy();
-  const prompt = driftCheckPrompt(documentId, title);
+  const prompt = driftCheckPrompt(documentId, title, repo);
   const report = activity.drift;
   const now = Date.now();
+  // Commits that landed after the last check (loaded pages only).
+  const sinceCheck = useMemo(() => {
+    if (!report || !repo) return null;
+    const newer = commits.commits.filter((c) => new Date(c.date).getTime() > report.reportedAt);
+    const allNewer = newer.length === commits.commits.length && commits.commits.length > 0;
+    return { count: newer.length, more: allNewer && commits.hasMore };
+  }, [report, repo, commits.commits, commits.hasMore]);
 
   if (!report) {
     return (
@@ -446,6 +620,13 @@ function DriftTab({
         <span className="min-w-0 truncate text-xs text-ink-2">
           Checked by {authorLabel(report.author)} · {relativeTime(report.reportedAt, now)}
         </span>
+        {sinceCheck && !commits.loading && (
+          <Chip tone={sinceCheck.count > 0 ? "warn" : "accent"} className="shrink-0">
+            {sinceCheck.count > 0
+              ? `${sinceCheck.count}${sinceCheck.more ? "+" : ""} commits since`
+              : "No commits since"}
+          </Chip>
+        )}
         <Button size="sm" variant="ghost" className="ml-auto" onClick={() => copy(prompt)}>
           {copied ? "Copied" : "Copy prompt"}
         </Button>
@@ -525,7 +706,10 @@ export function ActivityPanel({
   onRestore,
   onSelectPath,
   onAddComponent,
+  repo,
+  onLinkRepo,
 }: ActivityPanelProps) {
+  const commits = useCommits(repo);
   const openQuestions = activity.threads.filter((t) => t.status === "open").length;
   const findings = activity.drift?.findings.length ?? 0;
   return (
@@ -553,6 +737,9 @@ export function ActivityPanel({
           viewingRevisionId={viewingRevisionId}
           onViewRevision={onViewRevision}
           onRestore={onRestore}
+          repo={repo}
+          onLinkRepo={onLinkRepo}
+          commits={commits}
         />
       )}
       {tab === "questions" && <QuestionsTab activity={activity} onSelectPath={onSelectPath} />}
@@ -563,6 +750,8 @@ export function ActivityPanel({
           title={title}
           onSelectPath={onSelectPath}
           onAddComponent={onAddComponent}
+          repo={repo}
+          commits={commits}
         />
       )}
     </aside>

@@ -121,5 +121,11 @@ export function useDocumentActivity(
 }
 
 /** Prompt a human can paste into their agent to run a drift check. */
-export const driftCheckPrompt = (documentId: string, title: string): string =>
-  `Run a drift check on the Archer project "${title}" (id ${documentId}) against this codebase: call get_project, then for every component use its src path (or search the repo) to find the implementation and compare it with the component's desc and payloads. Finally call report_drift with one finding per discrepancy — "missing" for components with no implementation, "changed" where the code differs, "extra" for parts of the code the architecture doesn't declare — and an empty list if everything matches.`;
+export const driftCheckPrompt = (
+  documentId: string,
+  title: string,
+  repo?: { owner: string; name: string; branch: string } | null,
+): string =>
+  `Run a drift check on the Archer project "${title}" (id ${documentId}) against ${
+    repo ? `the repository ${repo.owner}/${repo.name} on branch ${repo.branch}` : "this codebase"
+  }: call get_project, then for every component use its src path (or search the repo) to find the implementation and compare it with the component's desc and payloads. Finally call report_drift with one finding per discrepancy — "missing" for components with no implementation, "changed" where the code differs, "extra" for parts of the code the architecture doesn't declare — and an empty list if everything matches.`;

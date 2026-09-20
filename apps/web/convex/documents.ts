@@ -46,7 +46,7 @@ export const getPublic = query({
     if (!doc) return null;
     // Members get an "open in editor" affordance; everyone else just views.
     const role = await roleFor(ctx, doc.workspaceId);
-    return { _id: doc._id, title: doc.title, source: doc.source, updatedAt: doc.updatedAt, role };
+    return { _id: doc._id, title: doc.title, source: doc.source, updatedAt: doc.updatedAt, repo: doc.repo ?? null, role };
   },
 });
 
@@ -179,6 +179,35 @@ export const updateSource = mutation({
       ...(a.kind === "user" ? { seenRevisionAt: now } : {}),
     });
     await recordRevision(ctx, doc, source, title, a, summary);
+  },
+});
+
+/** Link (or unlink with null) the GitHub repository this architecture describes. */
+export const setRepo = mutation({
+  args: {
+    id: v.id("documents"),
+    workspaceId: v.string(),
+    apiKey: v.optional(v.string()),
+    repo: v.union(
+      v.object({ owner: v.string(), name: v.string(), branch: v.string(), path: v.optional(v.string()) }),
+      v.null(),
+    ),
+  },
+  handler: async (ctx, { id, workspaceId, apiKey, repo }) => {
+    await requireWorkspace(ctx, workspaceId, apiKey, "editor");
+    const doc = await ctx.db.get(id);
+    if (!doc || doc.workspaceId !== workspaceId) throw new Error("Document not found");
+    if (repo === null) {
+      await ctx.db.patch(id, { repo: undefined });
+      return null;
+    }
+    const owner = repo.owner.trim();
+    const name = repo.name.trim().replace(/\.git$/, "");
+    if (!/^[A-Za-z0-9_.-]+$/.test(owner) || !/^[A-Za-z0-9_.-]+$/.test(name))
+      throw new Error("Repository must be owner/name.");
+    const link = { owner, name, branch: repo.branch.trim() || "main", ...(repo.path ? { path: repo.path } : {}), linkedAt: Date.now() };
+    await ctx.db.patch(id, { repo: link });
+    return link;
   },
 });
 

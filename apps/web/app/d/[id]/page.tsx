@@ -60,6 +60,7 @@ export default function DocumentPage({
         source={doc.source}
         updatedAt={doc.updatedAt}
         signedIn={!!isSignedIn}
+        repo={doc.repo ?? null}
       />
     );
   }
@@ -72,6 +73,7 @@ export default function DocumentPage({
       workspaceId={workspaceId}
       seenRevisionAt={doc.seenRevisionAt}
       publicSlug={doc.publicSlug ?? null}
+      repo={doc.repo ?? null}
     />
   );
 }

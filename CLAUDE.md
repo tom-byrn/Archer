@@ -23,6 +23,13 @@ Router + React Flow + Convex).
   workspaces. Env: `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` + `CLERK_SECRET_KEY` in
   `.env.local`, `CLERK_JWT_ISSUER_DOMAIN` on the Convex deployment. Deploy
   runbook: `docs/deploy.md`.
+- GitHub: documents can link a repo + branch (`documents.repo`; reserved
+  `path` for the future `.arch`-in-repo sync). ALL GitHub REST calls go
+  through `apps/web/lib/githubApi.ts` (pure client) via
+  `apps/web/lib/server/github.ts` (token = the user's Clerk GitHub OAuth token
+  from `getUserOauthAccessToken(userId, "github")`); routes live under
+  `app/api/github/*`. Clerk's default GitHub scopes read public repos only —
+  private repos need the `repo` scope on the Clerk GitHub connection.
 - UI conventions (`apps/web`): all colors, radii and text sizes come from the
   tokens in `app/globals.css` (exposed as Tailwind utilities: `bg-surface`,
   `text-ink-2`, `border-line`, `rounded-md`, `text-sm`…). Never use the raw

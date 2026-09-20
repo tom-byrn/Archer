@@ -29,7 +29,11 @@ import { useIsDark } from "@/lib/useIsDark";
 import type { Id } from "@/convex/_generated/dataModel";
 import { authorLabel, useDocumentActivity } from "@/lib/activity";
 import type { NodeMarks } from "@/lib/toFlow";
+import { useMutation } from "convex/react";
+import { api } from "@/convex/_generated/api";
+import type { RepoLink } from "@/lib/github";
 import { AccountMenu } from "./AccountMenu";
+import { RepoDialog } from "./RepoDialog";
 import { ShareDialog } from "./ShareDialog";
 import { ActivityPanel, type ActivityTab } from "./ActivityPanel";
 import { ArchCanvas, type CanvasCallbacks } from "./ArchCanvas";
@@ -121,6 +125,7 @@ export function Editor({
   workspaceId = null,
   seenRevisionAt,
   publicSlug = null,
+  repo = null,
 }: {
   initialSource?: string;
   onPersist?: (source: string, title: string) => Promise<void> | void;
@@ -130,6 +135,8 @@ export function Editor({
   seenRevisionAt?: number;
   /** Share slug when "anyone with the link" is on. */
   publicSlug?: string | null;
+  /** Linked GitHub repository (commit timeline, src deep links). */
+  repo?: RepoLink | null;
 }) {
   const { source, setSource, mutate, undo, redo, canUndo, canRedo } =
     useArchDoc(initialSource);
@@ -158,6 +165,8 @@ export function Editor({
   const activity = useDocumentActivity(documentId, workspaceId, seenRevisionAt);
   const [panel, setPanel] = useState<ActivityTab | null>(null);
   const [shareOpen, setShareOpen] = useState(false);
+  const [repoOpen, setRepoOpen] = useState(false);
+  const setRepo = useMutation(api.documents.setRepo);
   const [diffView, setDiffView] = useState<DiffView>(null);
 
   useEffect(() => {
@@ -689,6 +698,8 @@ export function Editor({
             onRestore={restore}
             onSelectPath={(path) => setSelection({ kind: "component", path })}
             onAddComponent={addFromDrift}
+            repo={repo}
+            onLinkRepo={() => setRepoOpen(true)}
           />
         ) : (
           <DetailPanel
@@ -698,6 +709,7 @@ export function Editor({
             onSelect={setSelection}
             library={library}
             activity={activity}
+            repo={repo}
           />
         )}
       </div>
@@ -709,6 +721,14 @@ export function Editor({
           documentId={documentId}
           workspaceId={workspaceId}
           publicSlug={publicSlug}
+        />
+      )}
+      {documentId && workspaceId && (
+        <RepoDialog
+          open={repoOpen}
+          onClose={() => setRepoOpen(false)}
+          current={repo}
+          onSave={(next) => setRepo({ id: documentId, workspaceId, repo: next })}
         />
       )}
       <CommandPalette

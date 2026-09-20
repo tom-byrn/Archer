@@ -41,7 +41,7 @@ Prerequisites: the Convex backend running (`npx convex dev` in `apps/web`) and
 | `ARCHER_APP_URL` | `http://localhost:3000` | Base for the editor URLs returned by tools |
 | `ARCHER_AGENT_NAME` | the MCP client's declared name, else `agent` | How the agent's edits, questions and drift reports are attributed in the app |
 
-## Tools (26)
+## Tools (27)
 
 **Documentation** — `get_guide` returns the full agent guide (mental model,
 workflows, error reference, complete language spec); also exposed as the MCP
@@ -72,6 +72,11 @@ any two revisions; defaults to the latest change).
 `resolve_question`.
 
 **Drift** — `report_drift`, `get_drift`.
+
+**Repository** — `link_repository` (record the GitHub repo + branch a
+project describes; `get_project` then returns it as `repository`, the app
+shows that repo's commits in the History panel next to revisions, and
+`src` paths deep-link into it).
 
 **Workspace** — `get_workspace_info` (key prefix + validity, workspace id,
 reachability, counts, setup instructions when unconfigured), `set_api_key`
@@ -120,7 +125,7 @@ findings to the document with one click.
 ARCHER_API_KEY=<key> pnpm --filter @archer/mcp exec tsx scripts/smoke.ts
 ```
 
-Spawns the server over stdio and exercises all 26 tools against the live
+Spawns the server over stdio and exercises all 27 tools against the live
 backend, including the reject-invalid-write and layout-preservation
 guarantees, agent attribution in history, the question round trip, drift
 reporting, and API-key handling (`get_workspace_info` shows the key prefix; a

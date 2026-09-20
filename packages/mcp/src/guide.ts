@@ -87,6 +87,10 @@ from other contexts. Language tools need no key.
   drift checks start there. Keep it up to date when you move code.
 
 ### Drift check (does the code still match the architecture?)
+0. If \`get_project\` returns a \`repository\`, that repo at that branch is
+   the codebase to check. If it returns null and the user names the repo,
+   call \`link_repository\` first so the human sees commits next to
+   architecture changes and \`src\` links resolve.
 1. \`get_project\` — read every component, its \`desc\`, payloads and \`src\`.
 2. For each component, find the implementation: follow \`src\`, else search
    the repo. Compare what you find with the component's \`desc\`/payloads

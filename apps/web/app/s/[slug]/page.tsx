@@ -51,6 +51,7 @@ export default function SharedDocumentPage({
       updatedAt={doc.updatedAt}
       editHref={doc.role ? `/d/${doc._id}` : undefined}
       signedIn={!!isSignedIn}
+      repo={doc.repo ?? null}
     />
   );
 }
