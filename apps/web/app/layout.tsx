@@ -3,6 +3,7 @@ import { Inter, Playfair_Display } from "next/font/google";
 import "@xyflow/react/dist/style.css";
 import "./globals.css";
 import { Providers } from "@/components/Providers";
+import { LEDE } from "@/lib/landingCopy";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -19,8 +20,7 @@ const playfair = Playfair_Display({
 
 export const metadata: Metadata = {
   title: "Archer",
-  description:
-    "Architecture canvas that compiles to an agent-readable language (Archer) — and back.",
+  description: LEDE,
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

@@ -1,6 +1,7 @@
 "use client";
 
 import { Newsreader } from "next/font/google";
+import { HEADLINE, LEDE } from "@/lib/landingCopy";
 import { AgentPrompt } from "./AgentPrompt";
 import { Fog } from "./Fog";
 import { SandboxLoader } from "./SandboxLoader";
@@ -30,14 +31,13 @@ export function Landing() {
         <div className="relative grid items-end gap-x-14 gap-y-10 px-5 pb-14 pt-16 sm:px-10 sm:pb-20 sm:pt-24 lg:grid-cols-[minmax(0,1fr)_440px]">
           <div>
             <h1 className="landing-headline landing-rise max-w-[12ch] text-display-sm text-ink sm:text-display">
-              Software architecture for your agents.
+              {HEADLINE}
             </h1>
             <p
               className="landing-rise max-w-[46ch] pt-6 text-lede text-ink-2"
               style={{ "--i": 1 } as React.CSSProperties}
             >
-              Drag and drop your system architecture onto a canvas, or let
-              your agent write Archer code to do it for you.
+              {LEDE}
             </p>
           </div>
           <div className="landing-rise" style={{ "--i": 2 } as React.CSSProperties}>
