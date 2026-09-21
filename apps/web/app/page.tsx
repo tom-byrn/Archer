@@ -13,6 +13,7 @@ import { MembersDialog } from "@/components/MembersDialog";
 import { SAMPLE } from "@/lib/sample";
 import { DocPreview } from "@/lib/preview";
 import { ConnectAgentDialog } from "@/components/ConnectAgentDialog";
+import { SiteFrame, siteNavLinkCls } from "@/components/landing/SiteFrame";
 import {
   Button,
   Chip,
@@ -67,7 +68,7 @@ function DocCard({
     <div className="group relative">
       <Link
         href={`/documents/${doc._id}`}
-        className="block overflow-hidden rounded-lg border border-line bg-surface transition-[border-color,box-shadow,transform] duration-[120ms] hover:-translate-y-px hover:border-line-2 hover:shadow-sm"
+        className="block overflow-hidden border border-line bg-surface transition-[border-color,box-shadow,transform] duration-[120ms] hover:-translate-y-px hover:border-line-2 hover:shadow-md"
       >
         <div className="aspect-[16/10] border-b border-line bg-ground p-3">
           <DocPreview source={doc.source} />
@@ -404,11 +405,11 @@ function Skeletons() {
   return (
     <>
       {Array.from({ length: 6 }).map((_, i) => (
-        <div key={i} className="animate-pulse overflow-hidden rounded-lg border border-line bg-surface">
+        <div key={i} className="animate-pulse overflow-hidden border border-line bg-surface">
           <div className="aspect-[16/10] border-b border-line bg-surface-2" />
           <div className="space-y-2 px-3 py-3">
-            <div className="h-3 w-2/3 rounded-xs bg-surface-2" />
-            <div className="h-2.5 w-1/3 rounded-xs bg-surface-2" />
+            <div className="h-3 w-2/3 bg-surface-2" />
+            <div className="h-2.5 w-1/3 bg-surface-2" />
           </div>
         </div>
       ))}
@@ -471,50 +472,59 @@ export default function Home() {
   const empty = docs !== undefined && docs.length === 0;
 
   return (
-    <div className="mx-auto max-w-5xl px-6 py-10">
-      <header className="flex items-center gap-3">
-        <span className="font-display text-[22px] leading-none text-ink">Archer</span>
-        <span className="mx-2 h-4 w-px bg-line" />
-        <WorkspaceSwitcher workspaces={workspaces} current={current} onSelect={select} />
-        <div className="ml-auto flex items-center gap-2">
-          {canEdit && (
-            <Button icon={<Icon.Plug />} onClick={() => setConnectOpen(true)}>
-              Connect an agent
-            </Button>
-          )}
-          {!empty && canEdit && createButtons}
-          <span className="mx-1 h-4 w-px bg-line" />
-          <AccountMenu />
-        </div>
-      </header>
-
-      {empty ? (
-        <section className="relative mt-16 overflow-hidden rounded-xl border border-line bg-ground px-6 py-20 text-center">
-          <div className="pointer-events-none absolute inset-0 p-10 opacity-[0.18]">
-            <DocPreview source={SAMPLE} />
-          </div>
-          <div className="relative mx-auto max-w-md">
-            <h1 className="font-display text-2xl text-ink">
-              Draw your architecture. Hand it to an agent.
-            </h1>
-            <p className="pt-3 text-base text-ink-2">
-              Every box and arrow on the canvas compiles to a small text language that
-              coding agents read and write, so the diagram and the code never drift.
-            </p>
-            {canEdit ? (
-              <div className="flex justify-center gap-2 pt-6">{createButtons}</div>
-            ) : (
-              <p className="pt-6 text-sm text-ink-3">You have view access. Ask an owner to add documents.</p>
+    <SiteFrame
+      header={
+        <>
+          <span className="font-display text-[19px] leading-none text-ink">Archer</span>
+          <span className="h-4 w-px bg-line" />
+          <WorkspaceSwitcher workspaces={workspaces} current={current} onSelect={select} />
+          <div className="ml-auto flex items-center gap-2">
+            {canEdit && (
+              <Button icon={<Icon.Plug />} onClick={() => setConnectOpen(true)}>
+                Connect an agent
+              </Button>
             )}
+            {!empty && canEdit && createButtons}
+            <span className="mx-1 h-4 w-px bg-line" />
+            <AccountMenu />
+          </div>
+        </>
+      }
+      footerLinks={
+        <Link href="/language" className={siteNavLinkCls}>
+          Docs
+        </Link>
+      }
+    >
+      {empty ? (
+        <section className="landing-joints border-b border-line">
+          <div className="relative overflow-hidden bg-ground px-6 py-20 text-center">
+            <div className="pointer-events-none absolute inset-0 p-10 opacity-[0.18]">
+              <DocPreview source={SAMPLE} />
+            </div>
+            <div className="relative mx-auto max-w-md">
+              <h1 className="font-display text-2xl text-ink">
+                Draw your architecture. Hand it to an agent.
+              </h1>
+              <p className="pt-3 text-base text-ink-2">
+                Every box and arrow on the canvas compiles to a small text language that
+                coding agents read and write, so the diagram and the code never drift.
+              </p>
+              {canEdit ? (
+                <div className="flex justify-center gap-2 pt-6">{createButtons}</div>
+              ) : (
+                <p className="pt-6 text-sm text-ink-3">You have view access. Ask an owner to add documents.</p>
+              )}
+            </div>
           </div>
         </section>
       ) : (
         <>
-          <div className="flex items-center pt-10 pb-3">
+          <div className="landing-joints flex items-center border-b border-line px-5 py-5 sm:px-10">
             <span className="eyebrow">Documents</span>
             {docs && <span className="pl-2 text-xs text-ink-3">{docs.length}</span>}
           </div>
-          <div className="grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-4">
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-4 px-5 py-8 sm:px-10">
             {loading ? (
               <Skeletons />
             ) : (
@@ -553,6 +563,6 @@ export default function Home() {
           onConfirm={() => del(pending.doc)}
         />
       )}
-    </div>
+    </SiteFrame>
   );
 }

@@ -19,6 +19,7 @@ const newsreader = Newsreader({
 export function Landing() {
   return (
     <SiteFrame
+      dark
       className={newsreader.variable}
       backdrop={<Fog />}
       footerExtra={
