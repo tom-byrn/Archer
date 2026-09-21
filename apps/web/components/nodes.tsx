@@ -265,14 +265,17 @@ export function ArchEdgeComponent({
         className={cx("arch-edge-path", diffCls)}
         interactionWidth={16}
       />
+      {/* fill attr: fallback so heads are never SVG-default black if canvas.css is late. */}
       {arrow !== "--" && (
         <polygon
+          fill="var(--edge)"
           className={cx("arch-edge-arrow", diffCls)}
           points={arrowhead(targetX, targetY, targetPosition)}
         />
       )}
       {arrow === "<->" && (
         <polygon
+          fill="var(--edge)"
           className={cx("arch-edge-arrow", diffCls)}
           points={arrowhead(sourceX, sourceY, sourcePosition)}
         />

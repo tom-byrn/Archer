@@ -1,4 +1,4 @@
-# Archer v0.1 — Language Specification (Draft)
+# Archer — Language Specification
 
 Archer is a textual language for describing software architecture. An `.arch` file is
 the **single source of truth** for an architecture document: the canvas renders it, edits

@@ -1,5 +1,5 @@
 // Generated from docs/language-spec.md — keep in sync when the spec changes.
-export const LANGUAGE_SPEC = `# Archer v0.1 — Language Specification (Draft)
+export const LANGUAGE_SPEC = `# Archer — Language Specification
 
 Archer is a textual language for describing software architecture. An \`.arch\` file is
 the **single source of truth** for an architecture document: the canvas renders it, edits

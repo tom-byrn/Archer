@@ -9,7 +9,8 @@ const description =
 // Served at "/" for signed-out visitors (see middleware.ts).
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
-  title,
+  // The tab just says "Archer"; the longer title is for link previews.
+  title: "Archer",
   description,
   alternates: { canonical: "/" },
   openGraph: { title, description, url: "/", siteName: "Archer", type: "website" },
