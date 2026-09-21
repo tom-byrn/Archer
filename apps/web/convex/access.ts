@@ -12,6 +12,9 @@ export const atLeast = (have: Role, need: Role): boolean => RANK[have] >= RANK[n
  *   - team: a row in `workspaces`; access comes from `members` (by user id, or
  *     by email for invitees who have not signed in yet).
  * Agents authenticate with an API key bound to a workspace; keys act as editors.
+ * The hosted MCP route authenticates users itself (Clerk OAuth) and then acts
+ * for them with a *service credential*: `svc_<ARCHER_SERVICE_SECRET>.<userId>`
+ * passed in the same `apiKey` argument. It is only ever held server-side.
  *
  * Queries need "viewer", document mutations "editor", and member / key /
  * workspace management "owner".
@@ -33,24 +36,58 @@ export async function requireWorkspace(
   );
 }
 
+/**
+ * Who is calling: the signed-in browser user, or the user a trusted server is
+ * acting for via a service credential. Null for anonymous / plain API keys.
+ */
+export async function effectiveUser(
+  ctx: QueryCtx | MutationCtx,
+  apiKey?: string,
+): Promise<{ userId: string; email: string | null } | null> {
+  const identity = await ctx.auth.getUserIdentity();
+  if (identity) return { userId: identity.subject, email: identity.email?.toLowerCase() ?? null };
+  const acting = serviceUser(apiKey);
+  return acting ? { userId: acting, email: null } : null;
+}
+
+const SERVICE_PREFIX = "svc_";
+
+/** The user id a valid service credential acts for, else null. */
+function serviceUser(apiKey?: string): string | null {
+  if (!apiKey || !apiKey.startsWith(SERVICE_PREFIX)) return null;
+  const secret = process.env.ARCHER_SERVICE_SECRET;
+  if (!secret || secret.length < 32) return null;
+  const body = apiKey.slice(SERVICE_PREFIX.length);
+  const dot = body.lastIndexOf(".");
+  if (dot <= 0) return null;
+  const given = body.slice(0, dot);
+  const userId = body.slice(dot + 1);
+  if (!/^user_[A-Za-z0-9]+$/.test(userId)) return null;
+  // Constant-time comparison.
+  if (given.length !== secret.length) return null;
+  let diff = 0;
+  for (let i = 0; i < secret.length; i++) diff |= given.charCodeAt(i) ^ secret.charCodeAt(i);
+  return diff === 0 ? userId : null;
+}
+
 /** The caller's role in a workspace, or null. */
 export async function roleFor(
   ctx: QueryCtx | MutationCtx,
   workspaceId: string,
   apiKey?: string,
 ): Promise<Role | null> {
-  const identity = await ctx.auth.getUserIdentity();
-  if (identity) {
-    if (identity.subject === workspaceId) return "owner";
+  const who = await effectiveUser(ctx, apiKey);
+  if (who) {
+    if (who.userId === workspaceId) return "owner";
     const byUser = await ctx.db
       .query("members")
       .withIndex("by_workspace_user", (q) =>
-        q.eq("workspaceId", workspaceId).eq("userId", identity.subject),
+        q.eq("workspaceId", workspaceId).eq("userId", who.userId),
       )
       .first();
     if (byUser) return byUser.role;
-    const email = identity.email?.toLowerCase();
-    if (email) {
+    if (who.email) {
+      const email = who.email;
       const byEmail = await ctx.db
         .query("members")
         .withIndex("by_workspace_email", (q) =>
@@ -60,7 +97,7 @@ export async function roleFor(
       if (byEmail) return byEmail.role;
     }
   }
-  if (apiKey) {
+  if (apiKey && !apiKey.startsWith(SERVICE_PREFIX)) {
     const owner = await workspaceForKey(ctx, apiKey);
     if (owner === workspaceId) return "editor";
   }

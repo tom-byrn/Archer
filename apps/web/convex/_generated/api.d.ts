@@ -10,6 +10,7 @@
 
 import type * as access from "../access.js";
 import type * as admin from "../admin.js";
+import type * as agentPrefs from "../agentPrefs.js";
 import type * as apiKeys from "../apiKeys.js";
 import type * as documents from "../documents.js";
 import type * as drift from "../drift.js";
@@ -27,6 +28,7 @@ import type {
 declare const fullApi: ApiFromModules<{
   access: typeof access;
   admin: typeof admin;
+  agentPrefs: typeof agentPrefs;
   apiKeys: typeof apiKeys;
   documents: typeof documents;
   drift: typeof drift;

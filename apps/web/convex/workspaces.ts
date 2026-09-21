@@ -1,7 +1,7 @@
 import { mutation, query } from "./_generated/server";
 import type { Doc } from "./_generated/dataModel";
 import { v } from "convex/values";
-import { requireIdentity, requireUser, requireWorkspace } from "./access";
+import { effectiveUser, requireIdentity, requireUser, requireWorkspace } from "./access";
 import { role } from "./schema";
 
 /** The signed-in user's identity, or null. */
@@ -32,20 +32,20 @@ export interface WorkspaceSummary {
 
 /** Every workspace the user can open: personal first, then teams by name. */
 export const list = query({
-  args: {},
-  handler: async (ctx): Promise<WorkspaceSummary[]> => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) return [];
+  args: { apiKey: v.optional(v.string()) },
+  handler: async (ctx, { apiKey }): Promise<WorkspaceSummary[]> => {
+    const who = await effectiveUser(ctx, apiKey);
+    if (!who) return [];
     const out: WorkspaceSummary[] = [
-      { id: identity.subject, name: "Personal", kind: "personal", role: "owner" },
+      { id: who.userId, name: "Personal", kind: "personal", role: "owner" },
     ];
     const seen = new Set<string>();
     const rows: Doc<"members">[] = await ctx.db
       .query("members")
-      .withIndex("by_user", (q) => q.eq("userId", identity.subject))
+      .withIndex("by_user", (q) => q.eq("userId", who.userId))
       .collect();
-    const email = identity.email?.toLowerCase();
-    if (email) {
+    if (who.email) {
+      const email = who.email;
       const invites = await ctx.db
         .query("members")
         .withIndex("by_email", (q) => q.eq("email", email))

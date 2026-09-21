@@ -20,16 +20,27 @@ ${BRIEF}
    The workflow is: write → get diagnostics → fix → retry. Diagnostics carry
    codes and line numbers; fix exactly what they name.
 
-## Authentication (API key)
+## Authentication
 
-Project tools act on one user's workspace, unlocked by an **API key** the
-user creates in the Archer app: sign in with GitHub → avatar menu →
-"Connect an agent" → Create API key. The key is supplied either as the
-\`ARCHER_API_KEY\` environment variable of this server or via the
-\`set_api_key\` tool (persisted to \`~/.archer/key\`). If a project tool
-fails with a "No API key" or "rejected" message, call \`get_workspace_info\`
-and relay its instructions to the user. Never invent, guess, or reuse keys
-from other contexts. Language tools need no key.
+This server runs in one of two ways; \`get_workspace_info\` tells you which.
+
+- **Hosted (OAuth).** The user connected the hosted server and approved it in
+  their browser, so you already act as them — there is nothing to configure
+  and no key to ask for. A user can belong to several workspaces (Personal
+  plus team workspaces, each with a role). Project tools operate on the
+  CURRENT workspace, Personal by default: \`list_workspaces\` shows them,
+  \`use_workspace\` switches (remembered across sessions). Viewers can read
+  but writes are refused.
+- **Local (API key).** Project tools act on one workspace, unlocked by an
+  API key the user creates in the Archer app: sign in with GitHub → avatar
+  menu → "Connect an agent" → Create API key. It is supplied as the
+  \`ARCHER_API_KEY\` environment variable or via the \`set_api_key\` tool
+  (persisted to \`~/.archer/key\`). If a project tool fails with a "No API
+  key" or "rejected" message, call \`get_workspace_info\` and relay its
+  instructions. Never invent, guess, or reuse keys from other contexts.
+
+Language tools (validate, format, compile, auto-layout, the guide) need no
+authentication in either mode.
 
 ## Standard workflows
 
@@ -175,7 +186,7 @@ with full source), manage the custom component library
 (\`get_history\`/\`get_revision\`/\`diff_project\`), discuss components
 (\`ask_question\`/\`list_questions\`/\`answer_question\`/\`resolve_question\`),
 report drift (\`report_drift\`/\`get_drift\`), manage credentials
-(\`get_workspace_info\`/\`set_api_key\`), and export the agent spec
+(\`get_workspace_info\`; hosted: \`list_workspaces\`/\`use_workspace\`; local: \`set_api_key\`), and export the agent spec
 (\`compile_for_agent\`). The only human-app-exclusive feature is PNG export —
 point users at the Export menu in the editor.
 

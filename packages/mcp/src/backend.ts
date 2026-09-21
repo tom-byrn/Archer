@@ -1,3 +1,4 @@
+import { AsyncLocalStorage } from "node:async_hooks";
 import { chmodSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
@@ -5,7 +6,15 @@ import { ConvexHttpClient } from "convex/browser";
 import { anyApi, type FunctionReference } from "convex/server";
 
 // Untyped references into apps/web/convex functions (validated server-side).
-type Module = "documents" | "library" | "revisions" | "threads" | "drift" | "apiKeys";
+type Module =
+  | "documents"
+  | "library"
+  | "revisions"
+  | "threads"
+  | "drift"
+  | "apiKeys"
+  | "workspaces"
+  | "agentPrefs";
 const fn = (module: Module, name: string): unknown =>
   (anyApi as Record<string, Record<string, unknown>>)[module]![name];
 const qref = (m: Module, n: string) => fn(m, n) as FunctionReference<"query">;
@@ -34,14 +43,21 @@ export const CONVEX_URL =
 export const APP_URL =
   process.env.ARCHER_APP_URL ??
   process.env.ARCHLANG_APP_URL ??
+  process.env.NEXT_PUBLIC_APP_URL ??
+  (process.env.VERCEL_PROJECT_PRODUCTION_URL
+    ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+    : undefined) ??
   process.env.ARCHER_DEFAULT_APP_URL ??
   "http://localhost:3000";
 
-const ARCHER_DIR = join(homedir(), ".archer");
-const KEY_FILE = join(ARCHER_DIR, "key");
+// Filesystem locations are resolved lazily: this module is also imported by
+// the hosted (serverless) MCP route, where nothing may touch the disk at
+// import time.
+const archerDir = (): string => join(homedir(), ".archer");
+const keyFile = (): string => join(archerDir(), "key");
 /** Pre-auth config locations — only read to give a migration hint. */
-const LEGACY_WORKSPACE_FILES = [
-  join(ARCHER_DIR, "workspace"),
+const legacyWorkspaceFiles = (): string[] => [
+  join(archerDir(), "workspace"),
   join(homedir(), ".archlang", "workspace"),
 ];
 
@@ -58,7 +74,7 @@ const readFile = (path: string): string | null => {
 export function resolveApiKey(): string | null {
   const env = process.env.ARCHER_API_KEY?.trim();
   if (env) return env;
-  return readFile(KEY_FILE);
+  return readFile(keyFile());
 }
 
 /** True when the user still has a pre-auth workspace id configured. */
@@ -66,15 +82,15 @@ export function hasLegacyWorkspaceConfig(): boolean {
   return (
     !!process.env.ARCHER_WORKSPACE_ID ||
     !!process.env.ARCHLANG_WORKSPACE_ID ||
-    LEGACY_WORKSPACE_FILES.some((f) => readFile(f) !== null)
+    legacyWorkspaceFiles().some((f) => readFile(f) !== null)
   );
 }
 
 export function persistApiKey(key: string): void {
-  mkdirSync(ARCHER_DIR, { recursive: true });
-  writeFileSync(KEY_FILE, key + "\n", { encoding: "utf8", mode: 0o600 });
+  mkdirSync(archerDir(), { recursive: true });
+  writeFileSync(keyFile(), key + "\n", { encoding: "utf8", mode: 0o600 });
   try {
-    chmodSync(KEY_FILE, 0o600);
+    chmodSync(keyFile(), 0o600);
   } catch {
     // best effort (e.g. Windows)
   }
@@ -114,11 +130,14 @@ export async function lookupKey(apiKey: string): Promise<Workspace | null> {
   return res ? { workspaceId: res.workspaceId, apiKey } : null;
 }
 
-const MIGRATION_HINT = hasLegacyWorkspaceConfig()
-  ? " NOTE: a pre-auth workspace id (ARCHER_WORKSPACE_ID / ~/.archer/workspace) is still configured — Archer now uses API keys instead; that id is ignored. Create a key in the app under \"Connect an agent\"."
-  : "";
+const MIGRATION_HINT =
+  " NOTE: a pre-auth workspace id (ARCHER_WORKSPACE_ID / ~/.archer/workspace) is still configured — Archer now uses API keys instead; that id is ignored. Create a key in the app under \"Connect an agent\".";
 
-export const NO_WORKSPACE_MESSAGE = `No API key is configured, so project tools can't run yet. An API key identifies the user's workspace — it must be created by the user in the Archer app: open ${APP_URL}, sign in with GitHub, click "Connect an agent", and create an API key. Then either set the ARCHER_API_KEY environment variable for this MCP server, or ask the user for the key and call the set_api_key tool with it (persists to ~/.archer/key). Never invent or guess a key. Language tools (validate_source, format_source, compile_for_agent, auto_layout_source, get_guide) work without one.${MIGRATION_HINT}`;
+export const NO_WORKSPACE_MESSAGE = `No API key is configured, so project tools can't run yet. An API key identifies the user's workspace — it must be created by the user in the Archer app: open ${APP_URL}, sign in with GitHub, click "Connect an agent", and create an API key. Then either set the ARCHER_API_KEY environment variable for this MCP server, or ask the user for the key and call the set_api_key tool with it (persists to ~/.archer/key). Never invent or guess a key. Language tools (validate_source, format_source, compile_for_agent, auto_layout_source, get_guide) work without one.`;
+
+/** NO_WORKSPACE_MESSAGE plus a migration hint when legacy config exists (reads the disk, hence lazy). */
+export const noWorkspaceMessage = (): string =>
+  NO_WORKSPACE_MESSAGE + (hasLegacyWorkspaceConfig() ? MIGRATION_HINT : "");
 
 export const INVALID_KEY_MESSAGE = `The configured API key was rejected by the backend (revoked, mistyped, or from a different deployment). Ask the user to create a new key in the Archer app (${APP_URL} → Connect an agent) and set ARCHER_API_KEY or call set_api_key.`;
 
@@ -133,12 +152,37 @@ let clientName: string | null = null;
 export function setClientName(name: string | undefined | null): void {
   clientName = name && name.trim() !== "" ? name.trim() : null;
 }
+
+/**
+ * Per-request identity for the hosted (remote) server. One serverless process
+ * serves many users concurrently, so nothing about the caller may live in
+ * module state — the tool wrapper runs each call inside `requestContext.run`.
+ * `serviceKey` is the credential Convex accepts in the `apiKey` argument for a
+ * verified user: `svc_<ARCHER_SERVICE_SECRET>.<userId>`.
+ */
+export interface RequestContext {
+  userId: string;
+  agentName: string;
+  serviceKey: string;
+}
+export const requestContext = new AsyncLocalStorage<RequestContext>();
+
 export function agentName(): string {
+  const ctx = requestContext.getStore();
+  if (ctx) return ctx.agentName;
   const env = process.env.ARCHER_AGENT_NAME?.trim();
   return env && env !== "" ? env : (clientName ?? "agent");
 }
 export function agentAuthor(): { kind: "agent"; name: string } {
   return { kind: "agent", name: agentName() };
+}
+
+export interface WorkspaceSummary {
+  id: string;
+  name: string;
+  kind: "personal" | "team";
+  role: "owner" | "editor" | "viewer";
+  pending?: boolean;
 }
 
 export interface ProjectSummary {
@@ -257,6 +301,14 @@ export const db = {
     client.mutation(mref("threads", "reply"), { ...auth(ws), id, text, author: agentAuthor() }) as Promise<void>,
   setThreadStatus: (ws: Workspace, id: string, status: "open" | "resolved") =>
     client.mutation(mref("threads", "setStatus"), { ...auth(ws), id, status }) as Promise<void>,
+
+  // workspaces (hosted server: the caller is a user, not a single-workspace key)
+  listWorkspaces: (apiKey: string) =>
+    client.query(qref("workspaces", "list"), { apiKey }) as Promise<WorkspaceSummary[]>,
+  getAgentWorkspace: (apiKey: string) =>
+    client.query(qref("agentPrefs", "get"), { apiKey }) as Promise<{ workspaceId: string } | null>,
+  setAgentWorkspace: (apiKey: string, workspaceId: string) =>
+    client.mutation(mref("agentPrefs", "set"), { apiKey, workspaceId }) as Promise<unknown>,
 
   // drift
   getDrift: (ws: Workspace, documentId: string) =>

@@ -31,6 +31,19 @@ Router + React Flow + Convex).
   workspaces. Env: `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` + `CLERK_SECRET_KEY` in
   `.env.local`, `CLERK_JWT_ISSUER_DOMAIN` on the Convex deployment. Deploy
   runbook: `docs/deploy.md`.
+- Hosted MCP: `apps/web/app/mcp/route.ts` serves the MCP server at `/mcp`
+  (Streamable HTTP, stateless). Auth is MCP-standard OAuth with Clerk as the
+  authorization server (dynamic client registration is ON in the Clerk
+  instance); discovery docs live under `app/.well-known/*`. The route verifies
+  the bearer token, then calls `handleRemoteRequest` from `@archer/mcp/remote`
+  — the web app must NOT import `@modelcontextprotocol/sdk` itself (two SDK
+  copies, one per zod peer, do not interoperate). Tools reach Convex with a
+  server-only service credential `svc_<ARCHER_SERVICE_SECRET>.<userId>` passed
+  in the usual `apiKey` argument (`convex/access.ts` → `effectiveUser`); the
+  same secret must be set on the Convex deployment and in the web env. The
+  stdio server + API keys remain for CI, the CLI and offline use.
+  `registerArcherTools(server, { mode })` registers 27 tools for stdio, 28
+  for remote (`list_workspaces`/`use_workspace` instead of `set_api_key`).
 - GitHub: documents can link a repo + branch (`documents.repo`; reserved
   `path` for the future `.arch`-in-repo sync). ALL GitHub REST calls go
   through `apps/web/lib/githubApi.ts` (pure client) via

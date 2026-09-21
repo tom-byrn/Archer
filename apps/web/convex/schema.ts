@@ -126,6 +126,12 @@ export default defineSchema({
     .index("by_document", ["documentId"])
     .index("by_workspace", ["workspaceId"]),
 
+  /** Which workspace a user's OAuth-connected agents operate on (default: personal). */
+  agentPrefs: defineTable({
+    userId: v.string(),
+    workspaceId: v.string(),
+  }).index("by_user", ["userId"]),
+
   /** Agent credentials: only the SHA-256 of the key is stored. */
   apiKeys: defineTable({
     workspaceId: v.string(),

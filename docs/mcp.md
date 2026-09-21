@@ -8,6 +8,30 @@ presentation, and compile agent-ready implementation specs.
 
 ## Setup
 
+### Hosted server (recommended)
+
+The Archer app serves this MCP server over HTTP at `/mcp`, authenticated with
+OAuth — no API key, nothing to install:
+
+```sh
+claude mcp add --transport http archer https://archer.tombyrne.dev/mcp
+```
+
+Then authorize when prompted (in Claude Code: run `/mcp`, pick `archer`,
+and approve in the browser). You sign in to Archer with GitHub and the agent
+acts as you. Other MCP clients: add a remote / streamable-HTTP server with that
+URL; they discover the OAuth endpoints on their own.
+
+Because you may belong to several workspaces, the hosted server adds
+`list_workspaces` and `use_workspace`; project tools operate on the current
+workspace (Personal by default, remembered per user). `set_api_key` does not
+exist there.
+
+### Local server (stdio + API key)
+
+Use this for CI, offline/local backends, or clients without remote-server
+support.
+
 Prerequisites: the Convex backend running (`npx convex dev` in `apps/web`) and
 `pnpm install` done at the repo root.
 
@@ -45,7 +69,7 @@ Prerequisites: the Convex backend running (`npx convex dev` in `apps/web`) and
 | `ARCHER_APP_URL` | `http://localhost:3000` | Base for the editor URLs returned by tools |
 | `ARCHER_AGENT_NAME` | the MCP client's declared name, else `agent` | How the agent's edits, questions and drift reports are attributed in the app |
 
-## Tools (27)
+## Tools (27 local · 28 hosted)
 
 **Documentation** — `get_guide` returns the full agent guide (mental model,
 workflows, error reference, complete language spec); also exposed as the MCP
@@ -84,7 +108,10 @@ shows that repo's commits in the History panel next to revisions, and
 
 **Workspace** — `get_workspace_info` (key prefix + validity, workspace id,
 reachability, counts, setup instructions when unconfigured), `set_api_key`
-(validate and persist a key the user provides).
+(validate and persist a key the user provides; local server only). Hosted
+server instead: `list_workspaces` (Personal + team workspaces with roles,
+current one marked) and `use_workspace` (switch; remembered per user), and
+`get_workspace_info` reports the OAuth user and current workspace.
 
 ### Agent identity & history
 

@@ -1,13 +1,14 @@
 {
   "name": "@archer/mcp",
-  "version": "1.6.0",
+  "version": "1.7.0",
   "private": true,
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
     "./server": "./src/server.ts",
     "./backend": "./src/backend.ts",
-    "./languageSpec": "./src/languageSpec.ts"
+    "./languageSpec": "./src/languageSpec.ts",
+    "./remote": "./src/remote.ts"
   },
   "bin": {
     "archer-mcp": "./src/index.ts"

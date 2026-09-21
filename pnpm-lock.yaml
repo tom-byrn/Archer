@@ -20,6 +20,12 @@ importers:
       '@archer/lang':
         specifier: workspace:*
         version: link:../../packages/lang
+      '@archer/mcp':
+        specifier: workspace:*
+        version: link:../../packages/mcp
+      '@clerk/mcp-tools':
+        specifier: ^0.6.0
+        version: 0.6.0(@clerk/nextjs@7.9.2(next@15.5.25(@types/node@26.4.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(express@5.2.1)(hono@4.13.7)(next@15.5.25(@types/node@26.4.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(zod@4.6.5)
       '@clerk/nextjs':
         specifier: ^7.9.2
         version: 7.9.2(next@15.5.25(@types/node@26.4.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
@@ -202,6 +208,38 @@ packages:
   '@clerk/backend@3.17.2':
     resolution: {integrity: sha512-pQz/+ClFBcL4OijAX3gDcXQYNqr1JbabAqY8szuU8/Dcvuuk3WgUmQDGyIU0tIqmitdd17RLppDmhN088pADew==}
     engines: {node: '>=20.9.0'}
+
+  '@clerk/mcp-tools@0.6.0':
+    resolution: {integrity: sha512-YXGZujj6oxD5T4XOi08UsLbPiWYD88Fe1uOwqZQekak8i2vitOgugRw7guwat3GuzQearRGdsW1P5AweQ043Sg==}
+    peerDependencies:
+      '@clerk/express': ^2.1.5
+      '@clerk/hono': ^0.1.0
+      '@clerk/nextjs': ^7.2.3
+      better-sqlite3: ^8.7.0
+      express: ^5.0.0
+      hono: ^4.0.0
+      next: ^15.2.8 || ^15.3.8 || ^15.4.10 || ^15.5.9 || ^15.6.0-0 || ^16.0.10 || ^16.1.0-0
+      pg: ^8.11.0
+      redis: ^4.0.0
+    peerDependenciesMeta:
+      '@clerk/express':
+        optional: true
+      '@clerk/hono':
+        optional: true
+      '@clerk/nextjs':
+        optional: true
+      better-sqlite3:
+        optional: true
+      express:
+        optional: true
+      hono:
+        optional: true
+      next:
+        optional: true
+      pg:
+        optional: true
+      redis:
+        optional: true
 
   '@clerk/nextjs@7.9.2':
     resolution: {integrity: sha512-DNjq2HFDV5hES6Zypytb703A45XJjRLKDbbN9i3/qcoO/FblmqmAbZ+dMDynsLasnNzUuLzsztOcJtoqDLEVyg==}
@@ -2232,6 +2270,9 @@ packages:
   zod@3.25.76:
     resolution: {integrity: sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ==}
 
+  zod@4.6.5:
+    resolution: {integrity: sha512-v5l/aFXZQeai4awLbOpSoHecE9UiMrnfx75tEXLjNonXVARxQ5mOeipTjROUchszUNCqnE+hqAMujRsRHsut2Q==}
+
   zustand@4.5.7:
     resolution: {integrity: sha512-CHOUy7mu3lbD6o6LJLfllpjkzhHXSBlX8B9+qPddUsIfeF5S/UZ5q0kmCsnRqT1UHFQZchNFDDzMbQsuesHWlw==}
     engines: {node: '>=12.7.0'}
@@ -2259,6 +2300,19 @@ snapshots:
     transitivePeerDependencies:
       - react
       - react-dom
+
+  '@clerk/mcp-tools@0.6.0(@clerk/nextjs@7.9.2(next@15.5.25(@types/node@26.4.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(express@5.2.1)(hono@4.13.7)(next@15.5.25(@types/node@26.4.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(zod@4.6.5)':
+    dependencies:
+      '@modelcontextprotocol/sdk': 1.30.0(zod@4.6.5)
+    optionalDependencies:
+      '@clerk/nextjs': 7.9.2(next@15.5.25(@types/node@26.4.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      express: 5.2.1
+      hono: 4.13.7
+      next: 15.5.25(@types/node@26.4.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+    transitivePeerDependencies:
+      - '@cfworker/json-schema'
+      - supports-color
+      - zod
 
   '@clerk/nextjs@7.9.2(next@15.5.25(@types/node@26.4.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(react-dom@19.3.0(react@19.3.0))(react@19.3.0)':
     dependencies:
@@ -2740,6 +2794,28 @@ snapshots:
       raw-body: 3.0.2
       zod: 3.25.76
       zod-to-json-schema: 3.25.2(zod@3.25.76)
+    transitivePeerDependencies:
+      - supports-color
+
+  '@modelcontextprotocol/sdk@1.30.0(zod@4.6.5)':
+    dependencies:
+      '@hono/node-server': 2.1.1(hono@4.13.7)
+      ajv: 8.20.0
+      ajv-formats: 3.0.1(ajv@8.20.0)
+      content-type: 1.0.5
+      cors: 2.8.6
+      cross-spawn: 7.0.6
+      eventsource: 3.0.7
+      eventsource-parser: 3.1.1
+      express: 5.2.1
+      express-rate-limit: 8.7.0(express@5.2.1)
+      hono: 4.13.7
+      jose: 6.2.12
+      json-schema-typed: 8.0.2
+      pkce-challenge: 5.0.1
+      raw-body: 3.0.2
+      zod: 4.6.5
+      zod-to-json-schema: 3.25.2(zod@4.6.5)
     transitivePeerDependencies:
       - supports-color
 
@@ -4101,7 +4177,13 @@ snapshots:
     dependencies:
       zod: 3.25.76
 
+  zod-to-json-schema@3.25.2(zod@4.6.5):
+    dependencies:
+      zod: 4.6.5
+
   zod@3.25.76: {}
+
+  zod@4.6.5: {}
 
   zustand@4.5.7(@types/react@19.3.0)(react@19.3.0):
     dependencies:
