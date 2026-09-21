@@ -7,7 +7,12 @@ pure TS, no app deps), `packages/catalog` (component types + glyphs),
 `packages/mcp` (stdio MCP server, `docs/mcp.md`), `apps/web` (Next.js 15 App
 Router + React Flow + Convex).
 
-- Run: `npx convex dev` and `pnpm dev`, both in `apps/web`.
+- Run: `pnpm dev` from the repo root starts Convex and Next together
+  (`apps/web` script `dev:all`). NEVER run `npx convex …` from the repo
+  root — it scaffolds a second, empty Convex project there and pushes empty
+  functions to the dev deployment. Use `pnpm convex <args>` (root alias) or
+  run the CLI inside `apps/web`. Local dev targets the cloud dev deployment
+  `keen-iguana-117`; production is `greedy-goldfinch-347` (`--prod`).
 - Auth: Clerk (GitHub login) via `ConvexProviderWithClerk`; Convex validates
   Clerk JWTs (`convex/auth.config.ts`, template "convex"). Workspaces:
   personal (id == Clerk user id, owner) and team (`workspaces` rows, roles

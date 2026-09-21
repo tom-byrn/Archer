@@ -57,11 +57,10 @@ Docs: [language spec](docs/language-spec.md) · [product spec](docs/product-spec
 pnpm install
 pnpm --filter @archer/lang test     # 82 language tests
 
-# terminal 1 — local Convex backend (no account needed)
-cd apps/web && npx convex dev
+pnpm dev                              # Convex + Next together → http://localhost:3000
 
-# terminal 2 — web app
-pnpm dev                              # http://localhost:3000
+# Convex CLI: always through the alias (or from apps/web), never bare at the root
+pnpm convex dashboard
 ```
 
 Sign-in is GitHub via [Clerk](https://clerk.com). One-time setup:

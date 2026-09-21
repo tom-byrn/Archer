@@ -4,8 +4,10 @@
   "scripts": {
     "test": "pnpm -r test",
     "typecheck": "pnpm -r typecheck",
-    "dev": "pnpm --filter @archer/web dev",
-    "build": "pnpm -r build"
+    "dev": "pnpm --filter @archer/web dev:all",
+    "build": "pnpm -r build",
+    "dev:web": "pnpm --filter @archer/web dev",
+    "convex": "pnpm --filter @archer/web exec convex"
   },
   "packageManager": "pnpm@10.17.0"
 }
