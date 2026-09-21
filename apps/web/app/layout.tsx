@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter, Playfair_Display } from "next/font/google";
 import "@xyflow/react/dist/style.css";
 import "./globals.css";
@@ -21,6 +21,17 @@ const playfair = Playfair_Display({
 export const metadata: Metadata = {
   title: "Archer",
   description: LEDE,
+};
+
+// Edge-to-edge on notched phones; the editor pads its bottom sheets with
+// env(safe-area-inset-bottom). maximumScale stops iOS zooming the page when
+// the (sub-16px) code editor gets focus; Safari still allows pinch-zoom
+// regardless, and the canvas has its own pinch-zoom.
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  viewportFit: "cover",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

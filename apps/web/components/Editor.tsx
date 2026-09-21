@@ -41,7 +41,7 @@ import { CodePane } from "./CodePane";
 import { CommandPalette } from "./CommandPalette";
 import { DetailPanel, connectionKey, type Selection } from "./DetailPanel";
 import { Palette } from "./Palette";
-import { Button, Chip, Icon, IconButton, Input, Kbd, Menu, cx, relativeTime } from "./ui";
+import { Button, Chip, Icon, IconButton, Input, Kbd, Menu, cx, relativeTime, type MenuItem } from "./ui";
 
 /** What the canvas is comparing against, when in diff mode. */
 type DiffView =
@@ -88,7 +88,7 @@ function TitleField({ value, onCommit }: { value: string; onCommit: (v: string) 
         type="button"
         onClick={() => setEditing(true)}
         title="Rename document"
-        className="h-7 max-w-[320px] truncate rounded-md px-2 text-base font-medium text-ink transition-colors hover:bg-surface-2"
+        className="h-7 max-w-[38vw] truncate rounded-md px-2 text-base font-medium text-ink transition-colors hover:bg-surface-2 md:max-w-[320px]"
       >
         {value}
       </button>
@@ -113,7 +113,7 @@ function TitleField({ value, onCommit }: { value: string; onCommit: (v: string) 
           setEditing(false);
         }
       }}
-      className="w-[260px] font-medium"
+      className="w-[38vw] font-medium md:w-[260px]"
     />
   );
 }
@@ -403,22 +403,47 @@ export function Editor({
     setPanel(tab);
     setSelection(null);
   };
+  const exportItems: (MenuItem | "separator")[] = [
+    {
+      label: "Copy for agent",
+      hint: derived.valid
+        ? "Layout stripped, language guide prepended"
+        : "Fix validation errors first",
+      icon: <Icon.Sparkle />,
+      disabled: !derived.valid,
+      onSelect: () => copy("agent"),
+    },
+    {
+      label: "Copy .arch source",
+      hint: "Exactly what the code pane shows",
+      icon: <Icon.Copy />,
+      onSelect: () => copy("code"),
+    },
+    "separator",
+    {
+      label: "Download PNG",
+      hint: "Current view, theme colors",
+      icon: <Icon.Download />,
+      onSelect: () => exportRef.current?.(),
+    },
+  ];
   const unseen = activity.unseenAgentRevisions;
   const latestAgent = unseen[0];
   const openQuestions = activity.openThreadsByPath.size;
   const viewingRevisionId = diffView?.kind === "revision" ? diffView.id : null;
 
   return (
-    <div className="flex h-screen flex-col bg-bg">
+    <div className="flex h-dvh flex-col overscroll-none bg-bg">
       <header className="flex h-10 shrink-0 items-center gap-1 border-b border-line bg-surface px-2">
         <Link
           href="/"
-          className="flex h-7 items-center gap-2 rounded-md px-1.5 transition-colors hover:bg-surface-2"
+          className="flex h-7 shrink-0 items-center gap-2 rounded-md px-1.5 transition-colors hover:bg-surface-2"
           title="All documents"
         >
-          <span className="font-display text-[17px] leading-none">Archer</span>
+          <Icon.ChevronLeft className="h-4 w-4 text-ink-2 md:hidden" />
+          <span className="hidden font-display text-[17px] leading-none md:inline">Archer</span>
         </Link>
-        <span className="mx-1 h-4 w-px bg-line" />
+        <span className="mx-1 hidden h-4 w-px bg-line md:block" />
         <TitleField
           value={derived.doc.title}
           onCommit={(title) => mutate((d) => ({ ...d, title }))}
@@ -460,9 +485,11 @@ export function Editor({
           <IconButton label="Redo (⇧⌘Z)" onClick={redo} disabled={!canRedo}>
             <Icon.Redo />
           </IconButton>
-          <IconButton label="Auto-layout" onClick={relayout}>
-            <Icon.Layout />
-          </IconButton>
+          <span className="hidden md:contents">
+            <IconButton label="Auto-layout" onClick={relayout}>
+              <Icon.Layout />
+            </IconButton>
+          </span>
           <IconButton label="Add component (⌘K)" onClick={() => setPaletteOpen(true)}>
             <Icon.Plus />
           </IconButton>
@@ -484,57 +511,54 @@ export function Editor({
               )}
             </IconButton>
           )}
-          <span className="mx-1.5 h-4 w-px bg-line" />
-          {documentId && (
-            <Button size="sm" icon={<Icon.Link />} onClick={() => setShareOpen(true)} className="ml-1">
-              Share
-            </Button>
-          )}
-          <Menu
-            width={260}
-            items={[
-              {
-                label: "Copy for agent",
-                hint: derived.valid
-                  ? "Layout stripped, language guide prepended"
-                  : "Fix validation errors first",
-                icon: <Icon.Sparkle />,
-                disabled: !derived.valid,
-                onSelect: () => copy("agent"),
-              },
-              {
-                label: "Copy .arch source",
-                hint: "Exactly what the code pane shows",
-                icon: <Icon.Copy />,
-                onSelect: () => copy("code"),
-              },
-              "separator",
-              {
-                label: "Download PNG",
-                hint: "Current view, theme colors",
-                icon: <Icon.Download />,
-                onSelect: () => exportRef.current?.(),
-              },
-            ]}
-            trigger={({ open, toggle }) => (
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={toggle}
-                aria-expanded={open}
-                className="ml-1 pr-2"
-              >
-                Export
-                <Icon.ChevronDown className="h-3.5 w-3.5 opacity-70" />
+          <div className="hidden items-center gap-1.5 md:flex">
+            <span className="mx-1.5 h-4 w-px bg-line" />
+            {documentId && (
+              <Button size="sm" icon={<Icon.Link />} onClick={() => setShareOpen(true)} className="ml-1">
+                Share
               </Button>
             )}
-          />
-          {documentId && (
-            <>
-              <span className="mx-1 h-4 w-px bg-line" />
-              <AccountMenu />
-            </>
-          )}
+            <Menu
+              width={260}
+              items={exportItems}
+              trigger={({ open, toggle }) => (
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={toggle}
+                  aria-expanded={open}
+                  className="ml-1 pr-2"
+                >
+                  Export
+                  <Icon.ChevronDown className="h-3.5 w-3.5 opacity-70" />
+                </Button>
+              )}
+            />
+            {documentId && (
+              <>
+                <span className="mx-1 h-4 w-px bg-line" />
+                <AccountMenu />
+              </>
+            )}
+          </div>
+          <div className="md:hidden">
+            <Menu
+              width={240}
+              items={[
+                { label: "Auto-layout", icon: <Icon.Layout />, onSelect: relayout },
+                ...(documentId
+                  ? [{ label: "Share", icon: <Icon.Link />, onSelect: () => setShareOpen(true) }]
+                  : []),
+                "separator",
+                ...exportItems,
+              ]}
+              trigger={({ open, toggle }) => (
+                <IconButton label="More" active={open} onClick={toggle} aria-expanded={open}>
+                  <Icon.More />
+                </IconButton>
+              )}
+            />
+          </div>
         </div>
       </header>
 
@@ -558,16 +582,16 @@ export function Editor({
         />
         <main className="relative flex min-w-0 flex-1 flex-col">
           {liveFocus.length > 0 && (
-            <nav className="flex h-8 shrink-0 items-center gap-0.5 border-b border-line bg-surface px-2 text-sm">
+            <nav className="flex h-8 shrink-0 items-center gap-0.5 overflow-x-auto whitespace-nowrap border-b border-line bg-surface px-2 text-sm">
               <button
                 type="button"
                 onClick={() => setFocus([])}
-                className="rounded-sm px-1.5 py-0.5 text-ink-2 transition-colors hover:bg-surface-2 hover:text-ink"
+                className="shrink-0 rounded-sm px-1.5 py-0.5 text-ink-2 transition-colors hover:bg-surface-2 hover:text-ink"
               >
                 {derived.doc.title}
               </button>
               {liveFocus.map((seg, i) => (
-                <span key={i} className="flex items-center gap-0.5">
+                <span key={i} className="flex shrink-0 items-center gap-0.5">
                   <Icon.ChevronRight className="h-3 w-3 text-ink-3" />
                   <button
                     type="button"
@@ -581,17 +605,26 @@ export function Editor({
                   </button>
                 </span>
               ))}
-              <span className="ml-auto flex items-center gap-1.5 text-xs text-ink-3">
+              <span className="ml-auto hidden items-center gap-1.5 pl-2 text-xs text-ink-3 md:flex">
                 <Kbd>esc</Kbd> up a level
               </span>
+              <Button
+                size="sm"
+                variant="ghost"
+                icon={<Icon.ChevronLeft />}
+                className="ml-auto shrink-0 md:hidden"
+                onClick={() => setFocus(liveFocus.slice(0, -1))}
+              >
+                Up
+              </Button>
             </nav>
           )}
           <div className="relative min-h-0 flex-1 bg-ground">
             {diff ? (
-              <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex justify-center p-3">
-                <div className="pointer-events-auto flex h-9 items-center gap-2 rounded-lg border border-line bg-surface pl-3 pr-1.5 shadow-md">
+              <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex justify-center p-2 md:p-3">
+                <div className="pointer-events-auto flex min-h-9 max-w-full flex-wrap items-center gap-2 rounded-lg border border-line bg-surface py-1 pl-3 pr-1.5 shadow-md">
                   <Icon.Diff className="h-4 w-4 text-ink-2" />
-                  <span className="whitespace-nowrap text-sm text-ink">
+                  <span className="text-sm text-ink md:whitespace-nowrap">
                     {diffView?.kind === "sinceSeen"
                       ? "Agent changes since you last reviewed"
                       : "Viewing a past revision"}
@@ -627,12 +660,12 @@ export function Editor({
                 </div>
               </div>
             ) : latestAgent ? (
-              <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex justify-center p-3">
-                <div className="pointer-events-auto flex h-9 items-center gap-2 rounded-lg border border-line bg-surface pl-2 pr-1.5 shadow-md">
-                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-accent-soft text-accent">
+              <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex justify-center p-2 md:p-3">
+                <div className="pointer-events-auto flex min-h-9 max-w-full flex-wrap items-center gap-2 rounded-lg border border-line bg-surface py-1 pl-2 pr-1.5 shadow-md">
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent-soft text-accent">
                     <Icon.Bot className="h-3.5 w-3.5" />
                   </span>
-                  <span className="whitespace-nowrap text-sm text-ink">
+                  <span className="text-sm text-ink md:whitespace-nowrap">
                     <span className="font-medium">{authorLabel(latestAgent.author)}</span>
                     {" "}made {unseen.length} change{unseen.length === 1 ? "" : "s"}
                     <span className="text-ink-3"> · {relativeTime(latestAgent.createdAt)}</span>
@@ -682,6 +715,7 @@ export function Editor({
             selection={liveSelection}
             mutate={mutate}
             onSelect={setSelection}
+            onDrillIn={callbacks.onDrillIn}
             library={library}
             activity={activity}
             repo={repo}

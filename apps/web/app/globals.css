@@ -309,3 +309,21 @@ select:focus-visible,
 .archer-clerk-input:focus {
   border-color: var(--ink-3) !important;
 }
+
+/* ---------------------------------------------------------------------------
+   Mobile (below the `md` breakpoint). Text fields smaller than 16px make iOS
+   zoom the whole page when they get focus, which wrecks the editor chrome —
+   so every field renders at 16px on phones. The code editor stays compact
+   (16px mono fits ~35 columns on a phone); its focus zoom is blocked by the
+   viewport's maximum-scale in app/layout.tsx instead.
+   --------------------------------------------------------------------------- */
+@media (max-width: 767px) {
+  input,
+  textarea,
+  select {
+    font-size: 16px;
+  }
+  .cm-editor.cm-editor {
+    font-size: 13px;
+  }
+}

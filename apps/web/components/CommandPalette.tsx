@@ -111,8 +111,7 @@ export function CommandPalette({
         role="dialog"
         aria-modal
         aria-label="Add a component"
-        className="mx-auto w-[520px] max-w-full overflow-hidden rounded-xl border border-line bg-surface shadow-md"
-        style={{ marginTop: "18vh" }}
+        className="mx-auto mt-[4vh] w-[520px] max-w-full overflow-hidden rounded-xl border border-line bg-surface shadow-md md:mt-[18vh]"
       >
         <div className="flex items-center gap-2.5 border-b border-line px-4">
           <Icon.Search className="h-4 w-4 shrink-0 text-ink-3" />
@@ -141,7 +140,7 @@ export function CommandPalette({
           />
         </div>
 
-        <div ref={listRef} className="max-h-[360px] overflow-y-auto p-1.5" role="listbox">
+        <div ref={listRef} className="max-h-[50dvh] overflow-y-auto p-1.5 md:max-h-[360px]" role="listbox">
           {flat.length === 0 && (
             <p className="px-2.5 py-6 text-center text-sm text-ink-3">No matches</p>
           )}
@@ -186,7 +185,7 @@ export function CommandPalette({
           ))}
         </div>
 
-        <div className="flex items-center gap-3 border-t border-line bg-surface-2 px-3 py-1.5 text-xs text-ink-3">
+        <div className="hidden items-center gap-3 border-t border-line bg-surface-2 px-3 py-1.5 text-xs text-ink-3 md:flex">
           <span className="flex items-center gap-1">
             <Kbd>↑</Kbd>
             <Kbd>↓</Kbd> navigate
