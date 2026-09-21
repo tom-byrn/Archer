@@ -67,15 +67,15 @@ defaults to local dev, like the MCP server.
 ## Building & publishing
 
 ```sh
-ARCHER_DEFAULT_APP_URL=https://<production-domain> pnpm --filter archer-cli build
-cd packages/cli && pnpm publish        # prepublishOnly rebuilds — keep the env var set
+pnpm --filter archer-cli build
+cd packages/cli && pnpm publish        # prepublishOnly rebuilds
 ```
 
 `tsup` inlines the private workspace packages (`@archer/lang`,
 `@archer/catalog`, `@archer/mcp`) into `dist/`; real npm dependencies stay
 external. The build bakes in the default backend
 (`ARCHER_DEFAULT_CONVEX_URL`, default: the production Convex deployment) and
-app URL (`ARCHER_DEFAULT_APP_URL` — no default; the build warns and falls back
-to `http://localhost:3000` for editor links if unset). Bump `version` in
+app URL (`ARCHER_DEFAULT_APP_URL`, default: `https://archer.tombyrne.dev`);
+set either variable at build time to target another deployment. Bump `version` in
 `packages/cli/package.json` per release. Tests: `pnpm --filter archer-cli test`
 (spawns the real CLI in temp directories).
