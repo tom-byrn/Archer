@@ -9,5 +9,8 @@
     "dev:web": "pnpm --filter @archer/web dev",
     "convex": "pnpm --filter @archer/web exec convex"
   },
-  "packageManager": "pnpm@10.17.0"
+  "packageManager": "pnpm@10.17.0",
+  "dependencies": {
+    "agentation": "^3.1.1"
+  }
 }

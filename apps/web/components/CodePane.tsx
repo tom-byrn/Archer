@@ -1,12 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ArchDoc, Diagnostic } from "@archer/lang";
 import { EditorView, Decoration, type DecorationSet } from "@codemirror/view";
 import { StateEffect, StateField, EditorSelection } from "@codemirror/state";
 import { lintGutter, setDiagnostics } from "@codemirror/lint";
 import { CodeEditor } from "./CodeMirror";
-import { Chip, Icon, IconButton, cx } from "./ui";
+import { Button, Chip, Icon, IconButton, cx } from "./ui";
 import {
   archLanguage,
   archerLinter,
@@ -60,6 +60,12 @@ export interface CodePaneProps {
   onToggle: () => void;
   selectedPath: string | null;
   onSelectPath: (path: string | null) => void;
+  /** Document title, shown in the modal's top bar. */
+  title: string;
+  /** Agent export is only offered for valid documents. */
+  valid: boolean;
+  onCopyCode: () => void;
+  onCopyForAgent: () => void;
 }
 
 export function CodePane({
@@ -69,6 +75,10 @@ export function CodePane({
   doc,
   open,
   onToggle,
+  title,
+  valid,
+  onCopyCode,
+  onCopyForAgent,
   selectedPath,
   onSelectPath,
 }: CodePaneProps) {
@@ -166,14 +176,44 @@ export function CodePane({
     view.focus();
   };
 
+  // Escape closes the modal (capture, so it wins over the canvas shortcuts).
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      e.stopPropagation();
+      onToggle();
+    };
+    document.addEventListener("keydown", onKey, true);
+    return () => document.removeEventListener("keydown", onKey, true);
+  }, [open, onToggle]);
+
+  const [copied, setCopied] = useState<"code" | "agent" | null>(null);
+  const flash = (kind: "code" | "agent", run: () => void) => {
+    run();
+    setCopied(kind);
+    setTimeout(() => setCopied(null), 1500);
+  };
+
   if (!open) return null;
 
   return (
     <div
-      className="flex w-[400px] shrink-0 flex-col border-r border-line"
+      className="fixed inset-0 z-[90] grid place-items-center bg-[rgba(10,10,8,0.5)] backdrop-blur-[2px]"
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget) onToggle();
+      }}
+    >
+    <div
+      role="dialog"
+      aria-modal
+      aria-label={`${title} — .arch source`}
+      className="flex h-[85vh] w-[85vw] flex-col overflow-hidden rounded-xl border border-line shadow-md"
       style={{ background: "var(--code-bg)" }}
     >
-      <div className="flex h-8 shrink-0 items-center gap-2 border-b border-line px-3">
+      <div className="flex h-12 shrink-0 items-center gap-2 border-b border-line bg-surface pl-4 pr-2">
+        <Icon.Code className="h-4 w-4 text-ink-3" />
+        <span className="min-w-0 truncate text-base font-medium text-ink">{title}</span>
         <span className="mono text-xs text-ink-3">.arch</span>
         {errorCount > 0 && (
           <Chip tone="danger">
@@ -185,9 +225,41 @@ export function CodePane({
             {warnCount} warning{warnCount === 1 ? "" : "s"}
           </Chip>
         )}
-        <IconButton label="Hide code" size="sm" onClick={onToggle} className="ml-auto">
-          <Icon.ChevronLeft />
-        </IconButton>
+        <div className="ml-auto flex items-center gap-1.5">
+          <Button
+            size="sm"
+            icon={copied === "code" ? <Icon.Check /> : <Icon.Copy />}
+            onClick={() => flash("code", onCopyCode)}
+          >
+            {copied === "code" ? "Copied" : "Copy code"}
+          </Button>
+          <Button
+            size="sm"
+            icon={copied === "agent" ? <Icon.Check /> : <Icon.Sparkle />}
+            disabled={!valid}
+            title={
+              valid
+                ? "Layout stripped, language guide prepended — paste it to an agent"
+                : "Fix validation errors first"
+            }
+            onClick={() => flash("agent", onCopyForAgent)}
+          >
+            {copied === "agent" ? "Copied" : "Copy for agent"}
+          </Button>
+          <a
+            href="/language"
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex h-7 select-none items-center gap-1.5 whitespace-nowrap rounded-md border border-transparent px-2.5 text-sm font-medium text-ink-2 transition-colors duration-100 hover:bg-surface-2 hover:text-ink"
+          >
+            Language spec
+            <Icon.External className="h-3.5 w-3.5" />
+          </a>
+          <span className="mx-1 h-4 w-px bg-line" />
+          <IconButton label="Close (esc)" onClick={onToggle}>
+            <Icon.Close />
+          </IconButton>
+        </div>
       </div>
       <div className="min-h-0 flex-1">
         <CodeEditor
@@ -224,6 +296,7 @@ export function CodePane({
           })}
         </ul>
       )}
+    </div>
     </div>
   );
 }

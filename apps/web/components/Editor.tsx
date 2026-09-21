@@ -159,7 +159,7 @@ export function Editor({
   const derived = useMemo(() => deriveDoc(source, customTags), [source, customTags]);
   const [selection, setSelection] = useState<Selection>(null);
   const [focus, setFocus] = useState<string[]>([]);
-  const [codeOpen, setCodeOpen] = useState(true);
+  const [codeOpen, setCodeOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const exportRef = useRef<(() => void) | null>(null);
   const activity = useDocumentActivity(documentId, workspaceId, seenRevisionAt);
@@ -169,19 +169,7 @@ export function Editor({
   const setRepo = useMutation(api.documents.setRepo);
   const [diffView, setDiffView] = useState<DiffView>(null);
 
-  useEffect(() => {
-    try {
-      if (localStorage.getItem("archer.codeOpen") === "0") setCodeOpen(false);
-    } catch {}
-  }, []);
-  const toggleCode = useCallback(() => {
-    setCodeOpen((open) => {
-      try {
-        localStorage.setItem("archer.codeOpen", open ? "0" : "1");
-      } catch {}
-      return !open;
-    });
-  }, []);
+  const toggleCode = useCallback(() => setCodeOpen((open) => !open), []);
 
   // A focus that stopped resolving (component deleted/renamed) falls back to root.
   const liveFocus = useMemo(
@@ -436,32 +424,28 @@ export function Editor({
           value={derived.doc.title}
           onCommit={(title) => mutate((d) => ({ ...d, title }))}
         />
-        <button
-          type="button"
-          onClick={() => {
-            if (!codeOpen) toggleCode();
-          }}
-          title={
+        <IconButton
+          label={
             derived.valid
               ? warnings > 0
-                ? `Valid · ${warnings} warning${warnings === 1 ? "" : "s"}`
-                : "Valid — every edit is compiled back to .arch"
-              : "Show errors in the code pane"
+                ? `Code · ${warnings} warning${warnings === 1 ? "" : "s"}`
+                : "Code (.arch)"
+              : `Code · ${errors.length} error${errors.length === 1 ? "" : "s"}`
           }
-          className="ml-1 flex h-7 items-center rounded-md px-1 transition-colors hover:bg-surface-2"
+          onClick={toggleCode}
+          active={codeOpen}
+          className="relative ml-1"
         >
-          {derived.valid ? (
-            <span className={cx("flex items-center gap-1 text-xs", warnings > 0 ? "text-warn" : "text-accent")}>
-              <Icon.CheckCircle className="h-3.5 w-3.5" />
-              {warnings > 0 && <span className="font-medium">{warnings}</span>}
-            </span>
-          ) : (
-            <Chip tone="danger">
-              <Icon.Warning className="h-3 w-3" />
-              {errors.length} error{errors.length === 1 ? "" : "s"}
-            </Chip>
+          <Icon.Code />
+          {(!derived.valid || warnings > 0) && (
+            <span
+              className={cx(
+                "absolute right-1 top-1 h-2 w-2 rounded-full ring-2 ring-surface",
+                derived.valid ? "bg-warn" : "bg-danger",
+              )}
+            />
           )}
-        </button>
+        </IconButton>
 
         <div className="ml-auto flex items-center gap-1.5">
           {toast ? (
@@ -502,9 +486,6 @@ export function Editor({
             </IconButton>
           )}
           <span className="mx-1.5 h-4 w-px bg-line" />
-          <IconButton label={codeOpen ? "Hide code" : "Show code"} onClick={toggleCode} active={codeOpen}>
-            <Icon.Code />
-          </IconButton>
           {documentId && (
             <Button size="sm" icon={<Icon.Link />} onClick={() => setShareOpen(true)} className="ml-1">
               Share
@@ -549,15 +530,6 @@ export function Editor({
               </Button>
             )}
           />
-          <a
-            href="/language"
-            target="_blank"
-            rel="noreferrer"
-            title="Language reference"
-            className="ml-0.5 inline-flex h-7 w-7 items-center justify-center rounded-md text-ink-3 transition-colors hover:bg-surface-2 hover:text-ink [&>svg]:h-4 [&>svg]:w-4"
-          >
-            <Icon.External />
-          </a>
           {documentId && (
             <>
               <span className="mx-1 h-4 w-px bg-line" />
@@ -576,6 +548,10 @@ export function Editor({
           doc={derived.doc}
           open={codeOpen}
           onToggle={toggleCode}
+          title={derived.doc.title}
+          valid={derived.valid}
+          onCopyCode={() => copy("code")}
+          onCopyForAgent={() => copy("agent")}
           selectedPath={selectedPath}
           onSelectPath={(path) =>
             setSelection(path === null ? null : { kind: "component", path })
