@@ -1,6 +1,6 @@
 /**
  * Pure SVG renderer for an Archer document — no React, no DOM. Powers the
- * public embed endpoint (`/s/<slug>/image.svg`) so a README can show a live
+ * public embed endpoint (`/share/<slug>/image.svg`) so a README can show a live
  * architecture diagram. Mirrors the canvas look in `components/nodes.tsx`.
  */
 
@@ -23,6 +23,8 @@ const TITLE_H = 36;
 export interface RenderOptions {
   theme?: "light" | "dark";
   showTitle?: boolean;
+  /** Paint the ground behind the diagram (default true). Off for in-app thumbnails. */
+  background?: boolean;
 }
 
 interface Palette {
@@ -125,6 +127,7 @@ export function renderArchSvg(source: string, opts: RenderOptions = {}): string 
   const dark = opts.theme === "dark";
   const P = dark ? DARK : LIGHT;
   const showTitle = opts.showTitle ?? true;
+  const background = opts.background ?? true;
 
   let doc: ArchDoc;
   try {
@@ -133,7 +136,7 @@ export function renderArchSvg(source: string, opts: RenderOptions = {}): string 
       throw new Error("parse error");
     doc = autoLayout(parsed.doc);
   } catch {
-    return invalidSvg(P);
+    return invalidSvg(P, background);
   }
 
   const layout = layoutMap(doc);
@@ -176,7 +179,7 @@ export function renderArchSvg(source: string, opts: RenderOptions = {}): string 
   };
   walk(doc.components, "", true, null, [0, 0]);
 
-  if (boxes.length === 0) return emptySvg(P, doc.title, showTitle);
+  if (boxes.length === 0) return emptySvg(P, doc.title, showTitle, background);
 
   // Bounds → translate so the diagram starts at (PAD, PAD + title).
   const minX = Math.min(...boxes.map((b) => b.x));
@@ -348,7 +351,7 @@ export function renderArchSvg(source: string, opts: RenderOptions = {}): string 
     `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" role="img" aria-label="${esc(doc.title)}">` +
     `<title>${esc(doc.title)}</title>` +
     defs +
-    `<rect width="${width}" height="${height}" fill="${P.ground}"/>` +
+    (background ? `<rect width="${width}" height="${height}" fill="${P.ground}"/>` : "") +
     title +
     out.join("") +
     edgeOut.join("") +
@@ -356,11 +359,12 @@ export function renderArchSvg(source: string, opts: RenderOptions = {}): string 
   );
 }
 
-const invalidSvg = (P: Palette): string =>
-  `<svg xmlns="http://www.w3.org/2000/svg" width="320" height="80" viewBox="0 0 320 80"><rect width="320" height="80" rx="8" fill="${P.ground}" stroke="${P.line}"/><text x="160" y="45" text-anchor="middle" font-family='${SANS}' font-size="13" fill="${P.ink2}">Invalid document</text></svg>`;
+const invalidSvg = (P: Palette, background: boolean): string =>
+  `<svg xmlns="http://www.w3.org/2000/svg" width="320" height="80" viewBox="0 0 320 80">${background ? `<rect width="320" height="80" rx="8" fill="${P.ground}" stroke="${P.line}"/>` : ""}<text x="160" y="45" text-anchor="middle" font-family='${SANS}' font-size="13" fill="${P.ink2}">Invalid document</text></svg>`;
 
-const emptySvg = (P: Palette, title: string, showTitle: boolean): string =>
-  `<svg xmlns="http://www.w3.org/2000/svg" width="320" height="120" viewBox="0 0 320 120"><title>${esc(title)}</title><rect width="320" height="120" rx="8" fill="${P.ground}" stroke="${P.line}"/>` +
+const emptySvg = (P: Palette, title: string, showTitle: boolean, background: boolean): string =>
+  `<svg xmlns="http://www.w3.org/2000/svg" width="320" height="120" viewBox="0 0 320 120"><title>${esc(title)}</title>` +
+  (background ? `<rect width="320" height="120" rx="8" fill="${P.ground}" stroke="${P.line}"/>` : "") +
   (showTitle
     ? `<text x="20" y="34" font-family='${SANS}' font-size="16" font-weight="700" fill="${P.ink}">${esc(title)}</text>`
     : "") +

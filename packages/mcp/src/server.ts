@@ -386,7 +386,7 @@ export function registerArcherTools(server: McpServer, opts: { mode: ServerMode 
           id: p._id,
           title: p.title,
           updated: new Date(p.updatedAt).toISOString(),
-          editor_url: `${APP_URL}/d/${p._id}`,
+          editor_url: `${APP_URL}/documents/${p._id}`,
         })),
       );
     }),
@@ -412,7 +412,7 @@ export function registerArcherTools(server: McpServer, opts: { mode: ServerMode 
       return text({
         id: project_id,
         title: doc.title,
-        editor_url: `${APP_URL}/d/${project_id}`,
+        editor_url: `${APP_URL}/documents/${project_id}`,
         valid: a.errors.length === 0,
         errors: diagnosticsReport(a.errors),
         warnings: diagnosticsReport(a.warnings),
@@ -497,7 +497,7 @@ export function registerArcherTools(server: McpServer, opts: { mode: ServerMode 
       return text({
         id,
         title: prep.title,
-        editor_url: `${APP_URL}/d/${id}`,
+        editor_url: `${APP_URL}/documents/${id}`,
         warnings: diagnosticsReport(prep.warnings),
       });
     }),
@@ -532,7 +532,7 @@ export function registerArcherTools(server: McpServer, opts: { mode: ServerMode 
         title: prep.title,
         saved: true,
         attributed_to: agentName(),
-        editor_url: `${APP_URL}/d/${project_id}`,
+        editor_url: `${APP_URL}/documents/${project_id}`,
         warnings: diagnosticsReport(prep.warnings),
       });
     }),

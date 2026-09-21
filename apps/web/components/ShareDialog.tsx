@@ -77,8 +77,8 @@ export function ShareDialog({
   };
 
   const origin = typeof window === "undefined" ? "" : window.location.origin;
-  const link = slug ? `${origin}/s/${slug}` : "";
-  const embed = slug ? `![Architecture](${origin}/s/${slug}/image.svg)` : "";
+  const link = slug ? `${origin}/share/${slug}` : "";
+  const embed = slug ? `![Architecture](${origin}/share/${slug}/image.svg)` : "";
 
   return (
     <Dialog open={open} onClose={onClose} title="Share" width={520}>

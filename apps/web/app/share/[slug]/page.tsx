@@ -49,7 +49,7 @@ export default function SharedDocumentPage({
       title={doc.title}
       source={doc.source}
       updatedAt={doc.updatedAt}
-      editHref={doc.role ? `/d/${doc._id}` : undefined}
+      editHref={doc.role ? `/documents/${doc._id}` : undefined}
       signedIn={!!isSignedIn}
       repo={doc.repo ?? null}
     />

@@ -24,8 +24,8 @@ Router + React Flow + Convex).
   from `convex/access.ts` — queries need viewer, document mutations editor,
   member/workspace management owner. API keys (hashed in `apiKeys`, per
   workspace) act as editors; that is how the MCP server authenticates.
-  Public share links: `documents.publicSlug` → `/s/<slug>` (viewer UI) and
-  `/s/<slug>/image.svg` (server-rendered SVG from `lib/svg.ts`). Pre-auth
+  Public share links: `documents.publicSlug` → `/share/<slug>` (viewer UI) and
+  `/share/<slug>/image.svg` (server-rendered SVG from `lib/svg.ts`). Pre-auth
   anonymous workspaces are claimed on first sign-in (`workspaces.claimLegacy`);
   `admin:transferWorkspace` (internal, CLI only) moves data between
   workspaces. Env: `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` + `CLERK_SECRET_KEY` in
@@ -77,19 +77,13 @@ One API for web data (scraping, search, extraction, brand intelligence).
   a client bundle. Keys: https://www.context.dev/dashboard/api-keys
 - **SDK**: `context.dev` (npm), installed in `apps/web`.
 - **Wrapper**: `apps/web/lib/server/contextdev.ts` — ALL Context.dev calls go
-  through this module; never call the SDK/REST elsewhere. It handles retries
-  (429 Retry-After, one bounded retry on 408/5xx, never on validation).
-- **Route**: `POST /api/brand` (`apps/web/app/api/brand/route.ts`) — body
-  `{ query: string }`, returns `{ suggestion: BrandSuggestion | null }`.
+  through this module; never call the SDK/REST elsewhere. No user-facing
+  path uses it today.
 - **Endpoints used**:
   - `GET /web/styleguide` (10 credits) — one-off design-system extraction
     (`apps/web/scripts/fetch-styleguide.ts`); sourced Archer's theme tokens
     from mintlify.com. Docs:
     https://docs.context.dev/api-reference/brand-intelligence/styleguide
-  - `POST /brand/retrieve` (10 credits/lookup) via
-  `by_name`/`by_domain` — powers the "Brand" button in the palette's
-  new-custom-type form (auto-fills real brand colors for technologies the
-  catalog doesn't know). Docs: https://docs.context.dev/guides/get-brand-data
 - Adding more Context.dev features? Extend the wrapper, read the endpoint's
   docs page first (https://docs.context.dev — append `.md` for markdown), and
   mind credit costs; results are cached server-side by Context.dev (pass

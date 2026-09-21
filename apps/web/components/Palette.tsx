@@ -139,74 +139,25 @@ function NewTypeForm({
   const [name, setName] = useState("");
   const [glyph, setGlyph] = useState("box");
   const [color, setColor] = useState(COLOR_CHOICES[6]!);
-  const [brandColors, setBrandColors] = useState<string[]>([]);
-  const [brandNote, setBrandNote] = useState<string | null>(null);
-  const [fetching, setFetching] = useState(false);
-
-  const fetchBrand = async () => {
-    if (name.trim() === "" || fetching) return;
-    setFetching(true);
-    setBrandNote(null);
-    try {
-      const res = await fetch("/api/brand", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query: name.trim() }),
-      });
-      const data = (await res.json()) as {
-        suggestion?: { title: string; domain?: string; colors: { hex: string }[] } | null;
-        error?: string;
-      };
-      if (!res.ok) {
-        setBrandNote(data.error ?? "Lookup failed.");
-      } else if (!data.suggestion) {
-        setBrandNote("No brand match found.");
-      } else {
-        const hexes = data.suggestion.colors.map((c) => c.hex).slice(0, 6);
-        setBrandColors(hexes);
-        if (hexes[0]) setColor(hexes[0]);
-        setBrandNote(
-          `Matched ${data.suggestion.title}${data.suggestion.domain ? ` · ${data.suggestion.domain}` : ""}`,
-        );
-      }
-    } catch {
-      setBrandNote("Lookup failed.");
-    } finally {
-      setFetching(false);
-    }
-  };
   const tag = name
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "_")
     .replace(/^_+|_+$/g, "")
     .replace(/^[0-9]+/, "");
-  const swatches = [...brandColors.filter((c) => !COLOR_CHOICES.includes(c)), ...COLOR_CHOICES];
 
   return (
     <div className="mb-1 rounded-lg border border-line bg-surface-2 p-2">
-      <div className="flex gap-1">
-        <Input
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="Type name"
-          autoFocus
-          onKeyDown={(e) => {
-            if (e.key === "Escape") onCancel();
-          }}
-        />
-        <Button
-          size="sm"
-          className="h-7 shrink-0"
-          onClick={() => void fetchBrand()}
-          disabled={name.trim() === "" || fetching}
-          title="Fetch this technology's real brand colors from the web"
-        >
-          {fetching ? "…" : "Brand"}
-        </Button>
-      </div>
+      <Input
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        placeholder="Type name"
+        autoFocus
+        onKeyDown={(e) => {
+          if (e.key === "Escape") onCancel();
+        }}
+      />
       <div className="flex min-h-4 items-center gap-2 px-0.5 pt-1 text-xs text-ink-3">
         {tag !== "" && <span className="mono truncate">@custom.{tag}</span>}
-        {brandNote && <span className="truncate">{brandNote}</span>}
       </div>
       <div className="grid grid-cols-6 gap-1 pt-1.5">
         {GLYPH_CHOICES.map((g) => (
@@ -225,7 +176,7 @@ function NewTypeForm({
         ))}
       </div>
       <div className="flex flex-wrap gap-1.5 pt-2">
-        {swatches.map((c) => (
+        {COLOR_CHOICES.map((c) => (
           <button
             key={c}
             type="button"

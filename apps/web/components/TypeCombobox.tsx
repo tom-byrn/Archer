@@ -34,7 +34,6 @@ export function TypeCombobox({
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [active, setActive] = useState(0);
-  const [creating, setCreating] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
 
@@ -86,30 +85,12 @@ export function TypeCombobox({
   const close = () => {
     setOpen(false);
     setQuery("");
-    setCreating(false);
   };
 
-  const createCustom = async (name: string) => {
-    if (!library || creating) return;
-    setCreating(true);
-    let color = "#64748b";
-    try {
-      const res = await fetch("/api/brand", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query: name }),
-      });
-      const data = (await res.json()) as {
-        suggestion?: { title: string; domain?: string; colors: { hex: string }[] } | null;
-      };
-      const hex = res.ok ? data.suggestion?.colors[0]?.hex : undefined;
-      if (hex) color = hex;
-    } catch {
-      /* keep fallback color */
-    }
+  const createCustom = (name: string) => {
+    if (!library) return;
     const tag = `custom.${slugOf(name)}`;
-    library.add({ tag, name, color, glyph: "box" });
-    setCreating(false);
+    library.add({ tag, name, color: "#64748b", glyph: "box" });
     onChange(tag);
     close();
   };
@@ -122,7 +103,7 @@ export function TypeCombobox({
       onChange(row.tag);
       close();
     } else {
-      void createCustom(row.query);
+      createCustom(row.query);
     }
   };
 
@@ -198,12 +179,12 @@ export function TypeCombobox({
                 );
               if (row.kind === "create")
                 return (
-                  <button key="create" type="button" className={cls} onMouseEnter={() => setActive(i)} onClick={() => pick(row)} disabled={creating}>
+                  <button key="create" type="button" className={cls} onMouseEnter={() => setActive(i)} onClick={() => pick(row)}>
                     <span className="flex h-5 w-5 items-center justify-center text-accent">
                       <Icon.Sparkle className="h-3.5 w-3.5" />
                     </span>
                     <span className="min-w-0 flex-1 truncate">
-                      {creating ? "Looking up brand…" : `Create "${row.query}" as a custom type`}
+                      {`Create "${row.query}" as a custom type`}
                     </span>
                   </button>
                 );

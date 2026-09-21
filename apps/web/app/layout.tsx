@@ -9,7 +9,7 @@ const inter = Inter({
   display: "swap",
   variable: "--font-inter",
 });
-// One serif for the whole product: the "A" mark, the wordmark, document titles.
+// One serif for the whole product: the wordmark, document titles.
 const playfair = Playfair_Display({
   subsets: ["latin"],
   weight: ["700", "900"],

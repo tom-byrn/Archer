@@ -122,7 +122,6 @@ export function DocumentViewer({
           href={backHref ?? "/"}
           className="flex h-7 items-center gap-2 rounded-md px-1.5 transition-colors hover:bg-surface-2"
         >
-          <img src="/icon.svg" alt="" className="h-5 w-5 rounded-[5px]" />
           <span className="font-display text-[17px] leading-none">Archer</span>
         </Link>
         <span className="mx-1 h-4 w-px bg-line" />
