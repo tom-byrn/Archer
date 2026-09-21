@@ -24,10 +24,13 @@ export const metadata: Metadata = {
 };
 
 // Edge-to-edge on notched phones; the editor pads its bottom sheets with
-// env(safe-area-inset-bottom).
+// env(safe-area-inset-bottom). maximumScale stops iOS zooming the page when
+// the (sub-16px) code editor gets focus; Safari still allows pinch-zoom
+// regardless, and the canvas has its own pinch-zoom.
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
+  maximumScale: 1,
   viewportFit: "cover",
 };
 
