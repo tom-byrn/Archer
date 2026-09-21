@@ -21,7 +21,7 @@ export function AgentPrompt() {
   return (
     <div className="overflow-hidden border border-line-2 bg-surface shadow-md">
       <div className="flex items-center gap-3 border-b border-line py-2 pl-4 pr-2">
-        <span className="text-sm font-medium text-ink">Prompt for your coding agent</span>
+        <span className="text-sm font-medium text-ink">Prompt for your agent</span>
         <Button
           variant="primary"
           className="ml-auto min-w-[104px] rounded-none!"
