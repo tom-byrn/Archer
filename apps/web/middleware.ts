@@ -1,14 +1,28 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 
-// Everything is private except the sign-in flow, the language reference
-// (which users hand to agents as a docs link), and shared-link views.
-const isPublic = createRouteMatcher(["/sign-in(.*)", "/sign-up(.*)", "/language(.*)", "/s(.*)"]);
+// Everything is private except the landing page, the sign-in flow, the
+// language reference (which users hand to agents as a docs link), and
+// shared-link views.
+const isPublic = createRouteMatcher([
+  "/welcome(.*)",
+  "/sign-in(.*)",
+  "/sign-up(.*)",
+  "/language(.*)",
+  "/s(.*)",
+]);
 
 const configured =
   !!process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY && !!process.env.CLERK_SECRET_KEY;
 
 const withClerk = clerkMiddleware(async (auth, request) => {
+  // "/" is the dashboard when signed in and the landing page otherwise. The
+  // rewrite keeps the landing page static and the URL clean.
+  if (request.nextUrl.pathname === "/") {
+    const { userId } = await auth();
+    if (!userId) return NextResponse.rewrite(new URL("/welcome", request.url));
+    return;
+  }
   if (!isPublic(request)) await auth.protect();
 });
 

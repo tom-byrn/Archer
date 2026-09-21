@@ -112,6 +112,57 @@
   }
 }
 
+/* Forces the dark tokens on a subtree whatever the OS says (the landing page
+   is always dark). Keep in sync with the media query above. */
+.theme-dark {
+  color-scheme: dark;
+  --bg: #0f1012;
+  --surface: #161719;
+  --surface-2: #1c1e21;
+  --surface-3: #25282c;
+
+  --ink: #ecebe7;
+  --ink-2: #a5a19a;
+  --ink-3: #6d6963;
+
+  --line: #26292d;
+  --line-2: #383c42;
+
+  --accent: #23c088;
+  --accent-hover: #3dd39c;
+  --accent-ink: #08110d;
+  --accent-soft: rgba(35, 192, 136, 0.16);
+
+  --danger: #f0655a;
+  --danger-soft: rgba(240, 101, 90, 0.14);
+  --warn: #f2a33a;
+  --warn-soft: rgba(242, 163, 58, 0.14);
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.5), 0 1px 2px rgba(0, 0, 0, 0.4);
+
+  --ground: #121315;
+  --dot: #2a2d32;
+  --edge: #7c8088;
+  --edge-strong: #c6c9ce;
+
+  --code-bg: #121315;
+  --code-fg: #d3d1cc;
+  --code-gutter: #4d5057;
+  --code-line: rgba(255, 255, 255, 0.04);
+  --code-caret: #f5f4f1;
+  --code-selection: rgba(35, 192, 136, 0.25);
+  --tok-kw: #3dd39c;
+  --tok-string: #a5d6ff;
+  --tok-type: #7dd3fc;
+  --tok-arrow: #f5f4f1;
+  --tok-num: #fca5a5;
+  --tok-comment: #6d6963;
+  --tok-fence: #6d6963;
+  --tok-payload: #a5a19a;
+  --tok-version: #5eead4;
+}
+
 /* Expose tokens to Tailwind utilities: bg-surface, text-ink-2, border-line,
    rounded-md, text-sm, font-display… */
 @theme inline {
@@ -152,6 +203,13 @@
   --text-xl--line-height: 26px;
   --text-2xl: 26px;
   --text-2xl--line-height: 32px;
+  /* Landing page only: lede paragraph and the two headline sizes. */
+  --text-lede: 17px;
+  --text-lede--line-height: 28px;
+  --text-display-sm: 40px;
+  --text-display-sm--line-height: 44px;
+  --text-display: 68px;
+  --text-display--line-height: 70px;
 
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
   --font-display: var(--font-playfair), Georgia, "Times New Roman", serif;
@@ -230,7 +288,7 @@ select:focus-visible,
   @apply rounded-xs bg-surface-2 px-1 py-0.5 text-[12.5px] text-ink;
   font-family: var(--font-mono);
 }
-.spec pre { @apply mb-4 overflow-x-auto rounded-lg border border-line p-4; background: var(--code-bg); }
+.spec pre { @apply mb-4 overflow-x-auto border border-line p-4; background: var(--code-bg); }
 .spec pre code { @apply bg-transparent p-0 text-[12.5px] leading-relaxed; color: var(--code-fg); }
 .spec table { @apply mb-4 w-full border-collapse text-[13px]; }
 .spec th { @apply border-b border-line-2 px-2 py-1.5 text-left font-semibold; }

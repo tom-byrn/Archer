@@ -1,5 +1,5 @@
-import Link from "next/link";
 import { marked } from "marked";
+import { SiteFrame } from "@/components/landing/SiteFrame";
 import { LANGUAGE_SPEC } from "@/lib/languageSpec";
 
 export const metadata = { title: "Archer — Language reference" };
@@ -7,19 +7,13 @@ export const metadata = { title: "Archer — Language reference" };
 export default function LanguagePage() {
   const html = marked.parse(LANGUAGE_SPEC, { async: false });
   return (
-    <div className="mx-auto max-w-3xl px-6 py-10">
-      <nav className="flex items-center gap-2 pb-8 text-sm">
-        <Link
-          href="/"
-          className="flex items-center gap-2 rounded-md py-1 pr-2 transition-opacity hover:opacity-80"
-        >
-          <img src="/icon.svg" alt="" className="h-5 w-5 rounded-[5px]" />
-          <span className="font-display text-[17px] leading-none">Archer</span>
-        </Link>
-        <span className="text-ink-3">/</span>
-        <span className="text-ink-2">Language reference</span>
-      </nav>
-      <article className="spec" dangerouslySetInnerHTML={{ __html: html }} />
-    </div>
+    <SiteFrame>
+      <div className="landing-joints border-b border-line px-5 py-5 sm:px-10">
+        <span className="mono text-sm text-ink-2">Docs / Language reference</span>
+      </div>
+      <div className="px-5 py-12 sm:px-10 sm:py-16">
+        <article className="spec max-w-3xl" dangerouslySetInnerHTML={{ __html: html }} />
+      </div>
+    </SiteFrame>
   );
 }

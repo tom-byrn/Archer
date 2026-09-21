@@ -38,6 +38,12 @@ Router + React Flow + Convex).
   from `getUserOauthAccessToken(userId, "github")`); routes live under
   `app/api/github/*`. Clerk's default GitHub scopes read public repos only —
   private repos need the `repo` scope on the Clerk GitHub connection.
+- Landing page: `app/welcome` (static) renders `components/landing/*`.
+  `middleware.ts` rewrites `/` to `/welcome` for signed-out visitors; signed-in
+  users get the dashboard at `/`. The sandbox is the real `ArchCanvas` in
+  `embedded` mode on a local `useArchDoc` (no Convex), lazy-loaded so React
+  Flow stays out of the first paint. Absolute URLs come from `lib/site.ts`
+  (`NEXT_PUBLIC_SITE_URL`, default `https://archer.tombyrne.dev`).
 - UI conventions (`apps/web`): all colors, radii and text sizes come from the
   tokens in `app/globals.css` (exposed as Tailwind utilities: `bg-surface`,
   `text-ink-2`, `border-line`, `rounded-md`, `text-sm`…). Never use the raw

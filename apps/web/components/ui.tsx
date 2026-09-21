@@ -39,6 +39,14 @@ const SIZE: Record<Size, string> = {
   md: "h-8 px-3 text-sm gap-2",
 };
 
+/** Button styling for elements that aren't buttons (a `Link` that should look like one). */
+export const buttonCls = (variant: Variant = "secondary", size: Size = "md"): string =>
+  cx(
+    "inline-flex select-none items-center justify-center whitespace-nowrap rounded-md font-medium transition-colors duration-100 disabled:cursor-not-allowed disabled:opacity-40",
+    VARIANT[variant],
+    SIZE[size],
+  );
+
 export function Button({
   variant = "secondary",
   size = "md",
@@ -55,12 +63,7 @@ export function Button({
     <button
       type="button"
       {...rest}
-      className={cx(
-        "inline-flex select-none items-center justify-center whitespace-nowrap rounded-md font-medium transition-colors duration-100 disabled:cursor-not-allowed disabled:opacity-40",
-        VARIANT[variant],
-        SIZE[size],
-        className,
-      )}
+      className={cx(buttonCls(variant, size), className)}
     >
       {icon && <span className="-ml-0.5 flex shrink-0 items-center [&>svg]:h-3.5 [&>svg]:w-3.5">{icon}</span>}
       {children}
@@ -508,6 +511,9 @@ export const Icon = {
   ),
   Restore: (p: { className?: string }) => (
     <I {...p}><path d="M3 8a5 5 0 109.5-2.2" /><path d="M3 3.5V7h3.5" /></I>
+  ),
+  Reset: (p: { className?: string }) => (
+    <I {...p}><path d="M2.5 8A5.5 5.5 0 108 2.5a6 6 0 00-4.1 1.7L2.5 5.6" /><path d="M2.5 2.5v3.1h3.1" /></I>
   ),
   Diff: (p: { className?: string }) => (
     <I {...p}><path d="M5 2.5v5M2.5 5h5" /><path d="M2.5 11.5h5" /><path d="M11 2.5v11" /></I>

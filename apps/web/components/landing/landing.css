@@ -1,0 +1,113 @@
+/* Landing page. Colors come from the tokens in globals.css; this file only
+   holds what utilities can't express: the headline setting, the fog
+   backdrop, the one load sequence and the source pane's changed-line flash. */
+
+.landing-headline {
+  font-family: var(--font-newsreader), Georgia, "Times New Roman", serif;
+  font-weight: 500;
+  font-variation-settings: "opsz" 72;
+  letter-spacing: -0.012em;
+  text-wrap: balance;
+}
+
+/* Just under #1c1c1c in the middle of the viewport, black at the edges, with
+   a faint neutral mist drifting over it. Fixed values: the landing page has one look. */
+.landing-fog {
+  --fog-a: #252525;
+  --fog-b: #191919;
+  background: radial-gradient(ellipse 70% 65% at 50% 45%, #181818 0%, #0a0a0a 60%, #000 100%);
+}
+
+@keyframes landing-fog-1 {
+  0%, 100% { transform: translateX(-10%) translateY(0%); }
+  50% { transform: translateX(5%) translateY(-3%); }
+}
+@keyframes landing-fog-2 {
+  0%, 100% { transform: translateX(0%) translateY(-2%); }
+  50% { transform: translateX(-15%) translateY(2%); }
+}
+@keyframes landing-fog-3 {
+  0%, 100% { transform: translateX(-5%) translateY(2%); }
+  50% { transform: translateX(10%) translateY(-2%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .landing-fog-layer {
+    animation: none !important;
+  }
+}
+
+.landing-wordmark {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: clamp(72px, 26.5vw, 340px);
+  line-height: 0.74;
+  letter-spacing: -0.04em;
+  color: color-mix(in srgb, var(--ink) 11%, transparent);
+  user-select: none;
+}
+
+.landing-source-line {
+  display: block;
+  padding: 0 16px;
+  min-height: 20px;
+  border-left: 2px solid transparent;
+}
+
+@keyframes landing-rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+@keyframes landing-flash {
+  from {
+    background: var(--accent-soft);
+    border-left-color: var(--accent);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .landing-rise {
+    animation: landing-rise 600ms cubic-bezier(0.2, 0.7, 0.2, 1) backwards;
+    animation-delay: calc(var(--i, 0) * 90ms);
+  }
+  .landing-source-line.is-changed {
+    animation: landing-flash 1400ms ease-out;
+  }
+}
+
+/* Diamond joints where a horizontal rule meets the column's side rules. The
+   offsets centre an 8px box on the crossing of two 1px lines. */
+.landing-joints {
+  position: relative;
+}
+.landing-joints::before,
+.landing-joints::after {
+  content: "";
+  position: absolute;
+  bottom: -4.5px;
+  z-index: 1;
+  width: 8px;
+  height: 8px;
+  transform: rotate(45deg);
+  border: 1px solid var(--line-2);
+  background: #000;
+  pointer-events: none;
+}
+.landing-joints::before {
+  left: -4.5px;
+}
+.landing-joints::after {
+  right: -4.5px;
+}
+.landing-joints-top::before,
+.landing-joints-top::after {
+  top: -4.5px;
+  bottom: auto;
+}
+
+/* Connectors read as white on the always-dark landing canvas. */
+.landing-canvas {
+  --edge: var(--ink);
+  --edge-strong: #fff;
+}

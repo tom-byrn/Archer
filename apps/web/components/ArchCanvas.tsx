@@ -52,6 +52,11 @@ export interface ArchCanvasProps {
   exportRef?: MutableRefObject<(() => void) | null>;
   /** Diff / history view: no dragging, connecting, dropping or deleting. */
   readOnly?: boolean;
+  /**
+   * Inline on a scrolling page (the landing sandbox): fixed viewport, the
+   * wheel scrolls the page instead of zooming, no controls, no deleting.
+   */
+  embedded?: boolean;
 }
 
 type Hover = { kind: "node"; id: string } | { kind: "edge"; id: string } | null;
@@ -67,6 +72,7 @@ function CanvasInner({
   selectedPath,
   exportRef,
   readOnly = false,
+  embedded = false,
 }: ArchCanvasProps) {
   const [nodes, setNodes, onNodesChange] = useNodesState<ArchNode>(derivedNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState<ArchEdge>(derivedEdges);
@@ -260,12 +266,17 @@ function CanvasInner({
       snapToGrid
       snapGrid={[CELL, CELL]}
       connectionRadius={36}
-      deleteKeyCode={readOnly ? null : ["Backspace", "Delete"]}
+      deleteKeyCode={readOnly || embedded ? null : ["Backspace", "Delete"]}
       selectionKeyCode={null}
-      proOptions={{ hideAttribution: false }}
+      preventScrolling={!embedded}
+      zoomOnScroll={!embedded}
+      zoomOnPinch={!embedded}
+      zoomOnDoubleClick={!embedded}
+      panOnDrag={!embedded}
+      proOptions={{ hideAttribution: true }}
     >
       <Background variant={BackgroundVariant.Dots} gap={CELL} size={1.5} color="var(--dot)" />
-      <Controls showInteractive={false} position="bottom-left" />
+      {!embedded && <Controls showInteractive={false} position="bottom-left" />}
     </ReactFlow>
   );
 }
