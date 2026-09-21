@@ -2,7 +2,7 @@ import { marked } from "marked";
 import { SiteFrame } from "@/components/landing/SiteFrame";
 import { LANGUAGE_SPEC } from "@/lib/languageSpec";
 
-export const metadata = { title: "Archer — Language reference" };
+export const metadata = { title: "Archer" };
 
 export default function LanguagePage() {
   const html = marked.parse(LANGUAGE_SPEC, { async: false });
