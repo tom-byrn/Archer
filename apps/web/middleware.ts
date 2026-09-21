@@ -3,7 +3,7 @@ import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 
 // Everything is private except the sign-in flow, the language reference
 // (which users hand to agents as a docs link), and shared-link views.
-const isPublic = createRouteMatcher(["/sign-in(.*)", "/language(.*)", "/s(.*)"]);
+const isPublic = createRouteMatcher(["/sign-in(.*)", "/sign-up(.*)", "/language(.*)", "/s(.*)"]);
 
 const configured =
   !!process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY && !!process.env.CLERK_SECRET_KEY;
@@ -24,5 +24,7 @@ export const config = {
     "/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)",
     // Always run for API routes
     "/(api|trpc)(.*)",
+    // Clerk's auto-proxy path
+    "/__clerk/:path*",
   ],
 };
