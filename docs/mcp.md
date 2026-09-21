@@ -38,7 +38,7 @@ Prerequisites: the Convex backend running (`npx convex dev` in `apps/web`) and
 1. **Create an API key** — open Archer (http://localhost:3000), sign in with
    GitHub, open **Connect an agent** from your avatar menu, and create a key.
    The key unlocks your workspace (your projects, custom types, history,
-   questions, drift). It is shown once; only its hash is stored.
+   drift). It is shown once; only its hash is stored.
 2. **Register the server** with your MCP client. For Claude Code:
 
    ```sh
@@ -67,9 +67,9 @@ Prerequisites: the Convex backend running (`npx convex dev` in `apps/web`) and
 | `ARCHER_API_KEY` | `~/.archer/key` file, else unset | API key created in the app; determines whose workspace the server operates on (replaces `ARCHER_WORKSPACE_ID`, now ignored) |
 | `CONVEX_URL` | `http://127.0.0.1:3210` | The Convex backend |
 | `ARCHER_APP_URL` | `http://localhost:3000` | Base for the editor URLs returned by tools |
-| `ARCHER_AGENT_NAME` | the MCP client's declared name, else `agent` | How the agent's edits, questions and drift reports are attributed in the app |
+| `ARCHER_AGENT_NAME` | the MCP client's declared name, else `agent` | How the agent's edits and drift reports are attributed in the app |
 
-## Tools (27 local · 28 hosted)
+## Tools (23 local · 24 hosted)
 
 **Documentation** — `get_guide` returns the full agent guide (mental model,
 workflows, error reference, complete language spec); also exposed as the MCP
@@ -96,9 +96,6 @@ surviving components keep their canvas positions, new ones are auto-placed),
 counts), `get_revision` (past source), `diff_project` (structured diff between
 any two revisions; defaults to the latest change).
 
-**Questions** — `ask_question`, `list_questions`, `answer_question`,
-`resolve_question`.
-
 **Drift** — `report_drift`, `get_drift`.
 
 **Repository** — `link_repository` (record the GitHub repo + branch a
@@ -123,13 +120,6 @@ Every write (`create_project`, `update_project`, `set_display`,
 highlights the components the agent touched until the human reviews them.
 `get_history` and `diff_project` expose the same history to agents (the diff
 ignores layout moves — only architecture counts).
-
-### Questions
-
-`ask_question` attaches a thread to a component path. It appears as a badge
-on that component in the canvas; the human answers inline (and can ask
-agents questions the same way). `get_project` returns the open threads as
-`open_questions` so agents see them at the start of every session.
 
 ### Drift
 
@@ -156,9 +146,8 @@ findings to the document with one click.
 ARCHER_API_KEY=<key> pnpm --filter @archer/mcp exec tsx scripts/smoke.ts
 ```
 
-Spawns the server over stdio and exercises all 27 tools against the live
+Spawns the server over stdio and exercises all 23 tools against the live
 backend, including the reject-invalid-write and layout-preservation
-guarantees, agent attribution in history, the question round trip, drift
-reporting, and API-key handling (`get_workspace_info` shows the key prefix; a
+guarantees, agent attribution in history, drift reporting, and API-key handling (`get_workspace_info` shows the key prefix; a
 bogus `set_api_key` is rejected without touching the persisted key). Use a
 throwaway key: the test creates and deletes its own project and custom type.

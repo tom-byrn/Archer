@@ -77,38 +77,23 @@ const diffClass = (marks: NodeMarks | undefined): string | undefined =>
   marks?.diff ? `arch-diff-${marks.diff}` : undefined;
 
 /**
- * Overlay badges: agent-touched + open questions stack from the top-right;
- * drift sits top-left. Pointer-events off so dragging is unaffected.
+ * Overlay badges: agent-touched sits top-right; drift sits top-left.
+ * Pointer-events off so dragging is unaffected.
  */
 function Badges({ marks }: { marks: NodeMarks | undefined }) {
   if (!marks) return null;
-  const right: React.ReactNode[] = [];
-  if (marks.touched) {
-    right.push(
-      <span
-        key="touched"
-        className="arch-badge bg-accent text-accent-ink"
-        title="Changed by an agent since you last reviewed"
-      >
-        <Icon.Bot />
-      </span>,
-    );
-  }
-  if (marks.questions && marks.questions > 0) {
-    right.push(
-      <span
-        key="questions"
-        className="arch-badge arch-badge-count border border-line-2 bg-surface text-ink-2"
-        title={`${marks.questions} open question${marks.questions === 1 ? "" : "s"}`}
-      >
-        <Icon.Chat />
-        <span className="text-[10px] font-semibold leading-none">{marks.questions}</span>
-      </span>,
-    );
-  }
   return (
     <>
-      {right.length > 0 && <span className="arch-badges arch-badges-right">{right}</span>}
+      {marks.touched && (
+        <span className="arch-badges arch-badges-right">
+          <span
+            className="arch-badge bg-accent text-accent-ink"
+            title="Changed by an agent since you last reviewed"
+          >
+            <Icon.Bot />
+          </span>
+        </span>
+      )}
       {marks.drift && (
         <span className="arch-badges arch-badges-left">
           <span

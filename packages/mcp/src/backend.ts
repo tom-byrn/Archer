@@ -10,7 +10,6 @@ type Module =
   | "documents"
   | "library"
   | "revisions"
-  | "threads"
   | "drift"
   | "apiKeys"
   | "workspaces"
@@ -221,20 +220,6 @@ export interface RevisionRow {
   author: Author;
   summary?: string;
 }
-export interface ThreadMessage {
-  author: Author;
-  text: string;
-  at: number;
-}
-export interface ThreadRow {
-  _id: string;
-  documentId: string;
-  path: string;
-  status: "open" | "resolved";
-  createdAt: number;
-  updatedAt: number;
-  messages: ThreadMessage[];
-}
 export type DriftStatus = "missing" | "changed" | "extra";
 export interface DriftFinding {
   status: DriftStatus;
@@ -291,16 +276,6 @@ export const db = {
     client.query(qref("revisions", "listFull"), { ...auth(ws), documentId, limit }) as Promise<RevisionRow[]>,
   getRevision: (ws: Workspace, id: string) =>
     client.query(qref("revisions", "get"), { ...auth(ws), id }) as Promise<RevisionRow | null>,
-
-  // question threads
-  listThreads: (ws: Workspace, documentId: string, status?: "open" | "resolved") =>
-    client.query(qref("threads", "list"), { ...auth(ws), documentId, ...(status ? { status } : {}) }) as Promise<ThreadRow[]>,
-  createThread: (ws: Workspace, documentId: string, path: string, text: string) =>
-    client.mutation(mref("threads", "create"), { ...auth(ws), documentId, path, text, author: agentAuthor() }) as Promise<string>,
-  replyThread: (ws: Workspace, id: string, text: string) =>
-    client.mutation(mref("threads", "reply"), { ...auth(ws), id, text, author: agentAuthor() }) as Promise<void>,
-  setThreadStatus: (ws: Workspace, id: string, status: "open" | "resolved") =>
-    client.mutation(mref("threads", "setStatus"), { ...auth(ws), id, status }) as Promise<void>,
 
   // workspaces (hosted server: the caller is a user, not a single-workspace key)
   listWorkspaces: (apiKey: string) =>

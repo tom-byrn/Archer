@@ -42,7 +42,7 @@ Router + React Flow + Convex).
   in the usual `apiKey` argument (`convex/access.ts` → `effectiveUser`); the
   same secret must be set on the Convex deployment and in the web env. The
   stdio server + API keys remain for CI, the CLI and offline use.
-  `registerArcherTools(server, { mode })` registers 27 tools for stdio, 28
+  `registerArcherTools(server, { mode })` registers 23 tools for stdio, 24
   for remote (`list_workspaces`/`use_workspace` instead of `set_api_key`).
 - GitHub: documents can link a repo + branch (`documents.repo`; reserved
   `path` for the future `.arch`-in-repo sync). ALL GitHub REST calls go

@@ -123,7 +123,7 @@ export const rename = mutation({
   },
 });
 
-const DATA_TABLES = ["documents", "libraryTypes", "revisions", "threads", "drift", "apiKeys"] as const;
+const DATA_TABLES = ["documents", "libraryTypes", "revisions", "drift", "apiKeys"] as const;
 
 /** Delete a team workspace and everything in it. */
 export const remove = mutation({
@@ -252,7 +252,7 @@ export const claimLegacy = mutation({
     const workspaceId = await requireUser(ctx);
     if (!/^[0-9a-f-]{36}$/i.test(legacyId) || legacyId === workspaceId) return { moved: 0 };
     let moved = 0;
-    for (const table of ["documents", "libraryTypes", "revisions", "threads", "drift"] as const) {
+    for (const table of ["documents", "libraryTypes", "revisions", "drift"] as const) {
       const rows = await ctx.db
         .query(table)
         .withIndex("by_workspace", (q) => q.eq("workspaceId", legacyId))

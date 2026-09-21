@@ -50,7 +50,7 @@ const safeJson = (t: string) => {
 // tools/list
 const tools = await client.listTools();
 const names = tools.tools.map((t) => t.name).sort();
-check("27 tools registered", names.length === 27, names);
+check("23 tools registered", names.length === 23, names);
 
 // guide + resource
 const guide = await call("get_guide");
@@ -146,23 +146,6 @@ const diffSpan = await call("diff_project", {
 });
 check("diff_project from oldest sees cache added", diffSpan.json?.diff.components.some((c: { path: string; kind: string }) => c.path === "cache" && c.kind === "added"), diffSpan.text);
 check("get_project has src line", (got3.json.source as string).includes('src "apps/api"'));
-
-// questions round trip
-const badAsk = await call("ask_question", { project_id: pid, path: "nope", text: "?" });
-check("ask_question rejects unknown path", badAsk.isError);
-const asked = await call("ask_question", { project_id: pid, path: "db", text: "Which Postgres version?" });
-check("ask_question creates thread", !asked.isError && typeof asked.json?.question_id === "string", asked.text);
-const qid = asked.json.question_id as string;
-const gotQ = await call("get_project", { project_id: pid });
-check("get_project shows open question", gotQ.json?.open_questions.some((q: { question_id: string }) => q.question_id === qid), gotQ.json?.open_questions);
-const answered = await call("answer_question", { question_id: qid, text: "16" });
-check("answer_question", !answered.isError);
-const listedQ = await call("list_questions", { project_id: pid });
-check("list_questions has 2 messages", listedQ.json?.find((q: { question_id: string }) => q.question_id === qid)?.messages.length === 2, listedQ.text);
-const resolved = await call("resolve_question", { question_id: qid });
-check("resolve_question", !resolved.isError && resolved.json?.status === "resolved");
-const openAfter = await call("list_questions", { project_id: pid });
-check("resolved thread not in open list", !openAfter.json?.some((q: { question_id: string }) => q.question_id === qid));
 
 // repository link
 const badRepo = await call("link_repository", { project_id: pid, repository: { full_name: "not a repo" } });

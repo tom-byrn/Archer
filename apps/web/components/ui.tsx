@@ -532,9 +532,6 @@ export const Icon = {
   User: (p: { className?: string }) => (
     <I {...p}><circle cx="8" cy="5.5" r="2.75" /><path d="M2.75 14a5.25 5.25 0 0110.5 0" /></I>
   ),
-  Chat: (p: { className?: string }) => (
-    <I {...p}><path d="M2.5 3.5h11v7h-6L4.5 13v-2.5h-2z" /></I>
-  ),
   Link: (p: { className?: string }) => (
     <I {...p}><path d="M6.5 9.5l3-3" /><path d="M7 4.5l1-1a2.5 2.5 0 013.5 3.5l-1 1" /><path d="M9 11.5l-1 1a2.5 2.5 0 01-3.5-3.5l1-1" /></I>
   ),
