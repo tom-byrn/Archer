@@ -66,7 +66,7 @@ function DocCard({
   return (
     <div className="group relative">
       <Link
-        href={`/d/${doc._id}`}
+        href={`/documents/${doc._id}`}
         className="block overflow-hidden rounded-lg border border-line bg-surface transition-[border-color,box-shadow,transform] duration-[120ms] hover:-translate-y-px hover:border-line-2 hover:shadow-sm"
       >
         <div className="aspect-[16/10] border-b border-line bg-ground p-3">
@@ -93,9 +93,9 @@ function DocCard({
           )}
           items={
             readOnly
-              ? [{ label: "Open", icon: <Icon.External />, onSelect: () => router.push(`/d/${doc._id}`) }]
+              ? [{ label: "Open", icon: <Icon.External />, onSelect: () => router.push(`/documents/${doc._id}`) }]
               : [
-                  { label: "Open", icon: <Icon.External />, onSelect: () => router.push(`/d/${doc._id}`) },
+                  { label: "Open", icon: <Icon.External />, onSelect: () => router.push(`/documents/${doc._id}`) },
                   { label: "Rename", icon: <Icon.Pencil />, onSelect: onRename },
                   { label: "Duplicate", icon: <Icon.Duplicate />, onSelect: onDuplicate },
                   "separator",
@@ -436,7 +436,7 @@ export default function Home() {
   const newDoc = async (source: string, title: string) => {
     if (!workspaceId) return;
     const id = await create({ workspaceId, title, source });
-    router.push(`/d/${id}`);
+    router.push(`/documents/${id}`);
   };
   const duplicate = async (doc: DocRow) => {
     if (!workspaceId) return;
@@ -473,7 +473,6 @@ export default function Home() {
   return (
     <div className="mx-auto max-w-5xl px-6 py-10">
       <header className="flex items-center gap-3">
-        <img src="/icon.svg" alt="" className="h-7 w-7 rounded-md" />
         <span className="font-display text-[22px] leading-none text-ink">Archer</span>
         <span className="mx-2 h-4 w-px bg-line" />
         <WorkspaceSwitcher workspaces={workspaces} current={current} onSelect={select} />

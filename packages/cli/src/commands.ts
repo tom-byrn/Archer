@@ -301,7 +301,7 @@ export async function push(
   if (existing) await db.updateProject(ws, existing._id, prep.title, prep.text, opts.message);
   else id = await db.createProject(ws, prep.title, prep.text, opts.message ?? "Created the project");
   saveLink(file, id!);
-  console.log(`${existing ? "Updated" : "Created"} "${prep.title}" — ${APP_URL}/d/${id}`);
+  console.log(`${existing ? "Updated" : "Created"} "${prep.title}" — ${APP_URL}/documents/${id}`);
   return EXIT.ok;
 }
 

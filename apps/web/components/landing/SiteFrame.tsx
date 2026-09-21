@@ -45,7 +45,6 @@ export function SiteFrame({
       <div className="mx-auto max-w-6xl border-x border-line">
         <header className="landing-joints flex h-14 items-center gap-5 border-b border-line px-5 sm:px-10">
           <Link href="/" className="flex items-center gap-2.5 rounded-sm">
-            <img src="/icon.svg" alt="" className="h-6 w-6 rounded-md" />
             <span className="font-display text-[19px] leading-none text-ink">Archer</span>
           </Link>
           <nav className="ml-auto flex items-center gap-5">

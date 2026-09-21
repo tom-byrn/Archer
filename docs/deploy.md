@@ -50,7 +50,6 @@ environment variables (Production, and Preview if you want previews to work):
 | `CONVEX_DEPLOY_KEY` | `prod:…` from step 1 | The build runs `npx convex deploy --cmd 'pnpm build' --cmd-url-env-var-name NEXT_PUBLIC_CONVEX_URL`, which pushes functions and injects the deployment URL into the Next build. Without this key the build falls back to a plain `pnpm build` and the app shows its setup panel. |
 | `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | `pk_…` | Clerk → API keys |
 | `CLERK_SECRET_KEY` | `sk_…` | Clerk → API keys |
-| `CONTEXT_DEV_API_KEY` | | Brand-color lookups for custom types (optional) |
 
 You do **not** set `NEXT_PUBLIC_CONVEX_URL` on Vercel: `convex deploy --cmd`
 sets it for the build from the deploy key.
@@ -74,7 +73,7 @@ claude mcp add archer \
 ## 5. Share images
 
 Any document with *Share → Anyone with the link* enabled is viewable at
-`/s/<slug>` and embeddable as an image:
+`/share/<slug>` and embeddable as an image:
 
 ```md
 ![Architecture](https://<your-domain>/s/<slug>/image.svg)

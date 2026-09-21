@@ -9,7 +9,7 @@ const isPublic = createRouteMatcher([
   "/sign-in(.*)",
   "/sign-up(.*)",
   "/language(.*)",
-  "/s(.*)",
+  "/share(.*)",
   // Hosted MCP server: it verifies OAuth bearer tokens itself, and its
   // discovery documents must be readable by unauthenticated clients.
   "/mcp(.*)",
