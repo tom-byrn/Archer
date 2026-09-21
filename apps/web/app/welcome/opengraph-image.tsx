@@ -25,7 +25,6 @@ const INK_2 = "#a5a19a";
 const INK_3 = "#6d6963";
 const LINE = "#26292d";
 const LINE_2 = "#383c42";
-const DOT = "#2a2d32";
 // Connectors read as ink on the landing canvas (`.landing-canvas` in landing.css).
 const EDGE = INK;
 
@@ -57,8 +56,8 @@ const loadFonts = async () => {
 
 /* ------------------------------------------------------------- Diagram */
 
-// The sandbox fits its 40px grid to the viewport; here one cell is 30px.
-const CELL = 30;
+// The sandbox fits its 40px grid to the viewport; here one cell is 28px.
+const CELL = 28;
 const ARROW = 5; // half-width of an arrowhead
 const RADIUS = 6; // corner radius of a stepped connector
 
@@ -332,9 +331,6 @@ function Sandbox({ width, height }: { width: number; height: number }) {
           display: "flex",
           flex: 1,
           backgroundColor: GROUND,
-          // Percent stops: Satori drops pixel stops. 10% of half a cell is a 1.5px dot.
-          backgroundImage: `radial-gradient(circle closest-side, ${DOT} 10%, transparent 13%)`,
-          backgroundSize: `${CELL}px ${CELL}px`,
         }}
       >
         <div style={{ position: "absolute", left: ox, top: oy, width: dw, height: dh, display: "flex" }}>
@@ -383,7 +379,8 @@ export default async function OpengraphImage() {
   const { width, height } = size;
   const col = { left: 40, right: width - 40 };
   const header = 88;
-  const panel = { left: 596, top: 128, width: 564, height: 432 };
+  // Clear of the right rule, with room between it and the headline.
+  const panel = { left: 552, top: 128, width: 548, height: 432 };
   return new ImageResponse(
     (
       <div
