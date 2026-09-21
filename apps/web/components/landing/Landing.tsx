@@ -36,8 +36,8 @@ export function Landing() {
               className="landing-rise max-w-[46ch] pt-6 text-lede text-ink-2"
               style={{ "--i": 1 } as React.CSSProperties}
             >
-              Drag and drop your system spec onto a canvas, or let your agent write
-              Archer code to do it for you.
+              Drag and drop your system architecture onto a canvas, or let
+              your agent write Archer code to do it for you.
             </p>
           </div>
           <div className="landing-rise" style={{ "--i": 2 } as React.CSSProperties}>
