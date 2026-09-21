@@ -36,8 +36,8 @@ export function Landing() {
               className="landing-rise max-w-[46ch] pt-6 text-lede text-ink-2"
               style={{ "--i": 1 } as React.CSSProperties}
             >
-              Draw the system on a canvas. Archer keeps it as a small text file your
-              coding agent can read, build from and update.
+              Drag and drop your system spec onto a canvas, or let your agent write
+              Archer code to do it for you.
             </p>
           </div>
           <div className="landing-rise" style={{ "--i": 2 } as React.CSSProperties}>
@@ -50,7 +50,6 @@ export function Landing() {
         <SandboxLoader />
         <p className="max-w-[64ch] pt-5 text-lg text-ink-2">
           Try it. Drag a box, or pull a line from the edge of one box to another.
-          The file beside the canvas is what your agent reads.
         </p>
       </section>
     </SiteFrame>
