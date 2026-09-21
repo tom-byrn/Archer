@@ -215,6 +215,15 @@ export function CodePane({
         <Icon.Code className="h-4 w-4 text-ink-3" />
         <span className="min-w-0 truncate text-base font-medium text-ink">{title}</span>
         <span className="mono text-xs text-ink-3">.arch</span>
+        <a
+          href="/language"
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex h-6 select-none items-center gap-1 whitespace-nowrap rounded-md px-1.5 text-xs font-medium text-ink-3 transition-colors duration-100 hover:bg-surface-2 hover:text-ink"
+        >
+          Language spec
+          <Icon.External className="h-3 w-3" />
+        </a>
         {errorCount > 0 && (
           <Chip tone="danger">
             {errorCount} error{errorCount === 1 ? "" : "s"}
@@ -246,15 +255,6 @@ export function CodePane({
           >
             {copied === "agent" ? "Copied" : "Copy for agent"}
           </Button>
-          <a
-            href="/language"
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex h-7 select-none items-center gap-1.5 whitespace-nowrap rounded-md border border-transparent px-2.5 text-sm font-medium text-ink-2 transition-colors duration-100 hover:bg-surface-2 hover:text-ink"
-          >
-            Language spec
-            <Icon.External className="h-3.5 w-3.5" />
-          </a>
           <span className="mx-1 h-4 w-px bg-line" />
           <IconButton label="Close (esc)" onClick={onToggle}>
             <Icon.Close />
