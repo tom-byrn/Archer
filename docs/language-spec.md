@@ -327,7 +327,11 @@ backend.api -> backend.db @sql
 
 backend.api -> stripe @http : "checkout sessions" {
   request json ```
-  { "price_id": "string", "success_url": "url", "cancel_url": "url" }
+  {
+    "price_id": "string",
+    "success_url": "url",
+    "cancel_url": "url"
+  }
   ```
 }
 
