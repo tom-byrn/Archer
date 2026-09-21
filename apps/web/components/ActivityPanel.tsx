@@ -140,7 +140,7 @@ const dayLabel = (ts: number, now: number): string => {
 
 function ChangeChips({ summary }: { summary: DiffSummary | null }) {
   if (summary === null) return <Chip>Initial version</Chip>;
-  const conn = summary.connectionsAdded + summary.connectionsRemoved;
+  const conn = summary.connectionsAdded + summary.connectionsRemoved + summary.connectionsChanged;
   const chips: ReactNode[] = [];
   if (summary.added > 0) chips.push(<Chip key="a" tone="accent">+{summary.added}</Chip>);
   if (summary.removed > 0) chips.push(<Chip key="r" tone="danger">−{summary.removed}</Chip>);

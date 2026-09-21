@@ -53,8 +53,10 @@ export interface ArchEdgeData extends Record<string, unknown> {
   /** Protocol tag without the `@`, e.g. "http". */
   protocol?: string;
   label?: string;
-  /** Diff view: connection added or removed relative to the comparison base. */
-  diff?: "added" | "removed";
+  /** Payload blocks carried on the edge (message schema, request shape…). */
+  payloadCount: number;
+  /** Diff view: connection added, removed, or (payloads) changed relative to the base. */
+  diff?: "added" | "removed" | "changed";
 }
 
 export type ArchEdge = Edge<ArchEdgeData>;
@@ -69,7 +71,7 @@ export interface ToFlowOptions {
   /** Per-path overlay badges (diff status, agent-touched, questions, drift). */
   marks?: (path: string, component: ComponentNode) => NodeMarks | undefined;
   /** Per-connection diff status, keyed by `connectionKey()` from @archer/lang. */
-  edgeDiff?: Map<string, "added" | "removed">;
+  edgeDiff?: Map<string, "added" | "removed" | "changed">;
 }
 
 /**
@@ -191,6 +193,7 @@ export function toFlow(
         arrow: c.arrow,
         ...(c.type !== undefined ? { protocol: c.type } : {}),
         ...(c.label !== undefined ? { label: c.label } : {}),
+        payloadCount: c.payloads.length,
         ...(() => {
           const d = opts.edgeDiff?.get(edgeKey(c));
           return d ? { diff: d } : {};

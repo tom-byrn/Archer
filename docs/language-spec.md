@@ -119,17 +119,17 @@ individual `@postgres.table` children, or both.
 
 ## 4. Payload blocks
 
-Payloads attach structured or freeform data to a component:
+Payloads attach structured or freeform data to a component — or to a connection (§6):
 
-```
+````
 <name> <format> ```
 <content>
 ```
-```
+````
 
-- `<name>` — snake_case identifier, unique per component (`schema`, `env`, `endpoints`,
-  `notes`, …). Names are free; they exist so agents and the detail view can refer to a
-  payload by role.
+- `<name>` — snake_case identifier, unique per owner (`schema`, `env`, `endpoints`,
+  `notes`, `message`, …). Names are free; they exist so agents and the detail view can
+  refer to a payload by role.
 - `<format>` — one of:
 
   | format     | validation                                        |
@@ -173,7 +173,7 @@ of real technologies plus the user's saved custom types.
 ## 6. Connections
 
 ```
-<source-path> <arrow> <target-path> [@<type>] [: "label"]
+<source-path> <arrow> <target-path> [@<type>] [: "label"] [{ <payload>… }]
 ```
 
 Arrows:
@@ -186,24 +186,39 @@ Arrows:
 
 Examples:
 
-```
+````
 web -> backend.api @http : "REST, cookie session"
 backend.api -> backend.db @sql
 backend.api <-> cache @redis_protocol
 billing -- stripe
-```
+
+backend.api -> orders_queue @queue : "order placed" {
+  message json ```
+  { "order_id": "uuid", "total_cents": "int", "placed_at": "timestamp" }
+  ```
+}
+````
 
 Rules:
 
 - **Both endpoints MUST resolve to declared components.** An unresolved endpoint is a
   hard validation error (`E101`). Nothing is ever auto-created.
 - `@type` and label are optional and independent.
+- **Connection payloads.** An optional `{ … }` body holds payload blocks (§4) describing
+  what travels on the edge: a message schema on a `@queue`, a request/response shape on
+  an `@http` call, the event names on an `@event` bus. The body may contain only
+  payloads — no `desc` (use the label), no nested components. Payload names are unique
+  per connection (`E003`) and `json` / `yaml` / `table` content is validated (`E201`),
+  exactly as on components.
 - Duplicate connections (same endpoints, arrow, type, and label) are a warning.
+  Payloads are not part of a connection's identity: two connections that differ only in
+  payloads are still duplicates.
 - Connections between any two components in the tree are allowed, including across
   nesting boundaries and between a parent and its own descendant.
 - Canonical form sorts connections by source path, then target path — so compiled
   output is deterministic and diffs are clean. Connections carry no sequence/ordering
-  semantics.
+  semantics. A connection with payloads is written as a multi-line block separated from
+  its neighbours by a blank line; the sort order is unaffected.
 
 ## 7. The `layout` block
 
@@ -240,7 +255,7 @@ A document is **valid** when:
 | ------ | --------------------------------------------------------------- | -------- |
 | `E001` | file parses (header, declarations, fences)                      | error    |
 | `E002` | component ids unique within their scope                         | error    |
-| `E003` | payload names unique per component                              | error    |
+| `E003` | payload names unique per component / per connection             | error    |
 | `E004` | at most one `src` per component                                 | error    |
 | `E101` | every connection endpoint resolves to a declared component      | error    |
 | `E201` | `json` / `yaml` / `table` payloads parse in their format        | error    |
@@ -266,7 +281,7 @@ a dangling connection is never created in the first place.
 
 ## 10. Full example
 
-```
+````
 arch "Acme SaaS" v0.1
 
 component web "Next.js App" @vercel.nextjs {
@@ -309,7 +324,12 @@ web -> auth @http : "login"
 web -> backend.api @http
 auth -> cognito @http
 backend.api -> backend.db @sql
-backend.api -> stripe @http : "checkout sessions"
+
+backend.api -> stripe @http : "checkout sessions" {
+  request json ```
+  { "price_id": "string", "success_url": "url", "cancel_url": "url" }
+  ```
+}
 
 layout {
   web: { at: [0, 3], size: [4, 3] }
@@ -320,7 +340,7 @@ layout {
   cognito: { at: [0, 13], size: [3, 3] }
   stripe: { at: [20, 3], size: [3, 3] }
 }
-```
+````
 
 ## 11. Grammar sketch (EBNF-ish)
 
@@ -333,7 +353,7 @@ desc        = "desc" ( string | tripleString ) ;
 src         = "src" string ;
 payload     = id format fence ;
 format      = "json" | "yaml" | "table" | "markdown" ;
-connection  = path arrow path [ type ] [ ":" string ] ;
+connection  = path arrow path [ type ] [ ":" string ] [ "{" { payload } "}" ] ;
 arrow       = "->" | "<->" | "--" ;
 type        = "@" id { "." id } ;
 path        = id { "." id } ;
@@ -345,6 +365,4 @@ layout      = "layout" "{" { path ":" layoutval } "}" ;
 - Multi-file / import (`use "./billing.arch"`) — v1 is one file per document.
 - In-file custom type definitions for portability.
 - Per-technology payload validation (`sql`, `openapi`, `terraform` formats).
-- Connection payloads (structured data on an edge, e.g. a message schema on a `@queue`
-  edge).
 - Views: multiple named layouts over one model (C4-style level switching).

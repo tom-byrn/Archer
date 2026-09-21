@@ -100,6 +100,44 @@ describe("parse: edge cases", () => {
     expect(doc.connections.map((c) => c.arrow)).toEqual(["<->", "--", "->"]);
   });
 
+  it("parses connection bodies with payloads", () => {
+    const src =
+      'arch "X" v0.1\ncomponent api\ncomponent q\n' +
+      'api -> q @queue : "orders" {\n  message json ```\n  { "id": "uuid" }\n  ```\n  notes markdown ```\n  at-least-once\n  ```\n}\n' +
+      "q -> api\n";
+    const { doc, diagnostics } = parse(src);
+    expect(diagnostics).toEqual([]);
+    expect(doc.connections).toHaveLength(2);
+    const c = doc.connections[0]!;
+    expect(c.type).toBe("queue");
+    expect(c.label).toBe("orders");
+    expect(c.payloads.map((p) => [p.name, p.format, p.content])).toEqual([
+      ["message", "json", '{ "id": "uuid" }'],
+      ["notes", "markdown", "at-least-once"],
+    ]);
+    expect(src.slice(c.span.start.offset, c.span.end.offset).endsWith("}")).toBe(true);
+    expect(doc.connections[1]!.payloads).toEqual([]);
+  });
+
+  it("rejects non-payload items in a connection body and keeps going", () => {
+    const { doc, diagnostics } = parse(
+      'arch "X" v0.1\ncomponent a\ncomponent b\na -> b {\n  desc "no"\n}\ncomponent c\n',
+    );
+    expect(diagnostics.some((d) => d.code === "E001")).toBe(true);
+    expect(doc.components.map((c) => c.id)).toEqual(["a", "b", "c"]);
+    expect(doc.connections).toHaveLength(1);
+  });
+
+  it("reports an unclosed connection body without swallowing the next component", () => {
+    const { doc, diagnostics } = parse(
+      'arch "X" v0.1\ncomponent a\ncomponent b\na -> b {\n  m json ```\n{}\n```\ncomponent c\n',
+    );
+    expect(diagnostics.map((d) => d.code)).toEqual(["E001"]);
+    expect(diagnostics[0]!.message).toContain("closing the connection body");
+    expect(doc.components.map((c) => c.id)).toEqual(["a", "b", "c"]);
+    expect(doc.connections[0]!.payloads).toHaveLength(1);
+  });
+
   it("parses negative layout coordinates", () => {
     const { doc, diagnostics } = parse(
       'arch "X" v0.1\ncomponent a\nlayout { a: { at: [-2, -14] } }',

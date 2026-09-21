@@ -191,6 +191,7 @@ export function parse(source: string): ParseResult {
       source: src.path,
       target: tgt.path,
       arrow: arrowTok.value as Arrow,
+      payloads: [],
       span: { start: src.span.start, end: tgt.span.end },
     };
     if (at("at")) node.type = parseType();
@@ -199,6 +200,40 @@ export function parse(source: string): ParseResult {
       const label = expect("string", "a quoted connection label after ':'");
       node.label = label.value;
       node.span = { start: src.span.start, end: label.span.end };
+    }
+    // Optional body: payload blocks only (a message schema, a request shape…).
+    if (at("lbrace")) {
+      next();
+      while (!at("rbrace") && !at("eof")) {
+        // A statement keyword here means the body was never closed: report it
+        // and hand the token back to the top-level loop instead of eating it.
+        if (["component", "layout", "desc", "src"].some((kw) => at("ident", kw))) {
+          diagnostics.push({
+            code: "E001",
+            severity: "error",
+            message: `Expected '}' closing the connection body, got ${describe(peek())}.`,
+            span: peek().span,
+          });
+          return node;
+        }
+        try {
+          if (at("ident")) {
+            node.payloads.push(parsePayload());
+          } else {
+            fail(
+              `Expected a payload inside a connection body, got ${describe(peek())}.`,
+              peek().span,
+            );
+          }
+        } catch (e) {
+          if (e instanceof ParseError) {
+            diagnostics.push(e.diagnostic);
+            syncBody();
+          } else throw e;
+        }
+      }
+      const close = expect("rbrace", "'}' closing the connection body");
+      node.span = { start: src.span.start, end: close.span.end };
     }
     return node;
   };

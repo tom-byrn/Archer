@@ -6,6 +6,7 @@ import {
   type DisplayMode,
   type LayoutEntry,
   type PayloadFormat,
+  type PayloadNode,
 } from "./types";
 import { componentPaths, findComponent } from "./validate";
 import { LEAF_SIZE, PLANE_INNER_ORIGIN, layoutMap } from "./layout";
@@ -158,6 +159,24 @@ export function setComponentMeta(
   return next;
 }
 
+/** Create or update a named payload on anything that carries payloads. */
+function upsertPayload(
+  owner: { payloads: PayloadNode[] },
+  name: string,
+  format: PayloadFormat,
+  content: string,
+): void {
+  if (!/^[a-z][a-z0-9_]*$/.test(name))
+    throw new Error(`Invalid payload name '${name}' (need snake_case).`);
+  const existing = owner.payloads.find((p) => p.name === name);
+  if (existing) {
+    existing.format = format;
+    existing.content = content;
+  } else {
+    owner.payloads.push({ kind: "payload", name, format, content, span: ZERO_SPAN });
+  }
+}
+
 export function setPayload(
   doc: ArchDoc,
   path: readonly string[],
@@ -165,18 +184,10 @@ export function setPayload(
   format: PayloadFormat,
   content: string,
 ): ArchDoc {
-  if (!/^[a-z][a-z0-9_]*$/.test(name))
-    throw new Error(`Invalid payload name '${name}' (need snake_case).`);
   const next = clone(doc);
   const node = findComponent(next, path);
   if (!node) throw new Error(`No component at '${path.join(".")}'`);
-  const existing = node.payloads.find((p) => p.name === name);
-  if (existing) {
-    existing.format = format;
-    existing.content = content;
-  } else {
-    node.payloads.push({ kind: "payload", name, format, content, span: ZERO_SPAN });
-  }
+  upsertPayload(node, name, format, content);
   return next;
 }
 
@@ -189,6 +200,33 @@ export function removePayload(
   const node = findComponent(next, path);
   if (!node) throw new Error(`No component at '${path.join(".")}'`);
   node.payloads = node.payloads.filter((p) => p.name !== name);
+  return next;
+}
+
+/** Create or update a payload on the connection at `index` (see removeConnection). */
+export function setConnectionPayload(
+  doc: ArchDoc,
+  index: number,
+  name: string,
+  format: PayloadFormat,
+  content: string,
+): ArchDoc {
+  const next = clone(doc);
+  const conn = next.connections[index];
+  if (!conn) throw new Error(`No connection at index ${index}.`);
+  upsertPayload(conn, name, format, content);
+  return next;
+}
+
+export function removeConnectionPayload(
+  doc: ArchDoc,
+  index: number,
+  name: string,
+): ArchDoc {
+  const next = clone(doc);
+  const conn = next.connections[index];
+  if (!conn) throw new Error(`No connection at index ${index}.`);
+  conn.payloads = conn.payloads.filter((p) => p.name !== name);
   return next;
 }
 
@@ -287,6 +325,7 @@ export function addConnection(
     arrow: opts.arrow ?? "->",
     ...(opts.type !== undefined ? { type: opts.type } : {}),
     ...(opts.label !== undefined ? { label: opts.label } : {}),
+    payloads: [],
     span: ZERO_SPAN,
   });
   return next;

@@ -30,6 +30,8 @@ export {
   setComponentMeta,
   setPayload,
   removePayload,
+  setConnectionPayload,
+  removeConnectionPayload,
   moveComponent,
   resizeComponent,
   setDisplay,

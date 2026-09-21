@@ -39,7 +39,12 @@ web -> auth @http : "login"
 web -> backend.api @http
 auth -> cognito @http
 backend.api -> backend.db @sql
-backend.api -> stripe @http : "checkout sessions"
+
+backend.api -> stripe @http : "checkout sessions" {
+  request json \`\`\`
+  { "price_id": "string", "success_url": "url", "cancel_url": "url" }
+  \`\`\`
+}
 
 layout {
   web: { at: [0, 3], size: [4, 3] }

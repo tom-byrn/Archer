@@ -22,6 +22,7 @@ export const PAYLOAD_FORMATS: readonly PayloadFormat[] = [
   "markdown",
 ];
 
+/** Payloads attach to components and to connections alike. */
 export interface PayloadNode {
   kind: "payload";
   name: string;
@@ -60,6 +61,12 @@ export interface ConnectionNode {
   arrow: Arrow;
   type?: string;
   label?: string;
+  /**
+   * Structured data on the edge — a message schema on a queue, a request
+   * shape on an http call. Same block syntax and validation as component
+   * payloads; empty for the common one-line connection.
+   */
+  payloads: PayloadNode[];
   span: Span;
 }
 
