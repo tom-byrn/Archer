@@ -6,25 +6,73 @@ import { ConvexReactClient, useMutation } from "convex/react";
 import { ConvexProviderWithClerk } from "convex/react-clerk";
 import { api } from "@/convex/_generated/api";
 import { takeLegacyWorkspaceId, LEGACY_KEY } from "@/lib/workspace";
+import { useIsDark } from "@/lib/useIsDark";
 
 /** Modest Clerk theming so its sign-in card sits inside our token system. */
-const CLERK_APPEARANCE = {
-  variables: {
-    colorPrimary: "#0c8c5e",
-    colorBackground: "#ffffff",
-    colorText: "#1a1916",
-    colorTextSecondary: "#5f5a52",
-    colorInputBackground: "#ffffff",
-    colorInputText: "#1a1916",
-    colorNeutral: "#1a1916",
-    borderRadius: "6px",
-    fontFamily: "var(--font-inter), ui-sans-serif, system-ui, sans-serif",
-    fontSize: "13px",
+/** Token values from globals.css — Clerk needs literal colors, not CSS vars. */
+const PALETTE = {
+  light: {
+    primary: "#0c8c5e", primaryInk: "#ffffff",
+    surface: "#ffffff", surface2: "#f4f2ee",
+    ink: "#1a1916", ink2: "#5f5a52", line: "#e7e3dc", line2: "#d2ccc3", neutral: "#1a1916",
+    danger: "#b42318",
   },
-  elements: {
-    card: { boxShadow: "var(--shadow-md)", border: "1px solid #e7e3dc" },
+  dark: {
+    primary: "#23c088", primaryInk: "#08110d",
+    surface: "#161719", surface2: "#1c1e21",
+    ink: "#ecebe7", ink2: "#a5a19a", line: "#26292d", line2: "#383c42", neutral: "#ecebe7",
+    danger: "#f0655a",
   },
-};
+} as const;
+
+/**
+ * Clerk appearance that follows the OS color scheme. Both the current (v7)
+ * variable names and their legacy aliases are set, since older names are
+ * silently ignored by newer Clerk UI builds (which is how text ends up
+ * light-on-white in dark mode).
+ */
+function clerkAppearance(isDark: boolean) {
+  const c = isDark ? PALETTE.dark : PALETTE.light;
+  return {
+    variables: {
+      colorPrimary: c.primary,
+      colorPrimaryForeground: c.primaryInk,
+      colorTextOnPrimaryBackground: c.primaryInk,
+      colorBackground: c.surface,
+      colorForeground: c.ink,
+      colorText: c.ink,
+      colorMutedForeground: c.ink2,
+      colorTextSecondary: c.ink2,
+      colorMuted: c.surface2,
+      colorInput: c.surface,
+      colorInputBackground: c.surface,
+      colorInputForeground: c.ink,
+      colorInputText: c.ink,
+      colorNeutral: c.neutral,
+      colorBorder: c.line,
+      colorDanger: c.danger,
+      borderRadius: "6px",
+      fontFamily: "var(--font-inter), ui-sans-serif, system-ui, sans-serif",
+      fontSize: "13px",
+    },
+    elements: {
+      card: { boxShadow: "var(--shadow-md)", border: `1px solid ${c.line}` },
+      cardBox: { boxShadow: "var(--shadow-md)", border: `1px solid ${c.line}` },
+      footer: { background: c.surface2 },
+      socialButtonsBlockButton: "archer-clerk-social",
+      socialButtonsBlockButtonText: { color: c.ink },
+      formFieldInput: "archer-clerk-input",
+      formFieldLabel: { color: c.ink },
+      headerTitle: { color: c.ink },
+      headerSubtitle: { color: c.ink2 },
+      dividerText: { color: c.ink2 },
+      dividerLine: { backgroundColor: c.line },
+      footerActionText: { color: c.ink2 },
+      footerActionLink: { color: c.primary },
+      formButtonPrimary: { color: c.primaryInk },
+    },
+  };
+}
 
 /**
  * Once signed in, move any pre-auth anonymous workspace (the UUID this
@@ -76,6 +124,8 @@ export function Providers({ children }: { children: React.ReactNode }) {
   const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL;
   const clerkKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
   const client = useMemo(() => (convexUrl ? new ConvexReactClient(convexUrl) : null), [convexUrl]);
+  const isDark = useIsDark();
+  const appearance = useMemo(() => clerkAppearance(isDark), [isDark]);
 
   const missing = [
     ...(convexUrl
@@ -88,7 +138,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
   if (!client || missing.length > 0) return <Missing vars={missing} />;
 
   return (
-    <ClerkProvider publishableKey={clerkKey} appearance={CLERK_APPEARANCE}>
+    <ClerkProvider publishableKey={clerkKey} appearance={appearance}>
       <ConvexProviderWithClerk client={client} useAuth={useAuth}>
         <LegacyClaim />
         {children}

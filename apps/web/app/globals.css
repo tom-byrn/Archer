@@ -235,3 +235,19 @@ select:focus-visible,
 .spec table { @apply mb-4 w-full border-collapse text-[13px]; }
 .spec th { @apply border-b border-line-2 px-2 py-1.5 text-left font-semibold; }
 .spec td { @apply border-b border-line px-2 py-1.5 text-ink-2; }
+
+/* Clerk widgets: borders Clerk draws with box-shadows are too faint on our
+   surfaces, so these two elements get token-driven borders instead. */
+.archer-clerk-social,
+.archer-clerk-input {
+  border: 1px solid var(--line-2) !important;
+  box-shadow: none !important;
+  background-color: var(--surface) !important;
+  color: var(--ink) !important;
+}
+.archer-clerk-social:hover {
+  background-color: var(--surface-2) !important;
+}
+.archer-clerk-input:focus {
+  border-color: var(--ink-3) !important;
+}
