@@ -102,7 +102,7 @@ const towardWhite = (hex: string, t: number): string => {
   return `#${((r << 16) | (g << 8) | b).toString(16).padStart(6, "0")}`;
 };
 /** Near-black brand colors vanish on a dark ground — lift them (mirrors useIsDark). */
-const displayColor = (hex: string, dark: boolean): string => {
+export const displayColor = (hex: string, dark: boolean): string => {
   if (!dark || !/^#[0-9a-fA-F]{6}$/.test(hex)) return hex;
   const lum = luminance(hex);
   return lum >= 0.22 ? hex : towardWhite(hex, 0.55 - lum);

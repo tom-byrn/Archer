@@ -9,6 +9,7 @@
     "typecheck": "tsc --noEmit",
     "build:vercel": "if [ -n \"$CONVEX_DEPLOY_KEY\" ]; then npx convex deploy --cmd 'pnpm build' --cmd-url-env-var-name NEXT_PUBLIC_CONVEX_URL; else pnpm build; fi",
     "render:svg": "tsx scripts/render-svg.ts",
+    "render:og": "tsx --tsconfig scripts/tsconfig.render.json scripts/render-og.mts",
     "dev:all": "concurrently -k -n convex,next -c magenta,cyan \"convex dev\" \"next dev -p 3000\""
   },
   "dependencies": {
@@ -43,6 +44,7 @@
     "concurrently": "^10.0.5",
     "postcss": "^8.5.0",
     "tailwindcss": "^4.1.0",
+    "tsx": "^4.19.0",
     "typescript": "^5.6.3"
   }
 }

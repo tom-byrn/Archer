@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 import { Landing } from "@/components/landing/Landing";
+import { LEDE } from "@/lib/landingCopy";
 import { SITE_URL } from "@/lib/site";
 
+// The landing's headline and lede, so the link preview reads like the page.
 const title = "Archer: software architecture for your agents";
-const description =
-  "Draw your system on a canvas. Archer keeps it as a small text file your coding agent can read, build from and update.";
+const description = LEDE;
 
 // Served at "/" for signed-out visitors (see middleware.ts).
 export const metadata: Metadata = {
