@@ -4,7 +4,10 @@ Archer is an architecture canvas that compiles to/from an agent-readable
 language (`.arch` files). pnpm monorepo, TypeScript throughout:
 `packages/lang` (the language: parser/validator/formatter/layout/transforms —
 pure TS, no app deps), `packages/catalog` (component types + glyphs),
-`packages/mcp` (stdio MCP server, `docs/mcp.md`), `apps/web` (Next.js 15 App
+`packages/mcp` (stdio MCP server, `docs/mcp.md`), `packages/cli` (the
+published `archer` binary — check/fmt/init/push/pull + `archer mcp`; a thin
+shell over lang + `mcp/src/backend.ts`, bundled with tsup, `docs/cli.md`),
+`apps/web` (Next.js 15 App
 Router + React Flow + Convex).
 
 - Run: `pnpm dev` from the repo root starts Convex and Next together

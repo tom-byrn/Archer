@@ -3,6 +3,12 @@
   "version": "1.6.0",
   "private": true,
   "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./server": "./src/server.ts",
+    "./backend": "./src/backend.ts",
+    "./languageSpec": "./src/languageSpec.ts"
+  },
   "bin": {
     "archer-mcp": "./src/index.ts"
   },

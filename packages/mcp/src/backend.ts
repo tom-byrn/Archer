@@ -23,13 +23,18 @@ import {
 } from "@archer/lang";
 import { knownConnectionTypes, knownTypes } from "@archer/catalog";
 
+// The ARCHER_DEFAULT_* values are inlined by the published CLI's build
+// (packages/cli/tsup.config.ts) so `npx archer-cli` targets the hosted app;
+// running from the repo falls through to local dev.
 export const CONVEX_URL =
   process.env.CONVEX_URL ??
   process.env.NEXT_PUBLIC_CONVEX_URL ??
+  process.env.ARCHER_DEFAULT_CONVEX_URL ??
   "http://127.0.0.1:3210";
 export const APP_URL =
   process.env.ARCHER_APP_URL ??
   process.env.ARCHLANG_APP_URL ??
+  process.env.ARCHER_DEFAULT_APP_URL ??
   "http://localhost:3000";
 
 const ARCHER_DIR = join(homedir(), ".archer");

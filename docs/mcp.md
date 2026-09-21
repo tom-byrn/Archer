@@ -23,6 +23,10 @@ Prerequisites: the Convex backend running (`npx convex dev` in `apps/web`) and
      -- pnpm --dir <absolute-path-to-repo>/packages/mcp start
    ```
 
+   Outside the repo, the published CLI bundles this server — `archer init`
+   writes the equivalent `.mcp.json` entry (`npx -y archer-cli mcp`), and
+   `archer login <key>` stores the key. See `docs/cli.md`.
+
    Alternatively skip the env var and, in your first session, give the agent
    the key and have it call `set_api_key` — it persists to `~/.archer/key`
    (mode 0600). Revoke keys any time from the same dialog.

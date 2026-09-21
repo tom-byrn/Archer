@@ -1,0 +1,39 @@
+{
+  "name": "archer-cli",
+  "version": "0.1.0",
+  "description": "Check, format and sync Archer (.arch) architecture files — plus the Archer MCP server.",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "archer": "./dist/cli.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "tsx src/cli.ts",
+    "build": "tsup",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "pnpm build"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.0",
+    "convex": "^1.45.0",
+    "yaml": "^2.9.0",
+    "zod": "^3.24.0"
+  },
+  "devDependencies": {
+    "@archer/catalog": "workspace:*",
+    "@archer/lang": "workspace:*",
+    "@archer/mcp": "workspace:*",
+    "@types/node": "^26.4.0",
+    "tsup": "^8.3.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.3",
+    "vitest": "^3.2.0"
+  }
+}
