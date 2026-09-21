@@ -16,7 +16,6 @@ import type * as documents from "../documents.js";
 import type * as drift from "../drift.js";
 import type * as library from "../library.js";
 import type * as revisions from "../revisions.js";
-import type * as threads from "../threads.js";
 import type * as workspaces from "../workspaces.js";
 
 import type {
@@ -34,7 +33,6 @@ declare const fullApi: ApiFromModules<{
   drift: typeof drift;
   library: typeof library;
   revisions: typeof revisions;
-  threads: typeof threads;
   workspaces: typeof workspaces;
 }>;
 

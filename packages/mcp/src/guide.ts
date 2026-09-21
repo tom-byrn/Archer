@@ -82,15 +82,6 @@ authentication in either mode.
    attributed to your client name — so **always pass a \`summary\`** to
    \`create_project\`/\`update_project\` saying what you changed and why.
 
-### Ask instead of guessing
-- When the architecture is ambiguous or a decision is the user's to make,
-  call \`ask_question\` on the relevant component. It shows as a badge on that
-  component in their canvas and they answer inline.
-- At the start of a session read \`open_questions\` from \`get_project\` (or
-  \`list_questions\`): humans leave questions for agents too. Answer what you
-  can with \`answer_question\`, and \`resolve_question\` once the decision has
-  been applied to the document.
-
 ### Link components to code
 - The \`src "…"\` field inside a component body records where it lives:
   a repo-relative path (\`src "apps/api/src/billing"\`) or a URL. Set it
@@ -183,9 +174,7 @@ components, connections, descriptions, payloads, nesting — (\`update_project\`
 with full source), manage the custom component library
 (\`create_custom_type\`/\`delete_custom_type\`), arrange the canvas
 (\`auto_layout\`, \`set_display\`, or explicit layout entries), review history
-(\`get_history\`/\`get_revision\`/\`diff_project\`), discuss components
-(\`ask_question\`/\`list_questions\`/\`answer_question\`/\`resolve_question\`),
-report drift (\`report_drift\`/\`get_drift\`), manage credentials
+(\`get_history\`/\`get_revision\`/\`diff_project\`), report drift (\`report_drift\`/\`get_drift\`), manage credentials
 (\`get_workspace_info\`; hosted: \`list_workspaces\`/\`use_workspace\`; local: \`set_api_key\`), and export the agent spec
 (\`compile_for_agent\`). The only human-app-exclusive feature is PNG export —
 point users at the Export menu in the editor.

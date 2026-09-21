@@ -368,7 +368,7 @@ function WorkspaceSwitcher({
           body={
             <>
               Delete <span className="font-medium text-ink">{current?.name}</span> and every document,
-              revision, question and API key in it? Members lose access immediately. This cannot be undone.
+              revision and API key in it? Members lose access immediately. This cannot be undone.
             </>
           }
           confirmLabel="Delete workspace"

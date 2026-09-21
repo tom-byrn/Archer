@@ -85,25 +85,6 @@ export default defineSchema({
     .index("by_document", ["documentId", "createdAt"])
     .index("by_workspace", ["workspaceId"]),
 
-  /** A question / discussion attached to one component path. */
-  threads: defineTable({
-    workspaceId: v.string(),
-    documentId: v.id("documents"),
-    path: v.string(),
-    status: v.union(v.literal("open"), v.literal("resolved")),
-    createdAt: v.number(),
-    updatedAt: v.number(),
-    messages: v.array(
-      v.object({
-        author,
-        text: v.string(),
-        at: v.number(),
-      }),
-    ),
-  })
-    .index("by_document", ["documentId", "updatedAt"])
-    .index("by_workspace", ["workspaceId"]),
-
   /** Latest drift report for a document (replaced on every report). */
   drift: defineTable({
     workspaceId: v.string(),

@@ -2,8 +2,8 @@
 
 /**
  * Right-hand panel for everything that lives next to a document: revision
- * history (with per-revision diff summaries and a diff view on the canvas),
- * question threads, and the latest drift report.
+ * history (with per-revision diff summaries and a diff view on the canvas)
+ * and the latest drift report.
  */
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
@@ -16,7 +16,6 @@ import {
   type DocumentActivity,
   type DriftFinding,
   type Revision,
-  type Thread,
 } from "@/lib/activity";
 import { repoKey, useCommits, type CommitsState, type GitHubCommit, type RepoLink } from "@/lib/github";
 import {
@@ -25,14 +24,13 @@ import {
   Dialog,
   Icon,
   IconButton,
-  Input,
   Segmented,
   SidePanel,
   cx,
   relativeTime,
 } from "./ui";
 
-export type ActivityTab = "history" | "questions" | "drift";
+export type ActivityTab = "history" | "drift";
 
 export interface ActivityPanelProps {
   tab: ActivityTab;
@@ -399,163 +397,6 @@ function HistoryTab({
   );
 }
 
-/* --------------------------------------------------------------- Questions */
-
-function ThreadCard({
-  thread,
-  activity,
-  onSelectPath,
-}: {
-  thread: Thread;
-  activity: DocumentActivity;
-  onSelectPath: (path: string) => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const [draft, setDraft] = useState("");
-  const now = Date.now();
-  const first = thread.messages[0];
-  const send = () => {
-    const text = draft.trim();
-    if (text === "") return;
-    void activity.reply(thread._id, text).then(() => setDraft(""));
-  };
-  return (
-    <li className="border-b border-line">
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        className="flex w-full flex-col gap-1 px-3 py-2.5 text-left transition-colors duration-100 hover:bg-surface-2"
-      >
-        <span className="flex items-center gap-2">
-          <span
-            role="link"
-            tabIndex={0}
-            onClick={(e) => {
-              e.stopPropagation();
-              onSelectPath(thread.path);
-            }}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                e.stopPropagation();
-                onSelectPath(thread.path);
-              }
-            }}
-            className="mono truncate text-xs text-accent hover:underline"
-          >
-            {thread.path}
-          </span>
-          <span className="ml-auto shrink-0 text-xs text-ink-3">
-            {thread.messages.length} {thread.messages.length === 1 ? "message" : "messages"}
-          </span>
-        </span>
-        {first && !open && (
-          <span className="line-clamp-2 text-sm text-ink">{first.text}</span>
-        )}
-        {first && (
-          <span className="text-xs text-ink-3">
-            {authorLabel(first.author)} · {relativeTime(first.at, now)}
-          </span>
-        )}
-      </button>
-      {open && (
-        <div className="px-3 pb-3">
-          <ul className="flex flex-col gap-2.5">
-            {thread.messages.map((m, i) => (
-              <li key={i} className="flex items-start gap-2">
-                <Avatar author={m.author} />
-                <span className="min-w-0 flex-1">
-                  <span className="block whitespace-pre-wrap text-sm text-ink">{m.text}</span>
-                  <span className="block text-xs text-ink-3">
-                    {authorLabel(m.author)} · {relativeTime(m.at, now)}
-                  </span>
-                </span>
-              </li>
-            ))}
-          </ul>
-          <div className="flex items-center gap-1 pt-2.5">
-            <Input
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              placeholder="Reply…"
-              onKeyDown={(e) => {
-                if (e.key === "Enter") send();
-              }}
-            />
-            <IconButton label="Send" size="sm" onClick={send} disabled={draft.trim() === ""}>
-              <Icon.Send />
-            </IconButton>
-          </div>
-          <div className="pt-1.5">
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() =>
-                void activity.setThreadStatus(
-                  thread._id,
-                  thread.status === "open" ? "resolved" : "open",
-                )
-              }
-            >
-              {thread.status === "open" ? "Resolve" : "Reopen"}
-            </Button>
-          </div>
-        </div>
-      )}
-    </li>
-  );
-}
-
-function QuestionsTab({
-  activity,
-  onSelectPath,
-}: {
-  activity: DocumentActivity;
-  onSelectPath: (path: string) => void;
-}) {
-  const [showResolved, setShowResolved] = useState(false);
-  const open = activity.threads.filter((t) => t.status === "open");
-  const resolved = activity.threads.filter((t) => t.status === "resolved");
-  if (activity.threads.length === 0) {
-    return (
-      <Empty>
-        No questions. Agents ask here when the architecture is ambiguous; you can also ask on
-        any component from its inspector.
-      </Empty>
-    );
-  }
-  return (
-    <div className="min-h-0 flex-1 overflow-y-auto">
-      {open.length === 0 && <Empty>No open questions.</Empty>}
-      <ul>
-        {open.map((t) => (
-          <ThreadCard key={t._id} thread={t} activity={activity} onSelectPath={onSelectPath} />
-        ))}
-      </ul>
-      {resolved.length > 0 && (
-        <>
-          <button
-            type="button"
-            onClick={() => setShowResolved((s) => !s)}
-            className="flex h-8 w-full items-center gap-1 px-3 text-left hover:bg-surface-2"
-          >
-            <Icon.ChevronRight
-              className={cx("h-3 w-3 text-ink-3 transition-transform", showResolved && "rotate-90")}
-            />
-            <span className="eyebrow">Resolved ({resolved.length})</span>
-          </button>
-          {showResolved && (
-            <ul className="opacity-80">
-              {resolved.map((t) => (
-                <ThreadCard key={t._id} thread={t} activity={activity} onSelectPath={onSelectPath} />
-              ))}
-            </ul>
-          )}
-        </>
-      )}
-    </div>
-  );
-}
-
 /* ------------------------------------------------------------------- Drift */
 
 const STATUS: Record<
@@ -711,7 +552,6 @@ export function ActivityPanel({
   onLinkRepo,
 }: ActivityPanelProps) {
   const commits = useCommits(repo);
-  const openQuestions = activity.threads.filter((t) => t.status === "open").length;
   const findings = activity.drift?.findings.length ?? 0;
   return (
     <SidePanel tall className="md:w-[320px]">
@@ -721,10 +561,6 @@ export function ActivityPanel({
           onChange={onTabChange}
           options={[
             { value: "history", label: "History" },
-            {
-              value: "questions",
-              label: openQuestions > 0 ? `Questions · ${openQuestions}` : "Questions",
-            },
             { value: "drift", label: findings > 0 ? `Drift · ${findings}` : "Drift" },
           ]}
         />
@@ -743,7 +579,6 @@ export function ActivityPanel({
           commits={commits}
         />
       )}
-      {tab === "questions" && <QuestionsTab activity={activity} onSelectPath={onSelectPath} />}
       {tab === "drift" && (
         <DriftTab
           activity={activity}
