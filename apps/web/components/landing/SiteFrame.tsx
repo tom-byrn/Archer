@@ -10,15 +10,17 @@ const navLink =
   "rounded-sm text-sm text-ink-2 transition-colors duration-100 hover:text-ink";
 
 /**
- * The public pages' shell: always dark, one ruled column with diamond joints,
- * header and footer. `backdrop` sits behind the column (the landing's fog);
- * `footerExtra` goes under the footer links (the landing's wordmark).
- * `header` replaces the default header row (wordmark + public nav) and
- * `footerLinks` the default footer links, for pages that have their own.
+ * The site shell: one ruled column with diamond joints, header and footer.
+ * It follows the OS color scheme unless `dark` forces the dark tokens (the
+ * landing page, whose fog is black). `backdrop` sits behind the column (the
+ * landing's fog); `footerExtra` goes under the footer links (the landing's
+ * wordmark). `header` replaces the default header row (wordmark + public nav)
+ * and `footerLinks` the default footer links, for pages that have their own.
  */
 export function SiteFrame({
   children,
   className,
+  dark = false,
   backdrop,
   header,
   footerLinks,
@@ -26,27 +28,32 @@ export function SiteFrame({
 }: {
   children: ReactNode;
   className?: string;
+  dark?: boolean;
   backdrop?: ReactNode;
   header?: ReactNode;
   footerLinks?: ReactNode;
   footerExtra?: ReactNode;
 }) {
-  // The wrapper's class themes this subtree from the first paint; the same
-  // class on <html> covers the body behind it and tells useIsDark (canvas
-  // node colors) that the page is dark.
+  // When forced dark, the wrapper's class themes this subtree from the first
+  // paint; the same class on <html> covers the body behind it and tells
+  // useIsDark (canvas node colors) that the page is dark.
   useEffect(() => {
+    if (!dark) return;
     const root = document.documentElement;
     root.classList.add(FORCED_DARK_CLASS);
     return () => root.classList.remove(FORCED_DARK_CLASS);
-  }, []);
+  }, [dark]);
 
   return (
     <div
       className={cx(
         className,
-        FORCED_DARK_CLASS,
-        "relative isolate flex min-h-full flex-col overflow-x-clip bg-black text-ink",
+        dark && FORCED_DARK_CLASS,
+        "relative isolate flex min-h-full flex-col overflow-x-clip bg-bg text-ink",
       )}
+      // The forced-dark shell sits on black, under the fog, rather than on the
+      // dark tokens' --bg; the joints pick the same value up.
+      style={dark ? ({ "--bg": "#000" } as React.CSSProperties) : undefined}
     >
       {backdrop}
       {/* Flex column so the side rules run to the bottom on short pages. */}

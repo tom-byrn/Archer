@@ -91,7 +91,7 @@
   height: 8px;
   transform: rotate(45deg);
   border: 1px solid var(--line-2);
-  background: #000;
+  background: var(--bg);
   pointer-events: none;
 }
 .landing-joints::before {

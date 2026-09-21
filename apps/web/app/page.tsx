@@ -13,7 +13,6 @@ import { MembersDialog } from "@/components/MembersDialog";
 import { SAMPLE } from "@/lib/sample";
 import { DocPreview } from "@/lib/preview";
 import { ConnectAgentDialog } from "@/components/ConnectAgentDialog";
-import { Fog } from "@/components/landing/Fog";
 import { SiteFrame, siteNavLinkCls } from "@/components/landing/SiteFrame";
 import {
   Button,
@@ -474,7 +473,6 @@ export default function Home() {
 
   return (
     <SiteFrame
-      backdrop={<Fog />}
       header={
         <>
           <span className="font-display text-[19px] leading-none text-ink">Archer</span>
