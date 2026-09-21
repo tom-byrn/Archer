@@ -259,7 +259,7 @@ export function Palette({
   const plainVisible = !searching || matchRank({ name: "Plain component", tag: "", namespace: "generic" }, q) >= 0;
 
   return (
-    <aside className="flex w-[224px] shrink-0 flex-col border-r border-line bg-surface">
+    <aside className="hidden w-[224px] shrink-0 flex-col border-r border-line bg-surface md:flex">
       <div className="p-2">
         <div className="relative">
           <Icon.Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-ink-3" />

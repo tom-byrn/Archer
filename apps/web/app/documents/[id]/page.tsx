@@ -35,14 +35,14 @@ export default function DocumentPage({
 
   if (doc === undefined || workspaceId === null) {
     return (
-      <div className="grid h-screen place-items-center bg-bg text-sm text-ink-3">
+      <div className="grid h-dvh place-items-center bg-bg text-sm text-ink-3">
         <span className="animate-pulse">Loading document…</span>
       </div>
     );
   }
   if (doc === null) {
     return (
-      <div className="grid h-screen place-items-center bg-bg text-base text-ink-2">
+      <div className="grid h-dvh place-items-center bg-bg text-base text-ink-2">
         <div className="text-center">
           <p className="font-display text-xl text-ink">Document not found</p>
           <p className="pt-1 text-sm text-ink-3">It may have been deleted, or it belongs to another workspace.</p>

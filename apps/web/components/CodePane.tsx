@@ -208,10 +208,10 @@ export function CodePane({
       role="dialog"
       aria-modal
       aria-label={`${title} — .arch source`}
-      className="flex h-[85vh] w-[85vw] flex-col overflow-hidden rounded-xl border border-line shadow-md"
+      className="flex h-dvh w-screen flex-col overflow-hidden border-line shadow-md md:h-[85vh] md:w-[85vw] md:rounded-xl md:border"
       style={{ background: "var(--code-bg)" }}
     >
-      <div className="flex h-12 shrink-0 items-center gap-2 border-b border-line bg-surface pl-4 pr-2">
+      <div className="flex h-12 shrink-0 items-center gap-2 border-b border-line bg-surface pl-3 pr-2 md:pl-4">
         <Icon.Code className="h-4 w-4 text-ink-3" />
         <span className="min-w-0 truncate text-base font-medium text-ink">{title}</span>
         <span className="mono text-xs text-ink-3">.arch</span>
@@ -219,7 +219,7 @@ export function CodePane({
           href="/language"
           target="_blank"
           rel="noreferrer"
-          className="inline-flex h-6 select-none items-center gap-1 whitespace-nowrap rounded-md px-1.5 text-xs font-medium text-ink-3 transition-colors duration-100 hover:bg-surface-2 hover:text-ink"
+          className="hidden h-6 select-none items-center gap-1 whitespace-nowrap rounded-md px-1.5 text-xs font-medium text-ink-3 transition-colors duration-100 hover:bg-surface-2 hover:text-ink md:inline-flex"
         >
           Language spec
           <Icon.External className="h-3 w-3" />
@@ -239,8 +239,9 @@ export function CodePane({
             size="sm"
             icon={copied === "code" ? <Icon.Check /> : <Icon.Copy />}
             onClick={() => flash("code", onCopyCode)}
+            title="Copy code"
           >
-            {copied === "code" ? "Copied" : "Copy code"}
+            <span className="hidden md:inline">{copied === "code" ? "Copied" : "Copy code"}</span>
           </Button>
           <Button
             size="sm"
@@ -253,7 +254,7 @@ export function CodePane({
             }
             onClick={() => flash("agent", onCopyForAgent)}
           >
-            {copied === "agent" ? "Copied" : "Copy for agent"}
+            <span className="hidden md:inline">{copied === "agent" ? "Copied" : "Copy for agent"}</span>
           </Button>
           <span className="mx-1 h-4 w-px bg-line" />
           <IconButton label="Close (esc)" onClick={onToggle}>

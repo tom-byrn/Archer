@@ -217,6 +217,38 @@ export function Segmented<T extends string>({
   );
 }
 
+/* --------------------------------------------------------------- Side panel */
+
+/**
+ * Shell for the editor's side panels (inspector, activity). A right-hand
+ * column from `md` up; below that a bottom sheet over the canvas, so a phone
+ * keeps the whole width for the diagram. Pass the column width as a
+ * `md:w-[…]` utility in `className`; `tall` sheets take more of the screen.
+ */
+export function SidePanel({
+  tall,
+  className,
+  children,
+}: {
+  tall?: boolean;
+  className?: string;
+  children: ReactNode;
+}) {
+  return (
+    <aside
+      className={cx(
+        "fixed inset-x-0 bottom-0 z-40 flex w-full flex-col rounded-t-xl border-t border-line bg-surface pb-[env(safe-area-inset-bottom)] shadow-md [&_.overflow-y-auto]:overscroll-contain",
+        tall ? "h-[70dvh]" : "h-[55dvh]",
+        "md:static md:inset-auto md:z-auto md:h-full md:shrink-0 md:rounded-none md:border-t-0 md:border-l md:pb-0 md:shadow-none",
+        className,
+      )}
+    >
+      <div className="mx-auto mt-1.5 h-1 w-8 shrink-0 rounded-full bg-line-2 md:hidden" aria-hidden />
+      {children}
+    </aside>
+  );
+}
+
 /* ------------------------------------------------------------- Status chips */
 
 export function Chip({

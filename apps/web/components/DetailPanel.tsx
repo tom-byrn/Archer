@@ -44,6 +44,7 @@ import {
   PropertyRow,
   Section,
   Segmented,
+  SidePanel,
   TextArea,
   cx,
   relativeTime,
@@ -349,6 +350,7 @@ function ComponentInspector({
   mutate,
   onSelect,
   onClose,
+  onDrillIn,
   library,
   activity,
   repo,
@@ -358,6 +360,7 @@ function ComponentInspector({
   mutate: (fn: (d: ArchDoc) => ArchDoc) => void;
   onSelect: (s: Selection) => void;
   onClose: () => void;
+  onDrillIn?: (path: string) => void;
   library: UserLibrary;
   activity: DocumentActivity;
   repo: RepoLink | null;
@@ -403,6 +406,16 @@ function ComponentInspector({
             </IconButton>
           )}
           items={[
+            ...(isContainer && onDrillIn
+              ? [
+                  {
+                    label: "Open",
+                    hint: "Show what's inside",
+                    icon: <Icon.ChevronRight />,
+                    onSelect: () => onDrillIn(path),
+                  },
+                ]
+              : []),
             ...(isContainer
               ? [
                   {
@@ -693,6 +706,7 @@ export function DetailPanel({
   selection,
   mutate,
   onSelect,
+  onDrillIn,
   library,
   activity,
   repo = null,
@@ -701,14 +715,17 @@ export function DetailPanel({
   selection: Selection;
   mutate: (fn: (d: ArchDoc) => ArchDoc) => void;
   onSelect: (s: Selection) => void;
+  /** Focus the canvas on a container's children (the touch stand-in for double-click). */
+  onDrillIn?: (path: string) => void;
   library: UserLibrary;
   activity: DocumentActivity;
   /** Linked repository: turns relative `src` paths into GitHub links. */
   repo?: RepoLink | null;
 }) {
   if (selection === null) return null;
+  // Desktop: a right-hand column. Phones: a bottom sheet over the canvas.
   return (
-    <aside className="h-full w-[300px] shrink-0 border-l border-line bg-surface">
+    <SidePanel className="md:w-[300px]">
       {selection.kind === "component" ? (
         <ComponentInspector
           key={selection.path}
@@ -717,6 +734,7 @@ export function DetailPanel({
           mutate={mutate}
           onSelect={onSelect}
           onClose={() => onSelect(null)}
+          onDrillIn={onDrillIn}
           library={library}
           activity={activity}
           repo={repo}
@@ -731,6 +749,6 @@ export function DetailPanel({
           onClose={() => onSelect(null)}
         />
       )}
-    </aside>
+    </SidePanel>
   );
 }

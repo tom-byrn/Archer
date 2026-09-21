@@ -17,7 +17,7 @@ import { displayColor, useIsDark } from "@/lib/useIsDark";
 import { ArchCanvas, type CanvasCallbacks } from "./ArchCanvas";
 import { CodeEditor } from "./CodeMirror";
 import { Glyph } from "./nodes";
-import { Button, Chip, Icon, IconButton, Kbd, Menu, Section, cx, relativeTime } from "./ui";
+import { Button, Chip, Icon, IconButton, Kbd, Menu, Section, SidePanel, cx, relativeTime } from "./ui";
 
 const resolveType = (tag: string) => {
   const entry = lookupType(tag);
@@ -116,16 +116,17 @@ export function DocumentViewer({
   const node = selectedPath ? findComponent(derived.doc, selectedPath.split(".")) : null;
 
   return (
-    <div className="flex h-screen flex-col bg-bg">
+    <div className="flex h-dvh flex-col overscroll-none bg-bg">
       <header className="flex h-10 shrink-0 items-center gap-1 border-b border-line bg-surface px-2">
         <Link
           href={backHref ?? "/"}
-          className="flex h-7 items-center gap-2 rounded-md px-1.5 transition-colors hover:bg-surface-2"
+          className="flex h-7 shrink-0 items-center gap-2 rounded-md px-1.5 transition-colors hover:bg-surface-2"
         >
-          <span className="font-display text-[17px] leading-none">Archer</span>
+          <Icon.ChevronLeft className="h-4 w-4 text-ink-2 md:hidden" />
+          <span className="hidden font-display text-[17px] leading-none md:inline">Archer</span>
         </Link>
-        <span className="mx-1 h-4 w-px bg-line" />
-        <span className="max-w-[320px] truncate px-1 text-base font-medium text-ink">{title}</span>
+        <span className="mx-1 hidden h-4 w-px bg-line md:block" />
+        <span className="max-w-[38vw] truncate px-1 text-base font-medium text-ink md:max-w-[320px]">{title}</span>
         <Chip className="ml-1">View only</Chip>
         {repo && (
           <a
@@ -143,7 +144,7 @@ export function DocumentViewer({
           {toast ? (
             <span className="pr-2 text-xs text-accent">{toast}</span>
           ) : (
-            <span className="pr-2 text-xs text-ink-3">Updated {relativeTime(updatedAt)}</span>
+            <span className="hidden pr-2 text-xs text-ink-3 md:inline">Updated {relativeTime(updatedAt)}</span>
           )}
           <IconButton label={codeOpen ? "Hide code" : "Show code"} onClick={() => setCodeOpen((o) => !o)} active={codeOpen}>
             <Icon.Code />
@@ -189,9 +190,12 @@ export function DocumentViewer({
         </div>
       </header>
 
-      <div className="flex min-h-0 flex-1">
+      <div className="relative flex min-h-0 flex-1">
         {codeOpen && (
-          <div className="flex w-[400px] shrink-0 flex-col border-r border-line" style={{ background: "var(--code-bg)" }}>
+          <div
+            className="absolute inset-0 z-20 flex flex-col border-line md:static md:w-[400px] md:shrink-0 md:border-r"
+            style={{ background: "var(--code-bg)" }}
+          >
             <div className="flex h-8 shrink-0 items-center border-b border-line px-3">
               <span className="mono text-xs text-ink-3">.arch</span>
               <Chip className="ml-2">read-only</Chip>
@@ -203,16 +207,16 @@ export function DocumentViewer({
         )}
         <main className="relative flex min-w-0 flex-1 flex-col">
           {liveFocus.length > 0 && (
-            <nav className="flex h-8 shrink-0 items-center gap-0.5 border-b border-line bg-surface px-2 text-sm">
+            <nav className="flex h-8 shrink-0 items-center gap-0.5 overflow-x-auto whitespace-nowrap border-b border-line bg-surface px-2 text-sm">
               <button
                 type="button"
                 onClick={() => setFocus([])}
-                className="rounded-sm px-1.5 py-0.5 text-ink-2 transition-colors hover:bg-surface-2 hover:text-ink"
+                className="shrink-0 rounded-sm px-1.5 py-0.5 text-ink-2 transition-colors hover:bg-surface-2 hover:text-ink"
               >
                 {derived.doc.title}
               </button>
               {liveFocus.map((seg, i) => (
-                <span key={i} className="flex items-center gap-0.5">
+                <span key={i} className="flex shrink-0 items-center gap-0.5">
                   <Icon.ChevronRight className="h-3 w-3 text-ink-3" />
                   <button
                     type="button"
@@ -226,9 +230,18 @@ export function DocumentViewer({
                   </button>
                 </span>
               ))}
-              <span className="ml-auto flex items-center gap-1.5 text-xs text-ink-3">
+              <span className="ml-auto hidden items-center gap-1.5 pl-2 text-xs text-ink-3 md:flex">
                 <Kbd>esc</Kbd> up a level
               </span>
+              <Button
+                size="sm"
+                variant="ghost"
+                icon={<Icon.ChevronLeft />}
+                className="ml-auto shrink-0 md:hidden"
+                onClick={() => setFocus((f) => f.slice(0, -1))}
+              >
+                Up
+              </Button>
             </nav>
           )}
           <div
@@ -281,7 +294,7 @@ function Details({
         : null
     : null;
   return (
-    <aside className="flex w-[300px] shrink-0 flex-col border-l border-line bg-surface">
+    <SidePanel className="md:w-[300px]">
       <div className="flex h-11 shrink-0 items-center gap-2.5 border-b border-line px-3">
         <span
           className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md"
@@ -363,6 +376,6 @@ function Details({
           </Section>
         )}
       </div>
-    </aside>
+    </SidePanel>
   );
 }

@@ -221,3 +221,21 @@
   background: var(--accent-soft);
   border: 1px solid var(--accent);
 }
+
+/* ---- Touch ---- */
+/* No hover on touch screens: handles only appear on the selected node, so
+   they must be large enough to grab; the zoom controls get finger-sized. */
+@media (pointer: coarse) {
+  .arch-handle {
+    width: 14px !important;
+    height: 14px !important;
+  }
+  .react-flow__controls-button {
+    width: 36px;
+    height: 36px;
+  }
+  .react-flow__controls-button svg {
+    max-width: 16px;
+    max-height: 16px;
+  }
+}

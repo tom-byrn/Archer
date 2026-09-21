@@ -27,6 +27,7 @@ import {
   IconButton,
   Input,
   Segmented,
+  SidePanel,
   cx,
   relativeTime,
 } from "./ui";
@@ -713,7 +714,7 @@ export function ActivityPanel({
   const openQuestions = activity.threads.filter((t) => t.status === "open").length;
   const findings = activity.drift?.findings.length ?? 0;
   return (
-    <aside className="flex h-full w-[320px] shrink-0 flex-col border-l border-line bg-surface">
+    <SidePanel tall className="md:w-[320px]">
       <div className="flex h-10 shrink-0 items-center gap-2 border-b border-line px-2">
         <Segmented<ActivityTab>
           value={tab}
@@ -754,6 +755,6 @@ export function ActivityPanel({
           commits={commits}
         />
       )}
-    </aside>
+    </SidePanel>
   );
 }
