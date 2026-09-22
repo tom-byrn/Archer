@@ -13,7 +13,7 @@
 /* Grey at the top of the viewport fading to black. The dithered version is
    drawn over it by DitherBackdrop; this smooth one covers first paint. */
 .landing-dither {
-  background: linear-gradient(180deg, #26272b 0%, #0b0b0c 45%, #000 85%);
+  background: linear-gradient(180deg, #121212 0%, #050505 45%, #000 85%);
 }
 
 .landing-wordmark {

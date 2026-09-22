@@ -24,9 +24,9 @@ export function DitherBackdrop() {
 }
 
 const UNIFORMS = {
-  // #000000 and #26272b as linear 0–1 RGBA.
+  // #000000 and #121212 as linear 0–1 RGBA.
   u_colorBack: [0, 0, 0, 1],
-  u_colorFront: [0x26 / 255, 0x27 / 255, 0x2b / 255, 1],
+  u_colorFront: [0x12 / 255, 0x12 / 255, 0x12 / 255, 1],
   // Size of one dither cell, in CSS pixels.
   u_pxSize: 2,
   // Fraction of the viewport height, from the top, over which the fade runs.
