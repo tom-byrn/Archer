@@ -1,8 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 
-// Everything is private except the landing page, the sign-in flow, the
-// language reference (which users hand to agents as a docs link), and
+// Everything is private except the landing page, the sign-in flow, the docs
+// under /language (which users hand to agents as a docs link), and
 // shared-link views.
 const isPublic = createRouteMatcher([
   "/welcome(.*)",
