@@ -111,7 +111,7 @@ export function CommandPalette({
         role="dialog"
         aria-modal
         aria-label="Add a component"
-        className="mx-auto mt-[4vh] w-[520px] max-w-full overflow-hidden rounded-xl border border-line bg-surface shadow-md md:mt-[18vh]"
+        className="mx-auto mt-[4vh] flex max-h-[calc(100%-4vh)] w-[624px] max-w-full flex-col overflow-hidden rounded-xl border border-line bg-surface shadow-md md:mt-[18vh] md:max-h-[calc(100%-18vh)]"
       >
         <div className="flex items-center gap-2.5 border-b border-line px-4">
           <Icon.Search className="h-4 w-4 shrink-0 text-ink-3" />
@@ -140,7 +140,7 @@ export function CommandPalette({
           />
         </div>
 
-        <div ref={listRef} className="max-h-[50dvh] overflow-y-auto p-1.5 md:max-h-[360px]" role="listbox">
+        <div ref={listRef} className="max-h-[50dvh] overflow-y-auto p-1.5 md:max-h-[492px]" role="listbox">
           {flat.length === 0 && (
             <p className="px-2.5 py-6 text-center text-sm text-ink-3">No matches</p>
           )}
