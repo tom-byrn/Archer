@@ -57,6 +57,13 @@ Router + React Flow + Convex).
   `embedded` mode on a local `useArchDoc` (no Convex), lazy-loaded so React
   Flow stays out of the first paint. Absolute URLs come from `lib/site.ts`
   (`NEXT_PUBLIC_SITE_URL`, default `https://archer.tombyrne.dev`).
+- Docs: `/language` (the spec) and `/language/examples` (worked examples from
+  `lib/examples.ts`). Example sources must stay canonical and validate clean —
+  `apps/web/test/examples.test.ts` enforces it, so the code shown, the diagram
+  (`lib/svg.ts`, prerendered at `/language/examples/<slug>/{light,dark}.svg`)
+  and the editor copy always agree. "Open in editor" goes to
+  `/new?example=<slug>`, which copies the example into the selected workspace
+  (reusing an untouched earlier copy) and opens it.
 - UI conventions (`apps/web`): all colors, radii and text sizes come from the
   tokens in `app/globals.css` (exposed as Tailwind utilities: `bg-surface`,
   `text-ink-2`, `border-line`, `rounded-md`, `text-sm`…). Never use the raw
