@@ -12,6 +12,7 @@ import {
   useRef,
   useState,
   type ButtonHTMLAttributes,
+  type CSSProperties,
   type InputHTMLAttributes,
   type ReactNode,
   type TextareaHTMLAttributes,
@@ -225,24 +226,146 @@ export function Segmented<T extends string>({
  * keeps the whole width for the diagram. Pass the column width as a
  * `md:w-[…]` utility in `className`; `tall` sheets take more of the screen.
  */
+/** localStorage key of the user's chosen editor sidebar width (shared by its panels). */
+const SIDE_PANEL_WIDTH_KEY = "archer.sidePanelWidth";
+const SIDE_PANEL_MIN = 300;
+/** Room always left for the palette (224px) and a usable canvas. */
+const SIDE_PANEL_RESERVE = 560;
+
+const clampPanelWidth = (w: number): number =>
+  Math.round(
+    Math.max(
+      SIDE_PANEL_MIN,
+      Math.min(w, typeof window === "undefined" ? w : window.innerWidth - SIDE_PANEL_RESERVE),
+    ),
+  );
+
+/** Remembered sidebar width, falling back to `fallback` until the user drags one. */
+function useSidePanelWidth(fallback: number) {
+  const [width, setWidth] = useState<number>(() => {
+    try {
+      const v = Number(localStorage.getItem(SIDE_PANEL_WIDTH_KEY));
+      return v > 0 ? v : fallback;
+    } catch {
+      return fallback;
+    }
+  });
+  const save = (w: number) => {
+    try {
+      localStorage.setItem(SIDE_PANEL_WIDTH_KEY, String(w));
+    } catch {
+      /* private mode: the width just isn't remembered */
+    }
+  };
+  const reset = () => {
+    setWidth(fallback);
+    try {
+      localStorage.removeItem(SIDE_PANEL_WIDTH_KEY);
+    } catch {
+      /* ignore */
+    }
+  };
+  return { width, setWidth, save, reset };
+}
+
+/** Left-edge drag handle of a resizable side panel (desktop only). */
+function ResizeHandle({
+  width,
+  onResize,
+  onCommit,
+  onReset,
+}: {
+  width: number;
+  onResize: (w: number) => void;
+  onCommit: (w: number) => void;
+  onReset: () => void;
+}) {
+  const [dragging, setDragging] = useState(false);
+  const start = useRef({ x: 0, width: 0, last: 0 });
+  return (
+    <div
+      role="separator"
+      aria-orientation="vertical"
+      aria-label="Resize panel"
+      aria-valuenow={width}
+      aria-valuemin={SIDE_PANEL_MIN}
+      tabIndex={0}
+      title="Drag to resize · double-click to reset"
+      onPointerDown={(e) => {
+        if (e.button !== 0) return;
+        e.preventDefault();
+        e.currentTarget.setPointerCapture(e.pointerId);
+        start.current = { x: e.clientX, width, last: width };
+        setDragging(true);
+      }}
+      onPointerMove={(e) => {
+        if (!dragging) return;
+        // The panel sits on the right, so dragging left widens it.
+        const w = clampPanelWidth(start.current.width + start.current.x - e.clientX);
+        start.current.last = w;
+        onResize(w);
+      }}
+      onPointerUp={(e) => {
+        if (!dragging) return;
+        e.currentTarget.releasePointerCapture(e.pointerId);
+        setDragging(false);
+        onCommit(start.current.last);
+      }}
+      onDoubleClick={onReset}
+      onKeyDown={(e) => {
+        const step = e.shiftKey ? 64 : 16;
+        const delta = e.key === "ArrowLeft" ? step : e.key === "ArrowRight" ? -step : 0;
+        if (delta === 0) return;
+        e.preventDefault();
+        const w = clampPanelWidth(width + delta);
+        onResize(w);
+        onCommit(w);
+      }}
+      className="group absolute inset-y-0 -left-1.5 z-10 hidden w-3 cursor-col-resize touch-none outline-none md:block"
+    >
+      <span
+        className={cx(
+          "absolute inset-y-0 left-1/2 w-0.5 -translate-x-1/2 transition-colors duration-100",
+          dragging ? "bg-accent" : "bg-transparent group-hover:bg-line-2 group-focus-visible:bg-accent",
+        )}
+      />
+      {/* Keep the cursor and block text selection while the pointer is off the handle. */}
+      {dragging && <div className="fixed inset-0 z-50 cursor-col-resize" />}
+    </div>
+  );
+}
+
 export function SidePanel({
   tall,
+  resizable,
+  defaultWidth = 300,
   className,
   children,
 }: {
   tall?: boolean;
+  /** Desktop only: drag the left edge to resize; the width is remembered. */
+  resizable?: boolean;
+  /** Desktop width (px) of a resizable panel until the user picks one. */
+  defaultWidth?: number;
   className?: string;
   children: ReactNode;
 }) {
+  const { width, setWidth, save, reset } = useSidePanelWidth(defaultWidth);
   return (
     <aside
+      style={resizable ? ({ "--side-panel-w": `${width}px` } as CSSProperties) : undefined}
       className={cx(
         "fixed inset-x-0 bottom-0 z-40 flex w-full flex-col rounded-t-xl border-t border-line bg-surface pb-[env(safe-area-inset-bottom)] shadow-md [&_.overflow-y-auto]:overscroll-contain",
         tall ? "h-[70dvh]" : "h-[55dvh]",
-        "md:static md:inset-auto md:z-auto md:h-full md:shrink-0 md:rounded-none md:border-t-0 md:border-l md:pb-0 md:shadow-none",
+        "md:relative md:inset-auto md:z-auto md:h-full md:shrink-0 md:rounded-none md:border-t-0 md:border-l md:pb-0 md:shadow-none",
+        resizable &&
+          "md:w-[var(--side-panel-w)] md:max-w-[calc(100vw-560px)] md:min-w-[300px]",
         className,
       )}
     >
+      {resizable && (
+        <ResizeHandle width={width} onResize={setWidth} onCommit={save} onReset={reset} />
+      )}
       <div className="mx-auto mt-1.5 h-1 w-8 shrink-0 rounded-full bg-line-2 md:hidden" aria-hidden />
       {children}
     </aside>

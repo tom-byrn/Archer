@@ -75,16 +75,18 @@ function CommitInput({
   mono,
   validate,
   onCommit,
+  className,
 }: {
   defaultValue: string;
   placeholder?: string;
   mono?: boolean;
   validate?: (v: string) => string | null;
   onCommit: (v: string) => void;
+  className?: string;
 }) {
   const [error, setError] = useState<string | null>(null);
   return (
-    <div>
+    <div className={className}>
       <Input
         defaultValue={defaultValue}
         placeholder={placeholder}
@@ -360,7 +362,7 @@ function ComponentInspector({
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto">
-        <Section title="Component">
+        <Section title="Component" className="pb-5">
           <PropertyRow label="Name">
             <CommitInput
               defaultValue={node.name ?? ""}
@@ -398,7 +400,9 @@ function ComponentInspector({
               key={`${path}-desc`}
               defaultValue={node.desc ?? ""}
               placeholder="What is this component for?"
-              rows={3}
+              rows={6}
+              // Grows with the viewport so short screens still reach Payloads.
+              style={{ height: "clamp(120px, 22dvh, 280px)" }}
               onBlur={(e) => {
                 const v = e.target.value;
                 if (v === (node.desc ?? "")) return;
@@ -410,6 +414,7 @@ function ComponentInspector({
             <div className="flex items-center gap-1">
               <CommitInput
                 key={`${path}-src`}
+                className="min-w-0 flex-1"
                 mono
                 defaultValue={node.src ?? ""}
                 placeholder="apps/api/src/billing or https://…"
@@ -601,7 +606,7 @@ export function DetailPanel({
   if (selection === null) return null;
   // Desktop: a right-hand column. Phones: a bottom sheet over the canvas.
   return (
-    <SidePanel className="md:w-[300px]">
+    <SidePanel resizable defaultWidth={480}>
       {selection.kind === "component" ? (
         <ComponentInspector
           key={selection.path}
