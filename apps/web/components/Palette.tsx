@@ -104,6 +104,27 @@ function PlainItem({ onAdd }: { onAdd: () => void }) {
   );
 }
 
+/** Opens the new-type form. Always last in "My components", so it works without hover. */
+function NewTypeItem({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex h-7 w-full items-center gap-2 rounded-md px-1.5 text-left text-ink-3 transition-colors duration-75 hover:bg-surface-2 hover:text-ink-2"
+    >
+      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-sm border border-dashed border-line-2">
+        <Icon.Plus className="h-3 w-3" />
+      </span>
+      <span className="min-w-0 flex-1 truncate text-sm">New component type</span>
+    </button>
+  );
+}
+
+/**
+ * A group's `action` takes the count's place while the row is hovered or has
+ * keyboard focus, so every header keeps the same shape and the counts stay
+ * in one column.
+ */
 function GroupHeader({
   label,
   count,
@@ -118,12 +139,12 @@ function GroupHeader({
   action?: React.ReactNode;
 }) {
   return (
-    <div className="flex h-[26px] items-center">
+    <div className="group relative h-[26px]">
       <button
         type="button"
         onClick={onToggle}
         aria-expanded={open}
-        className="flex h-full min-w-0 flex-1 items-center gap-1 rounded-md px-1 text-left hover:bg-surface-2"
+        className="flex h-full w-full items-center gap-1 rounded-md px-1 text-left group-hover:bg-surface-2"
       >
         <Icon.ChevronRight
           className={cx(
@@ -132,9 +153,21 @@ function GroupHeader({
           )}
         />
         <span className="eyebrow min-w-0 truncate">{label}</span>
-        <span className="ml-auto pl-2 text-xs text-ink-3">{count}</span>
+        <span
+          className={cx(
+            "ml-auto pl-2 text-xs text-ink-3",
+            !!action &&
+              "transition-opacity duration-100 group-hover:opacity-0 group-has-focus-visible:opacity-0",
+          )}
+        >
+          {count}
+        </span>
       </button>
-      {action && <span className="ml-0.5 shrink-0">{action}</span>}
+      {action && (
+        <span className="pointer-events-none absolute inset-y-0 right-px flex items-center opacity-0 transition-opacity duration-100 group-hover:pointer-events-auto group-hover:opacity-100 group-has-focus-visible:pointer-events-auto group-has-focus-visible:opacity-100">
+          {action}
+        </span>
+      )}
     </div>
   );
 }
@@ -168,7 +201,7 @@ function NewTypeForm({
     .replace(/^[0-9]+/, "");
 
   return (
-    <div className="mb-1 rounded-lg border border-line bg-surface-2 p-2">
+    <div className="mt-1 rounded-lg border border-line bg-surface-2 p-2">
       <Input
         value={name}
         onChange={(e) => setName(e.target.value)}
@@ -315,7 +348,7 @@ export function Palette({
                 open={open}
                 onToggle={() => toggle(ns)}
                 action={
-                  isCustom ? (
+                  isCustom && !creating ? (
                     <IconButton
                       label="New component type"
                       size="sm"
@@ -323,6 +356,7 @@ export function Palette({
                         setCreating(true);
                         if (!open) toggle(ns);
                       }}
+                      className="hover:bg-surface-3"
                     >
                       <Icon.Plus />
                     </IconButton>
@@ -331,21 +365,7 @@ export function Palette({
               />
               {open && (
                 <div className="pb-1">
-                  {isCustom && creating && (
-                    <NewTypeForm
-                      onCreate={(t) => {
-                        library.add(t);
-                        setCreating(false);
-                      }}
-                      onCancel={() => setCreating(false)}
-                    />
-                  )}
                   {showPlain && <PlainItem onAdd={() => onAdd(undefined)} />}
-                  {isCustom && items.length === 0 && !creating && !searching && (
-                    <p className="px-1.5 py-1 text-xs text-ink-3">
-                      Save your own types with +
-                    </p>
-                  )}
                   {visible.map((t) => (
                     <PaletteItem
                       key={t.tag}
@@ -365,6 +385,18 @@ export function Palette({
                       }
                     />
                   ))}
+                  {isCustom && creating && (
+                    <NewTypeForm
+                      onCreate={(t) => {
+                        library.add(t);
+                        setCreating(false);
+                      }}
+                      onCancel={() => setCreating(false)}
+                    />
+                  )}
+                  {isCustom && !creating && !searching && (
+                    <NewTypeItem onClick={() => setCreating(true)} />
+                  )}
                 </div>
               )}
             </div>
