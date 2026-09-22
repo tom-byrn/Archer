@@ -20,7 +20,7 @@ export const list = query({
       .collect();
     return docs
       .sort((a, b) => b.updatedAt - a.updatedAt)
-      .map(({ _id, title, updatedAt, source }) => ({ _id, title, updatedAt, source }));
+      .map(({ _id, title, updatedAt, source, repo }) => ({ _id, title, updatedAt, source, repo }));
   },
 });
 
