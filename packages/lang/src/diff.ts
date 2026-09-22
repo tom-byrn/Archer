@@ -4,6 +4,7 @@ import {
   type ComponentNode,
   type ConnectionNode,
   type LayoutEntry,
+  type PayloadNode,
 } from "./types";
 import { findComponent, normalizeLayout } from "./validate";
 import { layoutMap } from "./layout";
@@ -26,7 +27,8 @@ export interface ComponentChange {
 export interface ConnectionChange {
   /** connectionKey() of the connection. */
   key: string;
-  kind: "added" | "removed";
+  /** "changed" = same identity (endpoints/arrow/type/label) but different payloads. */
+  kind: ChangeKind;
   connection: ConnectionNode;
 }
 
@@ -43,6 +45,7 @@ export interface DiffSummary {
   changed: number;
   connectionsAdded: number;
   connectionsRemoved: number;
+  connectionsChanged: number;
 }
 
 /** Identity of a connection independent of position: source|arrow|target|type|label. */
@@ -70,7 +73,10 @@ const flatten = (doc: ArchDoc): Map<string, ComponentNode> => {
   return out;
 };
 
-const payloadsEqual = (a: ComponentNode, b: ComponentNode): boolean => {
+const payloadsEqual = (
+  a: { payloads: PayloadNode[] },
+  b: { payloads: PayloadNode[] },
+): boolean => {
   if (a.payloads.length !== b.payloads.length) return false;
   const byName = new Map(a.payloads.map((p) => [p.name, p]));
   for (const p of b.payloads) {
@@ -112,7 +118,10 @@ export function diffDocs(base: ArchDoc, next: ArchDoc): DocDiff {
   const afterConns = new Map(next.connections.map((c) => [connectionKey(c), c]));
   const connections: ConnectionChange[] = [];
   for (const [key, connection] of afterConns) {
-    if (!beforeConns.has(key)) connections.push({ key, kind: "added", connection });
+    const prev = beforeConns.get(key);
+    if (!prev) connections.push({ key, kind: "added", connection });
+    else if (!payloadsEqual(prev, connection))
+      connections.push({ key, kind: "changed", connection });
   }
   for (const [key, connection] of beforeConns) {
     if (!afterConns.has(key)) connections.push({ key, kind: "removed", connection });
@@ -132,11 +141,13 @@ export function summarizeDiff(diff: DocDiff): DiffSummary {
     changed: 0,
     connectionsAdded: 0,
     connectionsRemoved: 0,
+    connectionsChanged: 0,
   };
   for (const c of diff.components) s[c.kind]++;
   for (const c of diff.connections) {
     if (c.kind === "added") s.connectionsAdded++;
-    else s.connectionsRemoved++;
+    else if (c.kind === "removed") s.connectionsRemoved++;
+    else s.connectionsChanged++;
   }
   return s;
 }
@@ -208,8 +219,8 @@ export function mergeForDiff(
 
   // Connections: keep next's, re-add removed ones whose endpoints now exist.
   for (const c of diff.connections) {
-    if (c.kind === "added") {
-      connections.set(c.key, "added");
+    if (c.kind !== "removed") {
+      connections.set(c.key, c.kind);
       continue;
     }
     const src = pathToString(c.connection.source);

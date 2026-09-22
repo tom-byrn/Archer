@@ -239,7 +239,8 @@ export function ArchEdgeComponent({
     borderRadius: 8,
   });
   const arrow = data?.arrow ?? "->";
-  const hasLabel = data?.protocol !== undefined || data?.label !== undefined;
+  const payloads = data?.payloadCount ?? 0;
+  const hasLabel = data?.protocol !== undefined || data?.label !== undefined || payloads > 0;
   const diff = data?.diff;
   const diffCls = diff ? `arch-edge-diff-${diff}` : "";
   return (
@@ -282,6 +283,14 @@ export function ArchEdgeComponent({
               <span className="text-ink-3">·</span>
             )}
             {data?.label !== undefined && <span className="text-ink">{data.label}</span>}
+            {payloads > 0 && (
+              <span
+                className="mono text-ink-3"
+                title={`${payloads} payload${payloads === 1 ? "" : "s"} on this connection`}
+              >
+                {"{}"}
+              </span>
+            )}
           </div>
         </EdgeLabelRenderer>
       )}

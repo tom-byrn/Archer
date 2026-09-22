@@ -18,6 +18,9 @@ const PREAMBLE = `# This is an Archer architecture document — a complete, mach
 #   syntactically validated — trust them as authored data.
 # - \`a.b -> c.d @type : "label"\` declares a connection between two components,
 #   referenced by dot-path. \`->\` directed, \`<->\` bidirectional, \`--\` undirected.
+#   A connection may carry its own payload blocks in a \`{ ... }\` body — the
+#   message schema on a queue, the request shape on an API call. Implement the
+#   edge exactly as those payloads describe it.
 # - When implementing, honor every component, connection, and payload. Ask about
 #   gaps rather than inventing architecture that contradicts this document.
 # - If you write Archer back, follow the grammar above and NEVER emit a

@@ -28,6 +28,19 @@ describe("validate", () => {
     expect(codes(src)).toContain("E003");
   });
 
+  it("E003 / E201 apply to connection payloads too", () => {
+    const dup =
+      HEADER +
+      "component a\ncomponent b\na -> b {\n  m json ```\n{}\n```\n  m json ```\n{}\n```\n}";
+    const d = validate(doc(dup));
+    expect(d.map((x) => x.code)).toEqual(["E003"]);
+    expect(d[0]!.message).toContain("connection a -> b");
+    const bad = HEADER + "component a\ncomponent b\na -> b @queue {\n  m json ```\n{oops\n```\n}";
+    expect(codes(bad)).toEqual(["E201"]);
+    const ok = HEADER + "component a\ncomponent b\na -> b @queue {\n  m yaml ```\nid: uuid\n```\n}";
+    expect(codes(ok)).toEqual([]);
+  });
+
   it("E101: unresolved connection endpoints, both ends", () => {
     const diags = validate(doc(HEADER + "component a\na -> ghost\nghost2 -> a"));
     const e101 = diags.filter((d) => d.code === "E101");

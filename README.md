@@ -19,7 +19,8 @@ not systems. An Archer document is a semantic model:
 - **Strict** — arrows can't point at nothing (the UI snaps them back; the
   validator rejects them with `E101`), ids must resolve, payloads must parse.
 - **Deep** — a Postgres node carries its actual schema as a validated
-  `json`/`yaml`/`table` payload; components nest like JSON.
+  `json`/`yaml`/`table` payload, and a queue edge carries its message schema
+  the same way; components nest like JSON.
 - **Round-trip** — canvas ↔ text with zero loss. Layout lives in a quarantined
   machine-managed `layout` block that agents never see or write.
 - **Agent-first** — "Copy for agent" emits the canonical document, layout

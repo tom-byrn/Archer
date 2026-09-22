@@ -68,7 +68,25 @@ function formatConnection(c: ConnectionNode): string {
   let line = `${pathToString(c.source)} ${c.arrow} ${pathToString(c.target)}`;
   if (c.type !== undefined) line += ` @${c.type}`;
   if (c.label !== undefined) line += ` : ${quote(c.label)}`;
-  return line;
+  if (c.payloads.length === 0) return line;
+  const body = c.payloads.map((p) => formatPayload(p, 1)).join("\n");
+  return `${line} {\n${body}\n}`;
+}
+
+/**
+ * One-line connections pack together; a connection with a body gets a blank
+ * line on each side so the fences read as their own paragraph.
+ */
+function joinConnections(lines: string[]): string {
+  let out = "";
+  for (const [i, line] of lines.entries()) {
+    if (i > 0) {
+      const multi = line.includes("\n") || lines[i - 1]!.includes("\n");
+      out += multi ? "\n\n" : "\n";
+    }
+    out += line;
+  }
+  return out;
 }
 
 function formatLayoutEntry(e: LayoutEntry): string {
@@ -99,7 +117,7 @@ export function format(doc: ArchDoc, opts: FormatOptions = {}): string {
     const sorted = [...doc.connections].sort((a, b) =>
       connectionSortKey(a) < connectionSortKey(b) ? -1 : 1,
     );
-    sections.push(sorted.map(formatConnection).join("\n"));
+    sections.push(joinConnections(sorted.map(formatConnection)));
   }
 
   if (!opts.stripLayout && doc.layout.length > 0) {

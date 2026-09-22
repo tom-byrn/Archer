@@ -235,13 +235,7 @@ export function Editor({
         resolveType,
         isDark,
         marks,
-        edgeDiff: diff
-          ? new Map(
-              [...diff.connections].filter(
-                (e): e is [string, "added" | "removed"] => e[1] !== "changed",
-              ),
-            )
-          : undefined,
+        edgeDiff: diff ? diff.connections : undefined,
       }),
     [displayDoc, liveFocus, resolveType, isDark, marks, diff],
   );

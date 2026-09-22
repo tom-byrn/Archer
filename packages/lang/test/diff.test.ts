@@ -97,7 +97,26 @@ backend.api -> backend.cache @redis`,
       changed: 2,
       connectionsAdded: 2,
       connectionsRemoved: 2,
+      connectionsChanged: 0,
     });
+  });
+
+  it("reports a connection whose payloads changed as changed, not removed+added", () => {
+    const next = doc(
+      format(BASE).replace(
+        "web -> backend.api @http",
+        'web -> backend.api @http {\n  request json ```\n  {"q": "string"}\n  ```\n}',
+      ),
+    );
+    const d = diffDocs(BASE, next);
+    expect(d.components).toEqual([]);
+    expect(d.connections.map((c) => `${c.kind}:${c.key}`)).toEqual([
+      "changed:web|->|backend.api|http|",
+    ]);
+    expect(summarizeDiff(d).connectionsChanged).toBe(1);
+    expect(mergeForDiff(BASE, next).connections.get("web|->|backend.api|http|")).toBe("changed");
+    // Same payloads again: no change.
+    expect(isEmptyDiff(diffDocs(next, doc(format(next))))).toBe(true);
   });
 
   it("detects a title change", () => {

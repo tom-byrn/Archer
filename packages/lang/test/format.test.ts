@@ -64,6 +64,23 @@ describe("format", () => {
     expect(parse(out).doc.components[0]!.desc).toBe("line one\n  indented two");
   });
 
+  it("connection payloads format as a body, sort with their line, and round-trip", () => {
+    const src =
+      'arch "X" v0.1\ncomponent a\ncomponent b\ncomponent c\n' +
+      "b -> c\n" +
+      'a -> b @queue : "orders" {\n  message json ```\n  {"id": "uuid"}\n  ```\n}\n' +
+      "a -> c\n";
+    const out = format(parse(src).doc);
+    expect(out).toBe(
+      'arch "X" v0.1\n\ncomponent a\n\ncomponent b\n\ncomponent c\n\n' +
+        'a -> b @queue : "orders" {\n  message json ```\n  {"id": "uuid"}\n  ```\n}\n\n' +
+        "a -> c\nb -> c\n",
+    );
+    expect(format(parse(out).doc)).toBe(out);
+    expect(parse(out).diagnostics).toEqual([]);
+    expect(parse(out).doc.connections[0]!.payloads[0]!.content).toBe('{"id": "uuid"}');
+  });
+
   it("payload content containing ``` gets a longer fence and round-trips", () => {
     const doc = parse('arch "X" v0.1\ncomponent a').doc;
     doc.components[0]!.payloads.push({

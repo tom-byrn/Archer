@@ -9,16 +9,19 @@ import {
   pathToString,
   removeComponent,
   removeConnection,
+  removeConnectionPayload,
   removePayload,
   renameComponent,
   setComponentMeta,
   setConnectionMeta,
+  setConnectionPayload,
   setDisplay,
   setPayload,
   type ArchDoc,
   type Arrow,
   type ConnectionNode,
   type PayloadFormat,
+  type PayloadNode,
 } from "@archer/lang";
 import { lookupType } from "@archer/catalog";
 import { EditorView } from "@codemirror/view";
@@ -186,6 +189,86 @@ function PayloadCard({
   );
 }
 
+/**
+ * The payload list + "add" flow, shared by components and connections.
+ * `scope` keys the cards so switching selection remounts their editors.
+ */
+function PayloadsSection({
+  scope,
+  payloads,
+  empty,
+  onSet,
+  onRemove,
+}: {
+  scope: string;
+  payloads: PayloadNode[];
+  empty: string;
+  onSet: (name: string, format: PayloadFormat, content: string) => void;
+  onRemove: (name: string) => void;
+}) {
+  const [adding, setAdding] = useState(false);
+  const [newName, setNewName] = useState("");
+  const nameError = newName === "" ? null : ID_RE.test(newName) ? null : "snake_case required";
+
+  const add = () => {
+    const name = newName.trim();
+    if (!ID_RE.test(name) || payloads.some((p) => p.name === name)) return;
+    onSet(name, "json", "{}");
+    setNewName("");
+    setAdding(false);
+  };
+
+  return (
+    <Section
+      title="Payloads"
+      action={
+        <IconButton
+          label="Add payload"
+          size="sm"
+          active={adding}
+          onClick={() => setAdding((a) => !a)}
+        >
+          <Icon.Plus />
+        </IconButton>
+      }
+    >
+      {adding && (
+        <div className="pb-2">
+          <Input
+            autoFocus
+            mono
+            value={newName}
+            placeholder="payload_name"
+            invalid={nameError !== null}
+            onChange={(e) => setNewName(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") add();
+              if (e.key === "Escape") {
+                setAdding(false);
+                setNewName("");
+              }
+            }}
+          />
+          <p className={cx("pt-1 text-xs", nameError ? "text-danger" : "text-ink-3")}>
+            {nameError ?? "Enter to create a json payload"}
+          </p>
+        </div>
+      )}
+      {payloads.length === 0 && !adding && <p className="text-sm text-ink-3">{empty}</p>}
+      {payloads.map((p) => (
+        <PayloadCard
+          key={`${scope}-${p.name}`}
+          name={p.name}
+          format={p.format}
+          content={p.content}
+          onChange={(f, c) => onSet(p.name, f, c)}
+          onDelete={() => onRemove(p.name)}
+        />
+      ))}
+    </Section>
+  );
+}
+
 /* ------------------------------------------------------------- Component */
 
 const isHttpUrl = (v: string): boolean => /^https?:\/\//i.test(v.trim());
@@ -212,23 +295,12 @@ function ComponentInspector({
   const isDark = useIsDark();
   const segments = path.split(".");
   const node = findComponent(doc, segments);
-  const [addingPayload, setAddingPayload] = useState(false);
-  const [newPayload, setNewPayload] = useState("");
   if (!node) return null;
   const entry = layoutMap(doc).get(path);
   const display = effectiveDisplay(node, entry);
   const isContainer = node.children.length > 0;
   const custom = library.items.find((t) => t.tag === node.type);
   const accent = displayColor(custom?.color ?? lookupType(node.type)?.color, isDark) ?? "#64748b";
-  const payloadNameError = newPayload === "" ? null : ID_RE.test(newPayload) ? null : "snake_case required";
-
-  const addPayload = () => {
-    const name = newPayload.trim();
-    if (!ID_RE.test(name) || node.payloads.some((p) => p.name === name)) return;
-    mutate((d) => setPayload(d, segments, name, "json", "{}"));
-    setNewPayload("");
-    setAddingPayload(false);
-  };
 
   return (
     <div className="flex h-full flex-col">
@@ -383,57 +455,13 @@ function ComponentInspector({
           <p className="pl-[100px] text-xs text-ink-3">Where this lives in the codebase. Agents start here.</p>
         </Section>
 
-        <Section
-          title="Payloads"
-          action={
-            <IconButton
-              label="Add payload"
-              size="sm"
-              active={addingPayload}
-              onClick={() => setAddingPayload((a) => !a)}
-            >
-              <Icon.Plus />
-            </IconButton>
-          }
-        >
-          {addingPayload && (
-            <div className="pb-2">
-              <Input
-                autoFocus
-                mono
-                value={newPayload}
-                placeholder="payload_name"
-                invalid={payloadNameError !== null}
-                onChange={(e) => setNewPayload(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") addPayload();
-                  if (e.key === "Escape") {
-                    setAddingPayload(false);
-                    setNewPayload("");
-                  }
-                }}
-              />
-              <p className={cx("pt-1 text-xs", payloadNameError ? "text-danger" : "text-ink-3")}>
-                {payloadNameError ?? "Enter to create a json payload"}
-              </p>
-            </div>
-          )}
-          {node.payloads.length === 0 && !addingPayload && (
-            <p className="text-sm text-ink-3">
-              Structured detail — a schema, endpoints, env vars…
-            </p>
-          )}
-          {node.payloads.map((p) => (
-            <PayloadCard
-              key={`${path}-${p.name}`}
-              name={p.name}
-              format={p.format}
-              content={p.content}
-              onChange={(f, c) => mutate((d) => setPayload(d, segments, p.name, f, c))}
-              onDelete={() => mutate((d) => removePayload(d, segments, p.name))}
-            />
-          ))}
-        </Section>
+        <PayloadsSection
+          scope={path}
+          payloads={node.payloads}
+          empty="Structured detail — a schema, endpoints, env vars…"
+          onSet={(name, f, c) => mutate((d) => setPayload(d, segments, name, f, c))}
+          onRemove={(name) => mutate((d) => removePayload(d, segments, name))}
+        />
       </div>
     </div>
   );
@@ -536,6 +564,14 @@ function ConnectionInspector({
             />
           </PropertyRow>
         </Section>
+
+        <PayloadsSection
+          scope={connKey}
+          payloads={conn.payloads}
+          empty="What travels on this edge — a message schema, a request shape, an event list…"
+          onSet={(name, f, c) => mutate((d) => setConnectionPayload(d, index, name, f, c))}
+          onRemove={(name) => mutate((d) => removeConnectionPayload(d, index, name))}
+        />
       </div>
     </div>
   );

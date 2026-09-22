@@ -8,10 +8,12 @@ import {
   parse,
   removeComponent,
   removeConnection,
+  removeConnectionPayload,
   renameComponent,
   reparentComponent,
   setComponentMeta,
   setConnectionMeta,
+  setConnectionPayload,
   setDisplay,
   setPayload,
   validate,
@@ -87,6 +89,20 @@ describe("transforms", () => {
     expect(() => setPayload(d0, ["a"], "Bad Name", "json", "{}")).toThrow(/Invalid/);
   });
 
+  it("setConnectionPayload / removeConnectionPayload address by index", () => {
+    const d0 = doc(HEADER + "component a\ncomponent b\na -> b @queue");
+    const d1 = setConnectionPayload(d0, 0, "message", "json", '{"id": "uuid"}');
+    expect(d1.connections[0]!.payloads).toHaveLength(1);
+    const d2 = setConnectionPayload(d1, 0, "message", "yaml", "id: uuid");
+    expect(d2.connections[0]!.payloads).toHaveLength(1);
+    expect(d2.connections[0]!.payloads[0]!.format).toBe("yaml");
+    expect(() => setConnectionPayload(d0, 0, "Bad", "json", "{}")).toThrow(/Invalid/);
+    expect(() => setConnectionPayload(d0, 3, "m", "json", "{}")).toThrow(/No connection/);
+    const d3 = removeConnectionPayload(d2, 0, "message");
+    expect(d3.connections[0]!.payloads).toEqual([]);
+    expect(d0.connections[0]!.payloads).toEqual([]); // inputs are never mutated
+  });
+
   it("moveComponent writes layout and clamps children to the plane interior", () => {
     const d0 = doc(HEADER + "component p { component x }");
     const d1 = moveComponent(d0, ["p", "x"], [0, 0]);
@@ -159,6 +175,7 @@ describe("transforms", () => {
     d = addComponent(d, [], { type: "aws.s3", at: [6, 0] }).doc;
     d = addConnection(d, ["a"], ["s3"]);
     d = setPayload(d, ["a"], "notes", "markdown", "hello");
+    d = setConnectionPayload(d, 0, "objects", "table", "| key |\n| --- |\n| a/b |");
     d = moveComponent(d, ["a"], [0, 5]);
     const text = format(d);
     const re = parse(text);

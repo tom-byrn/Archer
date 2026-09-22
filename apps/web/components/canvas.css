@@ -121,6 +121,16 @@
 .arch-edge-arrow.arch-edge-diff-added {
   fill: var(--accent);
 }
+.react-flow__edge .arch-edge-path.arch-edge-diff-changed {
+  stroke: var(--warn);
+  stroke-width: 2;
+}
+.arch-edge-arrow.arch-edge-diff-changed {
+  fill: var(--warn);
+}
+.arch-edge-chip.arch-edge-diff-changed {
+  border-color: var(--warn);
+}
 .react-flow__edge .arch-edge-path.arch-edge-diff-removed {
   stroke: var(--danger);
   stroke-width: 2;

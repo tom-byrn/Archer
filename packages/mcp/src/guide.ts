@@ -73,7 +73,8 @@ authentication in either mode.
 ### Review what changed
 1. \`get_history\` lists revisions newest-first with who saved (the human, or an
    agent by its client name), when, their one-line summary, and counts of
-   components/connections added, removed and changed.
+   components/connections added, removed and changed (a connection counts as
+   changed when only its payloads differ).
 2. \`diff_project\` returns the structured diff — by default the latest change
    (current document vs. the revision before it); pass revision ids for any
    two points. \`get_revision\` fetches a past source; to roll back, send it to
@@ -128,6 +129,17 @@ The full language specification is at the end of this guide. Key habits:
         \`\`\`
       }
 
+- **Put contracts on connections.** A connection takes the same payload
+  blocks in a \`{ … }\` body: the message schema on a \`@queue\` edge, the
+  request/response shape on an \`@http\` call, the event names on an
+  \`@event\` bus. That is where the next agent looks for the interface:
+
+      backend.api -> orders_queue @queue : "order placed" {
+        message json \`\`\`
+        { "order_id": "uuid", "total_cents": "int" }
+        \`\`\`
+      }
+
 - **Use \`desc\` on every non-obvious component** — it is what humans read in
   the detail panel and what agents rely on when implementing.
 - **Add \`src\` when you know where a component lives in code** — it is how
@@ -159,7 +171,7 @@ The full language specification is at the end of this guide. Key habits:
 | ---- | ------- | --- |
 | E001 | Syntax error | Follow the message; check fences and quotes |
 | E002 | Duplicate component id in one scope | Rename one of them |
-| E003 | Duplicate payload name on one component | Rename one payload |
+| E003 | Duplicate payload name on one component or connection | Rename one payload |
 | E101 | Connection endpoint doesn't resolve | Declare the component or fix the path |
 | E201 | json/yaml/table payload doesn't parse | Fix the payload content |
 | W301 | Unknown type tag (warning) | Optional: use a catalog tag or create a custom type |
