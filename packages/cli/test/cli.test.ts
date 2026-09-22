@@ -10,7 +10,7 @@ const TSX = fileURLToPath(new URL("../node_modules/.bin/tsx", import.meta.url));
 
 let dir: string;
 beforeEach(() => {
-  dir = mkdtempSync(join(tmpdir(), "archer-cli-"));
+  dir = mkdtempSync(join(tmpdir(), "archerctl-"));
 });
 
 /** Run the CLI in the temp dir, signed out (HOME is the temp dir). */

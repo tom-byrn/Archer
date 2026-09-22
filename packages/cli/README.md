@@ -47,5 +47,5 @@ no sign-in, so they work in CI:
 **Environment.** `ARCHER_APP_URL` — the Archer app to talk to (default:
 `https://archer.tombyrne.dev`); the MCP server is `$ARCHER_APP_URL/mcp`.
 
-Full docs: [docs/cli.md](https://github.com/tom-byrn/archer/blob/main/docs/cli.md)
-and [docs/mcp.md](https://github.com/tom-byrn/archer/blob/main/docs/mcp.md).
+The `.arch` language: [reference](https://archer.tombyrne.dev/language) and
+[examples](https://archer.tombyrne.dev/language/examples).

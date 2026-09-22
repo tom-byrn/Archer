@@ -363,7 +363,7 @@ const boundedFetch = (url: string | URL, init?: RequestInit): Promise<Response> 
 /** An MCP client for the hosted server, signed in with the stored credentials. */
 export async function connect(): Promise<Client> {
   if (!signedIn()) throw new LoginRequired();
-  const client = new Client({ name: "archer-cli", version: VERSION });
+  const client = new Client({ name: "archerctl", version: VERSION });
   await client.connect(
     new StreamableHTTPClientTransport(new URL(MCP_URL), { authProvider: storedAuth(), fetch: boundedFetch }),
   );
