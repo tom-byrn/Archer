@@ -206,10 +206,10 @@
   /* Landing page only: lede paragraph and the two headline sizes. */
   --text-lede: 17px;
   --text-lede--line-height: 28px;
-  --text-display-sm: 40px;
-  --text-display-sm--line-height: 44px;
-  --text-display: 68px;
-  --text-display--line-height: 70px;
+  --text-display-sm: 42px;
+  --text-display-sm--line-height: 42px;
+  --text-display: 72px;
+  --text-display--line-height: 66px;
 
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
   --font-display: var(--font-playfair), Georgia, "Times New Roman", serif;

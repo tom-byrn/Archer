@@ -12,8 +12,8 @@ const navLink =
 /**
  * The site shell: one ruled column with diamond joints, header and footer.
  * It follows the OS color scheme unless `dark` forces the dark tokens (the
- * landing page, whose fog is black). `backdrop` sits behind the column (the
- * landing's fog); `footerExtra` goes under the footer links (the landing's
+ * landing page, whose backdrop is black). `backdrop` sits behind the column (the
+ * landing's dither); `footerExtra` goes under the footer links (the landing's
  * wordmark). `header` replaces the default header row (wordmark + public nav)
  * and `footerLinks` the default footer links, for pages that have their own.
  */
@@ -51,7 +51,7 @@ export function SiteFrame({
         dark && FORCED_DARK_CLASS,
         "relative isolate flex min-h-full flex-col overflow-x-clip bg-bg text-ink",
       )}
-      // The forced-dark shell sits on black, under the fog, rather than on the
+      // The forced-dark shell sits on black, under the dither, rather than on the
       // dark tokens' --bg; the joints pick the same value up.
       style={dark ? ({ "--bg": "#000" } as React.CSSProperties) : undefined}
     >

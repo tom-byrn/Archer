@@ -6,6 +6,12 @@ import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { Dialog, Icon, IconButton, cx } from "./ui";
 
+/** README image variants: the image route paints the light palette unless `?theme=dark`. */
+const EMBED_THEMES = [
+  { label: "Light", query: "" },
+  { label: "Dark", query: "?theme=dark" },
+] as const;
+
 function CopyButton({ text, label }: { text: string; label: string }) {
   const [done, setDone] = useState(false);
   return (
@@ -78,7 +84,6 @@ export function ShareDialog({
 
   const origin = typeof window === "undefined" ? "" : window.location.origin;
   const link = slug ? `${origin}/share/${slug}` : "";
-  const embed = slug ? `![Architecture](${origin}/share/${slug}/image.svg)` : "";
 
   return (
     <Dialog open={open} onClose={onClose} title="Share" width={520}>
@@ -103,9 +108,17 @@ export function ShareDialog({
           <div className="mt-4 flex h-6 items-center">
             <span className="eyebrow">Embed in a README</span>
           </div>
-          <div className="flex items-start gap-2 rounded-md border border-line bg-surface-2 px-2.5 py-1.5">
-            <code className="mono min-w-0 flex-1 break-all text-sm leading-relaxed text-ink">{embed}</code>
-            <CopyButton text={embed} label="Copy embed" />
+          <div className="divide-y divide-line rounded-md border border-line bg-surface-2">
+            {EMBED_THEMES.map(({ label, query }) => {
+              const embed = `![Architecture](${link}/image.svg${query})`;
+              return (
+                <div key={label} className="flex items-start gap-2 px-2.5 py-1.5">
+                  <span className="w-9 shrink-0 text-sm font-medium leading-relaxed text-ink-2">{label}</span>
+                  <code className="mono min-w-0 flex-1 break-all text-sm leading-relaxed text-ink">{embed}</code>
+                  <CopyButton text={embed} label={`Copy ${label.toLowerCase()} embed`} />
+                </div>
+              );
+            })}
           </div>
           <p className="pt-2 text-xs text-ink-3">The image re-renders on every save.</p>
         </>

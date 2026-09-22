@@ -8,6 +8,7 @@ import { format, parse } from "@archer/lang";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { useWorkspace, type WorkspaceSummary } from "@/lib/workspace";
+import { repoKey, type RepoLink } from "@/lib/github";
 import { AccountMenu } from "@/components/AccountMenu";
 import { MembersDialog } from "@/components/MembersDialog";
 import { SAMPLE } from "@/lib/sample";
@@ -18,6 +19,7 @@ import {
   Button,
   Chip,
   Dialog,
+  GitHubMark,
   Icon,
   IconButton,
   Input,
@@ -33,6 +35,7 @@ interface DocRow {
   title: string;
   updatedAt: number;
   source: string;
+  repo?: RepoLink;
 }
 
 type Pending =
@@ -75,7 +78,21 @@ function DocCard({
         </div>
         <div className="px-3 py-2.5">
           <div className="truncate text-base font-medium text-ink">{doc.title}</div>
-          <div className="pt-0.5 text-xs text-ink-3">{relativeTime(doc.updatedAt)}</div>
+          <div className="flex items-center gap-1.5 pt-0.5 text-xs text-ink-3">
+            {doc.repo && (
+              <>
+                <span
+                  className="flex min-w-0 items-center gap-1 text-ink-2"
+                  title={`Linked to ${repoKey(doc.repo)} @ ${doc.repo.branch}`}
+                >
+                  <GitHubMark className="h-3 w-3 shrink-0" />
+                  <span className="truncate">{repoKey(doc.repo)}</span>
+                </span>
+                <span aria-hidden>·</span>
+              </>
+            )}
+            <span className="shrink-0">{relativeTime(doc.updatedAt)}</span>
+          </div>
         </div>
       </Link>
       <div className="absolute right-2 top-2 opacity-0 transition-opacity duration-[120ms] group-hover:opacity-100 focus-within:opacity-100">
@@ -517,28 +534,22 @@ export default function Home() {
           </div>
         </section>
       ) : (
-        <>
-          <div className="landing-joints flex items-center border-b border-line px-5 py-5 sm:px-10">
-            <span className="eyebrow">Documents</span>
-            {docs && <span className="pl-2 text-xs text-ink-3">{docs.length}</span>}
-          </div>
-          <div className="grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-4 px-5 py-8 sm:px-10">
-            {loading ? (
-              <Skeletons />
-            ) : (
-              docs!.map((d) => (
-                <DocCard
-                  key={d._id}
-                  doc={d}
-                  readOnly={!canEdit}
-                  onRename={() => setPending({ kind: "rename", doc: d })}
-                  onDuplicate={() => void duplicate(d)}
-                  onDelete={() => setPending({ kind: "delete", doc: d })}
-                />
-              ))
-            )}
-          </div>
-        </>
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-4 px-5 py-8 sm:px-10">
+          {loading ? (
+            <Skeletons />
+          ) : (
+            docs!.map((d) => (
+              <DocCard
+                key={d._id}
+                doc={d}
+                readOnly={!canEdit}
+                onRename={() => setPending({ kind: "rename", doc: d })}
+                onDuplicate={() => void duplicate(d)}
+                onDelete={() => setPending({ kind: "delete", doc: d })}
+              />
+            ))
+          )}
+        </div>
       )}
 
       <ConnectAgentDialog
