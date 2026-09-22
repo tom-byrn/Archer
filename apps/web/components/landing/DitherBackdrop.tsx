@@ -31,6 +31,9 @@ const UNIFORMS = {
   u_pxSize: 2,
   // Fraction of the viewport height, from the top, over which the fade runs.
   u_fadeLength: 0.85,
+  // How much sooner the fade ends at the side edges than in the middle, as a
+  // fraction of the viewport height: the gentle arc of its lower edge.
+  u_curve: 0.15,
 };
 
 const FRAGMENT_SHADER = `#version 300 es
@@ -42,6 +45,7 @@ uniform vec4 u_colorBack;
 uniform vec4 u_colorFront;
 uniform float u_pxSize;
 uniform float u_fadeLength;
+uniform float u_curve;
 
 out vec4 fragColor;
 
@@ -54,9 +58,12 @@ const int bayer4x4[16] = int[16](
 
 void main() {
   vec2 cell = floor(gl_FragCoord.xy / (u_pxSize * u_pixelRatio));
-  // gl_FragCoord counts up from the bottom: 1 at the top edge, 0 at the bottom.
-  float fromTop = (cell.y + .5) * u_pxSize * u_pixelRatio / u_resolution.y;
-  float shade = pow(clamp(1. - (1. - fromTop) / u_fadeLength, 0., 1.), 1.6);
+  vec2 uv = (cell + .5) * u_pxSize * u_pixelRatio / u_resolution;
+  // Distance down from the top edge (gl_FragCoord counts up from the bottom),
+  // pushed further down toward the sides so the fade's edge arcs slightly.
+  float x = 2. * uv.x - 1.;
+  float down = 1. - uv.y + u_curve * x * x;
+  float shade = pow(clamp(1. - down / u_fadeLength, 0., 1.), 1.6);
 
   ivec2 p = ivec2(mod(cell, 4.));
   float threshold = (float(bayer4x4[p.y * 4 + p.x]) + .5) / 16.;
