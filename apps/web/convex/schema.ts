@@ -113,18 +113,6 @@ export default defineSchema({
     workspaceId: v.string(),
   }).index("by_user", ["userId"]),
 
-  /** Agent credentials: only the SHA-256 of the key is stored. */
-  apiKeys: defineTable({
-    workspaceId: v.string(),
-    name: v.string(),
-    hash: v.string(),
-    /** First characters of the key, for display. */
-    prefix: v.string(),
-    createdAt: v.number(),
-  })
-    .index("by_workspace", ["workspaceId"])
-    .index("by_hash", ["hash"]),
-
   libraryTypes: defineTable({
     workspaceId: v.string(),
     tag: v.string(),

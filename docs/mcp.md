@@ -8,10 +8,8 @@ presentation, and compile agent-ready implementation specs.
 
 ## Setup
 
-### Hosted server (recommended)
-
 The Archer app serves this MCP server over HTTP at `/mcp`, authenticated with
-OAuth — no API key, nothing to install:
+MCP-standard OAuth — no API key, nothing to install:
 
 ```sh
 claude mcp add --transport http archer https://archer.tombyrne.dev/mcp
@@ -20,56 +18,26 @@ claude mcp add --transport http archer https://archer.tombyrne.dev/mcp
 Then authorize when prompted (in Claude Code: run `/mcp`, pick `archer`,
 and approve in the browser). You sign in to Archer with GitHub and the agent
 acts as you. Other MCP clients: add a remote / streamable-HTTP server with that
-URL; they discover the OAuth endpoints on their own.
+URL; they discover the OAuth endpoints on their own. `archer init` (see
+`docs/cli.md`) writes the same server into a project's `.mcp.json` as
+`{ "type": "http", "url": "…/mcp" }`.
 
-Because you may belong to several workspaces, the hosted server adds
-`list_workspaces` and `use_workspace`; project tools operate on the current
-workspace (Personal by default, remembered per user). `set_api_key` does not
-exist there.
+**Clients that only launch local (stdio) servers**: sign in once with the CLI
+(`npx archer-cli login`), then register `npx -y archer-cli mcp` as the
+server. It relays stdio to the hosted server using that sign-in, so the tools
+are identical — and there is still no key.
 
-### Local server (stdio + API key)
+Because you may belong to several workspaces, project tools operate on the
+current workspace (Personal by default, remembered per user): see
+`list_workspaces` and `use_workspace`.
 
-Use this for CI, offline/local backends, or clients without remote-server
-support.
+There are no API keys: every caller is a signed-in user. The route verifies
+the OAuth token (Clerk is the authorization server) and the tools reach
+Convex with a server-only service credential for that user — see
+`apps/web/app/mcp/route.ts` and `apps/web/convex/access.ts`. Local
+development works the same way against `http://localhost:3000/mcp`.
 
-Prerequisites: the Convex backend running (`npx convex dev` in `apps/web`) and
-`pnpm install` done at the repo root.
-
-1. **Create an API key** — open Archer (http://localhost:3000), sign in with
-   GitHub, open **Connect an agent** from your avatar menu, and create a key.
-   The key unlocks your workspace (your projects, custom types, history,
-   drift). It is shown once; only its hash is stored.
-2. **Register the server** with your MCP client. For Claude Code:
-
-   ```sh
-   claude mcp add archer \
-     --env ARCHER_API_KEY=<key> \
-     -- pnpm --dir <absolute-path-to-repo>/packages/mcp start
-   ```
-
-   Outside the repo, the published CLI bundles this server — `archer init`
-   writes the equivalent `.mcp.json` entry (`npx -y archer-cli mcp`), and
-   `archer login <key>` stores the key. See `docs/cli.md`.
-
-   Alternatively skip the env var and, in your first session, give the agent
-   the key and have it call `set_api_key` — it persists to `~/.archer/key`
-   (mode 0600). Revoke keys any time from the same dialog.
-
-   Upgrading from a pre-auth setup? `ARCHER_WORKSPACE_ID` and
-   `~/.archer/workspace` are now ignored (the server says so in its error);
-   sign in once so the app claims your old anonymous workspace, then create a
-   key.
-
-### Environment variables
-
-| Variable | Default | Purpose |
-| --- | --- | --- |
-| `ARCHER_API_KEY` | `~/.archer/key` file, else unset | API key created in the app; determines whose workspace the server operates on (replaces `ARCHER_WORKSPACE_ID`, now ignored) |
-| `CONVEX_URL` | `http://127.0.0.1:3210` | The Convex backend |
-| `ARCHER_APP_URL` | `http://localhost:3000` | Base for the editor URLs returned by tools |
-| `ARCHER_AGENT_NAME` | the MCP client's declared name, else `agent` | How the agent's edits and drift reports are attributed in the app |
-
-## Tools (23 local · 24 hosted)
+## Tools (24)
 
 **Documentation** — `get_guide` returns the full agent guide (mental model,
 workflows, error reference, complete language spec); also exposed as the MCP
@@ -103,20 +71,18 @@ project describes; `get_project` then returns it as `repository`, the app
 shows that repo's commits in the History panel next to revisions, and
 `src` paths deep-link into it).
 
-**Workspace** — `get_workspace_info` (key prefix + validity, workspace id,
-reachability, counts, setup instructions when unconfigured), `set_api_key`
-(validate and persist a key the user provides; local server only). Hosted
-server instead: `list_workspaces` (Personal + team workspaces with roles,
-current one marked) and `use_workspace` (switch; remembered per user), and
-`get_workspace_info` reports the OAuth user and current workspace.
+**Workspace** — `get_workspace_info` (the signed-in user, current workspace
+and role, reachability, counts), `list_workspaces` (Personal + team workspaces
+with roles, current one marked) and `use_workspace` (switch; remembered per
+user, for every agent and the CLI).
 
 ### Agent identity & history
 
 Every write (`create_project`, `update_project`, `set_display`,
 `auto_layout_project`) is recorded as a revision attributed to the agent —
-`ARCHER_AGENT_NAME`, else the name the MCP client declares in the handshake
-(e.g. `claude-code`). `create_project`/`update_project` accept a one-line
-`summary`; the app's activity feed shows it next to the agent's name and
+the name of the OAuth client that connected (e.g. "Claude Code", or "Archer
+CLI" for the CLI and `archer mcp`). `create_project`/`update_project` accept
+a one-line `summary`; the app's activity feed shows it next to the agent's name and
 highlights the components the agent touched until the human reviews them.
 `get_history` and `diff_project` expose the same history to agents (the diff
 ignores layout moves — only architecture counts).
@@ -140,14 +106,24 @@ findings to the document with one click.
 - **Live canvas**: the app subscribes to Convex, so an agent's save re-renders
   any open browser tab immediately.
 
-## Smoke test
+## Smoke tests
+
+Both run the tools in-process exactly as `/mcp` does — as a signed-in user,
+reaching Convex with the service credential — so they need that deployment's
+`ARCHER_SERVICE_SECRET` and a real user id (use a dev deployment):
 
 ```sh
-ARCHER_API_KEY=<key> pnpm --filter @archer/mcp exec tsx scripts/smoke.ts
+ARCHER_SERVICE_SECRET=<secret> CONVEX_URL=<url> SMOKE_USER_ID=user_… \
+  pnpm --filter @archer/mcp exec tsx scripts/smoke.ts
+ARCHER_SERVICE_SECRET=<secret> CONVEX_URL=<url> REMOTE_CHECK_USER_ID=user_… \
+  pnpm --filter @archer/mcp exec tsx scripts/remote-check.ts
 ```
 
-Spawns the server over stdio and exercises all 23 tools against the live
-backend, including the reject-invalid-write and layout-preservation
-guarantees, agent attribution in history, drift reporting, and API-key handling (`get_workspace_info` shows the key prefix; a
-bogus `set_api_key` is rejected without touching the persisted key). Use a
-throwaway key: the test creates and deletes its own project and custom type.
+`smoke.ts` exercises every tool group against the live backend, including the
+reject-invalid-write and layout-preservation guarantees, agent attribution in
+history, and drift reporting; it creates and deletes its own project and
+custom type. `remote-check.ts` is read-only: tool list, identity, workspaces,
+and that calls without a verified user are refused.
+
+The CLI's end-to-end tests (`pnpm --filter archer-cli test`) also run the real
+tools, behind a stand-in OAuth server and a fake Convex — no setup needed.

@@ -13,13 +13,13 @@ beforeEach(() => {
   dir = mkdtempSync(join(tmpdir(), "archer-cli-"));
 });
 
-/** Run the CLI in the temp dir with no API key reachable (HOME is the temp dir). */
+/** Run the CLI in the temp dir, signed out (HOME is the temp dir). */
 const archer = (args: string[], input?: string) => {
   const r = spawnSync(TSX, [CLI, ...args], {
     cwd: dir,
     input,
     encoding: "utf8",
-    env: { ...process.env, HOME: dir, USERPROFILE: dir, ARCHER_API_KEY: "" },
+    env: { ...process.env, HOME: dir, USERPROFILE: dir, ARCHER_APP_URL: "https://archer.example" },
   });
   return { code: r.status, out: r.stdout, err: r.stderr };
 };
@@ -46,7 +46,8 @@ describe("init", () => {
     expect(archer(["init"]).code).toBe(0);
     const config = JSON.parse(read(".mcp.json"));
     expect(config.mcpServers.other).toEqual({ command: "x" });
-    expect(config.mcpServers.archer.args).toEqual(["-y", "archer-cli", "mcp"]);
+    // The hosted server; the agent signs in on its own. No credentials in the file.
+    expect(config.mcpServers.archer).toEqual({ type: "http", url: "https://archer.example/mcp" });
     expect(read("architecture.arch")).toBe(BAD);
   });
 });
@@ -112,10 +113,18 @@ describe("fmt", () => {
 });
 
 describe("workspace commands", () => {
-  it("explain how to get a key instead of failing obscurely", () => {
+  it("say how to sign in instead of failing obscurely", () => {
     write("a.arch", 'arch "T" v0.1\n');
-    const r = archer(["push", "a.arch"]);
-    expect(r.code).toBe(2);
-    expect(r.err).toContain("archer login");
+    for (const args of [["push", "a.arch"], ["list"], ["workspace"], ["pull", "a.arch", "--project", "x"]]) {
+      const r = archer(args);
+      expect(r.code).toBe(2);
+      expect(r.err).toContain("Not signed in to https://archer.example");
+      expect(r.err).toContain("archer login");
+    }
+  });
+
+  it("no longer take API keys", () => {
+    expect(archer(["login", "archer_abc123"]).err).toContain("API keys are gone");
+    expect(archer(["init", "--key", "archer_abc123"]).code).toBe(2);
   });
 });

@@ -57,18 +57,33 @@ sets it for the build from the deploy key.
 Redeploy after adding the variables. The first deploy without them still
 succeeds (so the project links cleanly) — it just renders the setup panel.
 
-## 4. Agents against the hosted app
+## 4. Agents and the CLI (hosted MCP)
 
-Users create API keys in the app (avatar → Connect an agent). The MCP server
-needs to know which backend to talk to:
+Agents and the `archer` CLI reach workspaces only through the app's MCP
+server at `/mcp`, signing in with MCP-standard OAuth (Clerk is the
+authorization server). There are no API keys. Setup:
 
-```sh
-claude mcp add archer \
-  --env ARCHER_API_KEY=<key> \
-  --env CONVEX_URL=https://<name>.convex.cloud \
-  --env ARCHER_APP_URL=https://<your-vercel-domain> \
-  -- pnpm --dir <repo>/packages/mcp start
-```
+1. **Clerk** → OAuth applications → enable **Dynamic client registration**
+   (MCP clients, including the CLI, register themselves).
+2. Generate a service secret, at least 32 characters
+   (`openssl rand -base64 48`), and set the **same** value in both places:
+   `npx convex env set --prod ARCHER_SERVICE_SECRET <value>` (from
+   `apps/web`) and `ARCHER_SERVICE_SECRET` in the Vercel environment. The
+   route uses it to act for the verified user; it never leaves the server.
+3. Connect:
+
+   ```sh
+   claude mcp add --transport http archer https://<your-domain>/mcp
+   npx archer-cli login     # the CLI; add ARCHER_APP_URL=https://<your-domain>
+                            # if that isn't the domain the CLI was built for
+   ```
+
+**Upgrading from API keys.** Before deploying the version that removed them,
+open the Convex dashboard → Data → `apiKeys` → *Clear table*: that revokes
+every key at once while the old code keeps running. The new schema no
+longer declares the table, so after the deploy you can delete the empty
+table. Leftover `~/.archer/key` files are harmless; `archer login` deletes
+them.
 
 ## 5. Share images
 

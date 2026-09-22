@@ -1,7 +1,7 @@
 {
   "name": "archer-cli",
   "version": "0.1.0",
-  "description": "Check, format and sync Archer (.arch) architecture files — plus the Archer MCP server.",
+  "description": "Check, format and sync Archer (.arch) architecture files \u2014 and reach the Archer MCP server.",
   "license": "MIT",
   "type": "module",
   "bin": {
@@ -21,8 +21,7 @@
     "prepublishOnly": "pnpm build"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.12.0",
-    "convex": "^1.45.0",
+    "@modelcontextprotocol/sdk": "^1.30.0",
     "yaml": "^2.9.0",
     "zod": "^3.24.0"
   },

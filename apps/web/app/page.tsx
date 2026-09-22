@@ -368,8 +368,8 @@ function WorkspaceSwitcher({
           title="Delete workspace"
           body={
             <>
-              Delete <span className="font-medium text-ink">{current?.name}</span> and every document,
-              revision and API key in it? Members lose access immediately. This cannot be undone.
+              Delete <span className="font-medium text-ink">{current?.name}</span> and every document
+              and revision in it? Members lose access immediately. This cannot be undone.
             </>
           }
           confirmLabel="Delete workspace"
@@ -479,11 +479,9 @@ export default function Home() {
           <span className="h-4 w-px bg-line" />
           <WorkspaceSwitcher workspaces={workspaces} current={current} onSelect={select} />
           <div className="ml-auto flex items-center gap-2">
-            {canEdit && (
-              <Button icon={<Icon.Plug />} onClick={() => setConnectOpen(true)}>
-                Connect an agent
-              </Button>
-            )}
+            <Button icon={<Icon.Plug />} onClick={() => setConnectOpen(true)}>
+              Connect an agent
+            </Button>
             {!empty && canEdit && createButtons}
             <span className="mx-1 h-4 w-px bg-line" />
             <AccountMenu />
@@ -546,7 +544,6 @@ export default function Home() {
       <ConnectAgentDialog
         open={connectOpen}
         onClose={() => setConnectOpen(false)}
-        workspaceId={workspaceId}
         workspaceName={current?.name ?? "this workspace"}
       />
       {pending?.kind === "rename" && (

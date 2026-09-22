@@ -1,7 +1,7 @@
 import { internalMutation } from "./_generated/server";
 import { v } from "convex/values";
 
-const TABLES = ["documents", "libraryTypes", "revisions", "drift", "apiKeys"] as const;
+const TABLES = ["documents", "libraryTypes", "revisions", "drift"] as const;
 
 /**
  * Operator-only: move every row of one workspace to another. Not callable from
