@@ -3,7 +3,7 @@
 import { Newsreader } from "next/font/google";
 import { HEADLINE, LEDE } from "@/lib/landingCopy";
 import { AgentPrompt } from "./AgentPrompt";
-import { Fog } from "./Fog";
+import { DitherBackdrop } from "./DitherBackdrop";
 import { SandboxLoader } from "./SandboxLoader";
 import { SiteFrame } from "./SiteFrame";
 
@@ -21,7 +21,7 @@ export function Landing() {
     <SiteFrame
       dark
       className={newsreader.variable}
-      backdrop={<Fog />}
+      backdrop={<DitherBackdrop />}
       footerExtra={
         <div className="overflow-hidden px-5 pt-4 sm:px-10" aria-hidden>
           <div className="landing-wordmark">Archer</div>
