@@ -59,8 +59,7 @@ signs in for themselves.
 **Auth.** There are no API keys. Every command that touches a workspace acts
 as the signed-in user through the hosted MCP server; nothing else talks to
 the backend. Signed out, those commands exit 2 with `Not signed in … Run:
-archer login`, without contacting the server. `login` also deletes a
-`~/.archer/key` left by older versions.
+archer login`, without contacting the server.
 
 ### CI example
 

@@ -122,9 +122,4 @@ describe("workspace commands", () => {
       expect(r.err).toContain("archer login");
     }
   });
-
-  it("no longer take API keys", () => {
-    expect(archer(["login", "archer_abc123"]).err).toContain("API keys are gone");
-    expect(archer(["init", "--key", "archer_abc123"]).code).toBe(2);
-  });
 });

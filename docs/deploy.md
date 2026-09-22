@@ -78,13 +78,6 @@ authorization server). There are no API keys. Setup:
                             # if that isn't the domain the CLI was built for
    ```
 
-**Upgrading from API keys.** Before deploying the version that removed them,
-open the Convex dashboard → Data → `apiKeys` → *Clear table*: that revokes
-every key at once while the old code keeps running. The new schema no
-longer declares the table, so after the deploy you can delete the empty
-table. Leftover `~/.archer/key` files are harmless; `archer login` deletes
-them.
-
 ## 5. Share images
 
 Any document with *Share → Anyone with the link* enabled is viewable at

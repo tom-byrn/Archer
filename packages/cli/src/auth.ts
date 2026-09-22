@@ -1,6 +1,6 @@
 import { spawn } from "node:child_process";
 import { randomBytes } from "node:crypto";
-import { chmodSync, existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { createServer, type RequestListener, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { join } from "node:path";
@@ -348,33 +348,6 @@ export async function logout(): Promise<boolean> {
   updateSession((next) => {
     delete next.tokens;
   });
-  return true;
-}
-
-/** The signed-in user's name/email, from the authorization server's OpenID userinfo endpoint. */
-export async function userInfo(): Promise<{ name?: string; email?: string } | null> {
-  const s = session();
-  const endpoint = (s.discovery?.authorizationServerMetadata as { userinfo_endpoint?: string } | undefined)
-    ?.userinfo_endpoint;
-  if (!endpoint || !s.tokens) return null;
-  try {
-    const res = await fetch(endpoint, {
-      headers: { authorization: `Bearer ${s.tokens.access_token}` },
-      signal: AbortSignal.timeout(5000),
-    });
-    if (!res.ok) return null;
-    const info = (await res.json()) as { name?: string; preferred_username?: string; email?: string };
-    return { name: info.name ?? info.preferred_username, email: info.email };
-  } catch {
-    return null;
-  }
-}
-
-/** Older CLIs saved an API key here; keys no longer exist. True if one was removed. */
-export function removeLegacyKey(): boolean {
-  const file = join(archerDir(), "key");
-  if (!existsSync(file)) return false;
-  rmSync(file, { force: true });
   return true;
 }
 

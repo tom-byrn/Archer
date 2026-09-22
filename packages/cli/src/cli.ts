@@ -80,7 +80,6 @@ async function main(argv: string[]): Promise<number> {
       console.log((await import("@archer/mcp/languageSpec")).LANGUAGE_SPEC);
       return EXIT.ok;
     case "login":
-      if (rest.length > 0) throw new UsageError("archer login takes no arguments: it signs in through the browser (API keys are gone).");
       return login({ browser: !values["no-browser"] });
     case "logout":
       return logout();
