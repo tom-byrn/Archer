@@ -24,7 +24,7 @@ export const cx = (...parts: Array<string | false | null | undefined>): string =
 /* ------------------------------------------------------------------ Buttons */
 
 type Variant = "primary" | "secondary" | "ghost" | "danger";
-type Size = "sm" | "md";
+type Size = "sm" | "md" | "lg";
 
 const VARIANT: Record<Variant, string> = {
   primary:
@@ -38,6 +38,8 @@ const VARIANT: Record<Variant, string> = {
 const SIZE: Record<Size, string> = {
   sm: "h-7 px-2.5 text-sm gap-1.5",
   md: "h-8 px-3 text-sm gap-2",
+  // Landing page calls to action.
+  lg: "h-10 px-4 text-lg gap-2",
 };
 
 /** Button styling for elements that aren't buttons (a `Link` that should look like one). */
@@ -597,6 +599,12 @@ export const Icon = {
   ),
   ChevronLeft: (p: { className?: string }) => (
     <I {...p}><path d="M10 4L6 8l4 4" /></I>
+  ),
+  ArrowRight: (p: { className?: string }) => (
+    <I {...p}><path d="M3 8h10M9 4l4 4-4 4" /></I>
+  ),
+  ArrowDown: (p: { className?: string }) => (
+    <I {...p}><path d="M8 3v10M4 9l4 4 4-4" /></I>
   ),
   Undo: (p: { className?: string }) => (
     <I {...p}><path d="M6 4L3 7l3 3" /><path d="M3 7h6.5a3.5 3.5 0 010 7H8" /></I>

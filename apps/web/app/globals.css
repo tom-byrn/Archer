@@ -203,11 +203,13 @@
   --text-xl--line-height: 26px;
   --text-2xl: 26px;
   --text-2xl--line-height: 32px;
-  /* Landing page only: lede paragraph and the two headline sizes. */
+  /* Landing page only: lede paragraph, section headings and the two headline sizes. */
   --text-lede: 17px;
   --text-lede--line-height: 28px;
   --text-display-sm: 42px;
   --text-display-sm--line-height: 42px;
+  --text-display-md: 48px;
+  --text-display-md--line-height: 52px;
   --text-display: 72px;
   --text-display--line-height: 66px;
 

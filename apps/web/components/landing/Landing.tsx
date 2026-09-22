@@ -1,11 +1,15 @@
 "use client";
 
+import Link from "next/link";
 import { Newsreader } from "next/font/google";
 import { HEADLINE, LEDE } from "@/lib/landingCopy";
-import { AgentPrompt } from "./AgentPrompt";
+import { Icon, buttonCls } from "../ui";
+import { AgentPrompt, CopyPromptButton } from "./AgentPrompt";
 import { DitherBackdrop } from "./DitherBackdrop";
+import { Faq } from "./Faq";
+import { Features } from "./Features";
 import { SandboxLoader } from "./SandboxLoader";
-import { SiteFrame } from "./SiteFrame";
+import { SiteFrame, siteNavLinkCls } from "./SiteFrame";
 
 // Headline only. The wordmark and the rest of the product stay on Playfair.
 const newsreader = Newsreader({
@@ -16,12 +20,93 @@ const newsreader = Newsreader({
   variable: "--font-newsreader",
 });
 
+// Clients with remote (Streamable HTTP) MCP support, which is all /mcp needs.
+const MCP_CLIENTS = ["Claude Code", "Cursor", "Codex", "Windsurf", "VS Code"];
+
+const FOOTER_COLUMNS: { title: string; links: [label: string, href: string][] }[] = [
+  {
+    title: "Product",
+    links: [
+      ["Try the sandbox", "#sandbox"],
+      ["Features", "#features"],
+      ["FAQ", "#faq"],
+    ],
+  },
+  { title: "Docs", links: [["Language reference", "/language"]] },
+  {
+    title: "Account",
+    links: [
+      ["Sign in", "/sign-in"],
+      ["Create an account", "/sign-up"],
+    ],
+  },
+];
+
+const signIn = (
+  <Link href="/sign-in" className={buttonCls("primary", "lg")}>
+    Sign in with GitHub
+    <Icon.ArrowRight className="size-3.5" />
+  </Link>
+);
+
+const header = (
+  <>
+    <Link href="/" className="flex items-center gap-2.5 rounded-sm">
+      <span className="font-display text-[19px] leading-none text-ink">Archer</span>
+    </Link>
+    <nav className="hidden items-center gap-6 pl-4 sm:flex">
+      <Link href="#features" className={siteNavLinkCls}>
+        Features
+      </Link>
+      <Link href="#faq" className={siteNavLinkCls}>
+        FAQ
+      </Link>
+      <Link href="/language" className={siteNavLinkCls}>
+        Docs
+      </Link>
+    </nav>
+    <div className="ml-auto flex items-center gap-2">
+      <Link href="/sign-in" className={buttonCls("secondary")}>
+        Sign in
+      </Link>
+      <Link href="/sign-up" className={buttonCls("primary")}>
+        Get started
+      </Link>
+    </div>
+  </>
+);
+
+const footerNav = (
+  <div className="grid grid-cols-2 gap-x-10 gap-y-8 px-5 py-10 sm:grid-cols-[minmax(0,2fr)_repeat(3,minmax(0,1fr))] sm:px-10 sm:py-12">
+    <div className="col-span-2 sm:col-span-1">
+      <span className="font-display text-[19px] leading-none text-ink">Archer</span>
+      <p className="max-w-[30ch] pt-3 text-base text-ink-3">{HEADLINE}</p>
+    </div>
+    {FOOTER_COLUMNS.map((column) => (
+      <nav key={column.title} aria-label={column.title}>
+        <p className="mono text-xs uppercase tracking-[0.08em] text-ink-3">{column.title}</p>
+        <ul className="flex flex-col gap-2.5 pt-3">
+          {column.links.map(([label, href]) => (
+            <li key={href}>
+              <Link href={href} className={siteNavLinkCls}>
+                {label}
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </nav>
+    ))}
+  </div>
+);
+
 export function Landing() {
   return (
     <SiteFrame
       dark
       className={newsreader.variable}
       backdrop={<DitherBackdrop />}
+      header={header}
+      footerNav={footerNav}
       footerExtra={
         <div className="overflow-hidden px-5 pt-4 sm:px-10" aria-hidden>
           <div className="landing-wordmark">Archer</div>
@@ -40,18 +125,63 @@ export function Landing() {
             >
               {LEDE}
             </p>
+            <div
+              className="landing-rise flex flex-wrap items-center gap-3 pt-8"
+              style={{ "--i": 2 } as React.CSSProperties}
+            >
+              {signIn}
+              <Link href="#sandbox" className={buttonCls("secondary", "lg")}>
+                <Icon.ArrowDown className="size-3.5" />
+                Try the sandbox
+              </Link>
+            </div>
+            <p
+              className="landing-rise pt-3.5 text-sm text-ink-3"
+              style={{ "--i": 2 } as React.CSSProperties}
+            >
+              The sandbox below is the real canvas. No account needed.
+            </p>
           </div>
-          <div className="landing-rise" style={{ "--i": 2 } as React.CSSProperties}>
+          <div className="landing-rise" style={{ "--i": 3 } as React.CSSProperties}>
             <AgentPrompt />
           </div>
         </div>
       </section>
 
-      <section className="px-5 py-12 sm:px-10 sm:py-16">
+      <section className="landing-joints flex flex-wrap items-center gap-x-10 gap-y-3 border-b border-line px-5 py-6 sm:px-10">
+        <p className="mono text-xs uppercase tracking-[0.08em] text-ink-3">
+          Works with any MCP client
+        </p>
+        <ul className="flex flex-wrap items-center gap-x-8 gap-y-2 text-lg font-semibold text-ink-3">
+          {MCP_CLIENTS.map((client) => (
+            <li key={client}>{client}</li>
+          ))}
+        </ul>
+      </section>
+
+      <section id="sandbox" className="landing-joints border-b border-line px-5 py-12 sm:px-10 sm:py-16">
         <SandboxLoader />
         <p className="max-w-[64ch] pt-5 text-lg text-ink-2">
           Try it. Drag a box, or pull a line from the edge of one box to another.
         </p>
+      </section>
+
+      <Features />
+
+      <Faq />
+
+      <section className="flex flex-col items-center px-5 py-20 text-center sm:px-10 sm:py-24">
+        <h2 className="landing-headline max-w-[16ch] text-display-sm text-ink sm:text-display">
+          Draw it once. Let every agent read it.
+        </h2>
+        <p className="max-w-[52ch] pt-5 text-lede text-ink-2">
+          Start on the canvas, or hand your agent the prompt and let it map the repo you already
+          have.
+        </p>
+        <div className="flex flex-wrap justify-center gap-3 pt-8">
+          {signIn}
+          <CopyPromptButton />
+        </div>
       </section>
     </SiteFrame>
   );

@@ -3,10 +3,11 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
 const TOKEN =
-  /(#.*$)|("(?:[^"\\]|\\.)*")|(@[\w.-]+)|(->)|\b(arch|component|layout|desc|at|size|display)\b|\b(v\d[\d.]*)\b|(-?\b\d+\b)/g;
-const CLASSES = ["tok-comment", "tok-string", "tok-type", "tok-arrow", "tok-kw", "tok-version", "tok-num"];
+  /(#.*$)|("(?:[^"\\]|\\.)*")|(@[\w.-]+)|(->)|\b(arch|component|layout|desc|at|size|display)\b|\b(v\d[\d.]*)\b|(-?\b\d+\b)|(```)/g;
+const CLASSES = ["tok-comment", "tok-string", "tok-type", "tok-arrow", "tok-kw", "tok-version", "tok-num", "tok-fence"];
 
-function highlight(line: string): ReactNode[] {
+/** One line of Archer source as token-colored spans. */
+export function highlight(line: string): ReactNode[] {
   const out: ReactNode[] = [];
   let last = 0;
   for (const m of line.matchAll(TOKEN)) {
