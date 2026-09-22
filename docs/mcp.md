@@ -23,7 +23,7 @@ URL; they discover the OAuth endpoints on their own. `archer init` (see
 `{ "type": "http", "url": "…/mcp" }`.
 
 **Clients that only launch local (stdio) servers**: sign in once with the CLI
-(`npx archer-cli login`), then register `npx -y archer-cli mcp` as the
+(`npx archerctl login`), then register `npx -y archerctl mcp` as the
 server. It relays stdio to the hosted server using that sign-in, so the tools
 are identical — and there is still no key.
 
@@ -125,5 +125,5 @@ history, and drift reporting; it creates and deletes its own project and
 custom type. `remote-check.ts` is read-only: tool list, identity, workspaces,
 and that calls without a verified user are refused.
 
-The CLI's end-to-end tests (`pnpm --filter archer-cli test`) also run the real
+The CLI's end-to-end tests (`pnpm --filter archerctl test`) also run the real
 tools, behind a stand-in OAuth server and a fake Convex — no setup needed.

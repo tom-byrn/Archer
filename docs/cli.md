@@ -1,6 +1,6 @@
 # Archer CLI
 
-`packages/cli` (npm: `archer-cli`, binary: `archer`) is the file-based way to
+`packages/cli` (npm: `archerctl`, binary: `archer`) is the file-based way to
 work with Archer: validate and format `.arch` files locally, scaffold a
 project, sync a file with a workspace project, and bridge stdio-only MCP
 clients. It validates with the same code the MCP server uses
@@ -15,7 +15,7 @@ but no MCP client. `archer check file.arch` also avoids round-tripping a large
 document through a tool-call argument.
 
 ```sh
-npx archer-cli init          # or: npm i -g archer-cli  →  archer init
+npx archerctl init          # or: npm i -g archerctl  →  archer init
 ```
 
 ## Commands
@@ -67,8 +67,8 @@ archer login`, without contacting the server. `login` also deletes a
 `check` and `fmt` need no sign-in:
 
 ```yaml
-- run: npx -y archer-cli check
-- run: npx -y archer-cli fmt --check
+- run: npx -y archerctl check
+- run: npx -y archerctl fmt --check
 ```
 
 `push` needs a person's sign-in, so it isn't a CI step: there is no
@@ -78,13 +78,13 @@ non-interactive credential any more.
 
 `ARCHER_APP_URL` — the Archer app to talk to; the MCP server is
 `$ARCHER_APP_URL/mcp`. The **published** bundle defaults to the hosted app;
-running from the repo (`pnpm --filter archer-cli dev -- check`) defaults to
+running from the repo (`pnpm --filter archerctl dev -- check`) defaults to
 local dev (`http://localhost:3000`). Sign-ins are kept per server URL.
 
 ## Building & publishing
 
 ```sh
-pnpm --filter archer-cli build
+pnpm --filter archerctl build
 cd packages/cli && pnpm publish        # prepublishOnly rebuilds
 ```
 
@@ -93,7 +93,7 @@ cd packages/cli && pnpm publish        # prepublishOnly rebuilds
 real npm dependencies stay external. The build bakes in the default app URL
 (`ARCHER_DEFAULT_APP_URL`, default: `https://archer.tombyrne.dev`); set it at
 build time to target another deployment. Bump `version` in
-`packages/cli/package.json` per release. Tests: `pnpm --filter archer-cli test`
+`packages/cli/package.json` per release. Tests: `pnpm --filter archerctl test`
 spawns the real CLI in temp directories; `test/account.test.ts` signs it in
 end to end against a stand-in OAuth server whose `/mcp` runs the real hosted
 tools over a fake Convex (`test/host.ts`).

@@ -27,7 +27,7 @@ const hostedCommand = (url: string) => `claude mcp add --transport http archer $
 
 /** The published CLI talks to the production app (SITE_URL); other origins (previews, local dev) must be named. */
 const cliCommand = (origin: string) =>
-  origin && origin !== SITE_URL ? `ARCHER_APP_URL=${origin} npx archer-cli login` : "npx archer-cli login";
+  origin && origin !== SITE_URL ? `ARCHER_APP_URL=${origin} npx archerctl login` : "npx archerctl login";
 
 export function ConnectAgentDialog({
   open,

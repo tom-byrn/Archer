@@ -2,7 +2,7 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 
 // ARCHER_DEFAULT_APP_URL is inlined by the published build (tsup.config.ts) so
-// `npx archer-cli` targets the hosted app; running from the repo falls through
+// `npx archerctl` targets the hosted app; running from the repo falls through
 // to local dev.
 export const APP_URL = (
   process.env.ARCHER_APP_URL ??

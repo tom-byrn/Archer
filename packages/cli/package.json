@@ -1,8 +1,28 @@
 {
-  "name": "archer-cli",
+  "name": "archerctl",
   "version": "0.1.0",
-  "description": "Check, format and sync Archer (.arch) architecture files \u2014 and reach the Archer MCP server.",
+  "description": "Check, format and sync Archer (.arch) architecture files — and reach the Archer MCP server.",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tom-byrn/archer.git",
+    "directory": "packages/cli"
+  },
+  "homepage": "https://archer.tombyrne.dev",
+  "bugs": {
+    "url": "https://github.com/tom-byrn/archer/issues"
+  },
+  "keywords": [
+    "archer",
+    "architecture",
+    "diagram",
+    "arch",
+    "cli",
+    "mcp",
+    "model-context-protocol",
+    "c4",
+    "system-design"
+  ],
   "type": "module",
   "bin": {
     "archer": "./dist/cli.js"

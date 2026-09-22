@@ -74,7 +74,7 @@ authorization server). There are no API keys. Setup:
 
    ```sh
    claude mcp add --transport http archer https://<your-domain>/mcp
-   npx archer-cli login     # the CLI; add ARCHER_APP_URL=https://<your-domain>
+   npx archerctl login     # the CLI; add ARCHER_APP_URL=https://<your-domain>
                             # if that isn't the domain the CLI was built for
    ```
 
