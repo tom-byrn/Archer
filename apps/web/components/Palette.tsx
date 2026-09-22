@@ -82,6 +82,28 @@ function PaletteItem({
   );
 }
 
+/** The untyped component. Lives at the top of "My components". */
+function PlainItem({ onAdd }: { onAdd: () => void }) {
+  return (
+    <button
+      type="button"
+      draggable
+      onDragStart={(e) => {
+        e.dataTransfer.setData(DND_MIME, "");
+        e.dataTransfer.effectAllowed = "copy";
+      }}
+      onClick={onAdd}
+      title="An untyped component — drag onto the canvas or click to add"
+      className="flex h-7 w-full cursor-grab items-center gap-2 rounded-md px-1.5 text-left transition-colors duration-75 hover:bg-surface-2 active:cursor-grabbing"
+    >
+      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-sm bg-surface-2">
+        <Glyph size={13} />
+      </span>
+      <span className="min-w-0 flex-1 truncate text-sm text-ink">Plain component</span>
+    </button>
+  );
+}
+
 function GroupHeader({
   label,
   count,
@@ -279,34 +301,17 @@ export function Palette({
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-3">
-        {plainVisible && (
-          <button
-            type="button"
-            draggable
-            onDragStart={(e) => {
-              e.dataTransfer.setData(DND_MIME, "");
-              e.dataTransfer.effectAllowed = "copy";
-            }}
-            onClick={() => onAdd(undefined)}
-            title="An untyped component — drag onto the canvas or click to add"
-            className="mb-1 flex h-7 w-full cursor-grab items-center gap-2 rounded-md px-1.5 text-left transition-colors duration-75 hover:bg-surface-2 active:cursor-grabbing"
-          >
-            <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-sm bg-surface-2">
-              <Glyph size={13} />
-            </span>
-            <span className="min-w-0 flex-1 truncate text-sm text-ink">Plain component</span>
-          </button>
-        )}
-
         {groups.map(({ ns, items, visible }) => {
           const isCustom = ns === "custom";
-          if (searching && visible.length === 0 && !(isCustom && creating)) return null;
+          const showPlain = isCustom && plainVisible;
+          if (searching && visible.length === 0 && !showPlain && !(isCustom && creating)) return null;
           const open = searching || (openState[ns] ?? false);
+          const count = (searching ? visible.length : items.length) + (showPlain ? 1 : 0);
           return (
             <div key={ns} className="mt-1">
               <GroupHeader
                 label={namespaceLabel(ns)}
-                count={searching ? visible.length : items.length}
+                count={count}
                 open={open}
                 onToggle={() => toggle(ns)}
                 action={
@@ -335,6 +340,7 @@ export function Palette({
                       onCancel={() => setCreating(false)}
                     />
                   )}
+                  {showPlain && <PlainItem onAdd={() => onAdd(undefined)} />}
                   {isCustom && items.length === 0 && !creating && !searching && (
                     <p className="px-1.5 py-1 text-xs text-ink-3">
                       Save your own types with +
