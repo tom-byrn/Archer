@@ -554,7 +554,7 @@ export function ActivityPanel({
   const commits = useCommits(repo);
   const findings = activity.drift?.findings.length ?? 0;
   return (
-    <SidePanel tall className="md:w-[320px]">
+    <SidePanel tall resizable defaultWidth={512}>
       <div className="flex h-10 shrink-0 items-center gap-2 border-b border-line px-2">
         <Segmented<ActivityTab>
           value={tab}
