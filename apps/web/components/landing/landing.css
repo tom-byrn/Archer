@@ -1,6 +1,6 @@
 /* Landing page. Colors come from the tokens in globals.css; this file only
-   holds what utilities can't express: the headline setting, the fog
-   backdrop, the one load sequence and the source pane's changed-line flash. */
+   holds what utilities can't express: the headline setting, the backdrop
+   fallback, the one load sequence and the source pane's changed-line flash. */
 
 .landing-headline {
   font-family: var(--font-newsreader), Georgia, "Times New Roman", serif;
@@ -10,30 +10,10 @@
   text-wrap: balance;
 }
 
-/* Just under #1c1c1c in the middle of the viewport, black at the edges, with
-   a faint neutral mist drifting over it. Fixed values: the landing page has one look. */
-.landing-fog {
-  --fog-a: #252525;
-  --fog-b: #191919;
-  background: radial-gradient(ellipse 70% 65% at 50% 45%, #181818 0%, #0a0a0a 60%, #000 100%);
-}
-
-@keyframes landing-fog-1 {
-  0%, 100% { transform: translateX(-10%) translateY(0%); }
-  50% { transform: translateX(5%) translateY(-3%); }
-}
-@keyframes landing-fog-2 {
-  0%, 100% { transform: translateX(0%) translateY(-2%); }
-  50% { transform: translateX(-15%) translateY(2%); }
-}
-@keyframes landing-fog-3 {
-  0%, 100% { transform: translateX(-5%) translateY(2%); }
-  50% { transform: translateX(10%) translateY(-2%); }
-}
-@media (prefers-reduced-motion: reduce) {
-  .landing-fog-layer {
-    animation: none !important;
-  }
+/* Grey at the top of the viewport fading to black. The dithered version is
+   drawn over it by DitherBackdrop; this smooth one covers first paint. */
+.landing-dither {
+  background: linear-gradient(180deg, #121212 0%, #050505 45%, #000 85%);
 }
 
 .landing-wordmark {
