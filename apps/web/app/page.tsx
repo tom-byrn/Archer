@@ -519,28 +519,22 @@ export default function Home() {
           </div>
         </section>
       ) : (
-        <>
-          <div className="landing-joints flex items-center border-b border-line px-5 py-5 sm:px-10">
-            <span className="eyebrow">Documents</span>
-            {docs && <span className="pl-2 text-xs text-ink-3">{docs.length}</span>}
-          </div>
-          <div className="grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-4 px-5 py-8 sm:px-10">
-            {loading ? (
-              <Skeletons />
-            ) : (
-              docs!.map((d) => (
-                <DocCard
-                  key={d._id}
-                  doc={d}
-                  readOnly={!canEdit}
-                  onRename={() => setPending({ kind: "rename", doc: d })}
-                  onDuplicate={() => void duplicate(d)}
-                  onDelete={() => setPending({ kind: "delete", doc: d })}
-                />
-              ))
-            )}
-          </div>
-        </>
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-4 px-5 py-8 sm:px-10">
+          {loading ? (
+            <Skeletons />
+          ) : (
+            docs!.map((d) => (
+              <DocCard
+                key={d._id}
+                doc={d}
+                readOnly={!canEdit}
+                onRename={() => setPending({ kind: "rename", doc: d })}
+                onDuplicate={() => void duplicate(d)}
+                onDelete={() => setPending({ kind: "delete", doc: d })}
+              />
+            ))
+          )}
+        </div>
       )}
 
       <ConnectAgentDialog
