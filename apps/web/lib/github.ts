@@ -58,7 +58,7 @@ async function call<T>(path: string): Promise<T> {
 export const repoKey = (r: { owner: string; name: string }): string => `${r.owner}/${r.name}`;
 
 export const fetchRepos = (q: string) =>
-  call<{ repos: GitHubRepo[]; hasToken: boolean }>(`/api/github/repos?q=${encodeURIComponent(q)}`);
+  call<{ repos: GitHubRepo[]; hasToken: boolean; privateAccess: boolean | null }>(`/api/github/repos?q=${encodeURIComponent(q)}`);
 
 export const fetchBranches = (repo: string) =>
   call<{ branches: GitHubBranch[] }>(`/api/github/branches?repo=${encodeURIComponent(repo)}`);

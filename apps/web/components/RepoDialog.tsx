@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useUser } from "@clerk/nextjs";
 import {
   describeGitHubError,
   fetchBranches,
@@ -27,6 +28,10 @@ export function RepoDialog({
   const [query, setQuery] = useState("");
   const [repos, setRepos] = useState<GitHubRepo[]>([]);
   const [hasToken, setHasToken] = useState(true);
+  const [privateAccess, setPrivateAccess] = useState<boolean | null>(null);
+  const [granting, setGranting] = useState(false);
+  const [grantError, setGrantError] = useState<string | null>(null);
+  const { user } = useUser();
   const [searching, setSearching] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
   const [selected, setSelected] = useState<GitHubRepo | null>(null);
@@ -55,10 +60,11 @@ export function RepoDialog({
     setSearching(true);
     const t = setTimeout(() => {
       fetchRepos(query)
-        .then(({ repos, hasToken }) => {
+        .then(({ repos, hasToken, privateAccess }) => {
           if (id !== inflight.current) return;
           setRepos(repos);
           setHasToken(hasToken);
+          setPrivateAccess(privateAccess);
           setSearchError(null);
           // Auto-select the current link when editing.
           if (current && !selected) {
@@ -105,6 +111,32 @@ export function RepoDialog({
     };
   }, [selected]);
 
+  // Send the user through GitHub's consent screen again, asking for `repo`.
+  // Existing tokens keep the scopes they were issued with, so adding the
+  // scope in Clerk alone doesn't reveal private repos.
+  const grantPrivateAccess = async () => {
+    if (!user) return;
+    setGranting(true);
+    setGrantError(null);
+    try {
+      const redirectUrl = window.location.href;
+      const existing = user.externalAccounts.find((a) => a.provider === "github");
+      const account = existing
+        ? await existing.reauthorize({ additionalScopes: ["repo"], redirectUrl })
+        : await user.createExternalAccount({
+            strategy: "oauth_github",
+            additionalScopes: ["repo"],
+            redirectUrl,
+          });
+      const url = account.verification?.externalVerificationRedirectURL;
+      if (!url) throw new Error("Clerk didn't return a GitHub authorization URL.");
+      window.location.href = url.href;
+    } catch (e) {
+      setGranting(false);
+      setGrantError(e instanceof Error ? e.message : "Couldn't start GitHub authorization.");
+    }
+  };
+
   const save = async (repo: { owner: string; name: string; branch: string } | null) => {
     setSaving(true);
     try {
@@ -141,6 +173,18 @@ export function RepoDialog({
           Sign-in didn&apos;t include a GitHub token — type the{" "}
           <span className="mono">owner/name</span> of a public repository.
         </p>
+      )}
+      {hasToken && privateAccess === false && (
+        <div className="mt-2 flex items-center gap-2 rounded-md border border-line bg-surface-2 px-3 py-2">
+          <p className="min-w-0 flex-1 text-xs text-ink-2">
+            Private repositories are hidden — GitHub access was granted without the{" "}
+            <span className="mono">repo</span> scope.
+            {grantError && <span className="block pt-0.5 text-danger">{grantError}</span>}
+          </p>
+          <Button size="sm" onClick={() => void grantPrivateAccess()} disabled={granting || !user}>
+            {granting ? "Redirecting…" : "Grant access"}
+          </Button>
+        </div>
       )}
       <div className="mt-2 max-h-[240px] overflow-y-auto rounded-md border border-line">
         {searchError ? (
