@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -92,7 +92,7 @@ describe("archer login", () => {
     expect(r.callback).toMatch(/^http:\/\/localhost:\d+\/callback\?/);
     expect(r.forgedStatus).toBe(404);
     expect(r.page).toContain("Signed in to Archer");
-    expect(r.out).toContain("Signed in as tester@example.com — workspace Personal (owner)");
+    expect(r.out).toContain(`Signed in to ${new URL(host.appUrl).host} — workspace Personal (owner)`);
 
     expect(statSync(storePath()).mode & 0o777).toBe(0o600);
     const s = session();
@@ -107,15 +107,6 @@ describe("archer login", () => {
     const registered = host.as.clients.size;
     expect((await login()).code).toBe(0);
     expect(host.as.clients.size).toBe(registered);
-  });
-
-  it("removes a leftover API key file", async () => {
-    mkdirSync(join(home, ".archer"), { recursive: true });
-    writeFileSync(join(home, ".archer", "key"), "archer_old\n");
-    const r = await login();
-    expect(r.code).toBe(0);
-    expect(r.err).toContain("Removed ~/.archer/key");
-    expect(existsSync(join(home, ".archer", "key"))).toBe(false);
   });
 
   it("stores nothing when the user denies access", async () => {
@@ -277,7 +268,6 @@ describe("signed in", () => {
       const names = (await client.listTools()).tools.map((t) => t.name);
       expect(names).toHaveLength(24);
       expect(names).toContain("use_workspace");
-      expect(names).not.toContain("set_api_key");
       const res = await client.callTool({ name: "get_workspace_info", arguments: {} });
       const info = JSON.parse((res.content as { text: string }[])[0]!.text);
       expect(info).toMatchObject({ auth: "oauth", user_id: USER, agent_name: "Archer CLI" });

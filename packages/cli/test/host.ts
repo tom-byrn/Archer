@@ -2,7 +2,7 @@
  * A stand-in for the hosted Archer app, for end-to-end CLI tests:
  *   - an OAuth authorization server on its own origin (as Clerk is): discovery,
  *     dynamic client registration, authorization code + PKCE (S256), refresh
- *     with rotation, userinfo, revocation;
+ *     with rotation, revocation;
  *   - the app origin, serving the protected-resource metadata and /mcp, which
  *     verifies bearer tokens like app/mcp/route.ts and then runs the REAL
  *     hosted tools (`handleRemoteRequest` from @archer/mcp/remote);
@@ -200,7 +200,6 @@ export class AuthServer {
             token_endpoint: `${this.origin}/oauth/token`,
             registration_endpoint: `${this.origin}/oauth/register`,
             revocation_endpoint: `${this.origin}/oauth/revoke`,
-            userinfo_endpoint: `${this.origin}/oauth/userinfo`,
             response_types_supported: ["code"],
             grant_types_supported: ["authorization_code", "refresh_token"],
             code_challenge_methods_supported: ["S256"],
@@ -254,10 +253,6 @@ export class AuthServer {
           return [200, this.issue(grant)];
         }
         return oauthError("unsupported_grant_type");
-      }
-      case "GET /oauth/userinfo": {
-        const grant = this.verify(req.headers.authorization);
-        return grant ? [200, { sub: grant.userId, email: "tester@example.com", name: "Tess Ter" }] : [401, { error: "invalid_token" }];
       }
       case "POST /oauth/revoke": {
         const t = form.get("token") ?? "";

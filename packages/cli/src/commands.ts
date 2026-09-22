@@ -190,14 +190,11 @@ async function customTypes(): Promise<string[]> {
 
 export async function login(opts: { browser: boolean }): Promise<number> {
   await account.login({ browser: opts.browser, log: (line) => console.error(line) });
-  if (account.removeLegacyKey()) console.error("Removed ~/.archer/key — API keys are no longer used.");
-  const [who, info] = await Promise.all([
-    account.userInfo(),
-    withServer((client) => callTool<WorkspaceInfo>(client, "get_workspace_info")),
-  ]);
-  const name = who?.email ?? who?.name ?? info.user_id;
+  const info = await withServer((client) => callTool<WorkspaceInfo>(client, "get_workspace_info"));
   const where = info.workspace_name ?? info.workspace_id;
-  console.log(`Signed in as ${name} — workspace ${where}${info.workspace_role ? ` (${info.workspace_role})` : ""}`);
+  console.log(
+    `Signed in to ${new URL(APP_URL).host} — workspace ${where}${info.workspace_role ? ` (${info.workspace_role})` : ""}`,
+  );
   return EXIT.ok;
 }
 
