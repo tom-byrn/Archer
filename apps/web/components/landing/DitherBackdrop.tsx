@@ -3,7 +3,8 @@
 import { ShaderMount } from "@paper-design/shaders-react";
 
 /**
- * Page backdrop: a straight grey-to-black fade from the top of the viewport,
+ * Page backdrop: a straight grey-to-black fade down the first screen of the
+ * page (it scrolls away with the content, leaving the page black),
  * drawn as a 4x4 Bayer dither. Paper's Dithering shader has no linear shape,
  * so this runs a small fragment shader of our own through its ShaderMount.
  * The smooth CSS gradient under it (`.landing-dither` in landing.css) covers
@@ -12,7 +13,7 @@ import { ShaderMount } from "@paper-design/shaders-react";
  */
 export function DitherBackdrop() {
   return (
-    <div className="landing-dither pointer-events-none fixed inset-0 -z-10" aria-hidden>
+    <div className="landing-dither pointer-events-none absolute inset-x-0 top-0 -z-10 h-svh" aria-hidden>
       <ShaderMount
         className="absolute inset-0"
         fragmentShader={FRAGMENT_SHADER}
