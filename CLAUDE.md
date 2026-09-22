@@ -63,8 +63,10 @@ Router + React Flow + Convex).
   Tailwind palette (`slate-*`) or `dark:` variants — dark mode is handled by
   the tokens. Build controls from `components/ui.tsx` (Button, IconButton,
   Input, Menu, Dialog, Section, PropertyRow, Chip, Icon). Code editing goes
-  through `components/CodeMirror.tsx`. React Flow chrome lives in
-  `components/canvas.css`.
+  through `components/CodeMirror.tsx`, loaded on demand: pages reach it via
+  `next/dynamic` (`components/SourceEditor.tsx`, `CodePane.tsx`), never a
+  static import, so CodeMirror (~200 kB gzipped) stays out of first loads.
+  React Flow chrome lives in `components/canvas.css`.
 - Language/product specs live in `docs/`; keep `docs/language-spec.md` in
   sync with `packages/*/src/languageSpec.ts` copies when the grammar changes.
 

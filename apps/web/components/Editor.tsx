@@ -18,12 +18,14 @@ import {
   reparentComponent,
   type ArchDoc,
 } from "@archer/lang";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { lookupType } from "@archer/catalog";
 import { SAMPLE } from "@/lib/sample";
 import { toFlow } from "@/lib/toFlow";
 import { resolveDropTarget } from "@/lib/dropTarget";
 import { deriveDoc, useArchDoc } from "@/lib/useArchDoc";
+import { whenIdle } from "@/lib/idle";
 import { useUserLibrary } from "@/lib/userLibrary";
 import { useIsDark } from "@/lib/useIsDark";
 import type { Id } from "@/convex/_generated/dataModel";
@@ -37,11 +39,28 @@ import { RepoDialog } from "./RepoDialog";
 import { ShareDialog } from "./ShareDialog";
 import { ActivityPanel, type ActivityTab } from "./ActivityPanel";
 import { ArchCanvas, type CanvasCallbacks } from "./ArchCanvas";
-import { CodePane } from "./CodePane";
 import { CommandPalette } from "./CommandPalette";
 import { DetailPanel, connectionKey, type Selection } from "./DetailPanel";
 import { Palette } from "./Palette";
 import { Button, Chip, Icon, IconButton, Input, Kbd, Menu, cx, relativeTime, type MenuItem } from "./ui";
+
+// Same frame as the code pane's modal, so nothing jumps when it arrives.
+function CodePaneFrame() {
+  return (
+    <div className="fixed inset-0 z-[90] grid place-items-center bg-[rgba(10,10,8,0.5)] backdrop-blur-[2px]">
+      <div
+        className="h-dvh w-screen border-line shadow-md md:h-[85vh] md:w-[85vw] md:rounded-xl md:border"
+        style={{ background: "var(--code-bg)" }}
+      />
+    </div>
+  );
+}
+
+// CodeMirror stays out of the editor's first load (the pane starts closed).
+const CodePane = dynamic(() => import("./CodePane").then((m) => m.CodePane), {
+  ssr: false,
+  loading: CodePaneFrame,
+});
 
 /** What the canvas is comparing against, when in diff mode. */
 type DiffView =
@@ -170,6 +189,18 @@ export function Editor({
   const [diffView, setDiffView] = useState<DiffView>(null);
 
   const toggleCode = useCallback(() => setCodeOpen((open) => !open), []);
+  const closeCode = useCallback(() => setCodeOpen(false), []);
+
+  // Fetch the code pane and the payload editors once the page is idle, so
+  // opening either doesn't wait on the network.
+  useEffect(
+    () =>
+      whenIdle(() => {
+        void import("./CodePane");
+        void import("./SourceEditor");
+      }),
+    [],
+  );
 
   // A focus that stopped resolving (component deleted/renamed) falls back to root.
   const liveFocus = useMemo(
@@ -550,22 +581,23 @@ export function Editor({
 
       <div className="flex min-h-0 flex-1">
         <Palette onAdd={addFromPalette} library={library} />
-        <CodePane
-          source={source}
-          onChange={setSource}
-          diagnostics={derived.diagnostics}
-          doc={derived.doc}
-          open={codeOpen}
-          onToggle={toggleCode}
-          title={derived.doc.title}
-          valid={derived.valid}
-          onCopyCode={() => copy("code")}
-          onCopyForAgent={() => copy("agent")}
-          selectedPath={selectedPath}
-          onSelectPath={(path) =>
-            setSelection(path === null ? null : { kind: "component", path })
-          }
-        />
+        {codeOpen && (
+          <CodePane
+            source={source}
+            onChange={setSource}
+            diagnostics={derived.diagnostics}
+            doc={derived.doc}
+            onClose={closeCode}
+            title={derived.doc.title}
+            valid={derived.valid}
+            onCopyCode={() => copy("code")}
+            onCopyForAgent={() => copy("agent")}
+            selectedPath={selectedPath}
+            onSelectPath={(path) =>
+              setSelection(path === null ? null : { kind: "component", path })
+            }
+          />
+        )}
         <main className="relative flex min-w-0 flex-1 flex-col">
           {liveFocus.length > 0 && (
             <nav className="flex h-8 shrink-0 items-center gap-0.5 overflow-x-auto whitespace-nowrap border-b border-line bg-surface px-2 text-sm">

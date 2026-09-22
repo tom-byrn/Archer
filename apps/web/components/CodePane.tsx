@@ -56,8 +56,7 @@ export interface CodePaneProps {
   onChange: (text: string) => void;
   diagnostics: Diagnostic[];
   doc: ArchDoc;
-  open: boolean;
-  onToggle: () => void;
+  onClose: () => void;
   selectedPath: string | null;
   onSelectPath: (path: string | null) => void;
   /** Document title, shown in the modal's top bar. */
@@ -68,13 +67,13 @@ export interface CodePaneProps {
   onCopyForAgent: () => void;
 }
 
+/** The `.arch` source modal. The editor mounts it only while it is open. */
 export function CodePane({
   source,
   onChange,
   diagnostics,
   doc,
-  open,
-  onToggle,
+  onClose,
   title,
   valid,
   onCopyCode,
@@ -102,15 +101,15 @@ export function CodePane({
   // Diagnostics come from props, not a linter source.
   useEffect(() => {
     const view = viewRef.current;
-    if (!view || !open) return;
+    if (!view) return;
     view.dispatch(setDiagnostics(view.state, archerLinter(diagnostics, view.state.doc)));
-  }, [diagnostics, open]);
+  }, [diagnostics]);
 
   // Canvas → code: highlight the selected component's lines and scroll to it,
   // unless this selection originated from the editor's own cursor.
   useEffect(() => {
     const view = viewRef.current;
-    if (!view || !open) return;
+    if (!view) return;
     if (selectedPath === null) {
       lastEmittedPath.current = null;
       view.dispatch({ effects: setSelectedLines.of(null) });
@@ -131,7 +130,7 @@ export function CodePane({
       ],
     });
     if (!fromEditor) lastEmittedPath.current = null;
-  }, [selectedPath, doc, open]);
+  }, [selectedPath, doc]);
 
   const diagnosticsRef = useRef(diagnostics);
   diagnosticsRef.current = diagnostics;
@@ -178,15 +177,14 @@ export function CodePane({
 
   // Escape closes the modal (capture, so it wins over the canvas shortcuts).
   useEffect(() => {
-    if (!open) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== "Escape") return;
       e.stopPropagation();
-      onToggle();
+      onClose();
     };
     document.addEventListener("keydown", onKey, true);
     return () => document.removeEventListener("keydown", onKey, true);
-  }, [open, onToggle]);
+  }, [onClose]);
 
   const [copied, setCopied] = useState<"code" | "agent" | null>(null);
   const flash = (kind: "code" | "agent", run: () => void) => {
@@ -195,13 +193,11 @@ export function CodePane({
     setTimeout(() => setCopied(null), 1500);
   };
 
-  if (!open) return null;
-
   return (
     <div
       className="fixed inset-0 z-[90] grid place-items-center bg-[rgba(10,10,8,0.5)] backdrop-blur-[2px]"
       onMouseDown={(e) => {
-        if (e.target === e.currentTarget) onToggle();
+        if (e.target === e.currentTarget) onClose();
       }}
     >
     <div
@@ -257,7 +253,7 @@ export function CodePane({
             <span className="hidden md:inline">{copied === "agent" ? "Copied" : "Copy for agent"}</span>
           </Button>
           <span className="mx-1 h-4 w-px bg-line" />
-          <IconButton label="Close (esc)" onClick={onToggle}>
+          <IconButton label="Close (esc)" onClick={onClose}>
             <Icon.Close />
           </IconButton>
         </div>

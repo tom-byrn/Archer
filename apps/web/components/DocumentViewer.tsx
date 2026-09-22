@@ -1,21 +1,17 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
-import { compileForAgent, componentPaths, findComponent, format, type PayloadFormat } from "@archer/lang";
+import { compileForAgent, componentPaths, findComponent, format } from "@archer/lang";
 import { lookupType } from "@archer/catalog";
-import { json } from "@codemirror/lang-json";
-import { yaml } from "@codemirror/lang-yaml";
-import { markdown } from "@codemirror/lang-markdown";
-import type { Extension } from "@codemirror/state";
-import { archLanguage } from "@/lib/archLanguage";
 import { githubTreeUrl } from "@/lib/githubApi";
 import type { RepoLink } from "@/lib/github";
+import { whenIdle } from "@/lib/idle";
 import { toFlow } from "@/lib/toFlow";
 import { deriveDoc } from "@/lib/useArchDoc";
 import { displayColor, useIsDark } from "@/lib/useIsDark";
 import { ArchCanvas, type CanvasCallbacks } from "./ArchCanvas";
-import { CodeEditor } from "./CodeMirror";
 import { Glyph } from "./nodes";
 import { Button, Chip, Icon, IconButton, Kbd, Menu, Section, SidePanel, cx, relativeTime } from "./ui";
 
@@ -24,8 +20,9 @@ const resolveType = (tag: string) => {
   return entry ? { color: entry.color, glyph: entry.glyph } : undefined;
 };
 
-const langFor = (f: PayloadFormat): Extension =>
-  f === "json" ? json() : f === "yaml" ? yaml() : f === "markdown" ? markdown() : [];
+// CodeMirror stays out of the first load: the code pane starts closed and
+// payloads only show for a selected component.
+const SourceEditor = dynamic(() => import("./SourceEditor"), { ssr: false });
 
 const noop = () => {};
 
@@ -60,7 +57,9 @@ export function DocumentViewer({
   const [codeOpen, setCodeOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const exportRef = useRef<(() => void) | null>(null);
-  const archExtensions = useMemo(() => [archLanguage()], []);
+
+  // Fetch the code editor once the page is idle, so opening it doesn't wait.
+  useEffect(() => whenIdle(() => void import("./SourceEditor")), []);
 
   const liveFocus = useMemo(
     () =>
@@ -201,7 +200,7 @@ export function DocumentViewer({
               <Chip className="ml-2">read-only</Chip>
             </div>
             <div className="min-h-0 flex-1">
-              <CodeEditor value={source} readOnly extensions={archExtensions} className="h-full" />
+              <SourceEditor value={source} language="arch" readOnly className="h-full" />
             </div>
           </div>
         )}
@@ -368,7 +367,7 @@ function Details({
                     <Chip className="ml-auto">{p.format}</Chip>
                   </div>
                   <div style={{ maxHeight: 280, overflow: "auto" }}>
-                    <CodeEditor value={p.content} readOnly lineNumbers={false} extensions={langFor(p.format)} />
+                    <SourceEditor value={p.content} language={p.format} readOnly lineNumbers={false} />
                   </div>
                 </div>
               ))}

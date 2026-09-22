@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
+import dynamic from "next/dynamic";
 import {
   checkPayload,
   effectiveDisplay,
@@ -24,16 +25,10 @@ import {
   type PayloadNode,
 } from "@archer/lang";
 import { lookupType } from "@archer/catalog";
-import { EditorView } from "@codemirror/view";
-import type { Extension } from "@codemirror/state";
-import { json } from "@codemirror/lang-json";
-import { yaml } from "@codemirror/lang-yaml";
-import { markdown } from "@codemirror/lang-markdown";
 import type { UserLibrary } from "@/lib/userLibrary";
 import { githubTreeUrl } from "@/lib/githubApi";
 import type { RepoLink } from "@/lib/github";
 import { displayColor, useIsDark } from "@/lib/useIsDark";
-import { CodeEditor } from "./CodeMirror";
 import { Glyph } from "./nodes";
 import { TypeCombobox } from "./TypeCombobox";
 import {
@@ -64,8 +59,9 @@ const ID_RE = /^[a-z][a-z0-9_]*$/;
 
 const FORMATS: PayloadFormat[] = ["json", "yaml", "table", "markdown"];
 
-const langFor = (f: PayloadFormat): Extension =>
-  f === "json" ? json() : f === "yaml" ? yaml() : f === "markdown" ? markdown() : [];
+// CodeMirror loads when a payload is first shown; the editor also prefetches
+// it once the page is idle.
+const SourceEditor = dynamic(() => import("./SourceEditor"), { ssr: false });
 
 /* ------------------------------------------------------------ Text fields */
 
@@ -139,20 +135,6 @@ function PayloadCard({
     onChange(f, c);
   };
 
-  const extensions = useMemo<Extension>(
-    () => [
-      langFor(fmt),
-      EditorView.domEventHandlers({
-        blur: () => {
-          commit(fmtRef.current, draftRef.current);
-          return false;
-        },
-      }),
-    ],
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [fmt],
-  );
-
   return (
     <div className="mt-2 overflow-hidden rounded-md border border-line first:mt-0">
       <div className="flex h-7 items-center gap-1.5 border-b border-line bg-surface-2 pl-2.5 pr-1">
@@ -174,10 +156,11 @@ function PayloadCard({
         </IconButton>
       </div>
       <div style={{ minHeight: 96, maxHeight: 280, overflow: "auto" }}>
-        <CodeEditor
+        <SourceEditor
           value={draft}
+          language={fmt}
           onChange={setDraft}
-          extensions={extensions}
+          onBlur={() => commit(fmtRef.current, draftRef.current)}
           lineNumbers={false}
           style={{ minHeight: 96 }}
         />
