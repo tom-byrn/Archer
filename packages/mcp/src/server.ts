@@ -34,7 +34,6 @@ import {
   type DriftFinding,
   type Workspace,
   type RevisionRow,
-  type ThreadRow,
 } from "./backend";
 import { BRIEF, GUIDE } from "./guide";
 
@@ -127,18 +126,6 @@ const diagnosticsReport = (ds: { severity: string }[] & Parameters<typeof format
   ds.map(formatDiagnostic);
 
 const iso = (ms: number) => new Date(ms).toISOString();
-
-const threadView = (t: ThreadRow) => ({
-  question_id: t._id,
-  path: t.path,
-  status: t.status,
-  updated: iso(t.updatedAt),
-  messages: t.messages.map((m) => ({
-    author: m.author.kind === "user" ? "user" : (m.author.name ?? "agent"),
-    text: m.text,
-    at: iso(m.at),
-  })),
-});
 
 const describeSummary = (s: DiffSummary): string => {
   const parts: string[] = [];
@@ -398,18 +385,14 @@ export function registerArcherTools(server: McpServer, opts: { mode: ServerMode 
     {
       title: "Read a project",
       description:
-        "Fetch a project's full Archer source plus its current diagnostics, the OPEN QUESTIONS humans left on components (answer them with answer_question when you can), and a drift summary. ALWAYS call this before update_project and base your edit on the exact source returned — updates replace the whole document. Components may carry a `src` path pointing into the codebase — use it to locate implementations. The layout block at the end is machine-managed presentation: keep it out of your mental model, and normally omit it from your edits (the server preserves it for you).",
+        "Fetch a project's full Archer source plus its current diagnostics and a drift summary. ALWAYS call this before update_project and base your edit on the exact source returned — updates replace the whole document. Components may carry a `src` path pointing into the codebase — use it to locate implementations. The layout block at the end is machine-managed presentation: keep it out of your mental model, and normally omit it from your edits (the server preserves it for you).",
       inputSchema: { project_id: z.string() },
     },
     wrap(async ({ project_id }) => {
       const ws = await requireWorkspace();
       const doc = await db.getProject(ws, project_id);
       if (!doc) throw new Error(`No project with id ${project_id}. Use list_projects.`);
-      const [a, threads, drift] = await Promise.all([
-        analyze(doc.source, ws),
-        db.listThreads(ws, project_id, "open"),
-        db.getDrift(ws, project_id),
-      ]);
+      const [a, drift] = await Promise.all([analyze(doc.source, ws), db.getDrift(ws, project_id)]);
       return text({
         id: project_id,
         title: doc.title,
@@ -417,7 +400,6 @@ export function registerArcherTools(server: McpServer, opts: { mode: ServerMode 
         valid: a.errors.length === 0,
         errors: diagnosticsReport(a.errors),
         warnings: diagnosticsReport(a.warnings),
-        open_questions: threads.map(threadView),
         drift: drift ? { reported_at: iso(drift.reportedAt), findings_count: drift.findings.length } : null,
         repository: doc.repo
           ? {
@@ -728,87 +710,6 @@ export function registerArcherTools(server: McpServer, opts: { mode: ServerMode 
         summary,
         diff,
       });
-    }),
-  );
-
-  // --- questions --------------------------------------------------------------
-
-  server.registerTool(
-    "ask_question",
-    {
-      title: "Ask the human about a component",
-      description:
-        "Attach a question to one component when the architecture is ambiguous or you need a decision instead of guessing (e.g. 'Which auth provider should this use?'). The question appears as a badge on that component in the human's canvas and they answer inline; check back with list_questions (or get_project's open_questions). Prefer this over inventing architecture that contradicts the user's intent.",
-      inputSchema: {
-        project_id: z.string(),
-        path: z.string().describe("Dot-path of the component, e.g. 'backend.api'"),
-        text: z.string().min(1).max(2000).describe("The question, as you would ask a colleague"),
-      },
-    },
-    wrap(async ({ project_id, path, text: body }) => {
-      const ws = await requireWorkspace();
-      const project = await requireProject(ws, project_id);
-      if (!componentPaths(parse(project.source).doc).has(path))
-        throw new Error(`No component at path '${path}' in this project.`);
-      const id = await db.createThread(ws, project_id, path, body.trim());
-      return text({ question_id: id, path, status: "open", asked_as: agentName() });
-    }),
-  );
-
-  server.registerTool(
-    "list_questions",
-    {
-      title: "List questions on a project",
-      description:
-        "Question threads attached to components — asked by you, other agents, or the human (humans leave questions for agents too). Each thread has a path, status and its messages. Start a session by reading the open ones and answering what you can with answer_question.",
-      inputSchema: {
-        project_id: z.string(),
-        status: z.enum(["open", "resolved", "all"]).optional().describe("Default 'open'"),
-      },
-    },
-    wrap(async ({ project_id, status }) => {
-      const ws = await requireWorkspace();
-      await requireProject(ws, project_id);
-      const st = status ?? "open";
-      const rows = await db.listThreads(ws, project_id, st === "all" ? undefined : st);
-      return text(rows.map(threadView));
-    }),
-  );
-
-  server.registerTool(
-    "answer_question",
-    {
-      title: "Reply in a question thread",
-      description:
-        "Append a reply to a question thread — answer a question the human left for you, or follow up on your own. Replies are attributed to your client name. Resolve the thread with resolve_question once the matter is settled.",
-      inputSchema: {
-        question_id: z.string(),
-        text: z.string().min(1).max(4000),
-      },
-    },
-    wrap(async ({ question_id, text: body }) => {
-      const ws = await requireWorkspace();
-      await db.replyThread(ws, question_id, body.trim());
-      return text({ question_id, replied_as: agentName() });
-    }),
-  );
-
-  server.registerTool(
-    "resolve_question",
-    {
-      title: "Resolve or reopen a question",
-      description:
-        "Mark a question thread resolved (its badge disappears from the canvas) — do this after the human answered and you applied the decision. Pass resolved=false to reopen.",
-      inputSchema: {
-        question_id: z.string(),
-        resolved: z.boolean().optional().describe("Default true"),
-      },
-    },
-    wrap(async ({ question_id, resolved }) => {
-      const ws = await requireWorkspace();
-      const status = resolved === false ? "open" : "resolved";
-      await db.setThreadStatus(ws, question_id, status);
-      return text({ question_id, status });
     }),
   );
 

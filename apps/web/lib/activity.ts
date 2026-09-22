@@ -2,8 +2,7 @@
 
 /**
  * Client-side access to everything that lives *next to* a document in Convex:
- * revisions (history + agent attribution), question threads, and drift
- * reports. One hook, one object, so panels and the canvas share a single
+ * revisions (history + agent attribution) and drift reports. One hook, one object, so panels and the canvas share a single
  * subscription set.
  */
 
@@ -14,10 +13,8 @@ import type { Doc, Id } from "@/convex/_generated/dataModel";
 
 export type Author = { kind: "user" | "agent"; name?: string };
 export type Revision = Doc<"revisions">;
-export type Thread = Doc<"threads">;
 export type DriftReport = Doc<"drift">;
 export type DriftFinding = DriftReport["findings"][number];
-export type ThreadStatus = Thread["status"];
 
 export const authorLabel = (a: Author): string =>
   a.kind === "user" ? "You" : a.name && a.name.trim() !== "" ? a.name : "Agent";
@@ -30,16 +27,10 @@ export interface DocumentActivity {
   baseline: Revision | null | undefined;
   /** Agent revisions newer than `seenRevisionAt`. */
   unseenAgentRevisions: Revision[];
-  threads: Thread[];
-  openThreadsByPath: Map<string, Thread[]>;
   drift: DriftReport | null | undefined;
   driftByPath: Map<string, DriftFinding>;
 
   markSeen: () => Promise<unknown>;
-  askQuestion: (path: string, text: string) => Promise<Id<"threads">>;
-  reply: (id: Id<"threads">, text: string) => Promise<unknown>;
-  setThreadStatus: (id: Id<"threads">, status: ThreadStatus) => Promise<unknown>;
-  removeThread: (id: Id<"threads">) => Promise<unknown>;
   dismissFinding: (index: number) => Promise<unknown>;
   clearDrift: () => Promise<unknown>;
 }
@@ -55,14 +46,9 @@ export function useDocumentActivity(
     args === "skip" ? "skip" : { ...args, limit: 100 },
   );
   const baseline = useQuery(api.revisions.baseline, args);
-  const threads = useQuery(api.threads.list, args);
   const drift = useQuery(api.drift.get, args);
 
   const markSeenM = useMutation(api.documents.markSeen);
-  const createThread = useMutation(api.threads.create);
-  const replyM = useMutation(api.threads.reply);
-  const setStatusM = useMutation(api.threads.setStatus);
-  const removeThreadM = useMutation(api.threads.remove);
   const dismissM = useMutation(api.drift.dismiss);
   const clearM = useMutation(api.drift.clear);
 
@@ -73,15 +59,6 @@ export function useDocumentActivity(
       ),
     [revisions, seenRevisionAt],
   );
-
-  const openThreadsByPath = useMemo(() => {
-    const m = new Map<string, Thread[]>();
-    for (const t of threads ?? []) {
-      if (t.status !== "open") continue;
-      m.set(t.path, [...(m.get(t.path) ?? []), t]);
-    }
-    return m;
-  }, [threads]);
 
   const driftByPath = useMemo(() => {
     const m = new Map<string, DriftFinding>();
@@ -102,16 +79,9 @@ export function useDocumentActivity(
     revisions: revisions ?? [],
     baseline,
     unseenAgentRevisions,
-    threads: threads ?? [],
-    openThreadsByPath,
     drift,
     driftByPath,
     markSeen: () => guard(({ documentId, workspaceId }) => markSeenM({ id: documentId, workspaceId })),
-    askQuestion: (path, text) =>
-      guard(({ documentId, workspaceId }) => createThread({ documentId, workspaceId, path, text })),
-    reply: (id, text) => guard(({ workspaceId }) => replyM({ id, workspaceId, text })),
-    setThreadStatus: (id, status) => guard(({ workspaceId }) => setStatusM({ id, workspaceId, status })),
-    removeThread: (id) => guard(({ workspaceId }) => removeThreadM({ id, workspaceId })),
     dismissFinding: (index) =>
       guard(({ workspaceId }) =>
         drift ? dismissM({ id: drift._id, workspaceId, index }) : Promise.resolve(),

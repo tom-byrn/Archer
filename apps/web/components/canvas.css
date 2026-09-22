@@ -52,7 +52,7 @@
     0 0 0 4px var(--accent);
 }
 
-/* ---- Badges (agent-touched, questions, drift) ---- */
+/* ---- Badges (agent-touched, drift) ---- */
 .arch-badges {
   position: absolute;
   top: -6px;
@@ -81,9 +81,6 @@
 .arch-badge > svg {
   width: 10px;
   height: 10px;
-}
-.arch-badge-count {
-  padding: 0 4px 0 3px;
 }
 
 /* ---- Edges ---- */

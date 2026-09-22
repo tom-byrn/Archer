@@ -129,7 +129,7 @@ export function Editor({
 }: {
   initialSource?: string;
   onPersist?: (source: string, title: string) => Promise<void> | void;
-  /** Persisted documents get history, questions and drift; unset = scratch editor. */
+  /** Persisted documents get history and drift; unset = scratch editor. */
   documentId?: Id<"documents"> | null;
   workspaceId?: string | null;
   seenRevisionAt?: number;
@@ -219,14 +219,12 @@ export function Editor({
       const d = diff?.components.get(path);
       if (d) m.diff = d;
       if (!diff && touched.has(path)) m.touched = true;
-      const q = activity.openThreadsByPath.get(path)?.length ?? 0;
-      if (q > 0) m.questions = q;
       const f = activity.driftByPath.get(path);
       if (f && (f.status === "missing" || f.status === "changed")) m.drift = f.status;
       if (c.src) m.src = c.src;
       return Object.keys(m).length > 0 ? m : undefined;
     },
-    [diff, touched, activity.openThreadsByPath, activity.driftByPath],
+    [diff, touched, activity.driftByPath],
   );
 
   const displayDoc = diff ? diff.doc : derived.laidOut;
@@ -423,7 +421,6 @@ export function Editor({
   ];
   const unseen = activity.unseenAgentRevisions;
   const latestAgent = unseen[0];
-  const openQuestions = activity.openThreadsByPath.size;
   const viewingRevisionId = diffView?.kind === "revision" ? diffView.id : null;
 
   return (
@@ -489,19 +486,14 @@ export function Editor({
           </IconButton>
           {documentId && (
             <IconButton
-              label={`Activity · ${activity.revisions.length} revisions${openQuestions > 0 ? ` · ${openQuestions} open questions` : ""}`}
+              label={`Activity · ${activity.revisions.length} revisions`}
               onClick={() => (panel ? setPanel(null) : openPanel("history"))}
               active={panel !== null}
               className="relative"
             >
               <Icon.History />
-              {(unseen.length > 0 || openQuestions > 0) && (
-                <span
-                  className={cx(
-                    "absolute right-1 top-1 h-2 w-2 rounded-full ring-2 ring-surface",
-                    unseen.length > 0 ? "bg-accent" : "bg-warn",
-                  )}
-                />
+              {unseen.length > 0 && (
+                <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-accent ring-2 ring-surface" />
               )}
             </IconButton>
           )}
@@ -711,7 +703,6 @@ export function Editor({
             onSelect={setSelection}
             onDrillIn={callbacks.onDrillIn}
             library={library}
-            activity={activity}
             repo={repo}
           />
         )}

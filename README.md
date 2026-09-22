@@ -8,6 +8,8 @@ structured detail inside every node. The whole canvas *is* one `.arch` text
 file: dragging a box edits the file, editing the file re-renders the canvas,
 and one click compiles it into a precise spec you paste to a coding agent.
 
+![Architecture](https://archer.tombyrne.dev/share/c_cjygFhmmD5DB3S/image.svg)
+
 ## Why
 
 Coding agents are only as good as the spec you hand them. Diagrams describe

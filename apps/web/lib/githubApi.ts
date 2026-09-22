@@ -45,7 +45,11 @@ export interface GitHubBranch {
   sha: string;
 }
 
-async function github<T>(path: string, token: string | null, init?: RequestInit): Promise<{ data: T; link: string | null }> {
+async function github<T>(
+  path: string,
+  token: string | null,
+  init?: RequestInit,
+): Promise<{ data: T; link: string | null; scopes: string | null }> {
   const res = await fetch(`${API}${path}`, {
     ...init,
     headers: {
@@ -67,7 +71,11 @@ async function github<T>(path: string, token: string | null, init?: RequestInit)
     throw new GitHubError("GitHub refused the request (private repo without the repo scope?).", 403, "forbidden");
   }
   if (!res.ok) throw new GitHubError(`GitHub error ${res.status}`, 502, "upstream");
-  return { data: (await res.json()) as T, link: res.headers.get("link") };
+  return {
+    data: (await res.json()) as T,
+    link: res.headers.get("link"),
+    scopes: res.headers.get("x-oauth-scopes"),
+  };
 }
 
 const mapRepo = (r: Record<string, unknown>): GitHubRepo => ({
@@ -81,14 +89,35 @@ const mapRepo = (r: Record<string, unknown>): GitHubRepo => ({
   htmlUrl: r.html_url as string,
 });
 
-/** Repos the user can see, most recently pushed first. Requires a token. */
-export async function listRepos(token: string, query: string): Promise<GitHubRepo[]> {
-  const { data } = await github<Record<string, unknown>[]>(
-    "/user/repos?sort=pushed&per_page=100&affiliation=owner,collaborator,organization_member",
-    token,
-  );
+/** Most repos listed per search; GitHub pages them 100 at a time. */
+const MAX_REPO_PAGES = 10;
+
+/**
+ * Repos the user can see, most recently pushed first. Requires a token.
+ * `privateAccess` is whether the token carries the `repo` scope (without it
+ * GitHub silently returns public repos only); null when GitHub doesn't report
+ * scopes (fine-grained or GitHub App tokens).
+ */
+export async function listRepos(
+  token: string,
+  query: string,
+): Promise<{ repos: GitHubRepo[]; privateAccess: boolean | null }> {
+  const all: GitHubRepo[] = [];
+  let scopes: string | null = null;
+  for (let page = 1; page <= MAX_REPO_PAGES; page++) {
+    const res = await github<Record<string, unknown>[]>(
+      `/user/repos?sort=pushed&per_page=100&page=${page}&affiliation=owner,collaborator,organization_member`,
+      token,
+    );
+    if (page === 1) scopes = res.scopes;
+    all.push(...res.data.map(mapRepo));
+    if (!res.link?.includes('rel="next"')) break;
+  }
   const q = query.trim().toLowerCase();
-  return data.map(mapRepo).filter((r) => q === "" || r.fullName.toLowerCase().includes(q));
+  return {
+    repos: all.filter((r) => q === "" || r.fullName.toLowerCase().includes(q)),
+    privateAccess: scopes === null ? null : scopes.split(",").some((s) => s.trim() === "repo"),
+  };
 }
 
 /** One repo by owner/name (works unauthenticated for public repos). */

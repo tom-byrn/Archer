@@ -228,7 +228,7 @@ export const remove = mutation({
     await requireWorkspace(ctx, workspaceId, apiKey, "editor");
     const doc = await ctx.db.get(id);
     if (!doc || doc.workspaceId !== workspaceId) return;
-    for (const table of ["revisions", "threads", "drift"] as const) {
+    for (const table of ["revisions", "drift"] as const) {
       const rows = await ctx.db
         .query(table)
         .withIndex("by_document", (q) => q.eq("documentId", id))

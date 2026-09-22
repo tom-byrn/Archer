@@ -23,8 +23,6 @@ export interface NodeMarks {
   diff?: "added" | "removed" | "changed";
   /** An agent changed this component since the user last reviewed. */
   touched?: boolean;
-  /** Number of open question threads on this component. */
-  questions?: number;
   /** Latest drift report says the code is out of sync with this component. */
   drift?: "missing" | "changed";
   /** `src` field is set (renders a link affordance). */
@@ -68,7 +66,7 @@ export interface ToFlowOptions {
   resolveType?: (tag: string) => { color: string; glyph: string } | undefined;
   /** OS dark mode (kept for API compatibility; colors are token-driven). */
   isDark?: boolean;
-  /** Per-path overlay badges (diff status, agent-touched, questions, drift). */
+  /** Per-path overlay badges (diff status, agent-touched, drift). */
   marks?: (path: string, component: ComponentNode) => NodeMarks | undefined;
   /** Per-connection diff status, keyed by `connectionKey()` from @archer/lang. */
   edgeDiff?: Map<string, "added" | "removed" | "changed">;

@@ -7,7 +7,7 @@ thin shell over the same code the MCP server uses (`@archer/lang`,
 `@archer/mcp/backend`), so diagnostics and write gates are identical.
 
 When to use which: **MCP** for agents working conversationally against a
-workspace (history, questions, drift, custom types). **CLI** for anything
+workspace (history, drift, custom types). **CLI** for anything
 file-shaped — CI gates, pre-commit hooks, scripts, and agents that have a shell
 but no MCP client. `archer check file.arch` also avoids round-tripping a large
 document through a tool-call argument.
