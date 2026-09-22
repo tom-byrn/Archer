@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useMutation, useQuery } from "convex/react";
+import { Loading } from "loading-dev";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { Button, Dialog, Icon, IconButton, Input, relativeTime } from "./ui";
@@ -162,7 +163,9 @@ export function ConnectAgentDialog({
           <span className="eyebrow">Your keys</span>
         </div>
         {keys === undefined ? (
-          <p className="py-2 text-sm text-ink-3">Loading…</p>
+          <div role="status" aria-label="Loading" className="grid place-items-center py-2 text-ink-3">
+            <Loading size={48} />
+          </div>
         ) : keys.length === 0 ? (
           <p className="py-2 text-sm text-ink-3">No keys yet.</p>
         ) : (

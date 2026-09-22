@@ -8,6 +8,7 @@
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { diffDocs, parse, summarizeDiff, type DiffSummary } from "@archer/lang";
+import { Loading } from "loading-dev";
 import type { Id } from "@/convex/_generated/dataModel";
 import {
   authorLabel,
@@ -378,7 +379,9 @@ function HistoryTab({
         <div className="px-3 pb-3">
           {commits.error && <p className="pb-1 text-xs text-danger">{commits.error}</p>}
           {commits.loading ? (
-            <p className="text-xs text-ink-3">Loading commits…</p>
+            <div role="status" aria-label="Loading commits" className="grid place-items-center text-ink-3">
+              <Loading size={48} />
+            </div>
           ) : commits.hasMore ? (
             <Button size="sm" variant="ghost" onClick={commits.loadMore}>
               Load older commits
