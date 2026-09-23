@@ -4,9 +4,12 @@ Archer is an architecture canvas that compiles to/from an agent-readable
 language (`.arch` files). pnpm monorepo, TypeScript throughout:
 `packages/lang` (the language: parser/validator/formatter/layout/transforms —
 pure TS, no app deps), `packages/catalog` (component types + glyphs),
-`packages/mcp` (stdio MCP server, `docs/mcp.md`), `packages/cli` (the
-published `archer` binary — check/fmt/init/push/pull + `archer mcp`; a thin
-shell over lang + `mcp/src/backend.ts`, bundled with tsup, `docs/cli.md`),
+`packages/mcp` (the MCP tools the app serves at `/mcp`, `docs/mcp.md`),
+`packages/cli` (the published `archer` binary — check/fmt/init/login/
+workspace/push/pull + `archer mcp`, a stdio relay; validates with
+`mcp/src/analysis.ts` and does everything else through the hosted `/mcp`
+tools, signed in with the same OAuth flow agents use; bundled with tsup,
+`docs/cli.md`),
 `apps/web` (Next.js 15 App
 Router + React Flow + Convex).
 
@@ -20,10 +23,11 @@ Router + React Flow + Convex).
   Clerk JWTs (`convex/auth.config.ts`, template "convex"). Workspaces:
   personal (id == Clerk user id, owner) and team (`workspaces` rows, roles
   owner/editor/viewer via `members`, invites by email). Every workspace-scoped
-  Convex function calls `requireWorkspace(ctx, workspaceId, apiKey?, need)`
+  Convex function calls `requireWorkspace(ctx, workspaceId, serviceKey?, need)`
   from `convex/access.ts` — queries need viewer, document mutations editor,
-  member/workspace management owner. API keys (hashed in `apiKeys`, per
-  workspace) act as editors; that is how the MCP server authenticates.
+  member/workspace management owner. Every caller is a user; there are NO
+  API keys (removed — don't reintroduce per-workspace secrets). Browsers use
+  the Clerk JWT; agents and the CLI come through the hosted MCP route.
   Public share links: `documents.publicSlug` → `/share/<slug>` (viewer UI) and
   `/share/<slug>/image.svg` (server-rendered SVG from `lib/svg.ts`). Pre-auth
   anonymous workspaces are claimed on first sign-in (`workspaces.claimLegacy`);
@@ -39,11 +43,15 @@ Router + React Flow + Convex).
   — the web app must NOT import `@modelcontextprotocol/sdk` itself (two SDK
   copies, one per zod peer, do not interoperate). Tools reach Convex with a
   server-only service credential `svc_<ARCHER_SERVICE_SECRET>.<userId>` passed
-  in the usual `apiKey` argument (`convex/access.ts` → `effectiveUser`); the
-  same secret must be set on the Convex deployment and in the web env. The
-  stdio server + API keys remain for CI, the CLI and offline use.
-  `registerArcherTools(server, { mode })` registers 23 tools for stdio, 24
-  for remote (`list_workspaces`/`use_workspace` instead of `set_api_key`).
+  in the functions' `apiKey` argument (legacy name; `convex/access.ts` →
+  `effectiveUser`); the same secret must be set on the Convex deployment and
+  in the web env. `registerArcherTools(server)` registers 24 tools. The CLI
+  (`archer login`) runs the same OAuth flow as any MCP client (DCR + PKCE +
+  localhost redirect, client name "Archer CLI"), stores the session in
+  `~/.archer/auth.json`, and calls the tools; the JSON shapes it reads are
+  typed in `mcp/src/contract.ts` and built with `satisfies` in `server.ts`.
+  `packages/cli/test/account.test.ts` runs the CLI end to end against a
+  stand-in OAuth server + the real tools over a fake Convex.
 - GitHub: documents can link a repo + branch (`documents.repo`; reserved
   `path` for the future `.arch`-in-repo sync). ALL GitHub REST calls go
   through `apps/web/lib/githubApi.ts` (pure client) via
@@ -57,6 +65,18 @@ Router + React Flow + Convex).
   `embedded` mode on a local `useArchDoc` (no Convex), lazy-loaded so React
   Flow stays out of the first paint. Absolute URLs come from `lib/site.ts`
   (`NEXT_PUBLIC_SITE_URL`, default `https://archer.tombyrne.dev`).
+- Docs: `/language` (the spec) and `/language/examples` (worked examples from
+  `lib/examples.ts`). Example sources must stay canonical and validate clean —
+  `apps/web/test/examples.test.ts` enforces it, so the code shown, the diagram
+  (`lib/svg.ts`, prerendered at `/language/examples/<slug>/{light,dark}.svg`)
+  and the editor copy always agree. "Open in editor" goes to
+  `/new?example=<slug>`, which copies the example into the selected workspace
+  (reusing an untouched earlier copy) and opens it.
+- Brand kit: `/branding` (signed-in only, deliberately linked from nowhere —
+  keep it that way) shows the logo, colors, type, radii, icons and ui.tsx
+  primitives. Values are parsed from `app/globals.css` at build time
+  (`lib/brand.ts`); a new color token appears under "Other" until it gets a
+  role in `COLOR_GROUPS` (`apps/web/test/brand.test.ts` fails until it does).
 - UI conventions (`apps/web`): all colors, radii and text sizes come from the
   tokens in `app/globals.css` (exposed as Tailwind utilities: `bg-surface`,
   `text-ink-2`, `border-line`, `rounded-md`, `text-sm`…). Never use the raw

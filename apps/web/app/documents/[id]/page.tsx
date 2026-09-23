@@ -6,6 +6,7 @@ import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { useAuth } from "@clerk/nextjs";
+import { Loading } from "loading-dev";
 import { useWorkspaceId } from "@/lib/workspace";
 import { Editor } from "@/components/Editor";
 import { DocumentViewer } from "@/components/DocumentViewer";
@@ -35,8 +36,8 @@ export default function DocumentPage({
 
   if (doc === undefined || workspaceId === null) {
     return (
-      <div className="grid h-dvh place-items-center bg-bg text-sm text-ink-3">
-        <span className="animate-pulse">Loading document…</span>
+      <div role="status" aria-label="Loading document" className="grid h-dvh place-items-center bg-bg text-ink-3">
+        <Loading size={48} />
       </div>
     );
   }

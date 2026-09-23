@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useMutation, useQuery } from "convex/react";
+import { Loading } from "loading-dev";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import type { Role } from "@/lib/workspace";
@@ -48,7 +49,9 @@ export function MembersDialog({
   return (
     <Dialog open={open} onClose={onClose} title="Members" width={520}>
       {members === undefined ? (
-        <p className="py-2 text-sm text-ink-3">Loading…</p>
+        <div role="status" aria-label="Loading" className="grid place-items-center py-2 text-ink-3">
+          <Loading size={48} />
+        </div>
       ) : (
         <ul className="divide-y divide-line rounded-md border border-line">
           {members.map((m) => (

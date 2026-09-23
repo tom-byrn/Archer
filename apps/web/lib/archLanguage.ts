@@ -2,10 +2,15 @@
  * CodeMirror language support for `.arch` source, plus helpers that map
  * Archer diagnostics / component spans onto editor positions.
  *
- * Token rules mirror `lib/highlight.ts` (the legacy <pre> highlighter).
+ * The tokenizer is shared with `lib/highlightArch.ts` (static code blocks).
  */
 
-import { StreamLanguage, LanguageSupport, type StringStream } from "@codemirror/language";
+import {
+  StreamLanguage,
+  LanguageSupport,
+  type StreamParser,
+  type StringStream,
+} from "@codemirror/language";
 import type { Diagnostic as CmDiagnostic } from "@codemirror/lint";
 import type { Text } from "@codemirror/state";
 import type { ArchDoc, ComponentNode, Diagnostic } from "@archer/lang";
@@ -123,7 +128,8 @@ function tokenWithInlineFence(stream: StringStream, state: ArchState): string | 
   return token(stream, state);
 }
 
-export const archStreamLanguage = StreamLanguage.define<ArchState>({
+/** The tokenizer on its own, so static renderers (`lib/highlightArch.ts`) match the editor. */
+export const archStreamParser: StreamParser<ArchState> = {
   name: "arch",
   startState: () => ({ fence: 0, triple: false }),
   copyState: (s) => ({ ...s }),
@@ -132,7 +138,9 @@ export const archStreamLanguage = StreamLanguage.define<ArchState>({
     commentTokens: { line: "#" },
     closeBrackets: { brackets: ["(", "[", "{", '"'] },
   },
-});
+};
+
+export const archStreamLanguage = StreamLanguage.define<ArchState>(archStreamParser);
 
 export function archLanguage(): LanguageSupport {
   return new LanguageSupport(archStreamLanguage);

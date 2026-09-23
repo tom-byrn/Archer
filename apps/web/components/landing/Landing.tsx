@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Newsreader } from "next/font/google";
+import { newsreader } from "@/lib/fonts";
 import { HEADLINE, LEDE } from "@/lib/landingCopy";
 import { Icon, buttonCls } from "../ui";
 import { AgentPrompt, CopyPromptButton } from "./AgentPrompt";
@@ -11,15 +11,6 @@ import { Faq } from "./Faq";
 import { Features } from "./Features";
 import { SandboxLoader } from "./SandboxLoader";
 import { SiteFrame, siteNavLinkCls } from "./SiteFrame";
-
-// Headline only. The wordmark and the rest of the product stay on Playfair.
-const newsreader = Newsreader({
-  subsets: ["latin"],
-  weight: "variable",
-  axes: ["opsz"],
-  display: "swap",
-  variable: "--font-newsreader",
-});
 
 const FOOTER_COLUMNS: { title: string; links: [label: string, href: string][] }[] = [
   {

@@ -123,7 +123,7 @@ export const rename = mutation({
   },
 });
 
-const DATA_TABLES = ["documents", "libraryTypes", "revisions", "drift", "apiKeys"] as const;
+const DATA_TABLES = ["documents", "libraryTypes", "revisions", "drift"] as const;
 
 /** Delete a team workspace and everything in it. */
 export const remove = mutation({
