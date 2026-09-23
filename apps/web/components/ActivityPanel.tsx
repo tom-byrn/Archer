@@ -241,6 +241,7 @@ function HistoryTab({
       {repo && (
         <div className="pt-2">
           <Segmented<HistoryFilter>
+            label="Show"
             value={filter}
             onChange={changeFilter}
             options={[
@@ -276,24 +277,26 @@ function HistoryTab({
             onClose={() => setConfirmRestore(false)}
             title="Restore this version?"
             width={400}
+            footer={
+              <>
+                <Button variant="ghost" onClick={() => setConfirmRestore(false)}>
+                  Cancel
+                </Button>
+                <Button
+                  variant="primary"
+                  onClick={() => {
+                    setConfirmRestore(false);
+                    onRestore(viewing.source);
+                  }}
+                >
+                  Restore
+                </Button>
+              </>
+            }
           >
             <p className="text-sm text-ink-2">
               The current document will be saved as a new revision first, so nothing is lost.
             </p>
-            <div className="flex justify-end gap-1.5 pt-4">
-              <Button variant="ghost" onClick={() => setConfirmRestore(false)}>
-                Cancel
-              </Button>
-              <Button
-                variant="primary"
-                onClick={() => {
-                  setConfirmRestore(false);
-                  onRestore(viewing.source);
-                }}
-              >
-                Restore
-              </Button>
-            </div>
           </Dialog>
         </div>
       )}
@@ -435,7 +438,7 @@ function DriftTab({
 
   if (!report) {
     return (
-      <div className="px-3 py-3">
+      <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3">
         <p className="text-sm leading-relaxed text-ink-2">
           A drift check compares this document with your codebase. Paste this prompt into your
           agent:
@@ -494,7 +497,7 @@ function DriftTab({
                       <button
                         type="button"
                         onClick={() => onSelectPath(f.path!)}
-                        className="mono truncate text-xs text-accent hover:underline"
+                        className="mono truncate text-xs text-accent-text hover:underline"
                       >
                         {f.path}
                       </button>
@@ -553,6 +556,7 @@ export function ActivityPanel({
     <SidePanel tall resizable defaultWidth={512}>
       <div className="flex h-10 shrink-0 items-center gap-2 border-b border-line px-2">
         <Segmented<ActivityTab>
+          label="Activity view"
           value={tab}
           onChange={onTabChange}
           options={[

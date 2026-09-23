@@ -142,7 +142,7 @@ export function DocumentViewer({
         )}
         <div className="ml-auto flex items-center gap-1.5">
           {toast ? (
-            <span className="pr-2 text-xs text-accent">{toast}</span>
+            <span className="pr-2 text-xs text-accent-text">{toast}</span>
           ) : (
             <span className="hidden pr-2 text-xs text-ink-3 md:inline">Updated {relativeTime(updatedAt)}</span>
           )}
@@ -339,7 +339,7 @@ function Details({
                       href={srcHref}
                       target="_blank"
                       rel="noreferrer"
-                      className="mono inline-flex max-w-full items-center gap-1 truncate text-xs text-accent hover:underline"
+                      className="mono inline-flex max-w-full items-center gap-1 truncate text-xs text-accent-text hover:underline"
                     >
                       {node.src}
                       <Icon.External className="h-3 w-3 shrink-0" />

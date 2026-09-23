@@ -34,7 +34,7 @@ function Slice({ from, to }: { from: number; to: number }) {
           target="_blank"
           rel="noopener"
           tabIndex={-1}
-          className="text-accent underline decoration-accent/40 underline-offset-2 hover:decoration-current"
+          className="text-accent-text underline decoration-accent/40 underline-offset-2 hover:decoration-current"
         >
           {text}
         </a>

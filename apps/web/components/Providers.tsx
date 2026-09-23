@@ -12,7 +12,9 @@ import { useIsDark } from "@/lib/useIsDark";
 /** Token values from globals.css — Clerk needs literal colors, not CSS vars. */
 const PALETTE = {
   light: {
-    primary: "#0c8c5e", primaryInk: "#ffffff",
+    // --accent-text, not --accent: Clerk sets link text in it and white
+    // button labels on it, and --accent is only ~4.3:1 either way.
+    primary: "#007448", primaryInk: "#ffffff",
     surface: "#ffffff", surface2: "#f4f2ee",
     ink: "#1a1916", ink2: "#5f5a52", line: "#e7e3dc", line2: "#d2ccc3", neutral: "#1a1916",
     danger: "#b42318",

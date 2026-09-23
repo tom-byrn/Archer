@@ -111,6 +111,7 @@ export function MembersDialog({
               className="flex-1"
             />
             <Segmented
+              label="Role"
               value={role}
               onChange={setRoleDraft}
               options={ROLES.map((r) => ({ value: r, label: ROLE_LABEL[r] }))}

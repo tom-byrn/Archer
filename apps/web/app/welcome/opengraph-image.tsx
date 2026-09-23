@@ -22,7 +22,7 @@ const GROUND = "#121315";
 const SURFACE = "#161719";
 const INK = "#ecebe7";
 const INK_2 = "#a5a19a";
-const INK_3 = "#6d6963";
+const INK_3 = "#89847e";
 const LINE = "#26292d";
 const LINE_2 = "#383c42";
 // Connectors read as ink on the landing canvas (`.landing-canvas` in landing.css).

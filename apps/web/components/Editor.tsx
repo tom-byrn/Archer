@@ -464,7 +464,7 @@ export function Editor({
 
         <div className="ml-auto flex items-center gap-1.5">
           {toast ? (
-            <span className="pr-2 text-xs text-accent">{toast}</span>
+            <span className="pr-2 text-xs text-accent-text">{toast}</span>
           ) : onPersist && saveState !== "idle" ? (
             <span className="pr-2 text-xs text-ink-3">
               {saveState === "saving" ? "Saving…" : "Saved"}

@@ -159,6 +159,7 @@ function PayloadCard({
         <span className="mono min-w-0 flex-1 truncate text-sm font-semibold">{name}</span>
         <Segmented
           mono
+          label="Payload format"
           value={fmt}
           options={FORMATS.map((f) => ({ value: f, label: f }))}
           onChange={(f) => {
@@ -319,7 +320,7 @@ function ComponentInspector({
         </div>
         <Menu
           trigger={({ open, toggle }) => (
-            <IconButton label="More" active={open} onClick={toggle}>
+            <IconButton label="More" active={open} onClick={toggle} aria-expanded={open}>
               <Icon.More />
             </IconButton>
           )}
@@ -519,7 +520,7 @@ function ConnectionInspector({
         </span>
         <Menu
           trigger={({ open, toggle }) => (
-            <IconButton label="More" active={open} onClick={toggle}>
+            <IconButton label="More" active={open} onClick={toggle} aria-expanded={open}>
               <Icon.More />
             </IconButton>
           )}
@@ -544,6 +545,7 @@ function ConnectionInspector({
           <PropertyRow label="Direction">
             <Segmented
               mono
+              label="Direction"
               value={conn.arrow}
               options={(["->", "<->", "--"] as Arrow[]).map((a) => ({
                 value: a,

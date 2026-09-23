@@ -150,7 +150,34 @@ export function RepoDialog({
   const canLink = !!selected && branch.trim() !== "" && !saving;
 
   return (
-    <Dialog open={open} onClose={onClose} title="Link a repository" width={520}>
+    <Dialog
+      open={open}
+      onClose={onClose}
+      title="Link a repository"
+      width={520}
+      footer={
+        <>
+          {current && (
+            <Button variant="danger" size="sm" onClick={() => void save(null)} disabled={saving}>
+              Unlink
+            </Button>
+          )}
+          <span className="flex-1" />
+          <Button variant="ghost" onClick={onClose} disabled={saving}>
+            Cancel
+          </Button>
+          <Button
+            variant="primary"
+            disabled={!canLink}
+            onClick={() =>
+              selected && void save({ owner: selected.owner, name: selected.name, branch: branch.trim() })
+            }
+          >
+            {saving ? "Linking…" : current ? "Update link" : "Link"}
+          </Button>
+        </>
+      }
+    >
       <p className="pb-3 text-sm text-ink-2">
         Commits from the linked branch show up next to architecture changes in History, and
         component <span className="mono">src</span> paths open on GitHub.
@@ -250,26 +277,6 @@ export function RepoDialog({
           </div>
         </div>
       )}
-      <div className="flex items-center gap-1.5 pt-4">
-        {current && (
-          <Button variant="danger" size="sm" onClick={() => void save(null)} disabled={saving}>
-            Unlink
-          </Button>
-        )}
-        <span className="flex-1" />
-        <Button variant="ghost" onClick={onClose} disabled={saving}>
-          Cancel
-        </Button>
-        <Button
-          variant="primary"
-          disabled={!canLink}
-          onClick={() =>
-            selected && void save({ owner: selected.owner, name: selected.name, branch: branch.trim() })
-          }
-        >
-          {saving ? "Linking…" : current ? "Update link" : "Link"}
-        </Button>
-      </div>
     </Dialog>
   );
 }

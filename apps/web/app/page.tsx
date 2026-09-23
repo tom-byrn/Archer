@@ -103,6 +103,7 @@ function DocCard({
               label="Document actions"
               size="sm"
               active={open}
+              aria-expanded={open}
               onClick={toggle}
               className="bg-surface shadow-sm hover:bg-surface-2"
             >
@@ -145,23 +146,27 @@ function RenameDialog({
     onClose();
   };
   return (
-    <Dialog open onClose={onClose} title="Rename document" width={400}>
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          void submit();
-        }}
-      >
-        <Input value={title} autoFocus onChange={(e) => setTitle(e.target.value)} />
-        <div className="flex justify-end gap-2 pt-3">
+    <Dialog
+      open
+      onClose={onClose}
+      title="Rename document"
+      width={400}
+      onSubmit={(e) => {
+        e.preventDefault();
+        void submit();
+      }}
+      footer={
+        <>
           <Button variant="ghost" onClick={onClose}>
             Cancel
           </Button>
           <Button type="submit" variant="primary" disabled={trimmed === "" || busy}>
             Save
           </Button>
-        </div>
-      </form>
+        </>
+      }
+    >
+      <Input value={title} autoFocus onChange={(e) => setTitle(e.target.value)} />
     </Dialog>
   );
 }
@@ -177,27 +182,34 @@ function DeleteDialog({
 }) {
   const [busy, setBusy] = useState(false);
   return (
-    <Dialog open onClose={onClose} title="Delete document" width={400}>
+    <Dialog
+      open
+      onClose={onClose}
+      title="Delete document"
+      width={400}
+      footer={
+        <>
+          <Button variant="ghost" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button
+            variant="danger"
+            className="border-danger"
+            disabled={busy}
+            onClick={() => {
+              setBusy(true);
+              void onConfirm().then(onClose);
+            }}
+          >
+            Delete
+          </Button>
+        </>
+      }
+    >
       <p className="text-base text-ink-2">
         Delete <span className="font-medium text-ink">{doc.title}</span>? Agents connected to
         this workspace lose access to it too. This cannot be undone.
       </p>
-      <div className="flex justify-end gap-2 pt-4">
-        <Button variant="ghost" onClick={onClose}>
-          Cancel
-        </Button>
-        <Button
-          variant="danger"
-          className="border-danger"
-          disabled={busy}
-          onClick={() => {
-            setBusy(true);
-            void onConfirm().then(onClose);
-          }}
-        >
-          Delete
-        </Button>
-      </div>
     </Dialog>
   );
 }
@@ -219,25 +231,29 @@ function NameDialog({
   const [busy, setBusy] = useState(false);
   const trimmed = name.trim();
   return (
-    <Dialog open onClose={onClose} title={title} width={400}>
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          if (trimmed === "" || busy) return;
-          setBusy(true);
-          void onSave(trimmed).then(onClose).finally(() => setBusy(false));
-        }}
-      >
-        <Input value={name} autoFocus placeholder="Team name" onChange={(e) => setName(e.target.value)} />
-        <div className="flex justify-end gap-2 pt-3">
+    <Dialog
+      open
+      onClose={onClose}
+      title={title}
+      width={400}
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (trimmed === "" || busy) return;
+        setBusy(true);
+        void onSave(trimmed).then(onClose).finally(() => setBusy(false));
+      }}
+      footer={
+        <>
           <Button variant="ghost" onClick={onClose}>
             Cancel
           </Button>
           <Button type="submit" variant="primary" disabled={trimmed === "" || busy}>
             {submitLabel}
           </Button>
-        </div>
-      </form>
+        </>
+      }
+    >
+      <Input value={name} autoFocus placeholder="Team name" onChange={(e) => setName(e.target.value)} />
     </Dialog>
   );
 }
@@ -257,24 +273,31 @@ function ConfirmDialog({
 }) {
   const [busy, setBusy] = useState(false);
   return (
-    <Dialog open onClose={onClose} title={title} width={420}>
+    <Dialog
+      open
+      onClose={onClose}
+      title={title}
+      width={420}
+      footer={
+        <>
+          <Button variant="ghost" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button
+            variant="danger"
+            className="border-danger"
+            disabled={busy}
+            onClick={() => {
+              setBusy(true);
+              void onConfirm().then(onClose).finally(() => setBusy(false));
+            }}
+          >
+            {confirmLabel}
+          </Button>
+        </>
+      }
+    >
       <p className="text-base text-ink-2">{body}</p>
-      <div className="flex justify-end gap-2 pt-4">
-        <Button variant="ghost" onClick={onClose}>
-          Cancel
-        </Button>
-        <Button
-          variant="danger"
-          className="border-danger"
-          disabled={busy}
-          onClick={() => {
-            setBusy(true);
-            void onConfirm().then(onClose).finally(() => setBusy(false));
-          }}
-        >
-          {confirmLabel}
-        </Button>
-      </div>
     </Dialog>
   );
 }

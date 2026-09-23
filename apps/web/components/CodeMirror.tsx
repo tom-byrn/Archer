@@ -65,7 +65,19 @@ export const archerTheme = EditorView.theme({
     caretColor: "var(--code-caret)",
   },
   ".cm-line": { padding: "0 12px 0 8px" },
+  // Focus rings the whole editor box; globals.css keeps the contenteditable
+  // itself bare. The ring sits on an overlay above the sticky gutter
+  // (z-index 200), which would otherwise paint over its left edge.
   "&.cm-focused": { outline: "none" },
+  "&.cm-focused::after": {
+    content: '""',
+    position: "absolute",
+    inset: "0",
+    zIndex: "300",
+    pointerEvents: "none",
+    outline: "2px solid var(--accent)",
+    outlineOffset: "-2px",
+  },
   ".cm-cursor, .cm-dropCursor": { borderLeftColor: "var(--code-caret)" },
   "&.cm-focused > .cm-scroller > .cm-selectionLayer .cm-selectionBackground, .cm-selectionBackground, ::selection":
     { backgroundColor: "var(--code-selection) !important" },

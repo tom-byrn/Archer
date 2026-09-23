@@ -22,6 +22,20 @@
     0 0 0 2px var(--ground),
     0 0 0 4px var(--accent);
 }
+/* Keyboard focus. React Flow resets node and edge outlines on :focus-visible,
+   so the global ring never reaches them; draw it on the node box (it follows
+   the radius) and recolor a focused edge like a selected one. */
+.react-flow__node:focus-visible .arch-node {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.react-flow__edge:focus-visible .arch-edge-path {
+  stroke: var(--accent);
+  stroke-width: 2;
+}
+.react-flow__edge:focus-visible .arch-edge-arrow {
+  fill: var(--accent);
+}
 .react-flow__node.dragging .arch-node {
   box-shadow: var(--shadow-md);
 }

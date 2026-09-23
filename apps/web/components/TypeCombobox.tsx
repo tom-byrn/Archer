@@ -135,7 +135,7 @@ export function TypeCombobox({
         type="button"
         onClick={() => (open ? close() : setOpen(true))}
         title={value !== undefined ? `@${value}` : undefined}
-        className="flex h-7 w-full items-center gap-2 rounded-md border border-line bg-surface px-2 text-left text-base transition-colors duration-100 hover:border-line-2 focus:border-ink-3 focus:outline-none"
+        className="flex h-7 w-full items-center gap-2 rounded-md border border-line bg-surface px-2 text-left text-base transition-colors duration-100 hover:border-line-2 focus-visible:-outline-offset-1"
       >
         {value !== undefined && mode === "component" && (
           <Glyph tag={value} color={custom?.color} glyph={custom?.glyph} size={14} />

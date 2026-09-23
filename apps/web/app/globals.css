@@ -17,24 +17,30 @@
   /* Text */
   --ink: #1a1916;
   --ink-2: #5f5a52;
-  --ink-3: #9b958b;
+  /* Tertiary text still carries meaning (hints, timestamps, placeholders), so
+     it clears 4.5:1 on every surface up to surface-2. */
+  --ink-3: #716b62;
 
-  /* Lines */
+  /* Lines. line-strong is for state edges that must read at 3:1 (selected
+     segment), not for dividers. */
   --line: #e7e3dc;
   --line-2: #d2ccc3;
+  --line-strong: #918b83;
 
   /* Accent (Mintlify green, sourced via Context.dev) */
   --accent: #0c8c5e;
   --accent-hover: #0a7a52;
   --accent-ink: #ffffff;
   --accent-soft: rgba(12, 140, 94, 0.12);
+  /* Accent as text (links, toasts, accent chips). --accent is a fill/ring
+     color and only reaches ~4:1 as text on light surfaces. */
+  --accent-text: #007448;
 
   --danger: #b42318;
   --danger-soft: rgba(180, 35, 24, 0.1);
   --warn: #b54708;
   --warn-soft: rgba(181, 71, 8, 0.12);
 
-  --focus: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent);
   --shadow-sm: 0 1px 2px rgba(26, 25, 22, 0.06);
   --shadow-md: 0 4px 16px rgba(26, 25, 22, 0.1), 0 1px 2px rgba(26, 25, 22, 0.06);
 
@@ -56,8 +62,8 @@
   --tok-type: #a85a0a;
   --tok-arrow: #1a1916;
   --tok-num: #b42a6a;
-  --tok-comment: #9b958b;
-  --tok-fence: #9b958b;
+  --tok-comment: #716b62;
+  --tok-fence: #716b62;
   --tok-payload: #6b665e;
   --tok-version: #0c6d82;
 }
@@ -71,15 +77,17 @@
 
     --ink: #ecebe7;
     --ink-2: #a5a19a;
-    --ink-3: #6d6963;
+    --ink-3: #89847e;
 
     --line: #26292d;
     --line-2: #383c42;
+    --line-strong: #64696f;
 
     --accent: #23c088;
     --accent-hover: #3dd39c;
     --accent-ink: #08110d;
     --accent-soft: rgba(35, 192, 136, 0.16);
+    --accent-text: #23c088;
 
     --danger: #f0655a;
     --danger-soft: rgba(240, 101, 90, 0.14);
@@ -105,8 +113,8 @@
     --tok-type: #7dd3fc;
     --tok-arrow: #f5f4f1;
     --tok-num: #fca5a5;
-    --tok-comment: #6d6963;
-    --tok-fence: #6d6963;
+    --tok-comment: #89847e;
+    --tok-fence: #89847e;
     --tok-payload: #a5a19a;
     --tok-version: #5eead4;
   }
@@ -123,15 +131,17 @@
 
   --ink: #ecebe7;
   --ink-2: #a5a19a;
-  --ink-3: #6d6963;
+  --ink-3: #89847e;
 
   --line: #26292d;
   --line-2: #383c42;
+  --line-strong: #64696f;
 
   --accent: #23c088;
   --accent-hover: #3dd39c;
   --accent-ink: #08110d;
   --accent-soft: rgba(35, 192, 136, 0.16);
+  --accent-text: #23c088;
 
   --danger: #f0655a;
   --danger-soft: rgba(240, 101, 90, 0.14);
@@ -157,8 +167,8 @@
   --tok-type: #7dd3fc;
   --tok-arrow: #f5f4f1;
   --tok-num: #fca5a5;
-  --tok-comment: #6d6963;
-  --tok-fence: #6d6963;
+  --tok-comment: #89847e;
+  --tok-fence: #89847e;
   --tok-payload: #a5a19a;
   --tok-version: #5eead4;
 }
@@ -175,10 +185,12 @@
   --color-ink-3: var(--ink-3);
   --color-line: var(--line);
   --color-line-2: var(--line-2);
+  --color-line-strong: var(--line-strong);
   --color-accent: var(--accent);
   --color-accent-hover: var(--accent-hover);
   --color-accent-ink: var(--accent-ink);
   --color-accent-soft: var(--accent-soft);
+  --color-accent-text: var(--accent-text);
   --color-danger: var(--danger);
   --color-danger-soft: var(--danger-soft);
   --color-warn: var(--warn);
@@ -234,18 +246,30 @@ body {
   background: var(--accent-soft);
 }
 
-/* Focus: one ring for keyboard users on buttons/links. Text fields show focus
-   with a border change instead (no ring). */
-:focus-visible {
-  outline: none;
-  box-shadow: var(--focus);
-}
-input:focus-visible,
-textarea:focus-visible,
-select:focus-visible,
-[contenteditable]:focus-visible,
-.cm-editor :focus-visible {
-  box-shadow: none;
+/* Focus: one 2px accent ring for keyboard users. It is an outline, not a
+   box-shadow, because forced-colors (Windows High Contrast) drops shadows and
+   the ring would vanish. Text fields draw it over their own 1px border.
+   CodeMirror rings its whole editor box instead (archerTheme), so its
+   contenteditable stays bare. In the base layer so a component can still
+   refine it with utilities. */
+@layer base {
+  /* The ring's color at rest: controls with transition-colors animate
+     outline-color too, and would fade the ring in from currentColor. */
+  :where(*) {
+    outline-color: var(--accent);
+  }
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+  input:focus-visible,
+  textarea:focus-visible,
+  select:focus-visible {
+    outline-offset: -1px;
+  }
+  .cm-content:focus-visible {
+    outline: none;
+  }
 }
 
 .font-display {

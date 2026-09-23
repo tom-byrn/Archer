@@ -9,10 +9,12 @@
 import {
   useEffect,
   useId,
+  useLayoutEffect,
   useRef,
   useState,
   type ButtonHTMLAttributes,
   type CSSProperties,
+  type FormEvent,
   type InputHTMLAttributes,
   type ReactNode,
   type TextareaHTMLAttributes,
@@ -72,7 +74,11 @@ export function Button({
   );
 }
 
-/** Square icon-only button. Always pass `label` (used as tooltip + a11y name). */
+/**
+ * Square icon-only button. Always pass `label` (used as tooltip + a11y name).
+ * `active` marks a toggle as pressed; a menu trigger passes `aria-expanded`
+ * instead, and then `active` is visual only.
+ */
 export function IconButton({
   label,
   size = "md",
@@ -90,11 +96,13 @@ export function IconButton({
       type="button"
       aria-label={label}
       title={label}
+      aria-pressed={active === undefined || rest["aria-expanded"] !== undefined ? undefined : active}
       {...rest}
       className={cx(
         "inline-flex shrink-0 items-center justify-center rounded-md text-ink-2 transition-colors duration-100 hover:bg-surface-2 hover:text-ink disabled:cursor-not-allowed disabled:opacity-40",
         size === "sm" ? "h-6 w-6 [&>svg]:h-3.5 [&>svg]:w-3.5" : "h-8 w-8 [&>svg]:h-[18px] [&>svg]:w-[18px]",
-        active && "bg-surface-3 text-ink",
+        // The fill alone is ~1.2:1 against the toolbar; the ring carries the state.
+        active && "bg-surface-3 text-ink ring-1 ring-inset ring-line-strong",
         className,
       )}
     >
@@ -106,7 +114,7 @@ export function IconButton({
 /* -------------------------------------------------------------------- Inputs */
 
 export const inputCls =
-  "w-full rounded-md border border-line bg-surface px-2.5 text-base text-ink placeholder:text-ink-3 transition-colors duration-100 hover:border-line-2 focus:border-ink-3 focus:outline-none focus:shadow-none disabled:opacity-50";
+  "w-full rounded-md border border-line bg-surface px-2.5 text-base text-ink placeholder:text-ink-3 transition-colors duration-100 hover:border-line-2 disabled:opacity-50";
 
 export function Input({
   className,
@@ -183,31 +191,38 @@ export function Section({
   );
 }
 
-/** Segmented control. */
+/**
+ * Segmented control: a group of toggle buttons, exactly one pressed. `label`
+ * names the group for assistive tech.
+ */
 export function Segmented<T extends string>({
   value,
   options,
   onChange,
   mono,
+  label,
 }: {
   value: T;
   options: { value: T; label: string; title?: string }[];
   onChange: (v: T) => void;
   mono?: boolean;
+  label?: string;
 }) {
   return (
-    <div className="inline-flex h-7 rounded-md border border-line bg-surface-2 p-0.5">
+    <div role="group" aria-label={label} className="inline-flex h-7 rounded-md border border-line bg-surface-2 p-0.5">
       {options.map((o) => (
         <button
           key={o.value}
           type="button"
           title={o.title}
+          aria-pressed={o.value === value}
           onClick={() => onChange(o.value)}
           className={cx(
             "rounded-[4px] px-2.5 text-sm font-medium transition-colors duration-100",
             mono && "mono",
+            // Selected fill vs track is ~1.1:1, so a 3:1 ring marks the choice.
             o.value === value
-              ? "bg-surface text-ink shadow-sm"
+              ? "bg-surface text-ink shadow-sm ring-1 ring-line-strong"
               : "text-ink-2 hover:text-ink",
           )}
         >
@@ -385,7 +400,7 @@ export function Chip({
 }) {
   const tones = {
     neutral: "bg-surface-2 text-ink-2",
-    accent: "bg-accent-soft text-accent",
+    accent: "bg-accent-soft text-accent-text",
     danger: "bg-danger-soft text-danger",
     warn: "bg-warn-soft text-warn",
   };
@@ -424,7 +439,9 @@ export interface MenuItem {
 
 /**
  * Dropdown menu anchored to its trigger. `trigger` receives the open state and
- * a toggle handler. Closes on outside click, Escape, or selection.
+ * a toggle handler. Closes on outside click, Escape, or selection; the last
+ * two put focus back on the trigger, so a dialog opened from an item can
+ * return focus there too.
  */
 export function Menu({
   trigger,
@@ -439,13 +456,17 @@ export function Menu({
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const focusTrigger = () =>
+    ref.current?.querySelector<HTMLElement>("button, [href], [tabindex]")?.focus();
   useEffect(() => {
     if (!open) return;
     const onDown = (e: MouseEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
     };
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(false);
+      if (e.key !== "Escape") return;
+      setOpen(false);
+      focusTrigger();
     };
     document.addEventListener("mousedown", onDown);
     document.addEventListener("keydown", onKey);
@@ -478,6 +499,7 @@ export function Menu({
                 disabled={item.disabled}
                 onClick={() => {
                   setOpen(false);
+                  focusTrigger();
                   item.onSelect();
                 }}
                 className={cx(
@@ -510,54 +532,131 @@ export function Menu({
 
 /* ------------------------------------------------------------------- Dialog */
 
-export function Dialog({
-  open,
-  onClose,
-  title,
-  width = 480,
-  children,
-}: {
+type DialogProps = {
   open: boolean;
   onClose: () => void;
   title: string;
   width?: number;
+  /** Action row pinned under the body; it never scrolls away. */
+  footer?: ReactNode;
+  /** Wraps body and footer in one form, so a footer submit button submits it. */
+  onSubmit?: (e: FormEvent<HTMLFormElement>) => void;
   children: ReactNode;
-}) {
+};
+
+/**
+ * Modal dialog on the native `<dialog>` + `showModal()`: the browser traps
+ * focus, makes the page behind inert and handles Escape. The dialog never
+ * outgrows the viewport; when its content does, the body scrolls under a
+ * pinned footer. Focus goes back to whatever opened it.
+ */
+export function Dialog({ open, ...rest }: DialogProps) {
+  return open ? <ModalDialog {...rest} /> : null;
+}
+
+function ModalDialog({ onClose, title, width = 480, footer, onSubmit, children }: Omit<DialogProps, "open">) {
   const id = useId();
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+  const ref = useRef<HTMLDialogElement>(null);
+  const bodyRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+  const opener = useRef<HTMLElement | null>(null);
+  // Children mount once the dialog is modal: React's autoFocus runs as they
+  // mount, and nothing inside a dialog that isn't showing can take focus.
+  const [shown, setShown] = useState(false);
+  // The body only becomes a scroll container once content outgrows it, so a
+  // menu inside a short dialog can still hang past its edge.
+  const [scrolls, setScrolls] = useState(false);
+
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    opener.current ??= document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    if (!el.open) el.showModal();
+    setShown(true);
+    return () => {
+      // Leave the top layer first: the page behind is inert while it's modal.
+      if (el.open) el.close();
+      opener.current?.focus();
     };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
-  if (!open) return null;
-  return (
-    <div
-      className="fixed inset-0 z-[100] grid place-items-center bg-[rgba(10,10,8,0.45)] p-4 backdrop-blur-[2px]"
-      onMouseDown={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
-    >
+  }, []);
+
+  useLayoutEffect(() => {
+    const body = bodyRef.current;
+    const content = contentRef.current;
+    if (!body || !content) return;
+    const measure = () => setScrolls(content.offsetHeight > body.clientHeight + 1);
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(body);
+    ro.observe(content);
+    return () => ro.disconnect();
+  }, [shown]);
+
+  const main = (
+    <>
       <div
-        role="dialog"
-        aria-modal
-        aria-labelledby={id}
-        style={{ width, maxWidth: "100%" }}
-        className="rounded-xl border border-line bg-surface shadow-md"
+        ref={bodyRef}
+        className={cx("min-h-0 flex-auto", scrolls && "overflow-y-auto overscroll-contain")}
       >
-        <div className="flex items-center border-b border-line px-4 py-3">
-          <h2 id={id} className="text-lg font-semibold">
-            {title}
-          </h2>
-          <IconButton label="Close" onClick={onClose} className="ml-auto">
-            <Icon.Close />
-          </IconButton>
+        <div ref={contentRef} className="px-4 py-3">
+          {children}
         </div>
-        <div className="px-4 py-3">{children}</div>
       </div>
-    </div>
+      {footer && (
+        <div
+          className={cx(
+            "flex shrink-0 items-center justify-end gap-2 px-4 pb-3",
+            scrolls && "border-t border-line pt-3",
+          )}
+        >
+          {footer}
+        </div>
+      )}
+    </>
+  );
+
+  return (
+    <dialog
+      ref={ref}
+      aria-labelledby={id}
+      style={{ width }}
+      onCancel={(e) => {
+        e.preventDefault();
+        onClose();
+      }}
+      // The browser can close it on its own (a repeated Escape skips the
+      // cancelable cancel event); keep React's state in step. Our own close()
+      // on unmount lands here too, after the dialog is gone or reopened.
+      onClose={() => {
+        if (ref.current && !ref.current.open) onClose();
+      }}
+      onMouseDown={(e) => {
+        // A press on the backdrop lands on the <dialog> itself, outside its box.
+        if (e.target !== e.currentTarget) return;
+        const r = e.currentTarget.getBoundingClientRect();
+        const inside =
+          e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom;
+        if (!inside) onClose();
+      }}
+      className="m-auto max-h-[calc(100dvh-2rem)] max-w-[calc(100vw-2rem)] flex-col overflow-visible rounded-xl border border-line bg-surface p-0 text-ink shadow-md open:flex backdrop:bg-[rgba(10,10,8,0.45)] backdrop:backdrop-blur-[2px]"
+    >
+      <div className="flex shrink-0 items-center border-b border-line px-4 py-3">
+        <h2 id={id} className="text-lg font-semibold">
+          {title}
+        </h2>
+        <IconButton label="Close" onClick={onClose} className="ml-auto">
+          <Icon.Close />
+        </IconButton>
+      </div>
+      {shown &&
+        (onSubmit ? (
+          <form onSubmit={onSubmit} className="flex min-h-0 flex-auto flex-col">
+            {main}
+          </form>
+        ) : (
+          main
+        ))}
+    </dialog>
   );
 }
 
