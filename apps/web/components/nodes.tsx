@@ -9,7 +9,7 @@ import {
   type EdgeProps,
   type NodeProps,
 } from "@xyflow/react";
-import { GLYPHS, lookupType } from "@archer/catalog";
+import { GLYPHS, GLYPH_VIEWBOX, lookupType } from "@archer/catalog";
 import type { ArchEdge, ArchNode, NodeMarks } from "@/lib/toFlow";
 import { displayColor, useIsDark } from "@/lib/useIsDark";
 import { Icon, cx } from "./ui";
@@ -43,7 +43,7 @@ export function Glyph({
     <svg
       width={size}
       height={size}
-      viewBox="0 0 24 24"
+      viewBox={GLYPH_VIEWBOX}
       className={className}
       style={{ color: displayColor(color ?? entry?.color, isDark) ?? "var(--ink-3)" }}
       dangerouslySetInnerHTML={{ __html: g }}

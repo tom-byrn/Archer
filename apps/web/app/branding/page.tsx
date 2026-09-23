@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { Fragment, type CSSProperties, type ReactNode } from "react";
 import type { Metadata } from "next";
-import { GLYPHS } from "@archer/catalog";
+import { GLYPHS, GLYPH_VIEWBOX } from "@archer/catalog";
 import { ControlSpecimens, CopyValue, UiIconGrid } from "@/components/brand/BrandSpecimens";
 import { SiteFrame } from "@/components/landing/SiteFrame";
 import {
@@ -569,14 +569,14 @@ function IconSection() {
     <Section
       id="icons"
       title="Iconography"
-      lede="Two small line-icon sets drawn in the current text color, both with round caps and joins."
+      lede="Two small sets of Phosphor icons (phosphoricons.com), drawn in the current text color."
     >
-      <Block title="Interface" note="16px grid, 1.5px stroke. Kept small on purpose: add to the set only when nothing fits.">
+      <Block title="Interface" note="Bold weight: a 1.5px stroke at 16px. Kept small on purpose: add to the set only when nothing fits.">
         <UiIconGrid />
       </Block>
       <Block
         title="Component glyphs"
-        note="24px grid, 1.6px stroke. On the canvas each glyph takes its component type's color, on a tile of that color at 14%."
+        note="Regular weight: a 1.5px stroke at 24px. On the canvas each glyph takes its component type's color, on a tile of that color at 14%."
       >
         <ul className="grid grid-cols-3 border-l border-t border-line sm:grid-cols-5 lg:grid-cols-8">
           {Object.entries(GLYPHS).map(([name, markup]) => (
@@ -585,7 +585,7 @@ function IconSection() {
               className="flex flex-col items-center gap-2 border-b border-r border-line px-2 py-4 text-ink"
             >
               <svg
-                viewBox="0 0 24 24"
+                viewBox={GLYPH_VIEWBOX}
                 width={24}
                 height={24}
                 aria-hidden

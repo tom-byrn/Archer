@@ -1,4 +1,4 @@
-export { GLYPHS } from "./glyphs";
+export { GLYPHS, GLYPH_VIEWBOX } from "./glyphs";
 
 export interface CatalogType {
   /** The `@tag` used in Archer source, without the `@`. */

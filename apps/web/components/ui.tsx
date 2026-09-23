@@ -3,7 +3,7 @@
 /**
  * Shared UI primitives. Every control in the app is built from these so that
  * borders, radii, sizes and hover/focus states stay identical everywhere.
- * Dependency-free; styled only with the tokens in globals.css.
+ * Styled only with the tokens in globals.css; icons are Phosphor.
  */
 
 import {
@@ -17,6 +17,44 @@ import {
   type ReactNode,
   type TextareaHTMLAttributes,
 } from "react";
+import {
+  ArrowCounterClockwiseIcon,
+  ArrowDownIcon,
+  ArrowRightIcon,
+  ArrowSquareOutIcon,
+  ArrowUUpLeftIcon,
+  ArrowUUpRightIcon,
+  CaretDownIcon,
+  CaretLeftIcon,
+  CaretRightIcon,
+  CheckCircleIcon,
+  CheckIcon,
+  ClockCounterClockwiseIcon,
+  CodeIcon,
+  CommandIcon,
+  CopyIcon,
+  CopySimpleIcon,
+  DotsThreeIcon,
+  DownloadSimpleIcon,
+  FrameCornersIcon,
+  GitDiffIcon,
+  GithubLogoIcon,
+  LinkSimpleIcon,
+  MagnifyingGlassIcon,
+  MinusIcon,
+  PaperPlaneTiltIcon,
+  PencilSimpleIcon,
+  PlugIcon,
+  PlusIcon,
+  RobotIcon,
+  SparkleIcon,
+  SquaresFourIcon,
+  TrashSimpleIcon,
+  UserIcon,
+  WarningCircleIcon,
+  WarningIcon,
+  XIcon,
+} from "@phosphor-icons/react";
 
 export const cx = (...parts: Array<string | false | null | undefined>): string =>
   parts.filter(Boolean).join(" ");
@@ -566,135 +604,58 @@ export function Dialog({
 }
 
 /* -------------------------------------------------------------------- Icons */
-/* 16px, 1.5px stroke, currentColor. Keep this set small and consistent. */
+/*
+ * Phosphor (phosphoricons.com) at bold weight, which draws a 1.5px stroke at
+ * 16px. No size prop: CSS sizes them (a className, or the parent's
+ * [&>svg]:…), and they take currentColor. Reach Phosphor through this set, not
+ * directly, and keep it small and consistent.
+ */
 
-const I = ({ children, ...rest }: { children: ReactNode; className?: string }) => (
-  <svg
-    viewBox="0 0 16 16"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.5"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    aria-hidden
-    {...rest}
-  >
-    {children}
-  </svg>
-);
+const UI = { weight: "bold", "aria-hidden": true } as const;
+type IconProps = { className?: string };
 
 export const Icon = {
-  Close: (p: { className?: string }) => (
-    <I {...p}><path d="M4 4l8 8M12 4l-8 8" /></I>
-  ),
-  Plus: (p: { className?: string }) => (
-    <I {...p}><path d="M8 3v10M3 8h10" /></I>
-  ),
-  Check: (p: { className?: string }) => (
-    <I {...p}><path d="M3 8.5l3 3 7-7" /></I>
-  ),
-  ChevronDown: (p: { className?: string }) => (
-    <I {...p}><path d="M4 6l4 4 4-4" /></I>
-  ),
-  ChevronRight: (p: { className?: string }) => (
-    <I {...p}><path d="M6 4l4 4-4 4" /></I>
-  ),
-  ChevronLeft: (p: { className?: string }) => (
-    <I {...p}><path d="M10 4L6 8l4 4" /></I>
-  ),
-  ArrowRight: (p: { className?: string }) => (
-    <I {...p}><path d="M3 8h10M9 4l4 4-4 4" /></I>
-  ),
-  ArrowDown: (p: { className?: string }) => (
-    <I {...p}><path d="M8 3v10M4 9l4 4 4-4" /></I>
-  ),
-  Undo: (p: { className?: string }) => (
-    <I {...p}><path d="M6 4L3 7l3 3" /><path d="M3 7h6.5a3.5 3.5 0 010 7H8" /></I>
-  ),
-  Redo: (p: { className?: string }) => (
-    <I {...p}><path d="M10 4l3 3-3 3" /><path d="M13 7H6.5a3.5 3.5 0 000 7H8" /></I>
-  ),
-  Layout: (p: { className?: string }) => (
-    <I {...p}><rect x="2" y="2.5" width="5" height="5" rx="1" /><rect x="9" y="2.5" width="5" height="5" rx="1" /><rect x="2" y="9.5" width="5" height="4" rx="1" /><rect x="9" y="9.5" width="5" height="4" rx="1" /></I>
-  ),
-  Code: (p: { className?: string }) => (
-    <I {...p}><path d="M5.5 4.5L2 8l3.5 3.5M10.5 4.5L14 8l-3.5 3.5" /></I>
-  ),
-  Copy: (p: { className?: string }) => (
-    <I {...p}><rect x="5.5" y="5.5" width="8" height="8" rx="1.5" /><path d="M10.5 5.5v-2a1 1 0 00-1-1h-6a1 1 0 00-1 1v6a1 1 0 001 1h2" /></I>
-  ),
-  Download: (p: { className?: string }) => (
-    <I {...p}><path d="M8 2.5v8M4.5 7L8 10.5 11.5 7" /><path d="M2.5 12.5v1h11v-1" /></I>
-  ),
-  Sparkle: (p: { className?: string }) => (
-    <I {...p}><path d="M8 2l1.4 3.6L13 7l-3.6 1.4L8 12l-1.4-3.6L3 7l3.6-1.4z" /></I>
-  ),
-  Search: (p: { className?: string }) => (
-    <I {...p}><circle cx="7" cy="7" r="4" /><path d="M10 10l3.5 3.5" /></I>
-  ),
-  More: (p: { className?: string }) => (
-    <I {...p}><circle cx="3.5" cy="8" r="0.9" fill="currentColor" stroke="none" /><circle cx="8" cy="8" r="0.9" fill="currentColor" stroke="none" /><circle cx="12.5" cy="8" r="0.9" fill="currentColor" stroke="none" /></I>
-  ),
-  Trash: (p: { className?: string }) => (
-    <I {...p}><path d="M3 4.5h10M6.5 4.5v-1a1 1 0 011-1h1a1 1 0 011 1v1" /><path d="M4.5 4.5l.6 8a1 1 0 001 .9h3.8a1 1 0 001-.9l.6-8" /></I>
-  ),
-  Warning: (p: { className?: string }) => (
-    <I {...p}><path d="M8 2.5l6 11H2z" /><path d="M8 6.5v3M8 11.5v.01" /></I>
-  ),
-  CheckCircle: (p: { className?: string }) => (
-    <I {...p}><circle cx="8" cy="8" r="5.75" /><path d="M5.5 8.2l1.8 1.8 3.4-3.6" /></I>
-  ),
-  External: (p: { className?: string }) => (
-    <I {...p}><path d="M7 3.5H4a1 1 0 00-1 1V12a1 1 0 001 1h7.5a1 1 0 001-1V9" /><path d="M9.5 2.5H13.5V6.5M13.5 2.5L7.5 8.5" /></I>
-  ),
-  Plug: (p: { className?: string }) => (
-    <I {...p}><path d="M5.5 2v3M10.5 2v3M4 5h8v2.5a4 4 0 01-8 0z" /><path d="M8 11.5V14" /></I>
-  ),
-  Duplicate: (p: { className?: string }) => (
-    <I {...p}><rect x="2.5" y="2.5" width="8" height="8" rx="1.5" /><path d="M13.5 6v6a1.5 1.5 0 01-1.5 1.5H6" /></I>
-  ),
-  Pencil: (p: { className?: string }) => (
-    <I {...p}><path d="M10.5 2.5l3 3-8 8H2.5v-3z" /><path d="M9 4l3 3" /></I>
-  ),
-  History: (p: { className?: string }) => (
-    <I {...p}><path d="M2.5 8a5.5 5.5 0 105.5-5.5A5.6 5.6 0 003.6 5.2" /><path d="M2.5 2.5v3h3" /><path d="M8 5.5V8l2 1.5" /></I>
-  ),
-  Bot: (p: { className?: string }) => (
-    <I {...p}><rect x="3" y="5.5" width="10" height="7.5" rx="2" /><path d="M8 3v2.5M6 9v.01M10 9v.01" /><path d="M1.5 9.5v1M14.5 9.5v1" /></I>
-  ),
-  User: (p: { className?: string }) => (
-    <I {...p}><circle cx="8" cy="5.5" r="2.75" /><path d="M2.75 14a5.25 5.25 0 0110.5 0" /></I>
-  ),
-  Link: (p: { className?: string }) => (
-    <I {...p}><path d="M6.5 9.5l3-3" /><path d="M7 4.5l1-1a2.5 2.5 0 013.5 3.5l-1 1" /><path d="M9 11.5l-1 1a2.5 2.5 0 01-3.5-3.5l1-1" /></I>
-  ),
-  Alert: (p: { className?: string }) => (
-    <I {...p}><circle cx="8" cy="8" r="5.75" /><path d="M8 5v3.5M8 11v.01" /></I>
-  ),
-  Restore: (p: { className?: string }) => (
-    <I {...p}><path d="M3 8a5 5 0 109.5-2.2" /><path d="M3 3.5V7h3.5" /></I>
-  ),
-  Reset: (p: { className?: string }) => (
-    <I {...p}><path d="M2.5 8A5.5 5.5 0 108 2.5a6 6 0 00-4.1 1.7L2.5 5.6" /><path d="M2.5 2.5v3.1h3.1" /></I>
-  ),
-  Diff: (p: { className?: string }) => (
-    <I {...p}><path d="M5 2.5v5M2.5 5h5" /><path d="M2.5 11.5h5" /><path d="M11 2.5v11" /></I>
-  ),
-  Send: (p: { className?: string }) => (
-    <I {...p}><path d="M13.5 2.5L2.5 6.75l5 1.75 1.75 5z" /><path d="M13.5 2.5L7.5 8.5" /></I>
-  ),
-  Command: (p: { className?: string }) => (
-    <I {...p}><path d="M6 6H4.5a1.5 1.5 0 110-3A1.5 1.5 0 016 4.5V6zm0 4H4.5a1.5 1.5 0 100 3A1.5 1.5 0 006 11.5V10zm4-4h1.5a1.5 1.5 0 100-3A1.5 1.5 0 0010 4.5V6zm0 4h1.5a1.5 1.5 0 110 3 1.5 1.5 0 01-1.5-1.5V10zM6 6h4v4H6z" /></I>
-  ),
+  Close: (p: IconProps) => <XIcon {...UI} {...p} />,
+  Plus: (p: IconProps) => <PlusIcon {...UI} {...p} />,
+  Minus: (p: IconProps) => <MinusIcon {...UI} {...p} />,
+  Check: (p: IconProps) => <CheckIcon {...UI} {...p} />,
+  ChevronDown: (p: IconProps) => <CaretDownIcon {...UI} {...p} />,
+  ChevronRight: (p: IconProps) => <CaretRightIcon {...UI} {...p} />,
+  ChevronLeft: (p: IconProps) => <CaretLeftIcon {...UI} {...p} />,
+  ArrowRight: (p: IconProps) => <ArrowRightIcon {...UI} {...p} />,
+  ArrowDown: (p: IconProps) => <ArrowDownIcon {...UI} {...p} />,
+  Undo: (p: IconProps) => <ArrowUUpLeftIcon {...UI} {...p} />,
+  Redo: (p: IconProps) => <ArrowUUpRightIcon {...UI} {...p} />,
+  Layout: (p: IconProps) => <SquaresFourIcon {...UI} {...p} />,
+  FitView: (p: IconProps) => <FrameCornersIcon {...UI} {...p} />,
+  Code: (p: IconProps) => <CodeIcon {...UI} {...p} />,
+  Copy: (p: IconProps) => <CopyIcon {...UI} {...p} />,
+  Download: (p: IconProps) => <DownloadSimpleIcon {...UI} {...p} />,
+  Sparkle: (p: IconProps) => <SparkleIcon {...UI} {...p} />,
+  Search: (p: IconProps) => <MagnifyingGlassIcon {...UI} {...p} />,
+  More: (p: IconProps) => <DotsThreeIcon {...UI} {...p} />,
+  Trash: (p: IconProps) => <TrashSimpleIcon {...UI} {...p} />,
+  Warning: (p: IconProps) => <WarningIcon {...UI} {...p} />,
+  CheckCircle: (p: IconProps) => <CheckCircleIcon {...UI} {...p} />,
+  External: (p: IconProps) => <ArrowSquareOutIcon {...UI} {...p} />,
+  Plug: (p: IconProps) => <PlugIcon {...UI} {...p} />,
+  Duplicate: (p: IconProps) => <CopySimpleIcon {...UI} {...p} />,
+  Pencil: (p: IconProps) => <PencilSimpleIcon {...UI} {...p} />,
+  History: (p: IconProps) => <ClockCounterClockwiseIcon {...UI} {...p} />,
+  Bot: (p: IconProps) => <RobotIcon {...UI} {...p} />,
+  User: (p: IconProps) => <UserIcon {...UI} {...p} />,
+  Link: (p: IconProps) => <LinkSimpleIcon {...UI} {...p} />,
+  Alert: (p: IconProps) => <WarningCircleIcon {...UI} {...p} />,
+  Restore: (p: IconProps) => <ArrowCounterClockwiseIcon {...UI} {...p} />,
+  Reset: (p: IconProps) => <ArrowCounterClockwiseIcon {...UI} {...p} />,
+  Diff: (p: IconProps) => <GitDiffIcon {...UI} {...p} />,
+  Send: (p: IconProps) => <PaperPlaneTiltIcon {...UI} {...p} />,
+  Command: (p: IconProps) => <CommandIcon {...UI} {...p} />,
 };
 
-/** GitHub's mark (filled, unlike the stroked set above): marks a linked repository. */
-export function GitHubMark({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden className={className}>
-      <path d="M8 .2a8 8 0 0 0-2.53 15.59c.4.07.55-.17.55-.38v-1.33c-2.23.48-2.7-1.08-2.7-1.08-.36-.92-.89-1.17-.89-1.17-.73-.5.06-.49.06-.49.8.06 1.23.83 1.23.83.71 1.22 1.87.87 2.33.66.07-.52.28-.87.5-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.88.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.6 7.6 0 0 1 4 0c1.53-1.03 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48v2.2c0 .21.15.46.55.38A8 8 0 0 0 8 .2Z" />
-    </svg>
-  );
+/** GitHub's mark (filled, unlike the set above): marks a linked repository. */
+export function GitHubMark({ className }: IconProps) {
+  return <GithubLogoIcon weight="fill" aria-hidden className={className} />;
 }
 
 /** Relative time, e.g. "just now", "3 min ago", "2 days ago", "Mar 4". */

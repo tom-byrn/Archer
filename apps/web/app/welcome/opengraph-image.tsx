@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { ImageResponse } from "next/og";
 import { autoLayout, layoutMap, parse, pathToString } from "@archer/lang";
-import { GLYPHS, lookupType } from "@archer/catalog";
+import { GLYPHS, GLYPH_VIEWBOX, lookupType } from "@archer/catalog";
 import { HEADLINE, LEDE } from "@/lib/landingCopy";
 import { LANDING_SAMPLE } from "@/lib/landingSample";
 import { displayColor } from "@/lib/svg";
@@ -182,7 +182,7 @@ const diagram = () => {
 
 const glyphSrc = (key: string, color: string): string => {
   const inner = (GLYPHS[key] ?? GLYPHS.box!).replaceAll("currentColor", color);
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">${inner}</svg>`;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="${GLYPH_VIEWBOX}">${inner}</svg>`;
   return `data:image/svg+xml;base64,${Buffer.from(svg).toString("base64")}`;
 };
 

@@ -1,5 +1,5 @@
 import type { CSSProperties, ReactNode } from "react";
-import { CATALOG, GLYPHS, lookupType } from "@archer/catalog";
+import { CATALOG, GLYPHS, GLYPH_VIEWBOX, lookupType } from "@archer/catalog";
 import { displayColor } from "@/lib/useIsDark";
 import { SITE_URL } from "@/lib/site";
 import { Chip, GitHubMark, Icon, cx } from "../ui";
@@ -66,7 +66,7 @@ function TypeTile({ tag, size = "md" }: { tag: string; size?: "sm" | "md" }) {
       <svg
         width={px}
         height={px}
-        viewBox="0 0 24 24"
+        viewBox={GLYPH_VIEWBOX}
         dangerouslySetInnerHTML={{ __html: GLYPHS[entry?.glyph ?? "box"] ?? GLYPHS.box! }}
       />
     </span>
@@ -140,7 +140,7 @@ function Nesting() {
           <svg
             width={16}
             height={16}
-            viewBox="0 0 24 24"
+            viewBox={GLYPH_VIEWBOX}
             className="text-ink-2"
             dangerouslySetInnerHTML={{ __html: GLYPHS.cloud! }}
           />

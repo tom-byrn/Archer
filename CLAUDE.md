@@ -96,7 +96,11 @@ Router + React Flow + Convex).
   `text-ink-2`, `border-line`, `rounded-md`, `text-sm`…). Never use the raw
   Tailwind palette (`slate-*`) or `dark:` variants — dark mode is handled by
   the tokens. Build controls from `components/ui.tsx` (Button, IconButton,
-  Input, Menu, Dialog, Section, PropertyRow, Chip, Icon). Code editing goes
+  Input, Menu, Dialog, Section, PropertyRow, Chip, Icon). Icons are Phosphor:
+  UI icons are `@phosphor-icons/react` (bold) behind `Icon` — add a name there,
+  don't import Phosphor elsewhere; component glyphs are Phosphor paths
+  generated into `packages/catalog/src/glyphs.ts` by `scripts/glyphs.ts`
+  (strings, so `lib/svg.ts` and the OG image can draw them). Code editing goes
   through `components/CodeMirror.tsx`. React Flow chrome lives in
   `components/canvas.css`.
 - Language/product specs live in `docs/`; keep `docs/language-spec.md` in
