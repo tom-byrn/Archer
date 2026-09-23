@@ -266,7 +266,7 @@ describe("signed in", () => {
     await client.connect(transport);
     try {
       const names = (await client.listTools()).tools.map((t) => t.name);
-      expect(names).toHaveLength(24);
+      expect(names).toHaveLength(26);
       expect(names).toContain("use_workspace");
       const res = await client.callTool({ name: "get_workspace_info", arguments: {} });
       const info = JSON.parse((res.content as { text: string }[])[0]!.text);

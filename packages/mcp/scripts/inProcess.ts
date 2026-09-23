@@ -1,9 +1,9 @@
 /**
- * Shared harness for the scripts: connects an MCP client to the tools
- * in-process, the way the hosted /mcp route serves them — every message
- * carries the auth info the route attaches after verifying an OAuth token.
- * Tools reach Convex with the service credential, so ARCHER_SERVICE_SECRET
- * and CONVEX_URL must match the target deployment.
+ * Shared harness for the scripts (and the tests in ../test): connects an MCP
+ * client to the tools in-process, the way the hosted /mcp route serves them —
+ * every message carries the auth info the route attaches after verifying an
+ * OAuth token. Tools reach Convex with the service credential, so
+ * ARCHER_SERVICE_SECRET and CONVEX_URL must match the target deployment.
  */
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";

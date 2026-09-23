@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { format, parse, validate } from "@archer/lang";
 import { knownConnectionTypes, knownTypes } from "@archer/catalog";
-import { EXAMPLES } from "../lib/examples";
+import { EXAMPLES } from "@archer/mcp/examples";
 import { highlightArch } from "../lib/highlightArch";
 import { renderArchSvg } from "../lib/svg";
 

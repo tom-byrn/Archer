@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { EXAMPLES, findExample } from "@archer/mcp/examples";
 import { SandboxEditor } from "@/components/SandboxEditor";
-import { EXAMPLES, findExample } from "@/lib/examples";
 
 type Props = { params: Promise<{ slug: string }> };
 
