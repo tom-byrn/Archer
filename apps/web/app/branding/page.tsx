@@ -21,14 +21,12 @@ import { LANDING_SAMPLE } from "@/lib/landingSample";
 import { renderArchSvg } from "@/lib/svg";
 
 /**
- * Brand kit: the mark, colors, type and primitives on one page. Public but
- * deliberately unlinked and unindexed; share the URL directly. Token values
- * are read from app/globals.css at build time, so the page matches the app.
+ * Brand kit: the mark, colors, type and primitives on one page. Signed-in
+ * only (like every route not listed public in middleware.ts) and deliberately
+ * linked from nowhere. Token values are read from app/globals.css at build
+ * time, so the page matches the app.
  */
-export const metadata: Metadata = {
-  title: "Brand · Archer",
-  robots: { index: false, follow: false },
-};
+export const metadata: Metadata = { title: "Brand · Archer" };
 
 // Prerendered at build time, from the source tree (like the OG image's fonts).
 export const dynamic = "force-static";

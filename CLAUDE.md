@@ -64,7 +64,7 @@ Router + React Flow + Convex).
   and the editor copy always agree. "Open in editor" goes to
   `/new?example=<slug>`, which copies the example into the selected workspace
   (reusing an untouched earlier copy) and opens it.
-- Brand kit: `/branding` (public, `noindex`, deliberately linked from nowhere —
+- Brand kit: `/branding` (signed-in only, deliberately linked from nowhere —
   keep it that way) shows the logo, colors, type, radii, icons and ui.tsx
   primitives. Values are parsed from `app/globals.css` at build time
   (`lib/brand.ts`); a new color token appears under "Other" until it gets a
