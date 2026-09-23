@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import {
   addConnection,
   autoLayout,
@@ -15,7 +16,7 @@ import {
 } from "@archer/lang";
 import { lookupType } from "@archer/catalog";
 import { ArchCanvas, type CanvasCallbacks } from "../ArchCanvas";
-import { Button, Icon } from "../ui";
+import { Button, Icon, buttonCls } from "../ui";
 import { LANDING_SAMPLE, LANDING_SAMPLE_NARROW } from "@/lib/landingSample";
 import { resolveDropTarget } from "@/lib/dropTarget";
 import { toFlow } from "@/lib/toFlow";
@@ -119,8 +120,8 @@ export default function Sandbox() {
 
   return (
     <div className="overflow-hidden border border-line-2 bg-surface shadow-md">
-      <div className="flex h-11 items-center border-b border-line pl-4 pr-2">
-        <span className="mono text-sm text-ink-2">architecture.arch</span>
+      <div className="flex h-11 items-center gap-1 border-b border-line pl-4 pr-2">
+        <span className="mono min-w-0 truncate text-sm text-ink-2">architecture.arch</span>
         <Button
           variant="ghost"
           size="sm"
@@ -136,6 +137,10 @@ export default function Sandbox() {
         >
           Reset
         </Button>
+        <Link href="/language/examples" className={buttonCls("ghost", "sm")}>
+          See more
+          <Icon.ArrowRight className="size-3.5" />
+        </Link>
       </div>
       <div className="grid lg:grid-cols-[minmax(0,1fr)_340px]">
         <div className="landing-canvas relative h-[440px] bg-ground sm:h-[528px]">
