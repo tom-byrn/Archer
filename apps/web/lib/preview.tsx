@@ -6,9 +6,11 @@
  * no stored images — it is derived from the source on every change.
  */
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useSyncExternalStore } from "react";
 import { renderArchSvg } from "@/lib/svg";
 import { useIsDark } from "@/lib/useIsDark";
+
+const noSubscribe = () => () => {};
 
 export function DocPreview({
   source,
@@ -18,19 +20,20 @@ export function DocPreview({
   className?: string;
 }) {
   const isDark = useIsDark();
-  // The theme is only known after mount; wait for it rather than flash light.
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
+  // The theme is only known on the client; wait for it through hydration
+  // rather than flash light. A preview mounted later (a dashboard card that
+  // arrives with its data) knows it already, and draws with its card.
+  const hydrated = useSyncExternalStore(noSubscribe, () => true, () => false);
 
   const src = useMemo(() => {
-    if (!mounted) return null;
+    if (!hydrated) return null;
     const svg = renderArchSvg(source, {
       theme: isDark ? "dark" : "light",
       showTitle: false,
       background: false,
     });
     return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
-  }, [source, isDark, mounted]);
+  }, [source, isDark, hydrated]);
 
   if (!src) return <div className={className} aria-hidden style={{ width: "100%", height: "100%" }} />;
   return (
