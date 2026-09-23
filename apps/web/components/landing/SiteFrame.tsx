@@ -1,8 +1,7 @@
 "use client";
 
-import { useEffect, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import Link from "next/link";
-import { FORCED_DARK_CLASS } from "@/lib/useIsDark";
 import { buttonCls, cx } from "../ui";
 import "./landing.css";
 
@@ -10,9 +9,8 @@ const navLink =
   "rounded-sm text-sm text-ink-2 transition-colors duration-100 hover:text-ink";
 
 /**
- * The site shell: one ruled column with diamond joints, header and footer.
- * It follows the OS color scheme unless `dark` forces the dark tokens (the
- * landing page, whose backdrop is black). `backdrop` sits behind the column (the
+ * The site shell: one ruled column with diamond joints, header and footer,
+ * following the OS color scheme. `backdrop` sits behind the column (the
  * landing's dither); `footerNav` goes above the footer links (the landing's
  * link columns) and `footerExtra` under them (the landing's wordmark). `header`
  * replaces the default header row (wordmark + public nav) and `footerLinks` the
@@ -22,7 +20,6 @@ const navLink =
 export function SiteFrame({
   children,
   className,
-  dark = false,
   backdrop,
   header,
   footerNav,
@@ -31,33 +28,18 @@ export function SiteFrame({
 }: {
   children: ReactNode;
   className?: string;
-  dark?: boolean;
   backdrop?: ReactNode;
   header?: ReactNode;
   footerNav?: ReactNode;
   footerLinks?: ReactNode;
   footerExtra?: ReactNode;
 }) {
-  // When forced dark, the wrapper's class themes this subtree from the first
-  // paint; the same class on <html> covers the body behind it and tells
-  // useIsDark (canvas node colors) that the page is dark.
-  useEffect(() => {
-    if (!dark) return;
-    const root = document.documentElement;
-    root.classList.add(FORCED_DARK_CLASS);
-    return () => root.classList.remove(FORCED_DARK_CLASS);
-  }, [dark]);
-
   return (
     <div
       className={cx(
         className,
-        dark && FORCED_DARK_CLASS,
         "relative isolate flex min-h-full flex-col overflow-x-clip bg-bg text-ink",
       )}
-      // The forced-dark shell sits on black, under the dither, rather than on the
-      // dark tokens' --bg; the joints pick the same value up.
-      style={dark ? ({ "--bg": "#000" } as React.CSSProperties) : undefined}
     >
       {backdrop}
       {/* Flex column so the side rules run to the bottom on short pages. */}

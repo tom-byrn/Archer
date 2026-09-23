@@ -60,6 +60,11 @@
   --tok-fence: #9b958b;
   --tok-payload: #6b665e;
   --tok-version: #0c6d82;
+
+  /* Landing page only: its page color (black in dark mode, not --bg) and the
+     tone its dithered backdrop fades down from (landing.css). */
+  --landing-bg: #fbfaf8;
+  --landing-fade: #edeae4;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -109,58 +114,10 @@
     --tok-fence: #6d6963;
     --tok-payload: #a5a19a;
     --tok-version: #5eead4;
+
+    --landing-bg: #000000;
+    --landing-fade: #121212;
   }
-}
-
-/* Forces the dark tokens on a subtree whatever the OS says (the landing page
-   is always dark). Keep in sync with the media query above. */
-.theme-dark {
-  color-scheme: dark;
-  --bg: #0f1012;
-  --surface: #161719;
-  --surface-2: #1c1e21;
-  --surface-3: #25282c;
-
-  --ink: #ecebe7;
-  --ink-2: #a5a19a;
-  --ink-3: #6d6963;
-
-  --line: #26292d;
-  --line-2: #383c42;
-
-  --accent: #23c088;
-  --accent-hover: #3dd39c;
-  --accent-ink: #08110d;
-  --accent-soft: rgba(35, 192, 136, 0.16);
-
-  --danger: #f0655a;
-  --danger-soft: rgba(240, 101, 90, 0.14);
-  --warn: #f2a33a;
-  --warn-soft: rgba(242, 163, 58, 0.14);
-
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
-  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.5), 0 1px 2px rgba(0, 0, 0, 0.4);
-
-  --ground: #121315;
-  --dot: #2a2d32;
-  --edge: #7c8088;
-  --edge-strong: #c6c9ce;
-
-  --code-bg: #121315;
-  --code-fg: #d3d1cc;
-  --code-gutter: #4d5057;
-  --code-line: rgba(255, 255, 255, 0.04);
-  --code-caret: #f5f4f1;
-  --code-selection: rgba(35, 192, 136, 0.25);
-  --tok-kw: #3dd39c;
-  --tok-string: #a5d6ff;
-  --tok-type: #7dd3fc;
-  --tok-arrow: #f5f4f1;
-  --tok-num: #fca5a5;
-  --tok-comment: #6d6963;
-  --tok-fence: #6d6963;
-  --tok-payload: #a5a19a;
-  --tok-version: #5eead4;
 }
 
 /* Expose tokens to Tailwind utilities: bg-surface, text-ink-2, border-line,

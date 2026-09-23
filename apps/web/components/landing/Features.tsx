@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { CATALOG, GLYPHS, lookupType } from "@archer/catalog";
 import { displayColor } from "@/lib/useIsDark";
 import { SITE_URL } from "@/lib/site";
@@ -43,18 +43,25 @@ ${USERS.map(([c, t]) => `  | ${c!.padEnd(10)} | ${t!.padEnd(11)} |`).join("\n")}
   \`\`\`
 }`;
 
-/** A catalog type's glyph on its tinted tile, in the dark-mode color (the landing page is always dark). */
+/**
+ * A catalog type's glyph on its tinted tile, in the type's color for each
+ * scheme (near-black brand colors are lifted for dark mode, as on the canvas).
+ * `.landing-type-tile` in landing.css picks the one for the OS scheme.
+ */
 function TypeTile({ tag, size = "md" }: { tag: string; size?: "sm" | "md" }) {
   const entry = lookupType(tag);
-  const color = displayColor(entry?.color, true) ?? "var(--ink-3)";
+  const colors = {
+    "--type-light": entry?.color ?? "var(--ink-3)",
+    "--type-dark": displayColor(entry?.color, true) ?? "var(--ink-3)",
+  } as CSSProperties;
   const px = size === "sm" ? 15 : 17;
   return (
     <span
       className={cx(
-        "flex shrink-0 items-center justify-center rounded-sm",
+        "landing-type-tile flex shrink-0 items-center justify-center rounded-sm",
         size === "sm" ? "size-[26px]" : "size-[30px]",
       )}
-      style={{ color, backgroundColor: `color-mix(in srgb, ${color} 14%, transparent)` }}
+      style={colors}
     >
       <svg
         width={px}
