@@ -1,4 +1,4 @@
-import { EXAMPLES, findExample } from "@/lib/examples";
+import { EXAMPLES, findExample } from "@archer/mcp/examples";
 import { renderArchSvg } from "@/lib/svg";
 
 /**

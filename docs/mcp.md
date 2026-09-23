@@ -37,11 +37,19 @@ Convex with a server-only service credential for that user — see
 `apps/web/app/mcp/route.ts` and `apps/web/convex/access.ts`. Local
 development works the same way against `http://localhost:3000/mcp`.
 
-## Tools (24)
+## Tools (26)
 
 **Documentation** — `get_guide` returns the full agent guide (mental model,
 workflows, error reference, complete language spec); also exposed as the MCP
 resource `archer://guide`. Agents should read it once before writing.
+
+**Worked examples** — `list_examples` (each example on the docs'
+`/language/examples` page: slug, title, summary, the features it shows, and
+links to its docs section and to a sandbox that opens it without an account)
+and `get_example` (one example with its full canonical source, to model a
+document on or to copy into a project with `create_project`). Each example is
+also the MCP resource `archer://examples/<slug>`. The sources live in
+`packages/mcp/src/examples.ts`, which the docs page renders too.
 
 **Language (stateless, no workspace needed)** — `validate_source`,
 `format_source`, `compile_for_agent` (also accepts a `project_id`),
@@ -127,3 +135,5 @@ and that calls without a verified user are refused.
 
 The CLI's end-to-end tests (`pnpm --filter archerctl test`) also run the real
 tools, behind a stand-in OAuth server and a fake Convex — no setup needed.
+`pnpm --filter @archer/mcp test` runs the tools that need no backend (the
+worked examples) in-process, with the scripts' harness.
