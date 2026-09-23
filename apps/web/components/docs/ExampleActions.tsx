@@ -24,20 +24,12 @@ export function CopySourceButton({ source }: { source: string }) {
   );
 }
 
-/**
- * Opens a copy of the example as a real document in the user's workspace
- * (`/new` creates it, signing in first if needed).
- */
+/** Opens the example in the editor's sandbox: no account needed, nothing saved. */
 export function OpenExampleLink({ slug }: { slug: string }) {
   return (
-    <Link
-      href={`/new?example=${encodeURIComponent(slug)}`}
-      // Visiting the link creates a document; never fetch it ahead of a click.
-      prefetch={false}
-      className={buttonCls("primary", "sm")}
-    >
+    <Link href={`/sandbox/${encodeURIComponent(slug)}`} className={buttonCls("primary", "sm")}>
       <Icon.Pencil className="h-3.5 w-3.5" />
-      Open in editor
+      Open in sandbox
     </Link>
   );
 }

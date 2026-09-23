@@ -97,8 +97,8 @@ export default function ExamplesPage() {
             Each example is a complete <code className={inlineCode}>.arch</code> document next
             to the diagram Archer draws from it. Nothing is drawn by hand: the images come from
             the same renderer as share links and README embeds, straight from the code shown.{" "}
-            <strong className="text-ink">Open in editor</strong> copies an example into your
-            workspace as a real document to edit and keep.
+            <strong className="text-ink">Open in sandbox</strong> loads an example into the
+            editor to change however you like, no account needed. Nothing there is saved.
           </p>
           <p className="pb-3 text-[14px] leading-relaxed text-ink-2">
             The first two have no <code className={inlineCode}>layout</code> block. That is how
