@@ -11,9 +11,10 @@ import { useWorkspace, type WorkspaceSummary } from "@/lib/workspace";
 import { repoKey, type RepoLink } from "@/lib/github";
 import { AccountMenu } from "@/components/AccountMenu";
 import { MembersDialog } from "@/components/MembersDialog";
-import { SAMPLE } from "@/lib/sample";
+import { ACME_SAAS } from "@/lib/samples/acme-saas";
 import { DocPreview } from "@/lib/preview";
 import { ConnectAgentDialog } from "@/components/ConnectAgentDialog";
+import { SampleDialog } from "@/components/SampleDialog";
 import { SiteFrame, siteNavLinkCls } from "@/components/landing/SiteFrame";
 import {
   Button,
@@ -449,6 +450,7 @@ export default function Home() {
   const updateSource = useMutation(api.documents.updateSource);
 
   const [connectOpen, setConnectOpen] = useState(false);
+  const [sampleOpen, setSampleOpen] = useState(false);
   const [pending, setPending] = useState<Pending>(null);
 
   const newDoc = async (source: string, title: string) => {
@@ -476,7 +478,7 @@ export default function Home() {
 
   const createButtons = (
     <>
-      <Button icon={<Icon.Duplicate />} onClick={() => void newDoc(SAMPLE, "Acme SaaS")}>
+      <Button icon={<Icon.Duplicate />} onClick={() => setSampleOpen(true)}>
         From sample
       </Button>
       <Button variant="primary" icon={<Icon.Plus />} onClick={() => void newDoc(BLANK, "Untitled")}>
@@ -515,7 +517,7 @@ export default function Home() {
         <section className="landing-joints border-b border-line">
           <div className="relative overflow-hidden bg-ground px-6 py-20 text-center">
             <div className="pointer-events-none absolute inset-0 p-10 opacity-[0.18]">
-              <DocPreview source={SAMPLE} />
+              <DocPreview source={ACME_SAAS} />
             </div>
             <div className="relative mx-auto max-w-md">
               <h1 className="font-display text-2xl text-ink">
@@ -557,6 +559,13 @@ export default function Home() {
         onClose={() => setConnectOpen(false)}
         workspaceName={current?.name ?? "this workspace"}
       />
+      {sampleOpen && (
+        <SampleDialog
+          workspaceName={current?.name ?? "this workspace"}
+          onClose={() => setSampleOpen(false)}
+          onChoose={(s) => newDoc(s.source, s.title)}
+        />
+      )}
       {pending?.kind === "rename" && (
         <RenameDialog
           doc={pending.doc}

@@ -1,13 +1,13 @@
 /**
- * Dev check for the SVG renderer: writes the sample document as SVG.
+ * Dev check for the SVG renderer: writes the Acme SaaS sample as SVG.
  *
  * Usage: pnpm --filter @archer/web exec tsx scripts/render-svg.ts [out.svg] [light|dark]
  */
 import { writeFileSync } from "node:fs";
 import { renderArchSvg } from "../lib/svg";
-import { SAMPLE } from "../lib/sample";
+import { ACME_SAAS } from "../lib/samples/acme-saas";
 
 const out = process.argv[2] ?? "/tmp/archer-sample.svg";
 const theme = process.argv[3] === "dark" ? "dark" : "light";
-writeFileSync(out, renderArchSvg(SAMPLE, { theme }));
+writeFileSync(out, renderArchSvg(ACME_SAAS, { theme }));
 console.log(`wrote ${out}`);

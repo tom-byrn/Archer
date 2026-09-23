@@ -81,6 +81,11 @@ Router + React Flow + Convex).
   `useLocalLibrary`, and leaving the page discards every edit. Anything new
   that saves, shares or exports goes behind `stored` in the editor so the
   sandbox never gets it; everything else reaches the sandbox automatically.
+- Samples: "From sample" on the dashboard opens `components/SampleDialog.tsx`,
+  a gallery of `lib/samples` (one module per source, listed with its title
+  and blurb in `lib/samples/index.ts`). Choosing one saves the source as a new
+  document verbatim, so like the docs examples, samples stay canonical and
+  validate clean — `apps/web/test/samples.test.ts` enforces it.
 - Brand kit: `/branding` (signed-in only, deliberately linked from nowhere —
   keep it that way) shows the logo, colors, type, radii, icons and ui.tsx
   primitives. Values are parsed from `app/globals.css` at build time
