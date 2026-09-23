@@ -48,7 +48,7 @@ backend.api -> backend.db @sql
 | package | what |
 | --- | --- |
 | `packages/lang` | The language: parser, validator (typed error codes), canonical formatter, grid auto-layout, AST transforms, agent-export compiler. Pure TypeScript, no app dependencies. |
-| `packages/catalog` | Curated component catalog (~75 technologies) + glyphs. |
+| `packages/catalog` | Curated component catalog (~75 technologies) + Phosphor glyphs. |
 | `packages/mcp` | MCP tools giving agents full human-parity access — projects CRUD, validated writes, custom types, layout control, spec compilation, the docs' worked examples — served by the app at `/mcp` with OAuth sign-in. See [docs/mcp.md](docs/mcp.md). |
 | `packages/cli` | The `archer` command (npm: `archerctl`): `check` / `fmt` for `.arch` files in CI and agent shells, `init`, `login`, `push` / `pull`, and `archer mcp` (stdio bridge to the hosted server). See [docs/cli.md](docs/cli.md). |
 | `apps/web` | Next.js app: React Flow canvas, palette, detail panel, live code pane, drill-down navigation, Convex persistence. |

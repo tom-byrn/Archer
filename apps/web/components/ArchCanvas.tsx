@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState, type MutableRefObject } from
 import {
   Background,
   BackgroundVariant,
+  ControlButton,
   Controls,
   ReactFlow,
   ReactFlowProvider,
@@ -12,6 +13,7 @@ import {
   useEdgesState,
   useNodesState,
   useReactFlow,
+  useStore,
   type Edge,
   type Node,
   type OnConnect,
@@ -20,6 +22,7 @@ import { toPng } from "html-to-image";
 import { CELL, type ArchEdge, type ArchNode } from "@/lib/toFlow";
 import { DND_MIME } from "./Palette";
 import { edgeTypes, nodeTypes } from "./nodes";
+import { Icon } from "./ui";
 import "./canvas.css";
 
 export interface DragEndInfo {
@@ -63,6 +66,43 @@ type Hover = { kind: "node"; id: string } | { kind: "edge"; id: string } | null;
 
 const joinCls = (...parts: Array<string | undefined | false>) =>
   parts.filter(Boolean).join(" ") || undefined;
+
+/** React Flow's zoom and fit-view buttons, drawn with the app's icons instead of its own. */
+function CanvasControls() {
+  const { zoomIn, zoomOut, fitView } = useReactFlow();
+  const maxZoomReached = useStore((s) => s.transform[2] >= s.maxZoom);
+  const minZoomReached = useStore((s) => s.transform[2] <= s.minZoom);
+  return (
+    <Controls showZoom={false} showFitView={false} showInteractive={false} position="bottom-left">
+      <ControlButton
+        className="react-flow__controls-zoomin"
+        title="Zoom in"
+        aria-label="Zoom in"
+        disabled={maxZoomReached}
+        onClick={() => void zoomIn()}
+      >
+        <Icon.Plus />
+      </ControlButton>
+      <ControlButton
+        className="react-flow__controls-zoomout"
+        title="Zoom out"
+        aria-label="Zoom out"
+        disabled={minZoomReached}
+        onClick={() => void zoomOut()}
+      >
+        <Icon.Minus />
+      </ControlButton>
+      <ControlButton
+        className="react-flow__controls-fitview"
+        title="Fit view"
+        aria-label="Fit view"
+        onClick={() => void fitView()}
+      >
+        <Icon.FitView />
+      </ControlButton>
+    </Controls>
+  );
+}
 
 function CanvasInner({
   nodes: derivedNodes,
@@ -276,7 +316,7 @@ function CanvasInner({
       proOptions={{ hideAttribution: true }}
     >
       <Background variant={BackgroundVariant.Dots} gap={CELL} size={1.5} color="var(--dot)" />
-      {!embedded && <Controls showInteractive={false} position="bottom-left" />}
+      {!embedded && <CanvasControls />}
     </ReactFlow>
   );
 }

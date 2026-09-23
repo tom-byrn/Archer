@@ -13,7 +13,7 @@ import {
   type ArchDoc,
   type ComponentNode,
 } from "@archer/lang";
-import { GLYPHS, lookupType } from "@archer/catalog";
+import { GLYPHS, GLYPH_VIEWBOX, lookupType } from "@archer/catalog";
 
 /** One grid cell in pixels (mirrors lib/toFlow.ts, which is client-only). */
 const CELL = 40;
@@ -109,7 +109,7 @@ export const displayColor = (hex: string, dark: boolean): string => {
 };
 
 const glyphSvg = (key: string, size: number, color: string, x: number, y: number): string =>
-  `<svg x="${x}" y="${y}" width="${size}" height="${size}" viewBox="0 0 24 24" style="color:${color}">${GLYPHS[key] ?? GLYPHS.box!}</svg>`;
+  `<svg x="${x}" y="${y}" width="${size}" height="${size}" viewBox="${GLYPH_VIEWBOX}" style="color:${color}">${GLYPHS[key] ?? GLYPHS.box!}</svg>`;
 
 interface Box {
   path: string;

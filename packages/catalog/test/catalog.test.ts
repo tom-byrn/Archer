@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { CATALOG, GLYPHS } from "../src/index";
+import { buildGlyphs } from "../scripts/glyphs";
 
 // Consumers never fail loudly on a bad entry: lookupType's Map keeps the last
 // duplicate tag, unknown glyphs render as GLYPHS.box, and displayColor only
@@ -14,6 +15,10 @@ describe("catalog", () => {
     expect(Object.hasOwn(GLYPHS, "box")).toBe(true);
     const missing = CATALOG.filter((t) => !Object.hasOwn(GLYPHS, t.glyph));
     expect(missing.map((t) => `${t.tag}: ${t.glyph}`)).toEqual([]);
+  });
+
+  it("draws every glyph from Phosphor (edit scripts/glyphs.ts, then `pnpm --filter @archer/catalog glyphs`)", () => {
+    expect(GLYPHS).toEqual(buildGlyphs());
   });
 
   it("uses #rrggbb accent colors", () => {
