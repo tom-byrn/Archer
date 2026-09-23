@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useAuth } from "@clerk/nextjs";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
+import { Loading } from "loading-dev";
 import { DocumentViewer } from "@/components/DocumentViewer";
 
 /** Public, read-only view of a document shared with "anyone with the link". */
@@ -23,8 +24,8 @@ export default function SharedDocumentPage({
 
   if (doc === undefined) {
     return (
-      <div className="grid h-screen place-items-center bg-bg text-sm text-ink-3">
-        <span className="animate-pulse">Loading…</span>
+      <div role="status" aria-label="Loading" className="grid h-screen place-items-center bg-bg text-ink-3">
+        <Loading size={48} />
       </div>
     );
   }
