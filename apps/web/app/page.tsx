@@ -502,11 +502,13 @@ export default function Home() {
   const empty = docs !== undefined && docs.length === 0;
 
   // The header's controls depend on Clerk, the workspace list and the
-  // documents, which arrive one after another; shown as each arrived, they
-  // would pop in one at a time and push each other along. So the header holds
-  // placeholders until the documents load, then appears with them. Latched:
-  // a later workspace switch reloads only the grid.
-  const [settled, setSettled] = useState(false);
+  // documents. On a fresh load those arrive one after another, and shown as
+  // each arrived the controls would pop in one at a time and push each other
+  // along, so the header holds placeholders until the documents load, then
+  // appears with them. Navigating here from a document, Clerk and the
+  // workspace list are loaded already, so it shows at once. Latched: a later
+  // workspace switch reloads only the grid.
+  const [settled, setSettled] = useState(workspaceId !== null);
   if (!settled && !loading) setSettled(true);
 
   return (
