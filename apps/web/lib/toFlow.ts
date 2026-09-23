@@ -9,6 +9,7 @@ import {
   type ComponentNode,
   type DisplayMode,
 } from "@archer/lang";
+import type { EdgeTraffic } from "./traffic";
 
 /** One grid cell in pixels. */
 export const CELL = 40;
@@ -55,6 +56,10 @@ export interface ArchEdgeData extends Record<string, unknown> {
   payloadCount: number;
   /** Diff view: connection added, removed, or (payloads) changed relative to the base. */
   diff?: "added" | "removed" | "changed";
+  /** Faded while something else is highlighted (set by the canvas, for the label chip). */
+  dim?: boolean;
+  /** Play traffic: the requests crossing this connection (set by the canvas). */
+  traffic?: EdgeTraffic;
 }
 
 export type ArchEdge = Edge<ArchEdgeData>;

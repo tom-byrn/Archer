@@ -18,6 +18,7 @@ import {
 } from "@xyflow/react";
 import { toPng } from "html-to-image";
 import { CELL, type ArchEdge, type ArchNode } from "@/lib/toFlow";
+import type { TrafficHop, TrafficPlan } from "@/lib/traffic";
 import { DND_MIME } from "./Palette";
 import { edgeTypes, nodeTypes } from "./nodes";
 import "./canvas.css";
@@ -57,6 +58,8 @@ export interface ArchCanvasProps {
    * wheel scrolls the page instead of zooming, no controls, no deleting.
    */
   embedded?: boolean;
+  /** Play traffic: animate this plan along the connections and fade what it doesn't reach. */
+  traffic?: { plan: TrafficPlan; epoch: number } | null;
 }
 
 type Hover = { kind: "node"; id: string } | { kind: "edge"; id: string } | null;
@@ -73,6 +76,7 @@ function CanvasInner({
   exportRef,
   readOnly = false,
   embedded = false,
+  traffic = null,
 }: ArchCanvasProps) {
   const [nodes, setNodes, onNodesChange] = useNodesState<ArchNode>(derivedNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState<ArchEdge>(derivedEdges);
@@ -118,7 +122,24 @@ function CanvasInner({
   }, [exportRef, getNodes, title]);
 
   // Hover dimming: everything not connected to the hovered node/edge fades.
+  // While traffic plays, what it reaches stays lit instead (a node counts when
+  // a reached component is it or sits inside it, so planes and icons light up).
   const lit = useMemo(() => {
+    if (traffic) {
+      const reached = [...traffic.plan.paths];
+      return {
+        nodes: new Set(
+          nodes
+            .filter((n) => reached.some((p) => p === n.id || p.startsWith(`${n.id}.`)))
+            .map((n) => n.id),
+        ),
+        edges: new Set(
+          edges
+            .filter((e) => e.data !== undefined && traffic.plan.connections.has(e.data.index))
+            .map((e) => e.id),
+        ),
+      };
+    }
     if (hover === null || busy) return null;
     const litNodes = new Set<string>();
     const litEdges = new Set<string>();
@@ -148,7 +169,13 @@ function CanvasInner({
       }
     }
     return { nodes: litNodes, edges: litEdges };
-  }, [hover, busy, nodes, edges]);
+  }, [traffic, hover, busy, nodes, edges]);
+
+  const hopsByConnection = useMemo(() => {
+    const byIndex = new Map<number, TrafficHop[]>();
+    for (const h of traffic?.plan.hops ?? []) byIndex.set(h.index, [...(byIndex.get(h.index) ?? []), h]);
+    return byIndex;
+  }, [traffic]);
 
   const styledNodes = useMemo(
     () =>
@@ -156,18 +183,25 @@ function CanvasInner({
         ...n,
         className: joinCls(
           lit !== null && !lit.nodes.has(n.id) && "dim",
-          selectedPath === n.id && "arch-selected",
+          // While traffic plays, the ring marks where it comes from.
+          (selectedPath === n.id || traffic?.plan.sources.includes(n.id)) && "arch-selected",
         ),
       })),
-    [nodes, lit, selectedPath],
+    [nodes, lit, selectedPath, traffic],
   );
   const styledEdges = useMemo(
     () =>
-      edges.map((e) => ({
-        ...e,
-        className: joinCls(lit !== null && !lit.edges.has(e.id) && "dim"),
-      })),
-    [edges, lit],
+      edges.map((e) => {
+        const dim = lit !== null && !lit.edges.has(e.id);
+        const hops = e.data ? hopsByConnection.get(e.data.index) : undefined;
+        const moving = traffic && hops ? { hops, epoch: traffic.epoch } : undefined;
+        return {
+          ...e,
+          className: joinCls(dim && "dim", moving && "arch-traffic-on"),
+          data: e.data && { ...e.data, dim, traffic: moving },
+        };
+      }),
+    [edges, lit, hopsByConnection, traffic],
   );
 
   const onNodeDragStop = useCallback(
@@ -256,6 +290,8 @@ function CanvasInner({
       onDrop={readOnly ? undefined : onDrop}
       nodesDraggable={!readOnly}
       nodesConnectable={!readOnly}
+      // Clicks steer traffic while it plays; nothing gets selected (or deleted).
+      elementsSelectable={traffic === null}
       onDragOver={(e) => {
         e.preventDefault();
         e.dataTransfer.dropEffect = "copy";

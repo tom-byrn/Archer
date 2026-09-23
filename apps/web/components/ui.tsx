@@ -681,6 +681,12 @@ export const Icon = {
   Send: (p: { className?: string }) => (
     <I {...p}><path d="M13.5 2.5L2.5 6.75l5 1.75 1.75 5z" /><path d="M13.5 2.5L7.5 8.5" /></I>
   ),
+  Play: (p: { className?: string }) => (
+    <I {...p}><path d="M5 3.25v9.5L12.75 8z" /></I>
+  ),
+  Stop: (p: { className?: string }) => (
+    <I {...p}><rect x="4" y="4" width="8" height="8" rx="1.5" /></I>
+  ),
   Command: (p: { className?: string }) => (
     <I {...p}><path d="M6 6H4.5a1.5 1.5 0 110-3A1.5 1.5 0 016 4.5V6zm0 4H4.5a1.5 1.5 0 100 3A1.5 1.5 0 006 11.5V10zm4-4h1.5a1.5 1.5 0 100-3A1.5 1.5 0 0010 4.5V6zm0 4h1.5a1.5 1.5 0 110 3 1.5 1.5 0 01-1.5-1.5V10zM6 6h4v4H6z" /></I>
   ),

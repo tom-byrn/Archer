@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { compileForAgent, componentPaths, findComponent, format, type PayloadFormat } from "@archer/lang";
 import { lookupType } from "@archer/catalog";
@@ -14,9 +14,11 @@ import type { RepoLink } from "@/lib/github";
 import { toFlow } from "@/lib/toFlow";
 import { deriveDoc } from "@/lib/useArchDoc";
 import { displayColor, useIsDark } from "@/lib/useIsDark";
+import { useTraffic } from "@/lib/useTraffic";
 import { ArchCanvas, type CanvasCallbacks } from "./ArchCanvas";
 import { CodeEditor } from "./CodeMirror";
 import { Glyph } from "./nodes";
+import { TrafficBanner } from "./TrafficBanner";
 import { Button, Chip, Icon, IconButton, Kbd, Menu, Section, SidePanel, cx, relativeTime } from "./ui";
 
 const resolveType = (tag: string) => {
@@ -81,6 +83,8 @@ export function DocumentViewer({
     [derived, liveFocus, isDark],
   );
 
+  const traffic = useTraffic(derived.doc);
+
   const callbacks: CanvasCallbacks = useMemo(
     () => ({
       onNodeDragEnd: noop,
@@ -91,16 +95,33 @@ export function DocumentViewer({
           setSelected(null);
         }
       },
-      onSelectNode: (path) => setSelected(path),
+      // While traffic plays, a click steers it instead of opening details.
+      onSelectNode: (path) => (traffic.playing ? traffic.sendFrom(path) : setSelected(path)),
       onSelectEdge: () => setSelected(null),
-      onClearSelection: () => setSelected(null),
+      onClearSelection: () => {
+        setSelected(null);
+        traffic.reset();
+      },
       onConnect: noop,
       onDeleteNodes: noop,
       onDeleteEdges: noop,
       onDropType: noop,
     }),
-    [derived],
+    [derived, traffic.playing, traffic.sendFrom, traffic.reset],
   );
+
+  // Escape stops traffic from anywhere; the canvas's own Escape (up a level)
+  // waits until it has stopped.
+  const trafficPlaying = traffic.playing !== null;
+  const stopTraffic = traffic.stop;
+  useEffect(() => {
+    if (!trafficPlaying) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") stopTraffic();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [trafficPlaying, stopTraffic]);
 
   const notify = useCallback((msg: string) => {
     setToast(msg);
@@ -146,6 +167,13 @@ export function DocumentViewer({
           ) : (
             <span className="hidden pr-2 text-xs text-ink-3 md:inline">Updated {relativeTime(updatedAt)}</span>
           )}
+          <IconButton
+            label={traffic.playing ? "Stop traffic (esc)" : "Play traffic"}
+            onClick={traffic.toggle}
+            active={traffic.playing !== null}
+          >
+            {traffic.playing ? <Icon.Stop /> : <Icon.Play />}
+          </IconButton>
           <IconButton label={codeOpen ? "Hide code" : "Show code"} onClick={() => setCodeOpen((o) => !o)} active={codeOpen}>
             <Icon.Code />
           </IconButton>
@@ -245,11 +273,12 @@ export function DocumentViewer({
             </nav>
           )}
           <div
-            className="min-h-0 flex-1 bg-ground"
+            className="relative min-h-0 flex-1 bg-ground"
             onKeyDown={(e) => {
-              if (e.key === "Escape") setFocus((f) => f.slice(0, -1));
+              if (e.key === "Escape" && !trafficPlaying) setFocus((f) => f.slice(0, -1));
             }}
           >
+            <TrafficBanner doc={derived.doc} traffic={traffic} />
             <ArchCanvas
               key={liveFocus.join(".")}
               nodes={flow.nodes}
@@ -260,6 +289,7 @@ export function DocumentViewer({
               selectedPath={selectedPath}
               exportRef={exportRef}
               readOnly
+              traffic={traffic.playing}
             />
           </div>
         </main>

@@ -149,15 +149,59 @@
   stroke-dasharray: 4 3;
 }
 
-/* ---- Hover dimming ---- */
+/* ---- Hover dimming (and playing traffic) ---- */
+/* Label chips render in a portal outside their edge, so they carry .dim themselves. */
 .react-flow__node.dim,
 .react-flow__edge.dim,
-.react-flow__edge.dim .arch-edge-chip {
+.arch-edge-chip.dim {
   opacity: 0.3;
 }
 .react-flow__node,
 .react-flow__edge {
   transition: opacity 120ms ease;
+}
+
+/* ---- Play traffic ---- */
+/* Requests are solid, replies hollow; connections carrying traffic take on the accent.
+   Dots sit at the flow origin and are moved by transform (components/nodes.tsx). */
+.arch-traffic {
+  position: absolute;
+  left: 0;
+  top: 0;
+  pointer-events: none;
+}
+.arch-traffic > span {
+  position: absolute;
+  left: -5px;
+  top: -5px;
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  opacity: 0;
+  will-change: transform, opacity;
+}
+.arch-traffic-request {
+  background: var(--accent);
+  box-shadow:
+    0 0 0 3px var(--accent-soft),
+    0 0 10px var(--accent);
+}
+.arch-traffic > .arch-traffic-reply {
+  left: -4px;
+  top: -4px;
+  width: 8px;
+  height: 8px;
+  background: var(--surface);
+  border: 2px solid var(--accent);
+}
+.react-flow__edge.arch-traffic-on .arch-edge-path {
+  stroke: color-mix(in srgb, var(--accent) 45%, var(--edge));
+}
+.react-flow__edge.arch-traffic-on .arch-edge-arrow {
+  fill: color-mix(in srgb, var(--accent) 45%, var(--edge));
+}
+.arch-edge-chip.arch-edge-chip-busy {
+  border-color: var(--accent);
 }
 
 /* ---- Handles ---- */

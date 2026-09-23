@@ -72,6 +72,11 @@ Router + React Flow + Convex).
   and the editor copy always agree. "Open in editor" goes to
   `/new?example=<slug>`, which copies the example into the selected workspace
   (reusing an untouched earlier copy) and opens it.
+- Play traffic (editor + viewer header): `lib/traffic.ts` works out where
+  requests go purely from the arrows and connection types (`@queue`/`@event`/
+  `@stream` one-way; `--` and `@deploys`/`@contains`/`@depends` carry none);
+  `components/nodes.tsx` animates it. It is a view: nothing about traffic is
+  written to the `.arch` file.
 - Brand kit: `/branding` (signed-in only, deliberately linked from nowhere —
   keep it that way) shows the logo, colors, type, radii, icons and ui.tsx
   primitives. Values are parsed from `app/globals.css` at build time

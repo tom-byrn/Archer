@@ -24,6 +24,7 @@ import { SAMPLE } from "@/lib/sample";
 import { toFlow } from "@/lib/toFlow";
 import { resolveDropTarget } from "@/lib/dropTarget";
 import { deriveDoc, useArchDoc } from "@/lib/useArchDoc";
+import { useTraffic } from "@/lib/useTraffic";
 import { useUserLibrary } from "@/lib/userLibrary";
 import { useIsDark } from "@/lib/useIsDark";
 import type { Id } from "@/convex/_generated/dataModel";
@@ -41,6 +42,7 @@ import { CodePane } from "./CodePane";
 import { CommandPalette } from "./CommandPalette";
 import { DetailPanel, connectionKey, type Selection } from "./DetailPanel";
 import { Palette } from "./Palette";
+import { TrafficBanner } from "./TrafficBanner";
 import { Button, Chip, Icon, IconButton, Input, Kbd, Menu, cx, relativeTime, type MenuItem } from "./ui";
 
 /** What the canvas is comparing against, when in diff mode. */
@@ -227,6 +229,9 @@ export function Editor({
     [diff, touched, activity.driftByPath],
   );
 
+  // Play traffic (paused, not forgotten, while a diff is on screen).
+  const traffic = useTraffic(derived.doc, diff === null);
+
   const displayDoc = diff ? diff.doc : derived.laidOut;
   const flow = useMemo(
     () =>
@@ -264,12 +269,19 @@ export function Editor({
           setSelection(null);
         }
       },
-      onSelectNode: (path) => setSelection({ kind: "component", path }),
+      // While traffic plays, a click steers it instead of opening the panel
+      // (which would squeeze the canvas mid-animation).
+      onSelectNode: (path) =>
+        traffic.playing ? traffic.sendFrom(path) : setSelection({ kind: "component", path }),
       onSelectEdge: (index) => {
+        if (traffic.playing) return;
         const conn = derived.doc.connections[index];
         setSelection(conn ? { kind: "connection", key: connectionKey(conn) } : null);
       },
-      onClearSelection: () => setSelection(null),
+      onClearSelection: () => {
+        setSelection(null);
+        traffic.reset();
+      },
       onConnect: (s, t) => mutate((d) => addConnection(d, s.split("."), t.split("."))),
       onDeleteNodes: (paths) =>
         mutate((d) =>
@@ -285,7 +297,7 @@ export function Editor({
           return addComponent(d, target.parent, { type: tag, at: target.at }).doc;
         }),
     }),
-    [mutate, derived, liveFocus],
+    [mutate, derived, liveFocus, traffic.playing, traffic.sendFrom, traffic.reset],
   );
 
   // Drop a selection that no longer resolves (component deleted, connection edited away).
@@ -331,7 +343,10 @@ export function Editor({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [source, onPersist]);
 
-  // Global shortcuts: undo/redo (except while typing), ⌘K, Escape to go up a level.
+  // Global shortcuts: undo/redo (except while typing), ⌘K, Escape to stop
+  // traffic or go up a level.
+  const trafficPlaying = traffic.playing !== null;
+  const stopTraffic = traffic.stop;
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const el = e.target as HTMLElement;
@@ -350,6 +365,10 @@ export function Editor({
         else undo();
       }
       if (e.key === "Escape") {
+        if (trafficPlaying) {
+          stopTraffic();
+          return;
+        }
         setDiffView((v) => {
           if (v) return null;
           setFocus((f) => f.slice(0, -1));
@@ -359,7 +378,7 @@ export function Editor({
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [undo, redo]);
+  }, [undo, redo, trafficPlaying, stopTraffic]);
 
   const errors = derived.diagnostics.filter((d) => d.severity === "error");
   const warnings = derived.diagnostics.length - errors.length;
@@ -481,6 +500,14 @@ export function Editor({
               <Icon.Layout />
             </IconButton>
           </span>
+          <IconButton
+            label={traffic.playing ? "Stop traffic (esc)" : "Play traffic"}
+            onClick={traffic.toggle}
+            active={traffic.playing !== null}
+            disabled={diff !== null}
+          >
+            {traffic.playing ? <Icon.Stop /> : <Icon.Play />}
+          </IconButton>
           <IconButton label="Add component (⌘K)" onClick={() => setPaletteOpen(true)}>
             <Icon.Plus />
           </IconButton>
@@ -645,6 +672,8 @@ export function Editor({
                   </Button>
                 </div>
               </div>
+            ) : traffic.playing ? (
+              <TrafficBanner doc={derived.doc} traffic={traffic} />
             ) : latestAgent ? (
               <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex justify-center p-2 md:p-3">
                 <div className="pointer-events-auto flex min-h-9 max-w-full flex-wrap items-center gap-2 rounded-lg border border-line bg-surface py-1 pl-2 pr-1.5 shadow-md">
@@ -676,6 +705,7 @@ export function Editor({
               selectedPath={selectedPath}
               exportRef={exportRef}
               readOnly={diff !== null}
+              traffic={traffic.playing}
             />
           </div>
         </main>

@@ -1,16 +1,20 @@
 "use client";
 
+import { useEffect, useRef, type RefObject } from "react";
 import {
   BaseEdge,
   EdgeLabelRenderer,
   Handle,
   Position,
+  ViewportPortal,
   getSmoothStepPath,
+  useReactFlow,
   type EdgeProps,
   type NodeProps,
 } from "@xyflow/react";
 import { GLYPHS, lookupType } from "@archer/catalog";
 import type { ArchEdge, ArchNode, NodeMarks } from "@/lib/toFlow";
+import { EVERY_MS, HOP_MS, type EdgeTraffic } from "@/lib/traffic";
 import { displayColor, useIsDark } from "@/lib/useIsDark";
 import { Icon, cx } from "./ui";
 
@@ -218,6 +222,83 @@ function arrowhead(x: number, y: number, side: Position): string {
   }
 }
 
+/** Slow out of one component, slow into the next. */
+const ease = (x: number): number => (1 - Math.cos(Math.PI * x)) / 2;
+
+/**
+ * Requests moving along an edge (Play traffic). One animation-frame loop
+ * moves the dots along the drawn path, so React doesn't re-render per frame,
+ * and every edge counts from the same epoch, so hops stay in step. The dots
+ * live in the viewport portal, above the label chips they'd otherwise pass
+ * under; they fade out before reaching a component.
+ */
+function TrafficDots({
+  path,
+  traffic,
+  chip,
+}: {
+  path: string;
+  traffic: EdgeTraffic;
+  /** The edge's label chip: lit while a dot is on the edge. */
+  chip: RefObject<HTMLDivElement | null>;
+}) {
+  const line = useRef<SVGPathElement>(null);
+  const dots = useRef<(HTMLSpanElement | null)[]>([]);
+  const { getZoom } = useReactFlow();
+  useEffect(() => {
+    const el = line.current;
+    if (!el || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    let frame = 0;
+    const tick = (now: number) => {
+      const length = el.getTotalLength();
+      // Zoomed out on a big document, keep dots big enough to see.
+      const scale = Math.min(2.2, Math.max(1, 0.9 / getZoom()));
+      let busy = false;
+      traffic.hops.forEach((hop, i) => {
+        const dot = dots.current[i];
+        if (!dot) return;
+        const t = now - traffic.epoch - hop.start;
+        const phase = t % EVERY_MS;
+        if (t < 0 || phase >= HOP_MS) {
+          dot.style.opacity = "0";
+          return;
+        }
+        busy = true;
+        const f = ease(phase / HOP_MS);
+        const at = el.getPointAtLength((hop.reverse ? 1 - f : f) * length);
+        dot.style.transform = `translate(${at.x}px, ${at.y}px) scale(${scale})`;
+        // Fade in leaving a component, out arriving at the next.
+        dot.style.opacity = String(Math.min(1, f * 8, (1 - f) * 8));
+      });
+      chip.current?.classList.toggle("arch-edge-chip-busy", busy);
+      frame = requestAnimationFrame(tick);
+    };
+    frame = requestAnimationFrame(tick);
+    return () => {
+      cancelAnimationFrame(frame);
+      chip.current?.classList.remove("arch-edge-chip-busy");
+    };
+  }, [traffic, chip, getZoom]);
+  return (
+    <>
+      <path ref={line} d={path} fill="none" stroke="none" />
+      <ViewportPortal>
+        <div className="arch-traffic" aria-hidden>
+          {traffic.hops.map((hop, i) => (
+            <span
+              key={i}
+              ref={(el) => {
+                dots.current[i] = el;
+              }}
+              className={hop.reply ? "arch-traffic-reply" : "arch-traffic-request"}
+            />
+          ))}
+        </div>
+      </ViewportPortal>
+    </>
+  );
+}
+
 export function ArchEdgeComponent({
   id,
   sourceX,
@@ -229,6 +310,7 @@ export function ArchEdgeComponent({
   data,
   selected,
 }: EdgeProps<ArchEdge>) {
+  const chip = useRef<HTMLDivElement>(null);
   const [path, labelX, labelY] = getSmoothStepPath({
     sourceX,
     sourceY,
@@ -266,14 +348,18 @@ export function ArchEdgeComponent({
           points={arrowhead(sourceX, sourceY, sourcePosition)}
         />
       )}
+      {data?.traffic && <TrafficDots path={path} traffic={data.traffic} chip={chip} />}
       {hasLabel && (
         <EdgeLabelRenderer>
+          {/* A portal outside the edge's <g>, so it fades by its own class, not the edge's. */}
           <div
+            ref={chip}
             style={{ transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)` }}
             className={cx(
               "arch-edge-chip nodrag nopan pointer-events-auto absolute flex h-[18px] items-center gap-1 rounded-sm border bg-surface px-1.5 text-xs leading-none",
               diff === "added" ? "border-accent" : selected ? "border-accent" : "border-line",
               diffCls,
+              data?.dim && "dim",
             )}
           >
             {data?.protocol !== undefined && (
