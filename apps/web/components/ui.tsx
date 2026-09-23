@@ -639,6 +639,9 @@ export const Icon = {
   Layout: (p: { className?: string }) => (
     <I {...p}><rect x="2" y="2.5" width="5" height="5" rx="1" /><rect x="9" y="2.5" width="5" height="5" rx="1" /><rect x="2" y="9.5" width="5" height="4" rx="1" /><rect x="9" y="9.5" width="5" height="4" rx="1" /></I>
   ),
+  Diagram: (p: { className?: string }) => (
+    <I {...p}><rect x="5.5" y="2.5" width="5" height="3.5" rx="1" /><rect x="2" y="10" width="4.5" height="3.5" rx="1" /><rect x="9.5" y="10" width="4.5" height="3.5" rx="1" /><path d="M8 6v2M4.25 10V8h7.5v2" /></I>
+  ),
   Code: (p: { className?: string }) => (
     <I {...p}><path d="M5.5 4.5L2 8l3.5 3.5M10.5 4.5L14 8l-3.5 3.5" /></I>
   ),
