@@ -1,10 +1,8 @@
 import { defineConfig } from "tsup";
 import pkg from "./package.json";
 
-// Defaults baked into the published bundle (see packages/mcp/src/backend.ts).
-// Override with ARCHER_DEFAULT_CONVEX_URL / ARCHER_DEFAULT_APP_URL at build time.
-const CONVEX_URL =
-  process.env.ARCHER_DEFAULT_CONVEX_URL ?? "https://greedy-goldfinch-347.convex.cloud";
+// The Archer app the published bundle talks to by default (src/config.ts);
+// override with ARCHER_DEFAULT_APP_URL at build time.
 const APP_URL = process.env.ARCHER_DEFAULT_APP_URL ?? "https://archer.tombyrne.dev";
 
 export default defineConfig({
@@ -17,7 +15,6 @@ export default defineConfig({
   noExternal: [/^@archer\//],
   define: {
     "process.env.ARCHER_CLI_VERSION": JSON.stringify(pkg.version),
-    "process.env.ARCHER_DEFAULT_CONVEX_URL": JSON.stringify(CONVEX_URL),
     "process.env.ARCHER_DEFAULT_APP_URL": JSON.stringify(APP_URL),
   },
 });

@@ -1,20 +1,23 @@
 import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { basename, extname, join, relative, resolve } from "node:path";
-import { createInterface } from "node:readline/promises";
+import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { autoLayout, format, lex, parse, type Diagnostic } from "@archer/lang";
-import {
-  APP_URL,
-  INVALID_KEY_MESSAGE,
-  analyze,
-  db,
-  lookupKey,
-  persistApiKey,
-  prepareWrite,
-  resolveApiKey,
-  resolveWorkspace,
-  type Workspace,
-} from "@archer/mcp/backend";
+import { analyzeSource, typeTags } from "@archer/mcp/analysis";
+import type {
+  ProjectCreated,
+  ProjectListItem,
+  ProjectRead,
+  ProjectUpdated,
+  TypeList,
+  WorkspaceInfo,
+  WorkspaceList,
+  WorkspaceSwitched,
+  WriteRejected,
+} from "@archer/mcp/contract";
+import * as account from "./auth";
+import { APP_URL, MCP_URL } from "./config";
 import { starterSource } from "./starter";
+import { ToolError, callTool } from "./tools";
 
 /** Exit codes: 0 ok, 1 the documents have problems, 2 usage / IO / auth. */
 export const EXIT = { ok: 0, problems: 1, usage: 2 } as const;
@@ -72,14 +75,13 @@ export async function check(
   opts: { json?: boolean; offline?: boolean },
 ): Promise<number> {
   const files = expandTargets(targets);
-  // Workspace custom types are a nicety here: without a key (or offline) they
+  // Workspace custom types are a nicety here: signed out (or offline) they
   // only surface as W301 warnings, never errors.
-  const ws = opts.offline || !resolveApiKey() ? null : await resolveWorkspace().catch(() => null);
+  const types = typeTags(opts.offline || !account.signedIn() ? [] : await customTypes().catch(() => []));
 
   const results = [];
   for (const file of files) {
-    const a = await analyze(readSource(file), ws);
-    results.push({ file, ...a });
+    results.push({ file, ...analyzeSource(readSource(file), types) });
   }
   const errors = results.reduce((n, r) => n + r.errors.length, 0);
   const warnings = results.reduce((n, r) => n + r.warnings.length, 0);
@@ -160,42 +162,72 @@ export function fmt(
 }
 
 // ---------------------------------------------------------------------------
-// auth
+// account: sign-in and workspaces
 
-const NO_KEY = `No API key configured. Create one in the Archer app (${APP_URL} → avatar menu → Connect an agent), then run: archer login <key>  (or set ARCHER_API_KEY).`;
-
-async function requireWorkspace(): Promise<Workspace> {
-  if (!resolveApiKey()) throw new UsageError(NO_KEY);
-  const ws = await resolveWorkspace();
-  if (!ws) throw new UsageError(INVALID_KEY_MESSAGE);
-  return ws;
-}
-
-async function promptForKey(): Promise<string> {
-  if (!process.stdin.isTTY) return readSource(STDIN).trim();
-  const rl = createInterface({ input: process.stdin, output: process.stderr });
+/** Run `fn` with a client for the hosted server; auth and tool failures become usage errors. */
+async function withServer<T>(fn: (client: Client) => Promise<T>): Promise<T> {
+  let client: Client;
   try {
-    return (await rl.question("Archer API key: ")).trim();
+    client = await account.connect();
+  } catch (e) {
+    if (e instanceof account.LoginRequired) throw new UsageError(e.message);
+    throw new UsageError(`Can't reach ${MCP_URL}: ${e instanceof Error ? e.message : e}`);
+  }
+  try {
+    return await fn(client);
+  } catch (e) {
+    if (e instanceof account.LoginRequired || e instanceof ToolError) throw new UsageError(e.message);
+    throw e;
   } finally {
-    rl.close();
+    await client.close().catch(() => {});
   }
 }
 
-export async function login(keyArg: string | undefined): Promise<number> {
-  const key = keyArg?.trim() || (await promptForKey());
-  if (!key) throw new UsageError(NO_KEY);
-  const ws = await lookupKey(key);
-  if (!ws) throw new UsageError(`That API key was rejected; nothing was saved. ${INVALID_KEY_MESSAGE}`);
-  persistApiKey(key);
-  console.log(`Saved to ~/.archer/key — workspace ${ws.workspaceId}`);
+async function customTypes(): Promise<string[]> {
+  const list = await withServer((client) => callTool<TypeList>(client, "list_types"));
+  return list.custom_types.map((t) => t.tag);
+}
+
+export async function login(opts: { browser: boolean }): Promise<number> {
+  await account.login({ browser: opts.browser, log: (line) => console.error(line) });
+  const info = await withServer((client) => callTool<WorkspaceInfo>(client, "get_workspace_info"));
+  const where = info.workspace_name ?? info.workspace_id;
+  console.log(
+    `Signed in to ${new URL(APP_URL).host} — workspace ${where}${info.workspace_role ? ` (${info.workspace_role})` : ""}`,
+  );
   return EXIT.ok;
+}
+
+export async function logout(): Promise<number> {
+  console.log((await account.logout()) ? `Signed out of ${APP_URL}` : "Not signed in.");
+  return EXIT.ok;
+}
+
+/** List workspaces (current one starred), or switch to one — agents follow the switch too. */
+export async function workspace(id: string | undefined, opts: { json?: boolean }): Promise<number> {
+  return withServer(async (client) => {
+    if (id !== undefined) {
+      const w = await callTool<WorkspaceSwitched>(client, "use_workspace", { workspace_id: id });
+      console.log(`Now using ${w.name} (${w.role}) — ${w.visible_projects ?? "?"} projects.`);
+      if (w.role === "viewer") console.log("You are a viewer there: push will be refused.");
+      return EXIT.ok;
+    }
+    const list = await callTool<WorkspaceList>(client, "list_workspaces");
+    if (opts.json) {
+      console.log(JSON.stringify(list.workspaces, null, 2));
+    } else {
+      for (const w of list.workspaces) console.log(`${w.current ? "*" : " "} ${w.id}  ${w.name}  ${w.role}`);
+    }
+    return EXIT.ok;
+  });
 }
 
 // ---------------------------------------------------------------------------
 // init
 
 const MCP_CONFIG = ".mcp.json";
-const MCP_ENTRY = { command: "npx", args: ["-y", "archer-cli", "mcp"] };
+// The hosted server: the agent signs itself in (OAuth) on first use.
+const MCP_ENTRY = { type: "http", url: MCP_URL };
 
 /** Register the MCP server in ./.mcp.json, leaving other servers (and an existing entry) alone. */
 function writeMcpConfig(): "created" | "updated" | "kept" {
@@ -219,10 +251,7 @@ const titleFromDir = (): string =>
     .replace(/[-_]+/g, " ")
     .replace(/\b\w/g, (c) => c.toUpperCase());
 
-export async function init(
-  fileArg: string | undefined,
-  opts: { title?: string; key?: string; mcp: boolean },
-): Promise<number> {
+export function init(fileArg: string | undefined, opts: { title?: string; mcp: boolean }): number {
   const file = fileArg ?? "architecture.arch";
   if (extname(file) !== ".arch") throw new UsageError(`${file}: Archer files use the .arch extension.`);
 
@@ -232,9 +261,7 @@ export async function init(
     writeFileSync(file, starterSource(opts.title ?? titleFromDir()));
     console.log(`${file}: created`);
   }
-  if (opts.mcp) console.log(`${MCP_CONFIG}: ${writeMcpConfig()} (MCP server "archer" → npx archer-cli mcp)`);
-  // The key never goes in .mcp.json (that file gets committed); the server reads ~/.archer/key.
-  if (opts.key) await login(opts.key);
+  if (opts.mcp) console.log(`${MCP_CONFIG}: ${writeMcpConfig()} (MCP server "archer" → ${MCP_URL})`);
 
   console.log(
     [
@@ -242,9 +269,9 @@ export async function init(
       "Next:",
       `  archer check             validate every .arch file here (exit 1 on errors; --json for machines)`,
       `  archer guide             the language specification`,
-      resolveApiKey()
+      account.signedIn()
         ? `  archer push ${file}   create the project in your Archer workspace`
-        : `  archer login <key>       connect your workspace, then: archer push ${file}`,
+        : `  archer login             sign in with GitHub (in the browser), then: archer push ${file}`,
     ].join("\n"),
   );
   return EXIT.ok;
@@ -277,44 +304,72 @@ function saveLink(file: string, projectId: string): void {
   writeFileSync(LINKS_FILE, JSON.stringify(links, null, 2) + "\n");
 }
 
+/** Rethrow, turning "no such project" from the server (or an id Convex rejects outright) into a CLI message. */
+function rethrowMissingProject(e: unknown, projectId: string): never {
+  if (e instanceof ToolError && /^No project with id|v\.id\("documents"\)/.test(e.message))
+    throw new UsageError(`No project with id ${projectId} in the current workspace (see: archer list, archer workspace).`);
+  throw e;
+}
+
 export async function push(
   file: string,
   opts: { project?: string; message?: string },
 ): Promise<number> {
   const source = readSource(file);
-  const ws = await requireWorkspace();
   const projectId = opts.project ?? readLinks().projects[linkKey(file)];
 
-  const existing = projectId ? await db.getProject(ws, projectId) : null;
-  if (projectId && !existing)
-    throw new UsageError(`No project with id ${projectId} in this workspace (see: archer list).`);
+  return withServer(async (client) => {
+    // Validate here first for file:line:col diagnostics; the server applies
+    // the same gate (and keeps the canvas layout) when it saves.
+    const custom = await callTool<TypeList>(client, "list_types");
+    const a = analyzeSource(source, typeTags(custom.custom_types.map((t) => t.tag)));
+    if (a.errors.length > 0) {
+      for (const d of [...a.errors, ...a.warnings]) console.log(diagnosticLine(file, d));
+      console.error("REJECTED — nothing was saved. Fix the errors and push again.");
+      return EXIT.problems;
+    }
+    for (const d of a.warnings) console.log(diagnosticLine(file, d));
 
-  const prep = await prepareWrite(source, ws, existing?.source);
-  if (!prep.ok) {
-    for (const d of [...prep.errors, ...prep.warnings]) console.log(diagnosticLine(file, d));
-    console.error("REJECTED — nothing was saved. Fix the errors and push again.");
-    return EXIT.problems;
-  }
-  for (const d of prep.warnings) console.log(diagnosticLine(file, d));
-
-  let id = projectId;
-  if (existing) await db.updateProject(ws, existing._id, prep.title, prep.text, opts.message);
-  else id = await db.createProject(ws, prep.title, prep.text, opts.message ?? "Created the project");
-  saveLink(file, id!);
-  console.log(`${existing ? "Updated" : "Created"} "${prep.title}" — ${APP_URL}/documents/${id}`);
-  return EXIT.ok;
+    let saved: ProjectCreated;
+    try {
+      saved = projectId
+        ? await callTool<ProjectUpdated>(client, "update_project", {
+            project_id: projectId,
+            source,
+            ...(opts.message ? { summary: opts.message } : {}),
+          })
+        : await callTool<ProjectCreated>(client, "create_project", {
+            source,
+            summary: opts.message ?? "Created the project",
+          });
+    } catch (e) {
+      const rejected = e instanceof ToolError ? (e.data as Partial<WriteRejected> | null) : null;
+      if (Array.isArray(rejected?.errors)) {
+        for (const line of [...rejected.errors, ...(rejected.warnings ?? [])]) console.log(`${file}: ${line}`);
+        console.error("REJECTED — nothing was saved. Fix the errors and push again.");
+        return EXIT.problems;
+      }
+      if (projectId) rethrowMissingProject(e, projectId);
+      throw e;
+    }
+    saveLink(file, saved.id);
+    console.log(`${projectId ? "Updated" : "Created"} "${saved.title}" — ${saved.editor_url}`);
+    return EXIT.ok;
+  });
 }
 
 export async function pull(
   file: string,
   opts: { project?: string; force?: boolean },
 ): Promise<number> {
-  const ws = await requireWorkspace();
   const projectId = opts.project ?? readLinks().projects[linkKey(file)];
   if (!projectId)
     throw new UsageError(`${file} isn't linked to a project yet — pass --project <id> (see: archer list).`);
-  const project = await db.getProject(ws, projectId);
-  if (!project) throw new UsageError(`No project with id ${projectId} in this workspace (see: archer list).`);
+  const project = await withServer((client) =>
+    callTool<ProjectRead>(client, "get_project", { project_id: projectId }).catch((e: unknown) =>
+      rethrowMissingProject(e, projectId),
+    ),
+  );
   if (!opts.force && existsSync(file) && readSource(file) !== project.source) {
     // Canonical form differs from hand-written text even with no real edits, so
     // we can't tell "stale" from "has local work" — make overwriting explicit.
@@ -327,17 +382,11 @@ export async function pull(
 }
 
 export async function list(opts: { json?: boolean }): Promise<number> {
-  const projects = await db.listProjects(await requireWorkspace());
+  const projects = await withServer((client) => callTool<ProjectListItem[]>(client, "list_projects"));
   if (opts.json) {
-    console.log(
-      JSON.stringify(
-        projects.map((p) => ({ id: p._id, title: p.title, updated: new Date(p.updatedAt).toISOString() })),
-        null,
-        2,
-      ),
-    );
+    console.log(JSON.stringify(projects.map(({ id, title, updated }) => ({ id, title, updated })), null, 2));
   } else {
-    for (const p of projects) console.log(`${p._id}  ${p.title}`);
+    for (const p of projects) console.log(`${p.id}  ${p.title}`);
   }
   return EXIT.ok;
 }

@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { parseArgs } from "node:util";
-import { EXIT, UsageError, check, fmt, init, list, login, pull, push } from "./commands";
+import { APP_URL } from "./config";
+import { EXIT, UsageError, check, fmt, init, list, login, logout, pull, push, workspace } from "./commands";
 
 const HELP = `archer — check, format and sync Archer (.arch) architecture files
 
@@ -13,20 +14,25 @@ Usage
       --layout                 Also complete the layout block
       --drop-comments          Format files that have # comments (canonical form drops them)
   archer init [file]           Starter file (architecture.arch) + .mcp.json entry
-      --title <t>  --key <k>  --no-mcp
+      --title <t>  --no-mcp
   archer guide                 Print the language specification
 
-  archer login [key]           Save an API key to ~/.archer/key (or pipe it on stdin)
-  archer list [--json]         Projects in your workspace
+  archer login                 Sign in with GitHub in your browser (MCP OAuth)
+      --no-browser             Print the sign-in URL instead of opening it
+  archer logout                Sign out on this machine
+  archer workspace [id]        List your workspaces (* = current), or switch
+  archer list [--json]         Projects in the current workspace
   archer push <file>           Create the file's project, or update the linked one
       --project <id>  -m, --message <summary>
   archer pull <file>           Overwrite the file with the project's saved source
       --project <id>  --force
-  archer mcp                   Run the Archer MCP server over stdio
+  archer mcp                   The hosted MCP server over stdio, for clients
+                               that only run local servers (uses your sign-in)
 
-"-" as a path reads stdin (check, fmt). File ↔ project links live in ./archer.json.
+"-" as a path reads stdin (check, fmt). File ↔ project links live in ./archer.json;
+the sign-in in ~/.archer/auth.json.
 Exit codes: 0 ok · 1 documents have problems · 2 usage, IO or auth error
-Env: ARCHER_API_KEY, CONVEX_URL, ARCHER_APP_URL, ARCHER_AGENT_NAME`;
+Env: ARCHER_APP_URL — the Archer app to talk to (now: ${APP_URL})`;
 
 async function main(argv: string[]): Promise<number> {
   const { values, positionals } = parseArgs({
@@ -41,8 +47,8 @@ async function main(argv: string[]): Promise<number> {
       layout: { type: "boolean" },
       "drop-comments": { type: "boolean" },
       title: { type: "string" },
-      key: { type: "string" },
       "no-mcp": { type: "boolean" },
+      "no-browser": { type: "boolean" },
       project: { type: "string" },
       message: { type: "string", short: "m" },
       force: { type: "boolean" },
@@ -69,12 +75,17 @@ async function main(argv: string[]): Promise<number> {
     case "fmt":
       return fmt(rest, values);
     case "init":
-      return init(rest[0], { title: values.title, key: values.key, mcp: !values["no-mcp"] });
+      return init(rest[0], { title: values.title, mcp: !values["no-mcp"] });
     case "guide":
       console.log((await import("@archer/mcp/languageSpec")).LANGUAGE_SPEC);
       return EXIT.ok;
     case "login":
-      return login(rest[0]);
+      return login({ browser: !values["no-browser"] });
+    case "logout":
+      return logout();
+    case "workspace":
+      if (rest.length > 1) throw new UsageError("archer workspace takes at most one workspace id.");
+      return workspace(rest[0], values);
     case "list":
       return list(values);
     case "push":
@@ -82,9 +93,9 @@ async function main(argv: string[]): Promise<number> {
     case "pull":
       return pull(one("file"), values);
     case "mcp":
-      // The stdio transport keeps the process alive until the client
-      // disconnects; stdout belongs to the protocol from here on.
-      await (await import("@archer/mcp/server")).startServer();
+      // stdout belongs to the protocol from here on; this returns when the
+      // client disconnects.
+      await (await import("./relay")).relay((line) => console.error(line));
       return EXIT.ok;
     default:
       throw new UsageError(`Unknown command "${command}". Run archer --help.`);

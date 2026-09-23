@@ -12,8 +12,9 @@ import { handleRemoteRequest } from "@archer/mcp/remote";
  * bearer token. The verified user id is handed to the tools, which reach
  * Convex with a server-only service credential — see convex/access.ts.
  *
- * The same tools also ship as a local stdio server (packages/mcp) for CI and
- * offline use; that one authenticates with API keys.
+ * This is the only way agents and the `archer` CLI reach workspaces: the CLI
+ * signs in with this same flow (`archer login`, client name "Archer CLI") and
+ * calls these tools, and `archer mcp` relays stdio-only clients here.
  */
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

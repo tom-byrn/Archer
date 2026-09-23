@@ -1,5 +1,4 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 import {
   autoLayout,
@@ -14,32 +13,32 @@ import {
   type DiffSummary,
 } from "@archer/lang";
 import { CATALOG, CONNECTION_TYPES, GLYPHS } from "@archer/catalog";
+import { formatDiagnostic } from "./analysis";
 import {
   APP_URL,
   CONVEX_URL,
-  INVALID_KEY_MESSAGE,
   agentName,
   analyze,
   db,
-  formatDiagnostic,
-  lookupKey,
-  noWorkspaceMessage,
-  persistApiKey,
   prepareWrite,
   requestContext,
-  resolveApiKey,
-  resolveWorkspace,
-  setClientName,
   type RequestContext,
   type DriftFinding,
   type Workspace,
   type RevisionRow,
 } from "./backend";
+import type {
+  ProjectCreated,
+  ProjectListItem,
+  ProjectRead,
+  ProjectUpdated,
+  TypeList,
+  WorkspaceInfo,
+  WorkspaceList,
+  WorkspaceSwitched,
+  WriteRejected,
+} from "./contract";
 import { BRIEF, GUIDE } from "./guide";
-
-const SERVER_INFO = { name: "archer", version: "1.7.0" } as const;
-
-export type ServerMode = "stdio" | "remote";
 
 const text = (value: unknown) => ({
   content: [
@@ -52,31 +51,27 @@ const text = (value: unknown) => ({
 const fail = (value: unknown) => ({ ...text(value), isError: true });
 
 /**
- * Hosted mode: the caller is a verified user (see `wrap`). Their workspace is
- * the one they picked with use_workspace, else Personal (its id == user id).
- * Resolved per call — nothing about a user may be cached in module state.
+ * The caller is a verified user (see `wrap`). Their workspace is the one they
+ * picked with use_workspace, else Personal (its id == user id). Resolved per
+ * call — nothing about a user may be cached in module state.
  */
-const remoteWorkspace = async (ctx: RequestContext): Promise<Workspace> => {
+const currentWorkspace = async (ctx: RequestContext): Promise<Workspace> => {
   const pref = await db.getAgentWorkspace(ctx.serviceKey);
-  return { workspaceId: pref?.workspaceId ?? ctx.userId, apiKey: ctx.serviceKey };
+  return { workspaceId: pref?.workspaceId ?? ctx.userId, serviceKey: ctx.serviceKey };
 };
 
-const requireWorkspace = async (): Promise<Workspace> => {
+/** The request's identity; `wrap` guarantees one inside every tool. */
+const caller = (): RequestContext => {
   const ctx = requestContext.getStore();
-  if (ctx) return remoteWorkspace(ctx);
-  if (!resolveApiKey()) throw new Error(noWorkspaceMessage());
-  const ws = await resolveWorkspace();
-  if (!ws) throw new Error(INVALID_KEY_MESSAGE);
-  return ws;
+  if (!ctx) throw new Error("Not authenticated");
+  return ctx;
 };
+
+const requireWorkspace = (): Promise<Workspace> => currentWorkspace(caller());
 
 /** Best-effort workspace for tools that also work without one. */
-const optionalWorkspace = async (): Promise<Workspace | null> => {
-  const ctx = requestContext.getStore();
-  if (ctx) return remoteWorkspace(ctx).catch(() => null);
-  if (!resolveApiKey()) return null;
-  return resolveWorkspace().catch(() => null);
-};
+const optionalWorkspace = (): Promise<Workspace | null> =>
+  currentWorkspace(caller()).catch(() => null);
 
 type ToolResult = ReturnType<typeof text> & { isError?: boolean };
 
@@ -91,12 +86,11 @@ const findExtra = (a: unknown, b: unknown): { authInfo?: { extra?: Record<string
 
 /**
  * Every tool goes through this. It turns thrown errors into MCP error results
- * and, in hosted mode, establishes the per-request identity: the web route has
- * already verified the OAuth token and put `{ userId, agentName }` on
+ * and establishes the per-request identity: the web route has already
+ * verified the OAuth token and put `{ userId, agentName }` on
  * `authInfo.extra`; the tool body then runs inside `requestContext`.
  */
-const makeWrap =
-  (mode: ServerMode) =>
+const wrap =
   <A>(fn: (args: A) => Promise<ToolResult>) =>
   async (a: A, b?: unknown): Promise<ToolResult> => {
     const run = async (args: A) => {
@@ -106,8 +100,6 @@ const makeWrap =
         return fail(e instanceof Error ? e.message : String(e));
       }
     };
-    if (mode === "stdio") return run(a);
-
     const extra = findExtra(a, b);
     const args = (extra !== null && (extra as unknown) === a ? {} : a) as A;
     const info = extra?.authInfo?.extra;
@@ -162,15 +154,10 @@ const requireProject = async (ws: Workspace, projectId: string) => {
 
 /**
  * Register Archer's resources and tools on a server. Nothing is registered at
- * import time: the stdio launcher and the hosted HTTP route each build their
- * own McpServer and call this.
- *  - "stdio": one user, authenticated by an API key from the environment.
- *  - "remote": many users; each call carries an OAuth-verified user id.
+ * import time: the hosted HTTP route (remote.ts) builds a fresh McpServer per
+ * request and calls this. Every call carries an OAuth-verified user id.
  */
-export function registerArcherTools(server: McpServer, opts: { mode: ServerMode }): void {
-  const remote = opts.mode === "remote";
-  const wrap = makeWrap(opts.mode);
-
+export function registerArcherTools(server: McpServer): void {
   // --- documentation ----------------------------------------------------------
 
   server.registerResource(
@@ -301,8 +288,8 @@ export function registerArcherTools(server: McpServer, opts: { mode: ServerMode 
         glyphs_for_custom_types: Object.keys(GLYPHS),
         note: ws
           ? undefined
-          : "No API key configured — custom types not listed. See get_workspace_info.",
-      });
+          : "The backend is unreachable — custom types not listed. See get_workspace_info.",
+      } satisfies TypeList);
     }),
   );
 
@@ -370,7 +357,7 @@ export function registerArcherTools(server: McpServer, opts: { mode: ServerMode 
       const ws = await requireWorkspace();
       const projects = await db.listProjects(ws);
       return text(
-        projects.map((p) => ({
+        projects.map((p): ProjectListItem => ({
           id: p._id,
           title: p.title,
           updated: new Date(p.updatedAt).toISOString(),
@@ -410,7 +397,7 @@ export function registerArcherTools(server: McpServer, opts: { mode: ServerMode 
             }
           : null,
         source: doc.source,
-      });
+      } satisfies ProjectRead);
     }),
   );
 
@@ -475,14 +462,14 @@ export function registerArcherTools(server: McpServer, opts: { mode: ServerMode 
           message: "REJECTED — fix these errors and retry.",
           errors: diagnosticsReport(prep.errors),
           warnings: diagnosticsReport(prep.warnings),
-        });
+        } satisfies WriteRejected);
       const id = await db.createProject(ws, prep.title, prep.text, summary ?? "Created the project");
       return text({
         id,
         title: prep.title,
         editor_url: `${APP_URL}/documents/${id}`,
         warnings: diagnosticsReport(prep.warnings),
-      });
+      } satisfies ProjectCreated);
     }),
   );
 
@@ -508,7 +495,7 @@ export function registerArcherTools(server: McpServer, opts: { mode: ServerMode 
           message: "REJECTED — nothing was saved. Fix these errors and retry.",
           errors: diagnosticsReport(prep.errors),
           warnings: diagnosticsReport(prep.warnings),
-        });
+        } satisfies WriteRejected);
       await db.updateProject(ws, project_id, prep.title, prep.text, summary);
       return text({
         id: project_id,
@@ -517,7 +504,7 @@ export function registerArcherTools(server: McpServer, opts: { mode: ServerMode 
         attributed_to: agentName(),
         editor_url: `${APP_URL}/documents/${project_id}`,
         warnings: diagnosticsReport(prep.warnings),
-      });
+      } satisfies ProjectUpdated);
     }),
   );
 
@@ -797,184 +784,104 @@ export function registerArcherTools(server: McpServer, opts: { mode: ServerMode 
     "get_workspace_info",
     {
       title: "Workspace status",
-      description: remote
-        ? "Report who you are acting for and where: the signed-in user, the CURRENT workspace (tools operate on it; switch with use_workspace, see list_workspaces), your agent name, whether the backend is reachable, and project/custom-type counts. Call this first if any project tool errors."
-        : "Report this server's configuration: whether an API key is configured (and its prefix), which workspace it unlocks, the Convex backend URL, whether the backend is reachable, and project/custom-type counts. Call this first if any project tool errors. If no key is configured, the response explains how the user creates one.",
+      description:
+        "Report who you are acting for and where: the signed-in user, the CURRENT workspace (tools operate on it; switch with use_workspace, see list_workspaces), your agent name, whether the backend is reachable, and project/custom-type counts. Call this first if any project tool errors.",
       inputSchema: {},
     },
     wrap(async () => {
-      const ctx = requestContext.getStore();
-      if (ctx) {
-        let reachable = false;
-        let current: { id: string; name?: string; role?: string } = { id: ctx.userId };
-        let projectCount: number | null = null;
-        let customTypeCount: number | null = null;
-        try {
-          const ws = await remoteWorkspace(ctx);
-          const [all, projects, types] = await Promise.all([
-            db.listWorkspaces(ctx.serviceKey),
-            db.listProjects(ws),
-            db.listCustomTypes(ws),
-          ]);
-          reachable = true;
-          const found = all.find((w) => w.id === ws.workspaceId);
-          current = { id: ws.workspaceId, name: found?.name, role: found?.role };
-          projectCount = projects.length;
-          customTypeCount = types.length;
-        } catch {
-          // reported via backend_reachable
-        }
-        return text({
-          auth: "oauth",
-          user_id: ctx.userId,
-          workspace_id: current.id,
-          workspace_name: current.name ?? null,
-          workspace_role: current.role ?? null,
-          agent_name: agentName(),
-          convex_url: CONVEX_URL,
-          app_url: APP_URL,
-          backend_reachable: reachable,
-          project_count: projectCount,
-          custom_type_count: customTypeCount,
-        });
-      }
-      const apiKey = resolveApiKey();
-      let ws: Workspace | null = null;
-      let reachable: boolean | undefined;
-      let keyValid: boolean | undefined;
+      const ctx = caller();
+      let reachable = false;
+      let current: { id: string; name?: string; role?: string } = { id: ctx.userId };
       let projectCount: number | null = null;
       let customTypeCount: number | null = null;
-      if (apiKey) {
-        try {
-          ws = await resolveWorkspace();
-          reachable = true;
-          keyValid = ws !== null;
-          if (ws) {
-            const [projects, types] = await Promise.all([
-              db.listProjects(ws),
-              db.listCustomTypes(ws),
-            ]);
-            projectCount = projects.length;
-            customTypeCount = types.length;
-          }
-        } catch {
-          reachable = false;
-        }
+      try {
+        const ws = await currentWorkspace(ctx);
+        const [all, projects, types] = await Promise.all([
+          db.listWorkspaces(ctx.serviceKey),
+          db.listProjects(ws),
+          db.listCustomTypes(ws),
+        ]);
+        reachable = true;
+        const found = all.find((w) => w.id === ws.workspaceId);
+        current = { id: ws.workspaceId, name: found?.name, role: found?.role };
+        projectCount = projects.length;
+        customTypeCount = types.length;
+      } catch {
+        // reported via backend_reachable
       }
       return text({
-        api_key_configured: apiKey !== null,
-        api_key_prefix: apiKey ? apiKey.slice(0, 14) : null,
-        api_key_valid: keyValid,
-        workspace_id: ws?.workspaceId ?? null,
+        auth: "oauth",
+        user_id: ctx.userId,
+        workspace_id: current.id,
+        workspace_name: current.name ?? null,
+        workspace_role: current.role ?? null,
         agent_name: agentName(),
         convex_url: CONVEX_URL,
         app_url: APP_URL,
         backend_reachable: reachable,
         project_count: projectCount,
         custom_type_count: customTypeCount,
-        ...(apiKey ? {} : { how_to_configure: noWorkspaceMessage() }),
-        ...(apiKey && keyValid === false ? { how_to_fix: INVALID_KEY_MESSAGE } : {}),
-      });
+      } satisfies WorkspaceInfo);
     }),
   );
 
-  if (remote) {
-    server.registerTool(
-      "list_workspaces",
-      {
-        title: "List the user's workspaces",
-        description:
-          "A signed-in user can belong to several workspaces: their own Personal one plus any team workspaces they were invited to, each with a role (owner/editor can write, viewer can only read). Every project tool on this server operates on ONE of them — the current workspace, which defaults to Personal. This lists them all and marks the current one. Call it when the user mentions a team or shared project you can't find in list_projects, then switch with use_workspace.",
-        inputSchema: {},
-      },
-      wrap(async () => {
-        const ctx = requestContext.getStore()!;
-        const [all, ws] = await Promise.all([db.listWorkspaces(ctx.serviceKey), remoteWorkspace(ctx)]);
-        return text({
-          current_workspace_id: ws.workspaceId,
-          workspaces: all.map((w) => ({
-            id: w.id,
-            name: w.name,
-            kind: w.kind,
-            role: w.role,
-            current: w.id === ws.workspaceId,
-          })),
-        });
-      }),
-    );
+  server.registerTool(
+    "list_workspaces",
+    {
+      title: "List the user's workspaces",
+      description:
+        "A signed-in user can belong to several workspaces: their own Personal one plus any team workspaces they were invited to, each with a role (owner/editor can write, viewer can only read). Every project tool on this server operates on ONE of them — the current workspace, which defaults to Personal. This lists them all and marks the current one. Call it when the user mentions a team or shared project you can't find in list_projects, then switch with use_workspace.",
+      inputSchema: {},
+    },
+    wrap(async () => {
+      const ctx = caller();
+      const [all, ws] = await Promise.all([db.listWorkspaces(ctx.serviceKey), currentWorkspace(ctx)]);
+      return text({
+        current_workspace_id: ws.workspaceId,
+        workspaces: all.map((w) => ({
+          id: w.id,
+          name: w.name,
+          kind: w.kind,
+          role: w.role,
+          current: w.id === ws.workspaceId,
+        })),
+      } satisfies WorkspaceList);
+    }),
+  );
 
-    server.registerTool(
-      "use_workspace",
-      {
-        title: "Switch the current workspace",
-        description:
-          "Make another of the user's workspaces the current one, so list_projects, create_project and every other project tool operate there. The choice is remembered for this user across sessions and agents until changed again, so only switch when the user asks for (or clearly means) a different workspace, and say which workspace you are working in. Fails if the user is not a member of the target. Pass the id from list_workspaces; the Personal workspace's id is the user id.",
-        inputSchema: {
-          workspace_id: z.string().min(1).describe("Workspace id from list_workspaces"),
-        },
+  server.registerTool(
+    "use_workspace",
+    {
+      title: "Switch the current workspace",
+      description:
+        "Make another of the user's workspaces the current one, so list_projects, create_project and every other project tool operate there. The choice is remembered for this user across sessions and agents until changed again, so only switch when the user asks for (or clearly means) a different workspace, and say which workspace you are working in. Fails if the user is not a member of the target. Pass the id from list_workspaces; the Personal workspace's id is the user id.",
+      inputSchema: {
+        workspace_id: z.string().min(1).describe("Workspace id from list_workspaces"),
       },
-      wrap(async ({ workspace_id }) => {
-        const ctx = requestContext.getStore()!;
-        const id = workspace_id.trim();
-        const all = await db.listWorkspaces(ctx.serviceKey);
-        const target = all.find((w) => w.id === id);
-        if (!target)
-          throw new Error(
-            `The user is not a member of workspace '${id}'. Valid ids: ${all.map((w) => `${w.id} (${w.name})`).join(", ")}.`,
-          );
-        await db.setAgentWorkspace(ctx.serviceKey, id);
-        const projects = await db
-          .listProjects({ workspaceId: id, apiKey: ctx.serviceKey })
-          .catch(() => null);
-        return text({
-          current_workspace_id: id,
-          name: target.name,
-          kind: target.kind,
-          role: target.role,
-          visible_projects: projects?.length ?? null,
-          ...(target.role === "viewer"
-            ? { note: "The user is a viewer here: reads work, writes will be refused." }
-            : {}),
-        });
-      }),
-    );
-  } else {
-    server.registerTool(
-      "set_api_key",
-      {
-        title: "Set the API key",
-        description:
-          "Authenticate this server with an Archer API key (persisted to ~/.archer/key, mode 0600, for future sessions). The key must come from the user — they create it in the Archer app under \"Connect an agent\" after signing in with GitHub — and it determines whose projects you see. Never invent or guess one; an invalid key is rejected and nothing is saved.",
-        inputSchema: {
-          api_key: z.string().min(1).describe("API key the user created in the app (starts with archer_)"),
-        },
-      },
-      wrap(async ({ api_key }) => {
-        const key = api_key.trim();
-        const ws = await lookupKey(key);
-        if (!ws) throw new Error("That API key is not valid for this backend. Nothing was saved. " + INVALID_KEY_MESSAGE);
-        persistApiKey(key);
-        const projects = await db.listProjects(ws).catch(() => null);
-        return text({
-          api_key_prefix: key.slice(0, 14),
-          workspace_id: ws.workspaceId,
-          persisted_to: "~/.archer/key",
-          visible_projects: projects?.length ?? "backend unreachable",
-        });
-      }),
-    );
-  }
-}
-
-// ---------------------------------------------------------------------------
-
-/** Serve over stdio until the client disconnects. */
-export async function startServer(): Promise<void> {
-  const server = new McpServer(SERVER_INFO);
-  registerArcherTools(server, { mode: "stdio" });
-  await server.connect(new StdioServerTransport());
-  setClientName(server.server.getClientVersion()?.name);
-  // The handshake may complete after connect() resolves; re-read lazily too.
-  server.server.oninitialized = () => setClientName(server.server.getClientVersion()?.name);
-  console.error(`[archer-mcp] ready — convex: ${CONVEX_URL}, api key: ${resolveApiKey() ? resolveApiKey()!.slice(0, 14) + "…" : "(not set)"}, agent: ${agentName()}`);
+    },
+    wrap(async ({ workspace_id }) => {
+      const ctx = caller();
+      const id = workspace_id.trim();
+      const all = await db.listWorkspaces(ctx.serviceKey);
+      const target = all.find((w) => w.id === id);
+      if (!target)
+        throw new Error(
+          `The user is not a member of workspace '${id}'. Valid ids: ${all.map((w) => `${w.id} (${w.name})`).join(", ")}.`,
+        );
+      await db.setAgentWorkspace(ctx.serviceKey, id);
+      const projects = await db
+        .listProjects({ workspaceId: id, serviceKey: ctx.serviceKey })
+        .catch(() => null);
+      return text({
+        current_workspace_id: id,
+        name: target.name,
+        kind: target.kind,
+        role: target.role,
+        visible_projects: projects?.length ?? null,
+        ...(target.role === "viewer"
+          ? { note: "The user is a viewer here: reads work, writes will be refused." }
+          : {}),
+      } satisfies WorkspaceSwitched);
+    }),
+  );
 }

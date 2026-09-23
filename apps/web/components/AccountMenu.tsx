@@ -13,7 +13,7 @@ const initials = (name: string | null | undefined, email: string | null | undefi
   return (parts.length > 1 ? parts[0]![0]! + parts[1]![0]! : src.slice(0, 2)).toUpperCase();
 };
 
-/** Avatar at the right end of a header: account details, agent keys, sign out. */
+/** Avatar at the right end of a header: account details, connecting agents, sign out. */
 export function AccountMenu({ className }: { className?: string }) {
   const { user, isLoaded } = useUser();
   const { signOut } = useClerk();
@@ -21,7 +21,6 @@ export function AccountMenu({ className }: { className?: string }) {
   const ws = useWorkspace();
   if (!isLoaded || !user) return null;
   const current = ws.workspaces.find((w) => w.id === ws.workspaceId);
-  const canConnect = ws.role === "owner" || ws.role === "editor";
 
   const name = user.fullName ?? user.username ?? null;
   const email = user.primaryEmailAddress?.emailAddress ?? null;
@@ -41,9 +40,8 @@ export function AccountMenu({ className }: { className?: string }) {
           "separator",
           {
             label: "Connect an agent",
-            hint: canConnect ? `API keys for ${current?.name ?? "this workspace"}` : "Editors and owners only",
+            hint: "Claude Code, Cursor, the CLI…",
             icon: <Icon.Plug />,
-            disabled: !canConnect,
             onSelect: () => setConnectOpen(true),
           },
           "separator",
@@ -78,7 +76,6 @@ export function AccountMenu({ className }: { className?: string }) {
       <ConnectAgentDialog
         open={connectOpen}
         onClose={() => setConnectOpen(false)}
-        workspaceId={ws.workspaceId}
         workspaceName={current?.name ?? "this workspace"}
       />
     </>

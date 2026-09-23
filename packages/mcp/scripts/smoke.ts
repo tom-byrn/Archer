@@ -1,56 +1,28 @@
 /**
- * End-to-end smoke test: spawns the MCP server over stdio and exercises every
- * tool group against the real local Convex backend.
+ * End-to-end smoke test: exercises every tool group, in-process, against a
+ * real Convex deployment — as a signed-in user, exactly the way the hosted
+ * /mcp route runs them. Creates and deletes its own project and custom type.
  *
- * Usage: ARCHER_API_KEY=<key> pnpm --filter @archer/mcp exec tsx scripts/smoke.ts
+ * Usage:
+ *   ARCHER_SERVICE_SECRET=<secret> CONVEX_URL=<url> SMOKE_USER_ID=user_… \
+ *     pnpm --filter @archer/mcp exec tsx scripts/smoke.ts
+ * (the secret must be the one set on that deployment; use a dev deployment)
  */
-import { existsSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
-import { homedir } from "node:os";
-import { join } from "node:path";
-import { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
+import { checks, connectInProcess, requireEnv } from "./inProcess";
 
-const API_KEY = process.env.ARCHER_API_KEY?.trim();
-if (!API_KEY) {
-  console.error(
-    "ARCHER_API_KEY is not set. Create a key in the Archer app (sign in → Connect an agent → Create API key) and run:\n  ARCHER_API_KEY=<key> pnpm --filter @archer/mcp exec tsx scripts/smoke.ts",
-  );
-  process.exit(2);
-}
+requireEnv(
+  ["ARCHER_SERVICE_SECRET", "CONVEX_URL", "SMOKE_USER_ID"],
+  "ARCHER_SERVICE_SECRET=… CONVEX_URL=… SMOKE_USER_ID=user_… tsx scripts/smoke.ts",
+);
+const USER_ID = process.env.SMOKE_USER_ID!.trim();
 
-const transport = new StdioClientTransport({
-  command: "tsx",
-  args: ["src/index.ts"],
-  env: { ...process.env } as Record<string, string>,
-});
-const client = new Client({ name: "smoke", version: "0.0.0" });
-await client.connect(transport);
-
-let failures = 0;
-const check = (name: string, cond: boolean, detail?: unknown) => {
-  console.log(`${cond ? "PASS" : "FAIL"}  ${name}`);
-  if (!cond) {
-    failures++;
-    if (detail !== undefined) console.log("      ", JSON.stringify(detail).slice(0, 400));
-  }
-};
-const call = async (name: string, args: Record<string, unknown> = {}) => {
-  const res = await client.callTool({ name, arguments: args });
-  const content = (res.content as { text?: string }[])[0]?.text ?? "";
-  return { isError: res.isError === true, text: content, json: safeJson(content) };
-};
-const safeJson = (t: string) => {
-  try {
-    return JSON.parse(t);
-  } catch {
-    return null;
-  }
-};
+const { client, call } = await connectInProcess({ userId: USER_ID, agentName: "smoke" });
+const { check, failures } = checks();
 
 // tools/list
 const tools = await client.listTools();
 const names = tools.tools.map((t) => t.name).sort();
-check("23 tools registered", names.length === 23, names);
+check("24 tools registered", names.length === 24, names);
 
 // guide + resource
 const guide = await call("get_guide");
@@ -70,20 +42,12 @@ check("auto_layout_source adds layout", laid.text.includes("layout {"));
 const types = await call("list_types", { search: "postgres" });
 check("list_types finds postgres", types.json?.catalog.some((t: { tag: string }) => t.tag === "postgres"), types.json);
 
-// workspace / api key
+// workspace
 const info = await call("get_workspace_info");
-check("api key resolves to a workspace + backend reachable", info.json?.api_key_valid === true && typeof info.json?.workspace_id === "string" && info.json?.backend_reachable === true, info.json);
-check("get_workspace_info shows the key prefix", info.json?.api_key_prefix === API_KEY.slice(0, 14), info.json?.api_key_prefix);
-
-// a bogus key must be rejected and must not touch the persisted key file
-const KEY_FILE = join(homedir(), ".archer", "key");
-const keyFileBefore = existsSync(KEY_FILE) ? readFileSync(KEY_FILE, "utf8") : null;
-const bogus = await call("set_api_key", { api_key: "archer_not_a_real_key" });
-const keyFileAfter = existsSync(KEY_FILE) ? readFileSync(KEY_FILE, "utf8") : null;
-check("set_api_key rejects a bogus key", bogus.isError && bogus.text.includes("not valid"), bogus.text);
-check("bogus set_api_key leaves ~/.archer/key untouched", keyFileBefore === keyFileAfter);
-const infoAfter = await call("get_workspace_info");
-check("workspace unchanged after bogus key", infoAfter.json?.workspace_id === info.json?.workspace_id);
+check("acting as the user, backend reachable", info.json?.auth === "oauth" && info.json?.user_id === USER_ID && info.json?.backend_reachable === true, info.json);
+check("writes will be attributed to this agent", info.json?.agent_name === "smoke", info.json?.agent_name);
+const spaces = await call("list_workspaces");
+check("list_workspaces marks the current one", spaces.json?.workspaces?.some((w: { current: boolean }) => w.current), spaces.text);
 
 const rejected = await call("create_project", { source: 'arch "Smoke" v0.1\ncomponent a\na -> ghost' });
 check("create rejects invalid source", rejected.isError && rejected.text.includes("E101"));
@@ -135,8 +99,8 @@ check("compile_for_agent: preamble, no layout", compiled.text.includes("Archer a
 const history = await call("get_history", { project_id: pid });
 check("get_history lists revisions", Array.isArray(history.json) && history.json.length >= 2, history.text);
 const cacheRev = (history.json as { summary?: string; author: { kind: string; name?: string }; changes: { added: number } }[]).find((r) => r.summary === "Added a cache");
-check("agent-attributed revision with summary + changes", cacheRev?.author.kind === "agent" && !!cacheRev.author.name && cacheRev.changes.added >= 1, cacheRev);
-const rev = await call("get_revision", { revision_id: (history.json as { revision_id: string }[])[0].revision_id });
+check("agent-attributed revision with summary + changes", cacheRev?.author.kind === "agent" && cacheRev.author.name === "smoke" && cacheRev.changes.added >= 1, cacheRev);
+const rev = await call("get_revision", { revision_id: (history.json as { revision_id: string }[])[0]!.revision_id });
 check("get_revision returns source", typeof rev.json?.source === "string" && rev.json.source.startsWith("arch "));
 const diff = await call("diff_project", { project_id: pid });
 check("diff_project default has summary + diff", diff.json?.summary != null && Array.isArray(diff.json?.diff?.components), diff.text);
@@ -185,13 +149,6 @@ check("delete_project", !delProj.isError && delProj.json?.deleted === pid);
 const listedAfter = await call("list_projects");
 check("project gone after delete", !listedAfter.json?.some((p: { id: string }) => p.id === pid));
 
-// restore the key file exactly as we found it (belt and braces)
-if (keyFileBefore === null) {
-  if (existsSync(KEY_FILE)) unlinkSync(KEY_FILE);
-} else {
-  writeFileSync(KEY_FILE, keyFileBefore, { encoding: "utf8", mode: 0o600 });
-}
-
 await client.close();
-console.log(failures === 0 ? "\nALL SMOKE TESTS PASSED" : `\n${failures} FAILURES`);
-process.exit(failures === 0 ? 0 : 1);
+console.log(failures() === 0 ? "\nALL SMOKE TESTS PASSED" : `\n${failures()} FAILURES`);
+process.exit(failures() === 0 ? 0 : 1);
