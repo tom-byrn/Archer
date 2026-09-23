@@ -101,9 +101,10 @@ export default function ExamplesPage() {
             workspace as a real document to edit and keep.
           </p>
           <p className="pb-3 text-[14px] leading-relaxed text-ink-2">
-            The first five have no <code className={inlineCode}>layout</code> block. That is how
-            agents write Archer, and those diagrams are the app&apos;s auto-layout. The last one
-            shows what the canvas writes once you arrange things yourself.
+            The first two have no <code className={inlineCode}>layout</code> block. That is how
+            agents write Archer, and those diagrams are the app&apos;s auto-layout. The last one is
+            a whole product laid out by hand, so it shows what the canvas writes once you arrange
+            things yourself.
           </p>
           <ol className="pt-3">
             {EXAMPLES.map((e, i) => (

@@ -43,60 +43,6 @@ browser -> app @http
 `,
   },
   {
-    slug: "arrows-and-untyped-components",
-    title: "Team Chat",
-    summary:
-      "Three arrow kinds: `->` is directed, `<->` goes both ways, `--` is an undirected association. Components without a type render as generic boxes and are fully valid, so you can sketch your own services before picking technology.",
-    features: ["arrow kinds", "untyped components"],
-    source: `arch "Team Chat" v0.1
-
-component client "Chat Client" @browser
-
-component gateway "Realtime Gateway"
-
-component chat "Chat Service"
-
-component presence "Presence"
-
-component messages "Messages" @mongodb
-
-component online "Online Users" @redis
-
-chat -> messages @writes
-client <-> gateway @ws : "live updates"
-gateway -> chat @grpc
-gateway -> presence @grpc
-presence -- online : "heartbeats"
-`,
-  },
-  {
-    slug: "nesting",
-    title: "Storefront",
-    summary:
-      "Components nest inside components. A child is referenced by its dot-path from the root (`backend.orders`), and connections cross container boundaries freely. A component with children renders as a plane, with its children laid out inside.",
-    features: ["nesting", "dot-paths", "planes"],
-    source: `arch "Storefront" v0.1
-
-component web "Web Shop" @vercel.nextjs
-
-component backend "Backend" @aws {
-  component gateway "API Gateway" @aws.api_gateway
-  component orders "Orders" @aws.lambda
-  component catalog "Catalog" @aws.lambda
-}
-
-component payments "Payments" @stripe
-
-component search "Search" @elasticsearch
-
-backend.catalog -> search @http : "query"
-backend.gateway -> backend.catalog @http
-backend.gateway -> backend.orders @http
-backend.orders -> payments @http : "charge"
-web -> backend.gateway @http
-`,
-  },
-  {
     slug: "descriptions-and-payloads",
     title: "Billing Service",
     summary:
@@ -142,72 +88,215 @@ dashboard -> api @http
 `,
   },
   {
-    slug: "connection-payloads",
-    title: "Order Events",
+    slug: "music-streaming",
+    title: "Music Streaming",
     summary:
-      "Connections carry payloads too: a message schema on an event, a request body on an HTTP call. The canonical form sorts connections by source path and writes one with a body as its own block.",
-    features: ["connection payloads", "canonical order"],
-    source: `arch "Order Events" v0.1
+      "A whole product in one file: listener apps, the edge, six services on Kubernetes with their storage, analytics, and the pipeline that turns a label's delivery into playable audio. Connections can attach to a whole plane (`gateway -> services`), and all three arrow kinds appear: `->`, `<->` for the remote-control socket, and `--` for the signed URLs Playback and the CDN agree on. It was laid out by hand, so it ends with the `layout` block the canvas writes when you drag and resize; agents ignore that block and never write it.",
+    features: ["nesting", "arrow kinds", "connection payloads", "the layout block"],
+    source: `arch "Music Streaming" v0.1
 
-component checkout "Checkout" @service
+component apps "Listener Apps" {
+  desc "Every client talks to one API and streams from one CDN."
+  component web "Web Player" @vercel.nextjs
+  component mobile "iOS & Android" @mobile {
+    desc "Premium listeners can download for offline play. Downloads stay encrypted on the device."
+  }
+}
 
-component bus "Event Bus" @kafka
+component auth "Accounts" @auth0 {
+  desc "Email, Apple and Google sign-in. Issues the JWT every API call carries."
+}
 
-component receipts "Receipts" @worker
+component gateway "API Gateway" @aws.api_gateway {
+  desc "The only public API. Checks the JWT, rate-limits per account, routes to services."
+}
 
-component fulfilment "Fulfilment" @worker
+component sync "Device Sync" {
+  desc "WebSocket hub: move playback between devices, or use a phone as the remote for a speaker."
+}
 
-component resend "Resend" @resend
+component cdn "Audio CDN" @aws.cloudfront {
+  desc "Caches encrypted audio at the edge and serves only URLs that Playback signed."
+}
 
-bus -> fulfilment @stream
-bus -> receipts @stream
+component services "Services" @aws.eks {
+  desc "Stateless services on Kubernetes, reachable from outside only through the API Gateway."
+  component catalog "Catalog" @service {
+    desc "Artists, albums, tracks, credits, and the markets each track may play in."
+    src "services/catalog"
+  }
+  component search "Search" @service {
+    desc "Typeahead across artists, albums, tracks and playlists."
+  }
+  component library "Library" @service {
+    desc "Saved tracks, followed artists, and playlists, including collaborative ones."
+  }
+  component playback "Playback" @service {
+    desc "Decides what a listener may play right now and returns a signed URL for the right rendition."
+    src "services/playback"
+    endpoints table ${FENCE}
+    | method | path        | purpose                                |
+    | ------ | ----------- | -------------------------------------- |
+    | POST   | /v1/play    | resolve a track to a signed stream URL |
+    | POST   | /v1/license | DRM license for this device            |
+    ${FENCE}
+    tiers yaml ${FENCE}
+    free:
+      bitrate_kbps: 160
+      skips_per_hour: 6
+      offline: false
+    premium:
+      bitrate_kbps: 320
+      skips_per_hour: unlimited
+      offline: true
+    ${FENCE}
+  }
+  component recs "Recommender" @service {
+    desc "Home feed, radio and a weekly mix, built from the nearest neighbors of what you play."
+  }
+  component subscriptions "Subscriptions" @service {
+    desc "Plans, trials and family seats. Answers what a listener is entitled to."
+    src "services/subscriptions"
+  }
+}
 
-checkout -> bus @event : "placed" {
-  message json ${FENCE}
-  { "order_id": "uuid", "total_cents": "int", "placed_at": "timestamp" }
+component storage "Storage" {
+  component catalog_db "Catalog DB" @aws.rds {
+    desc "Postgres. The source of truth for metadata."
+    schema json ${FENCE}
+    {
+      "artists": { "id": "uuid pk", "name": "text" },
+      "albums": { "id": "uuid pk", "artist_id": "uuid fk artists.id", "released_on": "date" },
+      "tracks": { "id": "uuid pk", "album_id": "uuid fk albums.id", "isrc": "text unique", "markets": "text[]" }
+    }
+    ${FENCE}
+  }
+  component index "Search Index" @elasticsearch
+  component playlists "Playlists" @aws.dynamodb {
+    desc "Libraries and playlists, partitioned by listener."
+  }
+  component sessions "Play Sessions" @redis {
+    desc "Active streams per account, for device limits. Keys expire 30 seconds after the last heartbeat."
+  }
+  component events "Play Events" @kafka
+  component embeddings "Embeddings" @pinecone
+  component accounts_db "Accounts DB" @aws.rds
+}
+
+component content "Content Ingestion" {
+  component inbox "Delivery Inbox" @aws.s3 {
+    desc "Labels drop DDEX packages here: XML metadata, lossless masters and artwork."
+  }
+  component pipeline "Pipeline" @temporal {
+    desc "One durable workflow per release: validate, encode, then publish on release day."
+  }
+  component transcoder "Transcoder" @aws.fargate {
+    desc "FFmpeg workers. Ogg Vorbis at 96, 160 and 320 kbps plus AAC, loudness-normalized to -14 LUFS."
+  }
+  component audio "Audio Files" @aws.s3 {
+    desc "Every encoded rendition, keyed by track and bitrate."
+  }
+}
+
+component analytics "Analytics" {
+  component warehouse "Warehouse" @snowflake
+  component royalties "Royalties" {
+    desc "Monthly job that splits each market's revenue across rights holders by share of streams."
+    rules markdown ${FENCE}
+    - A stream counts after 30 seconds of play.
+    - Free-tier streams share ad revenue; Premium streams share subscription revenue.
+    - Statements go out by the 15th of the following month.
+    ${FENCE}
+  }
+  component training "Model Training" @worker {
+    desc "Nightly job: learns track and listener embeddings from the last 90 days of plays."
+  }
+}
+
+component labels "Record Labels" @external
+
+component stripe "Stripe" @stripe
+
+analytics.royalties -> analytics.warehouse @reads
+
+analytics.royalties -> labels : "statements" {
+  statement table ${FENCE}
+  | column       | type | notes            |
+  | ------------ | ---- | ---------------- |
+  | isrc         | text | recording id     |
+  | market       | text | ISO country code |
+  | streams      | int  | counted plays    |
+  | payout_cents | int  | for the month    |
   ${FENCE}
 }
 
-receipts -> resend @http : "email"
-`,
-  },
-  {
-    slug: "layout",
-    title: "Analytics Platform",
-    summary:
-      "Positions, sizes and display mode live in the `layout` block at the end of the file. The canvas writes it when you drag, resize or collapse; agents ignore it and never write it. Here the warehouse is collapsed to an icon (`display: icon`), so its arrows attach to the icon until you click into it.",
-    features: ["the layout block", "planes and icons"],
-    source: `arch "Analytics Platform" v0.1
+analytics.training -> analytics.warehouse @reads
+analytics.training -> storage.embeddings @writes : "nightly"
+apps -> auth @auth : "sign in"
+apps -> cdn @http : "audio"
+apps -> gateway @http
+apps <-> sync @ws : "remote control"
+cdn -> content.audio @reads : "origin"
+content.inbox -> content.pipeline @event
+content.pipeline -> content.transcoder @queue : "encode"
+content.pipeline -> services.catalog @grpc : "publish"
+content.transcoder -> content.audio @writes
+gateway -> services @http : "routes"
+labels -> content.inbox @writes : "DDEX"
+services.catalog -> storage.catalog_db @sql
+services.catalog -> storage.index @writes : "reindex"
+services.library -> storage.playlists
+services.playback -- cdn : "signed URLs"
+services.playback -> services.catalog @grpc : "availability"
+services.playback -> services.subscriptions @grpc : "entitlements"
 
-component app "Product" @vercel.nextjs
-
-component ingest "Ingest" @gcp {
-  component collector "Collector" @gcp.cloud_run
-  component topic "Events" @gcp.pubsub
+services.playback -> storage.events @event : "track played" {
+  message json ${FENCE}
+  { "listener_id": "uuid", "track_id": "uuid", "ms_played": "int", "market": "text", "played_at": "timestamp" }
+  ${FENCE}
 }
 
-component warehouse "Warehouse" @gcp {
-  component loader "Loader" @gcp.cloud_run
-  component bq "BigQuery" @gcp.bigquery
-}
-
-component dashboards "Dashboards" @grafana
-
-app -> ingest.collector @http : "track"
-dashboards -> warehouse.bq @reads
-ingest.collector -> ingest.topic @event
-ingest.topic -> warehouse.loader @stream
-warehouse.loader -> warehouse.bq @writes
+services.playback -> storage.sessions @writes : "active streams"
+services.recs -> storage.embeddings @reads
+services.search -> storage.index @reads
+services.subscriptions -> storage.accounts_db @sql
+services.subscriptions <-> stripe @http : "billing"
+storage.events -> analytics.warehouse @stream
 
 layout {
-  app: { at: [0, 2], size: [4, 3] }
-  dashboards: { at: [23, 7], size: [4, 3] }
-  ingest: { at: [7, 0], size: [13, 6], display: plane }
-  ingest.collector: { at: [1, 2], size: [4, 3] }
-  ingest.topic: { at: [8, 2], size: [4, 3] }
-  warehouse: { at: [23, 2], size: [4, 3], display: icon }
-  warehouse.bq: { at: [8, 2], size: [4, 3] }
-  warehouse.loader: { at: [1, 2], size: [4, 3] }
+  analytics: { at: [45, 15], size: [6, 19], display: plane }
+  analytics.royalties: { at: [1, 15], size: [4, 3] }
+  analytics.training: { at: [1, 2], size: [4, 3] }
+  analytics.warehouse: { at: [1, 8], size: [4, 3] }
+  apps: { at: [0, 17], size: [6, 11], display: plane }
+  apps.mobile: { at: [1, 7], size: [4, 3] }
+  apps.web: { at: [1, 2], size: [4, 3] }
+  auth: { at: [1, 12], size: [4, 3] }
+  cdn: { at: [10, 24], size: [4, 3] }
+  content: { at: [9, 40], size: [29, 6], display: plane }
+  content.audio: { at: [1, 2], size: [4, 3] }
+  content.inbox: { at: [24, 2], size: [4, 3] }
+  content.pipeline: { at: [17, 2], size: [4, 3] }
+  content.transcoder: { at: [9, 2], size: [4, 3] }
+  gateway: { at: [10, 18], size: [4, 3] }
+  labels: { at: [46, 42], size: [4, 3] }
+  services: { at: [18, 0], size: [13, 39], display: plane }
+  services.catalog: { at: [8, 26], size: [4, 3] }
+  services.library: { at: [8, 2], size: [4, 3] }
+  services.playback: { at: [8, 19], size: [4, 3] }
+  services.recs: { at: [8, 7], size: [4, 3] }
+  services.search: { at: [1, 35], size: [4, 3] }
+  services.subscriptions: { at: [8, 12], size: [4, 3] }
+  storage: { at: [35, 0], size: [6, 39], display: plane }
+  storage.accounts_db: { at: [1, 12], size: [4, 3] }
+  storage.catalog_db: { at: [1, 29], size: [4, 3] }
+  storage.embeddings: { at: [1, 7], size: [4, 3] }
+  storage.events: { at: [1, 23], size: [4, 3] }
+  storage.index: { at: [1, 35], size: [4, 3] }
+  storage.playlists: { at: [1, 2], size: [4, 3] }
+  storage.sessions: { at: [1, 17], size: [4, 3] }
+  stripe: { at: [10, 12], size: [4, 3] }
+  sync: { at: [1, 30], size: [4, 3] }
 }
 `,
   },
