@@ -227,7 +227,10 @@ export function Section({
   );
 }
 
-/** Segmented control. An option with an `icon` shows just the icon, named by its label. */
+/**
+ * Segmented control. An option with an `icon` shows just the icon, named by its
+ * label. `onChange` also gets the option's button, for effects that start from it.
+ */
 export function Segmented<T extends string>({
   value,
   options,
@@ -237,7 +240,7 @@ export function Segmented<T extends string>({
 }: {
   value: T;
   options: { value: T; label: string; title?: string; icon?: ReactNode }[];
-  onChange: (v: T) => void;
+  onChange: (v: T, button: HTMLButtonElement) => void;
   mono?: boolean;
   /** Names the control for assistive tech. */
   label?: string;
@@ -251,7 +254,7 @@ export function Segmented<T extends string>({
           aria-pressed={o.value === value}
           aria-label={o.icon ? o.label : undefined}
           title={o.title ?? (o.icon ? o.label : undefined)}
-          onClick={() => onChange(o.value)}
+          onClick={(e) => onChange(o.value, e.currentTarget)}
           className={cx(
             "rounded-[4px] text-sm font-medium transition-colors duration-100",
             o.icon ? "flex w-6 items-center justify-center [&>svg]:h-3.5 [&>svg]:w-3.5" : "px-2.5",
