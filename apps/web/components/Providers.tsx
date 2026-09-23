@@ -26,7 +26,7 @@ const PALETTE = {
 } as const;
 
 /**
- * Clerk appearance that follows the OS color scheme. Both the current (v7)
+ * Clerk appearance that follows the page's theme. Both the current (v7)
  * variable names and their legacy aliases are set, since older names are
  * silently ignored by newer Clerk UI builds (which is how text ends up
  * light-on-white in dark mode).

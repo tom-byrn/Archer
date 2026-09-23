@@ -64,7 +64,7 @@ export interface ToFlowOptions {
   focus?: string[];
   /** Resolve a type tag to visuals (catalog + user library). */
   resolveType?: (tag: string) => { color: string; glyph: string } | undefined;
-  /** OS dark mode (kept for API compatibility; colors are token-driven). */
+  /** Dark theme (kept for API compatibility; colors are token-driven). */
   isDark?: boolean;
   /** Per-path overlay badges (diff status, agent-touched, drift). */
   marks?: (path: string, component: ComponentNode) => NodeMarks | undefined;

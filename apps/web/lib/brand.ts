@@ -10,7 +10,7 @@ export type Decls = Record<string, string>;
 export interface BrandTokens {
   /** `:root`: the light theme, plus the tokens both themes share. */
   light: Decls;
-  /** The dark theme: `:root` with the `prefers-color-scheme: dark` overrides applied. */
+  /** The dark theme: `:root` with the `[data-theme="dark"]` overrides applied. */
   dark: Decls;
   /** `@theme inline`: what Tailwind exposes (colors, radii, text sizes, fonts). */
   theme: Decls;
@@ -39,7 +39,8 @@ const decls = (body: string): Decls =>
 
 export function parseBrandTokens(css: string): BrandTokens {
   const light = decls(block(css, ":root"));
-  const dark = { ...light, ...decls(block(block(css, "@media (prefers-color-scheme: dark)"), ":root")) };
+  // With the brace, so selectors that only start the same way don't match.
+  const dark = { ...light, ...decls(block(css, ':root[data-theme="dark"] {')) };
   return { light, dark, theme: decls(block(css, "@theme inline")) };
 }
 

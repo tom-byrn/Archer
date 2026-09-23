@@ -70,7 +70,10 @@ Router + React Flow + Convex).
   `apps/web/test/examples.test.ts` enforces it, so the code shown, the diagram
   (`lib/svg.ts`, prerendered at `/language/examples/<slug>/{light,dark}.svg`)
   and the editor copy always agree. "Open in sandbox" goes to
-  `/sandbox/<slug>` (see Editor sessions). `/new?example=<slug>`, which copies
+  `/sandbox/<slug>` (see Editor sessions). "View code" opens the source in
+  the editor's code popout (`components/CodeDialog.tsx`, shared with
+  `CodePane`), highlighted on the server by `lib/highlightArch.ts` so the page
+  never loads CodeMirror. `/new?example=<slug>`, which copies
   the example into the selected workspace (reusing an untouched earlier copy),
   still works but nothing links to it.
 - Editor sessions: `components/Editor.tsx` takes a `session` — a stored
@@ -95,14 +98,19 @@ Router + React Flow + Convex).
   tokens in `app/globals.css` (exposed as Tailwind utilities: `bg-surface`,
   `text-ink-2`, `border-line`, `rounded-md`, `text-sm`…). Never use the raw
   Tailwind palette (`slate-*`) or `dark:` variants — dark mode is handled by
-  the tokens. Build controls from `components/ui.tsx` (Button, IconButton,
-  Input, Menu, Dialog, Section, PropertyRow, Chip, Icon). Icons are Phosphor:
-  UI icons are `@phosphor-icons/react` (bold) behind `Icon` — add a name there,
-  don't import Phosphor elsewhere (`GitHubMark` stays GitHub's own mark on
-  purpose); component glyphs are Phosphor paths
+  the tokens. The theme is `data-theme="light|dark"` on `<html>`: the
+  viewer's System/Light/Dark choice (localStorage, `lib/theme.ts`; toggle in
+  the site header, setting in the account menu), resolved before first paint
+  by the inline script in `app/layout.tsx`. Key CSS on
+  `:root[data-theme="dark"]` and code on `useIsDark()`, never on
+  `prefers-color-scheme`. Build controls from `components/ui.tsx` (Button,
+  IconButton, Input, Menu, Dialog, Section, PropertyRow, Chip, Icon). Icons
+  are Phosphor: UI icons are `@phosphor-icons/react` (bold) behind `Icon` —
+  add a name there, don't import Phosphor elsewhere (`GitHubMark` stays
+  GitHub's own mark on purpose); component glyphs are Phosphor paths
   generated into `packages/catalog/src/glyphs.ts` by `scripts/glyphs.ts`
-  (strings, so `lib/svg.ts` and the OG image can draw them). Code editing goes
-  through `components/CodeMirror.tsx`. React Flow chrome lives in
+  (strings, so `lib/svg.ts` and the OG image can draw them). Code editing
+  goes through `components/CodeMirror.tsx`. React Flow chrome lives in
   `components/canvas.css`.
 - Language/product specs live in `docs/`; keep `docs/language-spec.md` in
   sync with `packages/*/src/languageSpec.ts` copies when the grammar changes.

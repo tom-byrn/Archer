@@ -5,8 +5,9 @@ import type { ArchDoc, Diagnostic } from "@archer/lang";
 import { EditorView, Decoration, type DecorationSet } from "@codemirror/view";
 import { StateEffect, StateField, EditorSelection } from "@codemirror/state";
 import { lintGutter, setDiagnostics } from "@codemirror/lint";
+import { CodeDialog } from "./CodeDialog";
 import { CodeEditor } from "./CodeMirror";
-import { Button, Chip, Icon, IconButton, cx } from "./ui";
+import { Button, Chip, Icon, cx } from "./ui";
 import {
   archLanguage,
   archerLinter,
@@ -177,18 +178,6 @@ export function CodePane({
     view.focus();
   };
 
-  // Escape closes the modal (capture, so it wins over the canvas shortcuts).
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key !== "Escape") return;
-      e.stopPropagation();
-      onToggle();
-    };
-    document.addEventListener("keydown", onKey, true);
-    return () => document.removeEventListener("keydown", onKey, true);
-  }, [open, onToggle]);
-
   const [copied, setCopied] = useState<"code" | "agent" | null>(null);
   const flash = (kind: "code" | "agent", run: () => void) => {
     run();
@@ -196,77 +185,57 @@ export function CodePane({
     setTimeout(() => setCopied(null), 1500);
   };
 
-  if (!open) return null;
-
   return (
-    <div
-      className="fixed inset-0 z-[90] grid place-items-center bg-[rgba(10,10,8,0.5)] backdrop-blur-[2px]"
-      onMouseDown={(e) => {
-        if (e.target === e.currentTarget) onToggle();
-      }}
-    >
-    <div
-      role="dialog"
-      aria-modal
-      aria-label={`${title} — .arch source`}
-      className="flex h-dvh w-screen flex-col overflow-hidden border-line shadow-md md:h-[85vh] md:w-[85vw] md:rounded-xl md:border"
-      style={{ background: "var(--code-bg)" }}
-    >
-      <div className="flex h-12 shrink-0 items-center gap-2 border-b border-line bg-surface pl-3 pr-2 md:pl-4">
-        <Icon.Code className="h-4 w-4 text-ink-3" />
-        <span className="min-w-0 truncate text-base font-medium text-ink">{title}</span>
-        <span className="mono text-xs text-ink-3">.arch</span>
-        <a
-          href="/language"
-          target="_blank"
-          rel="noreferrer"
-          className="hidden h-6 select-none items-center gap-1 whitespace-nowrap rounded-md px-1.5 text-xs font-medium text-ink-3 transition-colors duration-100 hover:bg-surface-2 hover:text-ink md:inline-flex"
-        >
-          Language spec
-          <Icon.External className="h-3 w-3" />
-        </a>
-        {errorCount > 0 && (
-          <Chip tone="danger">
-            {errorCount} error{errorCount === 1 ? "" : "s"}
-          </Chip>
-        )}
-        {warnCount > 0 && (
-          <Chip tone="warn">
-            {warnCount} warning{warnCount === 1 ? "" : "s"}
-          </Chip>
-        )}
-        <div className="ml-auto flex items-center gap-1.5">
-          {onCopyCode && (
-            <Button
-              size="sm"
-              icon={copied === "code" ? <Icon.Check /> : <Icon.Copy />}
-              onClick={() => flash("code", onCopyCode)}
-              title="Copy code"
-            >
-              <span className="hidden md:inline">{copied === "code" ? "Copied" : "Copy code"}</span>
-            </Button>
+    <CodeDialog
+      open={open}
+      onClose={onToggle}
+      title={title}
+      status={
+        <>
+          {errorCount > 0 && (
+            <Chip tone="danger">
+              {errorCount} error{errorCount === 1 ? "" : "s"}
+            </Chip>
           )}
-          {onCopyForAgent && (
-            <Button
-              size="sm"
-              icon={copied === "agent" ? <Icon.Check /> : <Icon.Sparkle />}
-              disabled={!valid}
-              title={
-                valid
-                  ? "Layout stripped, language guide prepended — paste it to an agent"
-                  : "Fix validation errors first"
-              }
-              onClick={() => flash("agent", onCopyForAgent)}
-            >
-              <span className="hidden md:inline">{copied === "agent" ? "Copied" : "Copy for agent"}</span>
-            </Button>
+          {warnCount > 0 && (
+            <Chip tone="warn">
+              {warnCount} warning{warnCount === 1 ? "" : "s"}
+            </Chip>
           )}
-          {(onCopyCode || onCopyForAgent) && <span className="mx-1 h-4 w-px bg-line" />}
-          <IconButton label="Close (esc)" onClick={onToggle}>
-            <Icon.Close />
-          </IconButton>
-        </div>
-      </div>
+        </>
+      }
+      actions={
+        (onCopyCode || onCopyForAgent) && (
+          <>
+            {onCopyCode && (
+              <Button
+                size="sm"
+                icon={copied === "code" ? <Icon.Check /> : <Icon.Copy />}
+                onClick={() => flash("code", onCopyCode)}
+                title="Copy code"
+              >
+                <span className="hidden md:inline">{copied === "code" ? "Copied" : "Copy code"}</span>
+              </Button>
+            )}
+            {onCopyForAgent && (
+              <Button
+                size="sm"
+                icon={copied === "agent" ? <Icon.Check /> : <Icon.Sparkle />}
+                disabled={!valid}
+                title={
+                  valid
+                    ? "Layout stripped, language guide prepended — paste it to an agent"
+                    : "Fix validation errors first"
+                }
+                onClick={() => flash("agent", onCopyForAgent)}
+              >
+                <span className="hidden md:inline">{copied === "agent" ? "Copied" : "Copy for agent"}</span>
+              </Button>
+            )}
+          </>
+        )
+      }
+    >
       <div className="min-h-0 flex-1">
         <CodeEditor
           value={source}
@@ -302,7 +271,6 @@ export function CodePane({
           })}
         </ul>
       )}
-    </div>
-    </div>
+    </CodeDialog>
   );
 }

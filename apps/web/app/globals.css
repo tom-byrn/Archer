@@ -5,7 +5,7 @@
    three radii. Everything in the app maps to these — no raw Tailwind palette.
    --------------------------------------------------------------------------- */
 :root {
-  color-scheme: light dark;
+  color-scheme: light;
   --grid: 40px;
 
   /* Surfaces (page → panel → input → hover) */
@@ -67,57 +67,60 @@
   --landing-fade: #edeae4;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #0f1012;
-    --surface: #161719;
-    --surface-2: #1c1e21;
-    --surface-3: #25282c;
+/* The dark theme. <html> carries data-theme="light" or "dark": the viewer's
+   choice, or the OS scheme until they make one, set before the first paint
+   by the script in app/layout.tsx (lib/theme.ts). */
+:root[data-theme="dark"] {
+  color-scheme: dark;
 
-    --ink: #ecebe7;
-    --ink-2: #a5a19a;
-    --ink-3: #6d6963;
+  --bg: #0f1012;
+  --surface: #161719;
+  --surface-2: #1c1e21;
+  --surface-3: #25282c;
 
-    --line: #26292d;
-    --line-2: #383c42;
+  --ink: #ecebe7;
+  --ink-2: #a5a19a;
+  --ink-3: #6d6963;
 
-    --accent: #23c088;
-    --accent-hover: #3dd39c;
-    --accent-ink: #08110d;
-    --accent-soft: rgba(35, 192, 136, 0.16);
+  --line: #26292d;
+  --line-2: #383c42;
 
-    --danger: #f0655a;
-    --danger-soft: rgba(240, 101, 90, 0.14);
-    --warn: #f2a33a;
-    --warn-soft: rgba(242, 163, 58, 0.14);
+  --accent: #23c088;
+  --accent-hover: #3dd39c;
+  --accent-ink: #08110d;
+  --accent-soft: rgba(35, 192, 136, 0.16);
 
-    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
-    --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.5), 0 1px 2px rgba(0, 0, 0, 0.4);
+  --danger: #f0655a;
+  --danger-soft: rgba(240, 101, 90, 0.14);
+  --warn: #f2a33a;
+  --warn-soft: rgba(242, 163, 58, 0.14);
 
-    --ground: #121315;
-    --dot: #2a2d32;
-    --edge: #7c8088;
-    --edge-strong: #c6c9ce;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.5), 0 1px 2px rgba(0, 0, 0, 0.4);
 
-    --code-bg: #121315;
-    --code-fg: #d3d1cc;
-    --code-gutter: #4d5057;
-    --code-line: rgba(255, 255, 255, 0.04);
-    --code-caret: #f5f4f1;
-    --code-selection: rgba(35, 192, 136, 0.25);
-    --tok-kw: #3dd39c;
-    --tok-string: #a5d6ff;
-    --tok-type: #7dd3fc;
-    --tok-arrow: #f5f4f1;
-    --tok-num: #fca5a5;
-    --tok-comment: #6d6963;
-    --tok-fence: #6d6963;
-    --tok-payload: #a5a19a;
-    --tok-version: #5eead4;
+  --ground: #121315;
+  --dot: #2a2d32;
+  --edge: #7c8088;
+  --edge-strong: #c6c9ce;
 
-    --landing-bg: #000000;
-    --landing-fade: #121212;
-  }
+  --code-bg: #121315;
+  --code-fg: #d3d1cc;
+  --code-gutter: #4d5057;
+  --code-line: rgba(255, 255, 255, 0.04);
+  --code-caret: #f5f4f1;
+  --code-selection: rgba(35, 192, 136, 0.25);
+  --tok-kw: #3dd39c;
+  --tok-string: #a5d6ff;
+  --tok-type: #7dd3fc;
+  --tok-arrow: #f5f4f1;
+  --tok-num: #fca5a5;
+  --tok-comment: #6d6963;
+  --tok-fence: #6d6963;
+  --tok-payload: #a5a19a;
+  --tok-version: #5eead4;
+
+  --landing-bg: #000000;
+  --landing-fade: #121212;
 }
 
 /* Expose tokens to Tailwind utilities: bg-surface, text-ink-2, border-line,
@@ -230,6 +233,28 @@ select:focus-visible,
   @apply text-xs font-semibold text-ink-3;
   letter-spacing: 0.04em;
   text-transform: uppercase;
+}
+
+/* Content that takes over from a loading placeholder (the dashboard's header
+   and documents) fades in rather than popping. It plays when the element
+   mounts or gets the class. */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .fade-in {
+    animation: fade-in 200ms ease-out;
+  }
+}
+
+/* What differs between the themes by more than a token (the theme toggle's
+   icon, the docs' diagrams) comes in both versions, each shown in its own
+   theme only. Keyed on data-theme, so it's right from the first paint. */
+:root[data-theme="dark"] .theme-light-only,
+:root:not([data-theme="dark"]) .theme-dark-only {
+  display: none;
 }
 
 .tok-kw { color: var(--tok-kw); font-weight: 600; }

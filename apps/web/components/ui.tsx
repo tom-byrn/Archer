@@ -29,6 +29,7 @@ import {
   CaretRightIcon,
   CheckCircleIcon,
   CheckIcon,
+  CircleHalfIcon,
   ClockCounterClockwiseIcon,
   CodeIcon,
   CommandIcon,
@@ -41,6 +42,9 @@ import {
   LinkSimpleIcon,
   MagnifyingGlassIcon,
   MinusIcon,
+  MonitorIcon,
+  MoonIcon,
+  NetworkIcon,
   PaperPlaneTiltIcon,
   PencilSimpleIcon,
   PlugIcon,
@@ -48,6 +52,7 @@ import {
   RobotIcon,
   SparkleIcon,
   SquaresFourIcon,
+  SunIcon,
   TrashSimpleIcon,
   UserIcon,
   WarningCircleIcon,
@@ -222,35 +227,41 @@ export function Section({
   );
 }
 
-/** Segmented control. */
+/** Segmented control. An option with an `icon` shows just the icon, named by its label. */
 export function Segmented<T extends string>({
   value,
   options,
   onChange,
   mono,
+  label,
 }: {
   value: T;
-  options: { value: T; label: string; title?: string }[];
+  options: { value: T; label: string; title?: string; icon?: ReactNode }[];
   onChange: (v: T) => void;
   mono?: boolean;
+  /** Names the control for assistive tech. */
+  label?: string;
 }) {
   return (
-    <div className="inline-flex h-7 rounded-md border border-line bg-surface-2 p-0.5">
+    <div role="group" aria-label={label} className="inline-flex h-7 rounded-md border border-line bg-surface-2 p-0.5">
       {options.map((o) => (
         <button
           key={o.value}
           type="button"
-          title={o.title}
+          aria-pressed={o.value === value}
+          aria-label={o.icon ? o.label : undefined}
+          title={o.title ?? (o.icon ? o.label : undefined)}
           onClick={() => onChange(o.value)}
           className={cx(
-            "rounded-[4px] px-2.5 text-sm font-medium transition-colors duration-100",
+            "rounded-[4px] text-sm font-medium transition-colors duration-100",
+            o.icon ? "flex w-6 items-center justify-center [&>svg]:h-3.5 [&>svg]:w-3.5" : "px-2.5",
             mono && "mono",
             o.value === value
               ? "bg-surface text-ink shadow-sm"
               : "text-ink-2 hover:text-ink",
           )}
         >
-          {o.label}
+          {o.icon ?? o.label}
         </button>
       ))}
     </div>
@@ -461,6 +472,20 @@ export interface MenuItem {
   onSelect: () => void;
 }
 
+/** A row with a control of its own (the account menu's theme switcher), used without closing the menu. */
+export interface MenuControl {
+  label: string;
+  icon?: ReactNode;
+  control: ReactNode;
+}
+
+const menuIcon = (icon: ReactNode) =>
+  icon && (
+    <span className="flex w-4 shrink-0 items-center justify-center text-ink-2 [&>svg]:h-3.5 [&>svg]:w-3.5">
+      {icon}
+    </span>
+  );
+
 /**
  * Dropdown menu anchored to its trigger. `trigger` receives the open state and
  * a toggle handler. Closes on outside click, Escape, or selection.
@@ -472,7 +497,7 @@ export function Menu({
   width = 220,
 }: {
   trigger: (props: { open: boolean; toggle: () => void }) => ReactNode;
-  items: (MenuItem | "separator")[];
+  items: (MenuItem | MenuControl | "separator")[];
   align?: "start" | "end";
   width?: number;
 }) {
@@ -509,6 +534,12 @@ export function Menu({
           {items.map((item, i) =>
             item === "separator" ? (
               <div key={i} className="my-1 h-px bg-line" />
+            ) : "control" in item ? (
+              <div key={i} className="flex items-center gap-2 px-2 py-0.5 text-sm text-ink">
+                {menuIcon(item.icon)}
+                <span className="min-w-0 flex-1 truncate">{item.label}</span>
+                {item.control}
+              </div>
             ) : (
               <button
                 key={i}
@@ -526,11 +557,7 @@ export function Menu({
                     : "text-ink hover:bg-surface-2",
                 )}
               >
-                {item.icon && (
-                  <span className="flex w-4 shrink-0 items-center justify-center text-ink-2 [&>svg]:h-3.5 [&>svg]:w-3.5">
-                    {item.icon}
-                  </span>
-                )}
+                {menuIcon(item.icon)}
                 <span className="min-w-0 flex-1">
                   <span className="block truncate">{item.label}</span>
                   {item.hint && (
@@ -626,6 +653,7 @@ export const Icon = {
   Undo: (p: IconProps) => <ArrowUUpLeftIcon {...UI} {...p} />,
   Redo: (p: IconProps) => <ArrowUUpRightIcon {...UI} {...p} />,
   Layout: (p: IconProps) => <SquaresFourIcon {...UI} {...p} />,
+  Diagram: (p: IconProps) => <NetworkIcon {...UI} {...p} />,
   FitView: (p: IconProps) => <FrameCornersIcon {...UI} {...p} />,
   Code: (p: IconProps) => <CodeIcon {...UI} {...p} />,
   Copy: (p: IconProps) => <CopyIcon {...UI} {...p} />,
@@ -643,6 +671,11 @@ export const Icon = {
   History: (p: IconProps) => <ClockCounterClockwiseIcon {...UI} {...p} />,
   Bot: (p: IconProps) => <RobotIcon {...UI} {...p} />,
   User: (p: IconProps) => <UserIcon {...UI} {...p} />,
+  Sun: (p: IconProps) => <SunIcon {...UI} {...p} />,
+  Moon: (p: IconProps) => <MoonIcon {...UI} {...p} />,
+  Monitor: (p: IconProps) => <MonitorIcon {...UI} {...p} />,
+  // Fill weight: a solid half reads better than bold's hatching at 14px.
+  Contrast: (p: IconProps) => <CircleHalfIcon {...UI} weight="fill" {...p} />,
   Link: (p: IconProps) => <LinkSimpleIcon {...UI} {...p} />,
   Alert: (p: IconProps) => <WarningCircleIcon {...UI} {...p} />,
   Restore: (p: IconProps) => <ArrowCounterClockwiseIcon {...UI} {...p} />,

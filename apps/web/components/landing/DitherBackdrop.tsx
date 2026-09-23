@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ShaderMount, getShaderColorFromString } from "@paper-design/shaders-react";
+import { useIsDark } from "@/lib/useIsDark";
 
 /**
  * Page backdrop: a straight fade from --landing-fade into the page color
@@ -14,24 +15,20 @@ import { ShaderMount, getShaderColorFromString } from "@paper-design/shaders-rea
  */
 export function DitherBackdrop() {
   const ref = useRef<HTMLDivElement>(null);
-  // The two colors as the stylesheet has them for the OS scheme, read again
+  const isDark = useIsDark();
+  // The two colors as the stylesheet has them for the page's theme, read again
   // when it changes. Until they are read there is no shader, so it never
-  // draws the other scheme's colors (or none) over the CSS gradient.
+  // draws the other theme's colors (or none) over the CSS gradient.
   const [colors, setColors] = useState<{ back: string; front: string } | null>(null);
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
-    const mq = window.matchMedia("(prefers-color-scheme: dark)");
-    const read = () => {
-      const style = getComputedStyle(el);
-      const back = style.getPropertyValue("--landing-bg").trim();
-      const front = style.getPropertyValue("--landing-fade").trim();
-      if (back && front) setColors({ back, front });
-    };
-    read();
-    mq.addEventListener("change", read);
-    return () => mq.removeEventListener("change", read);
-  }, []);
+    const style = getComputedStyle(el);
+    const back = style.getPropertyValue("--landing-bg").trim();
+    const front = style.getPropertyValue("--landing-fade").trim();
+    if (!back || !front) return;
+    setColors((prev) => (prev?.back === back && prev.front === front ? prev : { back, front }));
+  }, [isDark]);
 
   // ShaderMount sends its uniforms again whenever this object changes.
   const uniforms = useMemo(
