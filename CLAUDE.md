@@ -70,7 +70,10 @@ Router + React Flow + Convex).
   `apps/web/test/examples.test.ts` enforces it, so the code shown, the diagram
   (`lib/svg.ts`, prerendered at `/language/examples/<slug>/{light,dark}.svg`)
   and the editor copy always agree. "Open in sandbox" goes to
-  `/sandbox/<slug>` (see Editor sessions). `/new?example=<slug>`, which copies
+  `/sandbox/<slug>` (see Editor sessions). "View code" opens the source in
+  the editor's code popout (`components/CodeDialog.tsx`, shared with
+  `CodePane`), highlighted on the server by `lib/highlightArch.ts` so the page
+  never loads CodeMirror. `/new?example=<slug>`, which copies
   the example into the selected workspace (reusing an untouched earlier copy),
   still works but nothing links to it.
 - Editor sessions: `components/Editor.tsx` takes a `session` — a stored

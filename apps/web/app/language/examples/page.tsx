@@ -1,6 +1,6 @@
 import { Fragment } from "react";
 import { DocsNav } from "@/components/docs/DocsNav";
-import { CopySourceButton, OpenExampleLink } from "@/components/docs/ExampleActions";
+import { OpenExampleLink, ViewCodeButton } from "@/components/docs/ExampleActions";
 import { SiteFrame } from "@/components/landing/SiteFrame";
 import { EXAMPLES, type Example } from "@/lib/examples";
 import { highlightArch } from "@/lib/highlightArch";
@@ -58,20 +58,26 @@ function Diagram({ example }: { example: Example }) {
   );
 }
 
-function Source({ example }: { example: Example }) {
-  const lines = highlightArch(example.source);
+/**
+ * The source as the editor's code view draws it, for the "View code" popout:
+ * line numbers in a gutter that stays put while the code scrolls sideways.
+ */
+function Source({ source }: { source: string }) {
+  const lines = highlightArch(source);
   return (
-    <div className="border-x border-b border-line" style={{ background: "var(--code-bg)" }}>
-      <div className="flex h-10 items-center border-b border-line pl-4 pr-2">
-        <span className="mono text-xs text-ink-3">{example.slug}.arch</span>
-        <span className="ml-auto">
-          <CopySourceButton source={example.source} />
-        </span>
-      </div>
-      <pre
-        className="mono overflow-x-auto p-4 text-[12.5px] leading-relaxed"
-        style={{ color: "var(--code-fg)" }}
+    <div className="flex min-w-max text-sm leading-[1.6]">
+      <div
+        aria-hidden
+        className="mono sticky left-0 select-none py-2 pl-1 text-right"
+        style={{ background: "var(--code-bg)", color: "var(--code-gutter)" }}
       >
+        {lines.map((_, i) => (
+          <div key={i} className="min-w-7 pr-1.5">
+            {i + 1}
+          </div>
+        ))}
+      </div>
+      <pre className="mono py-2 pl-6 pr-3" style={{ color: "var(--code-fg)" }}>
         <code>
           {lines.map((tokens, i) => (
             <Fragment key={i}>
@@ -102,11 +108,12 @@ export default function ExamplesPage() {
         <div className="max-w-3xl">
           <h1 className="pb-3 text-2xl font-bold tracking-tight text-ink">Examples</h1>
           <p className="pb-3 text-[14px] leading-relaxed text-ink-2">
-            Each example is a complete <code className={inlineCode}>.arch</code> document next
-            to the diagram Archer draws from it. Nothing is drawn by hand: the images come from
-            the same renderer as share links and README embeds, straight from the code shown.{" "}
-            <strong className="text-ink">Open in sandbox</strong> loads an example into the
-            editor to change however you like, no account needed. Nothing there is saved.
+            Each example is a complete <code className={inlineCode}>.arch</code> document, shown
+            as the diagram Archer draws from it. Nothing is drawn by hand: the images come from
+            the same renderer as share links and README embeds, straight from the source.{" "}
+            <strong className="text-ink">View code</strong> shows that source, and{" "}
+            <strong className="text-ink">Open in sandbox</strong> loads it into the editor to
+            change however you like, no account needed. Nothing there is saved.
           </p>
           <p className="pb-3 text-[14px] leading-relaxed text-ink-2">
             The first two have no <code className={inlineCode}>layout</code> block. That is how
@@ -147,12 +154,14 @@ export default function ExamplesPage() {
               </h2>
               <p className="pt-2 text-[14px] leading-relaxed text-ink-2">{withCode(e.summary)}</p>
             </div>
-            <div className="ml-auto shrink-0">
+            <div className="ml-auto flex shrink-0 items-center gap-2">
+              <ViewCodeButton title={e.title} source={e.source}>
+                <Source source={e.source} />
+              </ViewCodeButton>
               <OpenExampleLink slug={e.slug} />
             </div>
           </div>
           <Diagram example={e} />
-          <Source example={e} />
         </section>
       ))}
     </SiteFrame>
