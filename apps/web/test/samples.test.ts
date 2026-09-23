@@ -20,6 +20,11 @@ describe("samples", () => {
     expect(renderArchSvg(s.source)).not.toContain("Invalid document");
   });
 
+  // The gallery's cards clamp descriptions to two lines; longer ones get cut off.
+  it("have descriptions that fit a card", () => {
+    for (const s of SAMPLES) expect(s.description.length, s.slug).toBeLessThanOrEqual(75);
+  });
+
   it("have unique, URL-safe slugs", () => {
     const slugs = SAMPLES.map((s) => s.slug);
     expect(new Set(slugs).size).toBe(slugs.length);

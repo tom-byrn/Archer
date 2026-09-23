@@ -15,7 +15,7 @@ export interface Sample {
   slug: string;
   /** Matches the `arch "…"` header; the new document's title. */
   title: string;
-  /** One short sentence under the preview (clamped to two lines). */
+  /** One short sentence under the preview: two lines, about 75 characters. */
   description: string;
   source: string;
 }
@@ -24,8 +24,7 @@ export const SAMPLES: readonly Sample[] = [
   {
     slug: "acme-saas",
     title: "Acme SaaS",
-    description:
-      "A Next.js app and API on Vercel, with Supabase Postgres, Cognito sign-in and Stripe checkout.",
+    description: "Next.js on Vercel, Supabase Postgres, Cognito sign-in and Stripe checkout.",
     source: ACME_SAAS,
   },
 ];
