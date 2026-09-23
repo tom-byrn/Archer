@@ -364,7 +364,11 @@ export function Editor({
   const errors = derived.diagnostics.filter((d) => d.severity === "error");
   const warnings = derived.diagnostics.length - errors.length;
 
-  const relayout = () => mutate((d) => autoLayout(d, { reset: true }));
+  const [fitKey, setFitKey] = useState(0);
+  const relayout = () => {
+    mutate((d) => autoLayout(d, { reset: true }));
+    setFitKey((k) => k + 1);
+  };
 
   const [toast, setToast] = useState<string | null>(null);
   const notify = (msg: string) => {
@@ -675,6 +679,7 @@ export function Editor({
               selectedPath={selectedPath}
               exportRef={exportRef}
               readOnly={diff !== null}
+              fitKey={fitKey}
             />
           </div>
         </main>

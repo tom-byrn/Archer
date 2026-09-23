@@ -57,6 +57,8 @@ export interface ArchCanvasProps {
    * wheel scrolls the page instead of zooming, no controls, no deleting.
    */
   embedded?: boolean;
+  /** Change to re-fit the view to the nodes (e.g. after auto-layout moved everything). */
+  fitKey?: number;
 }
 
 type Hover = { kind: "node"; id: string } | { kind: "edge"; id: string } | null;
@@ -73,15 +75,24 @@ function CanvasInner({
   exportRef,
   readOnly = false,
   embedded = false,
+  fitKey,
 }: ArchCanvasProps) {
   const [nodes, setNodes, onNodesChange] = useNodesState<ArchNode>(derivedNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState<ArchEdge>(derivedEdges);
-  const { screenToFlowPosition, getNodes } = useReactFlow();
+  const { screenToFlowPosition, getNodes, fitView } = useReactFlow();
   const [hover, setHover] = useState<Hover>(null);
   const [busy, setBusy] = useState(false); // dragging or connecting
 
   useEffect(() => setNodes(derivedNodes), [derivedNodes, setNodes]);
   useEffect(() => setEdges(derivedEdges), [derivedEdges, setEdges]);
+
+  // Re-fit on request; the new nodes land in the same render, so give them a
+  // moment to reach the store first.
+  useEffect(() => {
+    if (!fitKey) return;
+    const t = setTimeout(() => void fitView({ padding: 0.2, maxZoom: 1, duration: 300 }), 50);
+    return () => clearTimeout(t);
+  }, [fitKey, fitView]);
 
   // PNG export, exposed to the chrome via exportRef.
   useEffect(() => {

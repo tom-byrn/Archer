@@ -43,7 +43,6 @@ export interface EdgeRoute {
 
 /** Bends stay at least this far (px) from the boxes they leave and enter. */
 const CLEAR = 20;
-const STEP = 8;
 export const BOX_COST = 1000;
 export const CHIP_H = 18;
 
@@ -83,17 +82,6 @@ function segmentHits(s: Seg, r: Rect): boolean {
   );
 }
 
-/** A bend squeezed between or right beside boxes reads as crossing them. */
-function besideBox(s: Seg, r: Rect): boolean {
-  const { across, along } = spans(s, r);
-  const lo = Math.min(s.from, s.to) - 2 * CLEAR;
-  const hi = Math.max(s.from, s.to) + 2 * CLEAR;
-  return s.at > across[0] - MARGIN && s.at < across[1] + MARGIN && hi > along[0] && lo < along[1];
-}
-
-const rectsOverlap = (a: Rect, b: Rect) =>
-  a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
-
 /**
  * Route one edge between two boxes (absolute px). `obstacles` should not
  * include the two endpoints; `chip` is the label chip width (0 = no label).
@@ -113,39 +101,123 @@ export function routeEdge(
 
   if (horizontal) {
     const right = dx >= 0;
-    const x1 = right ? s.x + s.w : s.x;
-    const x2 = right ? t.x : t.x + t.w;
-    const y1 = s.y + s.h / 2;
-    const y2 = t.y + t.h / 2;
-    const mid = bestMid(x1, x2, (m) => {
-      const segs: Seg[] = [
-        { at: y1, from: x1, to: m, alongX: true },
-        { at: m, from: y1, to: y2, alongX: false },
-        { at: y2, from: m, to: x2, alongX: true },
-      ];
-      const label =
-        chip > 0 ? { x: m - chip / 2, y: (y1 + y2) / 2 - CHIP_H / 2, w: chip, h: CHIP_H } : null;
-      return penalty(segs, label, obstacles);
-    });
+    const mid = bendAt(
+      right ? s.x + s.w : s.x,
+      right ? t.x : t.x + t.w,
+      s.y + s.h / 2,
+      t.y + t.h / 2,
+      obstacles,
+      chip,
+      CHIP_H,
+    );
     return { from: right ? "r" : "l", to: right ? "l" : "r", horizontal: true, mid };
   }
-
+  // A top/bottom route is a left/right one with x and y swapped.
   const down = dy >= 0;
-  const y1 = down ? s.y + s.h : s.y;
-  const y2 = down ? t.y : t.y + t.h;
-  const x1 = s.x + s.w / 2;
-  const x2 = t.x + t.w / 2;
-  const mid = bestMid(y1, y2, (m) => {
-    const segs: Seg[] = [
-      { at: x1, from: y1, to: m, alongX: false },
-      { at: m, from: x1, to: x2, alongX: true },
-      { at: x2, from: m, to: y2, alongX: false },
-    ];
-    const label =
-      chip > 0 ? { x: (x1 + x2) / 2 - chip / 2, y: m - CHIP_H / 2, w: chip, h: CHIP_H } : null;
-    return penalty(segs, label, obstacles);
-  });
+  const mid = bendAt(
+    down ? s.y + s.h : s.y,
+    down ? t.y : t.y + t.h,
+    s.x + s.w / 2,
+    t.x + t.w / 2,
+    obstacles.map((o) => ({ x: o.y, y: o.x, w: o.h, h: o.w, cost: o.cost })),
+    CHIP_H,
+    chip,
+  );
   return { from: down ? "b" : "t", to: down ? "t" : "b", horizontal: false, mid };
+}
+
+/**
+ * Where the bend of a left/right route goes: it leaves at x = a1 on row b1
+ * and arrives at x = a2 on row b2. A bend at m costs the obstacles its three
+ * pieces cross, those its label chip (centred on the bend) overlaps, and a
+ * little for squeezing right past a box. That cost only changes at obstacle
+ * edges, so it is swept exactly. The answer is the middle of the span when
+ * that is as clear as anywhere, else the middle of the clearest stretch
+ * nearest to it — so a fan-out from one box keeps a single trunk.
+ */
+function bendAt(
+  a1: number,
+  a2: number,
+  b1: number,
+  b2: number,
+  obstacles: readonly Obstacle[],
+  chipAlong: number,
+  chipAcross: number,
+): number {
+  const center = (a1 + a2) / 2;
+  const lo = Math.min(a1, a2) + CLEAR;
+  const hi = Math.max(a1, a2) - CLEAR;
+  if (hi <= lo) return center;
+  const forward = a2 >= a1;
+  const bLo = Math.min(b1, b2);
+  const bHi = Math.max(b1, b2);
+  const chipMid = (b1 + b2) / 2;
+
+  // Each obstacle adds its cost for bends strictly inside some (from, to).
+  const spans: [number, number, number][] = [];
+  const add = (from: number, to: number, cost: number) => {
+    const f = Math.max(from, lo);
+    const e = Math.min(to, hi);
+    if (f < e) spans.push([f, e, cost]);
+  };
+  for (const o of obstacles) {
+    const x0 = o.x - MARGIN;
+    const x1 = o.x + o.w + MARGIN;
+    const y0 = o.y - MARGIN;
+    const y1 = o.y + o.h + MARGIN;
+    // The piece from a1 to the bend, along row b1, and from the bend to a2.
+    if (b1 > y0 && b1 < y1) {
+      if (forward) {
+        if (x1 > a1) add(x0, Infinity, o.cost);
+      } else if (x0 < a1) add(-Infinity, x1, o.cost);
+    }
+    if (b2 > y0 && b2 < y1) {
+      if (forward) {
+        if (x0 < a2) add(-Infinity, x1, o.cost);
+      } else if (x1 > a2) add(x0, Infinity, o.cost);
+    }
+    // The bend itself, or a bend squeezed right beside a box.
+    if (bHi > y0 && bLo < y1) add(x0, x1, o.cost);
+    else if (o.cost >= BOX_COST && bHi + 2 * CLEAR > o.y && bLo - 2 * CLEAR < o.y + o.h)
+      add(x0, x1, 5);
+    if (chipAlong > 0 && chipMid + chipAcross / 2 > o.y && chipMid - chipAcross / 2 < o.y + o.h)
+      add(o.x - chipAlong / 2, o.x + o.w + chipAlong / 2, o.cost / 4);
+  }
+  const costAt = (m: number) =>
+    spans.reduce((acc, [f, e, c]) => (f < m && m < e ? acc + c : acc), 0);
+  const centerCost = costAt(center);
+  if (centerCost === 0) return center;
+
+  // Piecewise-constant cost over [lo, hi]: one value per stretch between edges.
+  const events: [number, number][] = [];
+  for (const [f, e, c] of spans) events.push([f, c], [e, -c]);
+  events.sort((p, q) => p[0] - q[0]);
+  const cuts = [...new Set([lo, ...events.map((ev) => ev[0]), hi])].sort((p, q) => p - q);
+  const stretches: { from: number; to: number; cost: number }[] = [];
+  let running = 0;
+  let k = 0;
+  for (let i = 0; i + 1 < cuts.length; i++) {
+    while (k < events.length && events[k]![0] <= cuts[i]!) running += events[k++]![1];
+    stretches.push({ from: cuts[i]!, to: cuts[i + 1]!, cost: running });
+  }
+  const min = Math.min(centerCost, ...stretches.map((st) => st.cost));
+  if (centerCost <= min) return center;
+  let best = center;
+  let bestDist = Infinity;
+  for (let i = 0; i < stretches.length; i++) {
+    if (stretches[i]!.cost > min) continue;
+    let j = i;
+    while (j + 1 < stretches.length && stretches[j + 1]!.cost <= min) j++;
+    const from = stretches[i]!.from;
+    const to = stretches[j]!.to;
+    const dist = center < from ? from - center : center > to ? center - to : 0;
+    if (dist < bestDist) {
+      bestDist = dist;
+      best = (from + to) / 2;
+    }
+    i = j;
+  }
+  return best;
 }
 
 /**
@@ -199,51 +271,6 @@ export function untangle(
     const corner = routeCorner(e.s, e.t, obstaclesFor(e.source, e.target));
     if (corner) e.route = corner;
   }
-}
-
-function penalty(segs: Seg[], label: Rect | null, obstacles: readonly Obstacle[]): number {
-  let cost = 0;
-  const bend = segs[1]!;
-  for (const o of obstacles) {
-    if (segs.some((s) => segmentHits(s, o))) cost += o.cost;
-    else if (o.cost >= BOX_COST && besideBox(bend, o)) cost += 5;
-    if (label && rectsOverlap(label, o)) cost += o.cost / 4;
-  }
-  return cost;
-}
-
-/**
- * Where the bend goes between `a1` and `a2`: the middle of the span when that
- * is as clear as anywhere, else the middle of the clearest stretch nearest
- * to it (so a fan-out from one box shares a single trunk).
- */
-function bestMid(a1: number, a2: number, cost: (m: number) => number): number {
-  const center = (a1 + a2) / 2;
-  const lo = Math.min(a1, a2) + CLEAR;
-  const hi = Math.max(a1, a2) - CLEAR;
-  if (hi <= lo) return center;
-  const centerCost = cost(center);
-  if (centerCost === 0) return center;
-  const n = Math.max(1, Math.round((hi - lo) / STEP));
-  const ms = Array.from({ length: n + 1 }, (_, i) => lo + ((hi - lo) * i) / n);
-  const cs = ms.map(cost);
-  const min = Math.min(...cs);
-  if (centerCost <= min) return center;
-  let best = center;
-  let bestDist = Infinity;
-  for (let i = 0; i < ms.length; i++) {
-    if (cs[i]! > min) continue;
-    let j = i;
-    while (j + 1 < ms.length && cs[j + 1]! <= min) j++;
-    const runMid = (ms[i]! + ms[j]!) / 2;
-    const dist = center < ms[i]! ? ms[i]! - center : center > ms[j]! ? center - ms[j]! : 0;
-    if (dist < bestDist) {
-      bestDist = dist;
-      best = runMid;
-    }
-    i = j;
-  }
-  return best;
 }
 
 /** A routed edge as `separateBends` sees it. */
