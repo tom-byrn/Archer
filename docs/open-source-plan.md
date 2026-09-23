@@ -84,9 +84,10 @@ app keeps running from the same code.
 
 - **No license.** Only `packages/cli` declares one (MIT, in `package.json`),
   and there's no `LICENSE` file anywhere.
-- **The CLI isn't on npm.** The README, `docs/cli.md`, `docs/mcp.md` and the
-  "Connect an agent" dialog all say `npx archerctl`, but the registry returns
-  404 for `archerctl` (and `archer` belongs to an unrelated package).
+- **The CLI isn't on npm.** `docs/cli.md`, `docs/mcp.md`, `docs/deploy.md`,
+  the CLI's README and the "Connect an agent" dialog all say `npx archerctl`,
+  but the registry returns 404 for `archerctl` (and `archer` belongs to an
+  unrelated package).
 - **No `.github/`.** No CI, issue or PR templates, or security policy.
 - **Stray dependency.** The root `package.json` depends on `agentation`, which
   nothing imports and which is licensed PolyForm-Shield-1.0.0
@@ -155,11 +156,14 @@ clients and the CLI. Rejected:
 - *Clerk only.* Self-hosters and every contributor need a Clerk account; not
   self-hosted in any real sense.
 - *An external IdP as the MCP authorization server* (Keycloak, Authentik,
-  Zitadel…). This mirrors today's Clerk design, but MCP clients register
-  themselves and IdP support for that varies, the GitHub token still has to
-  come from somewhere, and running an IdP is heavy for `docker compose up`.
-  The built-in provider can still use such an IdP *for sign-in* (generic
-  OIDC) while handling MCP OAuth itself.
+  Zitadel…). This mirrors today's Clerk design, but MCP support is uneven: as
+  of September 2026 Keycloak ignores RFC 8707 audiences, and Authentik's
+  dynamic client registration is an Enterprise feature. The GitHub token
+  would still have to come from somewhere, and running an IdP is heavy for
+  `docker compose up`. The built-in provider can still use such an
+  IdP *for sign-in* (generic OIDC) while handling MCP OAuth itself.
+- *Convex Auth.* Still in beta, with a rewrite in alpha, and it can't act as
+  an OAuth authorization server.
 - *Moving the hosted app off Clerk now.* One code path, but a risky user-id
   migration with nothing user-visible to show for it. Revisit once tier C has
   run in production (4.4).
@@ -270,7 +274,9 @@ keeps the data; a backup restores into a fresh stack.
   Test: build once, run with two different env files.
 - **2.2 Image (M).** `output: "standalone"` with `outputFileTracingRoot` at
   the repo root (pnpm workspace); a multi-stage `apps/web/Dockerfile` on
-  Node 22, running as non-root, with a `HEALTHCHECK`. The image also carries
+  Node 22, running as non-root, with a `HEALTHCHECK`. Standalone output leaves
+  out `.next/static`, so copy it in (Archer has no `public/`); the entry point
+  is `apps/web/server.js` inside the standalone tree. The image also carries
   `apps/web/convex/` and the Convex CLI (2.3). `app/welcome/opengraph-image.tsx`
   and `app/branding/page.tsx` read files through `process.cwd()`: confirm
   they're prerendered or add `outputFileTracingIncludes`. Optionally move to
@@ -282,17 +288,26 @@ keeps the data; a backup restores into a fresh stack.
   `convex env set` for `ARCHER_SERVICE_SECRET` and the auth issuer. `web`
   starts after it completes, so functions and app always come from the same
   version. Idempotent; the same command deploys to Convex cloud given
-  `CONVEX_DEPLOY_KEY`.
-- **2.4 Compose stack and docs (M).** `deploy/compose.yaml` with `convex`
-  (backend and a volume), `dashboard` (optional, bound to localhost),
-  `deploy` and `web`; a Postgres profile for durable storage; an
-  `.env.example`; a Caddy example for TLS. Convex is simplest on its own
-  hostname (e.g. `archer.example.com` and `convex.example.com`). Server-side
-  calls — MCP tools, share images — may use an internal URL
-  (`CONVEX_INTERNAL_URL`); browsers use the public one. `docs/self-hosting.md`
-  gains a quickstart, the variable reference, TLS, backups (scheduled
-  `convex export`, or Postgres dumps) and restore, upgrades, and
-  troubleshooting.
+  `CONVEX_DEPLOY_KEY`. `CONVEX_DEPLOYMENT` must be unset (the CLI refuses to
+  combine it with the self-hosted pair). The admin key comes from
+  `./generate_admin_key.sh` inside the backend container — one manual setup
+  step, unless this task automates it.
+- **2.4 Compose stack and docs (M).**
+  - `deploy/compose.yaml` with `convex` (backend and a volume), `dashboard`
+    (optional, bound to localhost), `deploy` and `web`; a Postgres profile
+    for durable storage (`POSTGRES_URL` on the backend); an `.env.example`;
+    a Caddy example for TLS.
+  - Convex is simplest on its own hostname (e.g. `archer.example.com` and
+    `convex.example.com`), set as the backend's `CONVEX_CLOUD_ORIGIN`. Archer
+    defines no HTTP actions, so the backend's second origin
+    (`CONVEX_SITE_ORIGIN`, port 3211) needn't be public. Server-side calls —
+    MCP tools, share images — may use an internal URL
+    (`CONVEX_INTERNAL_URL`); browsers use the public one.
+  - Archer's functions use only queries, mutations and indexes, all of which
+    the self-hosted backend supports.
+  - `docs/self-hosting.md` gains a quickstart, the variable reference, TLS,
+    backups (scheduled `convex export`, or Postgres dumps) and restore,
+    upgrades, and troubleshooting.
 - **2.5 Health endpoint (S).** `/api/health` reports the app, Convex
   reachability, and whether Convex accepts the service credential — which
   catches the most common misconfiguration, a different
@@ -343,24 +358,31 @@ What Clerk does today, and what replaces it:
   `ARCHER_AUTH=clerk|builtin|local` picks the implementation at runtime. Only
   `lib/auth/clerk/` may import `@clerk/*`; enforce it with a test, like the
   rule that all GitHub calls go through `githubApi.ts`.
-- **3.2 Provider-agnostic Convex identity (M).** `convex/auth.config.ts`
-  builds its providers from env: Clerk and/or a `customJwt` entry for the
-  built-in issuer. `convex/access.ts` swaps the `user_…` regex for a check
-  that fits both (ids must not contain `.`: the credential splits on the last
-  one). Invites match by email only when `identity.emailVerified` is true, in
-  `roleFor`, `workspaces.list` and `acceptInvites` — first make sure Clerk's
-  `convex` JWT template carries `email_verified`, or hosted invites break.
-  The personal workspace id stays equal to the user id.
+- **3.2 Provider-agnostic Convex identity (M).**
+  - `convex/auth.config.ts` builds its providers from env: Clerk and/or a
+    `customJwt` entry for the built-in issuer (RS256 or ES256; `aud` must
+    equal its `applicationID`). The Convex backend fetches the JWKS itself,
+    so it must be able to reach the issuer's URL.
+  - Convex rejects `typ: at+jwt`, so it gets its own session JWTs, never the
+    MCP access tokens; `/mcp` keeps using the service credential.
+  - `convex/access.ts` swaps the `user_…` regex for a check that fits both
+    (ids must not contain `.`: the credential splits on the last one). The
+    personal workspace id stays equal to the user id.
+  - Invites match by email only when `identity.emailVerified` is true, in
+    `roleFor`, `workspaces.list` and `acceptInvites`. First make sure Clerk's
+    `convex` JWT template carries `email_verified`, or hosted invites break.
 - **3.3 Built-in sign-in (L).** Better Auth in the Next.js server:
   - Sign-in with GitHub (an OAuth App the operator registers) and, optionally,
     generic OIDC (Okta, Entra ID, Google Workspace, Keycloak, Authentik…). No
     email/password in v1: it needs SMTP for verification and resets, and
     invites depend on verified emails.
-  - Storage: Better Auth's Convex component keeps users, sessions and OAuth
-    clients in Convex — one datastore to back up — provided it supports the
-    plugins below on a self-hosted backend. Otherwise use a SQL database (a
-    SQLite volume, or the Postgres behind Convex). Settle this with a spike
-    before 3.3.
+  - Storage: its own SQL database — a SQLite volume by default, or a
+    database on the Postgres server that backs Convex. Better Auth's Convex
+    component (`@convex-dev/better-auth`) would keep everything in one
+    datastore, but as of September 2026 it is pinned to Better Auth 1.6 (1.7
+    removed a module it still imports; the fix is an open PR), and the OAuth
+    provider's tables would need an unproven "local install". Revisit once it
+    supports 1.7: one datastore would also simplify 4.4.
   - A JWT plugin with a JWKS endpoint for Convex (3.2).
   - A sign-up policy, which Clerk's dashboard handles today:
     `ARCHER_SIGNUP=open|invite|domain:<list>|github-org:<org>`. People with a
@@ -368,13 +390,19 @@ What Clerk does today, and what replaces it:
     owner (reserved for a later admin page; until then operators use the
     Convex dashboard).
   - Sign-in page and account menu built from `components/ui.tsx`.
-- **3.4 Built-in MCP authorization server (L).**
+- **3.4 Built-in MCP authorization server (L).** Built on Better Auth's
+  OAuth provider plugin (`@better-auth/oauth-provider`, which covers
+  registration, PKCE, metadata, audience checks, refresh and revocation) plus
+  its CIMD plugin (1.7+). Its MCP-specific plugin targets MCP SDK v2; check it
+  doesn't pull the SDK into the web app, which CLAUDE.md forbids.
   - Metadata per RFC 8414 (authorization server) and RFC 9728 (protected
     resource), at the paths where `@clerk/mcp-tools` serves them today.
-  - Registration: dynamic client registration (RFC 7591), which Claude Code,
-    the CLI and `test/host.ts` use today; add Client ID Metadata Documents if
-    the current MCP spec revision prefers them. Registrations are untrusted:
-    exact redirect-URI matching, with any loopback port allowed per RFC 8252.
+  - Registration: Client ID Metadata Documents, which the 2026-07-28 MCP spec
+    recommends in place of dynamic registration (now deprecated), and dynamic
+    client registration (RFC 7591), which is still needed: the CLI and
+    `test/host.ts` use it, and Cursor reportedly supports nothing else.
+    Claude Code does both. Registrations are untrusted: exact redirect-URI
+    matching, with any loopback port allowed per RFC 8252.
   - Authorization code with PKCE (S256 only) and a consent screen naming the
     client, its redirect host and the scopes; remembered per client.
   - Short-lived access tokens bound to `<origin>/mcp` (RFC 8707 resource
@@ -385,9 +413,10 @@ What Clerk does today, and what replaces it:
   - Tests: run `packages/cli/test/account.test.ts` against the real built-in
     server as well as the stand-in, and walk the flow with the MCP Inspector.
 - **3.5 GitHub without Clerk (M).** `githubToken()` reads the GitHub account
-  linked to the user; people who signed in with OIDC link one from the repo
-  dialog (same OAuth app). Private repos re-link with the `repo` scope. Tokens
-  are encrypted at rest. `GITHUB_API_URL` (and the OAuth base URL) makes
+  linked to the user (Better Auth's `getAccessToken`); people who signed in
+  with OIDC link one from the repo dialog (same OAuth app). Private repos
+  re-link with the `repo` scope (`linkSocial` with `scopes: ["repo"]`).
+  Tokens are encrypted at rest. `GITHUB_API_URL` (and the OAuth base URL) makes
   GitHub Enterprise Server work. With no GitHub app configured, GitHub
   features stay hidden — the UI already handles `no_github_token`.
 - **3.6 Local single-user mode (M, optional).** `ARCHER_AUTH=local`: the
@@ -417,7 +446,9 @@ What Clerk does today, and what replaces it:
   users into the built-in store keeping their `user_…` ids — otherwise every
   personal workspace id changes across `documents`, `revisions`, `drift`,
   `libraryTypes`, `members`, `workspaces` and `agentPrefs`. Users re-link
-  GitHub, and every agent re-authorizes once.
+  GitHub, and every agent re-authorizes once. One reason it may come sooner:
+  `@clerk/mcp-tools`' README says Clerk's machine tokens are free only during
+  their public beta.
 
 ## Configuration after all phases
 
@@ -433,6 +464,7 @@ What Clerk does today, and what replaces it:
 | `ARCHER_AUTH` | 3.1 | `clerk`, `builtin` or `local` |
 | `CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`, `CLERK_JWT_ISSUER_DOMAIN` | 2.1 | Clerk mode; the publishable key drops its `NEXT_PUBLIC_` prefix |
 | `ARCHER_AUTH_SECRET` | 3.3 | Signing and encryption secret for the built-in provider |
+| `ARCHER_AUTH_DATABASE_URL` | 3.3 | The built-in provider's database: a SQLite path or a Postgres URL |
 | `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, `GITHUB_API_URL` | 3.3, 3.5 | GitHub sign-in and repo linking; GitHub Enterprise |
 | `OIDC_ISSUER`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET` | 3.3 | Generic OIDC sign-in |
 | `ARCHER_SIGNUP` | 3.3 | Who may create an account |
@@ -449,22 +481,26 @@ telemetry (Archer sends none today — keep it that way, and say so).
 
 ## Risks
 
-- **Better Auth as an authorization server.** Its OAuth-provider support is
-  younger than Clerk's hosted service. Spike before committing to 3.3/3.4:
-  registration, PKCE, consent, refresh and revocation against Claude Code and
-  the CLI, on the storage chosen in 3.3.
-- **Convex's self-hosted backend is source-available**, under the Functional
-  Source License (it converts to Apache 2.0 after two years), not an OSI
-  license. Running it for your own instance is allowed; say so accurately
-  instead of promising a fully open-source stack. Operators own their backups
-  and upgrades.
+- **Better Auth as an authorization server.** Its OAuth provider is younger
+  than Clerk's hosted service, and its MCP and CIMD plugins need 1.7,
+  released in August 2026. Spike before committing to 3.3/3.4: registration (both
+  kinds), PKCE, consent, refresh and revocation against Claude Code, Cursor
+  and the CLI.
+- **Convex's self-hosted backend is source-available**, under
+  FSL-1.1-Apache-2.0 (each release becomes Apache 2.0 after two years; until
+  then you can't use it to offer a service that competes with Convex), not an
+  OSI license. Running it for your own Archer is fine; say so accurately
+  instead of promising a fully open-source stack. It runs on one machine,
+  with no support plan, and operators own their backups and upgrades.
 - **Two auth paths** double the auth test matrix until 4.4. Mitigations: the
   seam (3.1), one end-to-end suite run against both, and doing 4.4 once tier
   C is proven.
-- **MCP authorization spec churn.** Clerk tracks it for the hosted app; the
-  built-in server has to track it itself. Client registration in particular
-  is moving (dynamic registration vs. client metadata documents), so keep it
-  behind one module.
+- **MCP spec churn.** The 2026-07-28 revision deprecated dynamic client
+  registration and removed the `initialize` handshake; `packages/mcp` is still
+  on SDK v1. Clerk tracks the auth side for the hosted app (it reportedly
+  made CIMD generally available in September 2026, off by default — worth
+  turning on); the built-in server has to track it itself, so keep client
+  registration behind one module.
 - **Support load.** Set expectations early; issue templates ask for the
   version and deployment tier.
 
@@ -473,4 +509,5 @@ telemetry (Archer sends none today — keep it that way, and say so).
 Phases 0 and 1 can run in parallel: 0 gates going public, not 1. In Phase 2,
 2.1 → 2.2 → 2.3 → 2.4 is a chain; 2.5–2.7 are independent. Phase 3 starts
 with 3.1 and 3.2, both safe to ship to the hosted app early; then 3.3 → 3.4,
-with 3.5 and 3.6 after 3.3.
+with 3.5 and 3.6 after 3.3. Versioning (4.1) has to land with the first
+published image (2.8).
