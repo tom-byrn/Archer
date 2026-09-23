@@ -364,8 +364,7 @@ export function Editor({
   const errors = derived.diagnostics.filter((d) => d.severity === "error");
   const warnings = derived.diagnostics.length - errors.length;
 
-  const relayout = () =>
-    mutate((d) => autoLayout({ ...parse(format(d)).doc, layout: [] }));
+  const relayout = () => mutate((d) => autoLayout(d, { reset: true }));
 
   const [toast, setToast] = useState<string | null>(null);
   const notify = (msg: string) => {

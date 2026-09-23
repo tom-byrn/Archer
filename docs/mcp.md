@@ -58,7 +58,8 @@ surviving components keep their canvas positions, new ones are auto-placed),
 `delete_project` (requires `confirm: true`).
 
 **Presentation** — `set_display` (collapse/expand a container to icon/plane),
-`auto_layout_project` (`reset: true` re-arranges everything).
+`auto_layout_project` (`reset: true` re-arranges everything, keeping which
+containers are collapsed).
 
 **History** — `get_history` (revisions with author, summary, and change
 counts), `get_revision` (past source), `diff_project` (structured diff between

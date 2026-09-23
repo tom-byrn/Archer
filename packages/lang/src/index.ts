@@ -23,6 +23,7 @@ export {
   PLANE_INNER_ORIGIN,
   PLANE_INNER_MARGIN,
 } from "./layout";
+export type { AutoLayoutOptions } from "./layout";
 export {
   addComponent,
   removeComponent,

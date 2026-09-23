@@ -292,9 +292,12 @@ export function setDisplay(
 ): ArchDoc {
   const next = clone(doc);
   const entry = entryFor(next, path);
+  const wasIcon = entry.display === "icon";
   entry.display = display;
-  if (display === "icon" && !entry.size) entry.size = LEAF_SIZE;
   if (display === "icon") entry.size = LEAF_SIZE;
+  // Expanding: drop the icon's footprint so auto-layout sizes the plane to its
+  // children (and moves aside whatever the bigger plane now overlaps).
+  else if (wasIcon) delete entry.size;
   return next;
 }
 

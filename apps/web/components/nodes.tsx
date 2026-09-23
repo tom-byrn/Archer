@@ -229,6 +229,12 @@ export function ArchEdgeComponent({
   data,
   selected,
 }: EdgeProps<ArchEdge>) {
+  // The routed bend (toFlow → routeEdge) clears the boxes around the edge. It
+  // was computed for the committed layout; mid-drag it may no longer sit
+  // between the ends, and the default middle bend takes over.
+  const mid = data?.mid;
+  const inside = (m: number, a: number, b: number) =>
+    m > Math.min(a, b) + 4 && m < Math.max(a, b) - 4;
   const [path, labelX, labelY] = getSmoothStepPath({
     sourceX,
     sourceY,
@@ -237,6 +243,12 @@ export function ArchEdgeComponent({
     sourcePosition,
     targetPosition,
     borderRadius: 8,
+    centerX:
+      mid !== undefined && data?.horizontal && inside(mid, sourceX, targetX) ? mid : undefined,
+    centerY:
+      mid !== undefined && data?.horizontal === false && inside(mid, sourceY, targetY)
+        ? mid
+        : undefined,
   });
   const arrow = data?.arrow ?? "->";
   const payloads = data?.payloadCount ?? 0;

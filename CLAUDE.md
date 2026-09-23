@@ -87,6 +87,12 @@ Router + React Flow + Convex).
   `components/canvas.css`.
 - Language/product specs live in `docs/`; keep `docs/language-spec.md` in
   sync with `packages/*/src/languageSpec.ts` copies when the grammar changes.
+- Auto-layout: `autoLayout` (`packages/lang/src/layout.ts`) arranges a doc
+  with no positions (or `{ reset: true }`) with the layered engine in
+  `layered.ts` (solver: `simplex.ts`); otherwise it keeps positions and places
+  new components next to their neighbours. Edges are drawn by
+  `apps/web/lib/edgeRoute.ts` for both the canvas (`toFlow`) and `lib/svg.ts`
+  — route through it so the two stay identical.
 
 ## Context.dev
 

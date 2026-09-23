@@ -4,19 +4,23 @@ import {
   type ComponentNode,
   type DisplayMode,
   type LayoutEntry,
+  type Span,
 } from "./types";
 import { normalizeLayout } from "./validate";
+import { LEAF_SIZE, PLANE_INNER_MARGIN, PLANE_INNER_ORIGIN, layeredLayout } from "./layered";
 
-/** Default footprint of a leaf / icon-collapsed component, in grid cells. */
-export const LEAF_SIZE: [number, number] = [4, 3];
-/** Children of a plane start at this inner offset (room for the icon + title row). */
-export const PLANE_INNER_ORIGIN: [number, number] = [1, 2];
-/** Right/bottom inner margin of a plane around its children. */
-export const PLANE_INNER_MARGIN: [number, number] = [1, 1];
-const H_GAP = 3;
-const V_GAP = 2;
-/** A layer taller than this wraps into side-by-side sub-columns. */
-const TARGET_COL_H = 14;
+export { LEAF_SIZE, PLANE_INNER_ORIGIN, PLANE_INNER_MARGIN } from "./layered";
+
+/** Spacing kept around a component placed next to existing ones. */
+const COL_GAP = 3;
+const ROW_GAP = 2;
+/** How far (cells) from its ideal spot a new component may land. */
+const SEARCH_RADIUS = 30;
+
+const ZERO_SPAN: Span = {
+  start: { line: 0, col: 0, offset: 0 },
+  end: { line: 0, col: 0, offset: 0 },
+};
 
 export const layoutMap = (doc: ArchDoc): Map<string, LayoutEntry> =>
   new Map(doc.layout.map((e) => [pathToString(e.path), e]));
@@ -28,183 +32,338 @@ export const effectiveDisplay = (
 ): DisplayMode =>
   entry?.display ?? (component.children.length > 0 ? "plane" : "icon");
 
-interface Rect {
-  at: [number, number];
-  size: [number, number];
+export interface AutoLayoutOptions {
+  /**
+   * Discard every position and size (display modes survive) and arrange the
+   * whole document from scratch — the canvas's "Auto-layout" button.
+   */
+  reset?: boolean;
 }
 
-const intersects = (a: Rect, b: Rect): boolean =>
-  a.at[0] < b.at[0] + b.size[0] &&
-  b.at[0] < a.at[0] + a.size[0] &&
-  a.at[1] < b.at[1] + b.size[1] &&
-  b.at[1] < a.at[1] + a.size[1];
+interface Rect {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+const parentOf = (path: string): string => {
+  const i = path.lastIndexOf(".");
+  return i < 0 ? "" : path.slice(0, i);
+};
+const isUnder = (path: string, prefix: string) =>
+  prefix === "" || path === prefix || path.startsWith(prefix + ".");
 
 /**
- * Complete the layout block: every component gets an `at` and `size`; existing
- * entries are preserved untouched. Deterministic. Never mutates the input.
+ * Complete the layout block: every component gets an `at` and `size`.
+ * Deterministic; never mutates the input.
  *
- * Scope-by-scope (bottom-up so container sizes are known):
- * 1. Children with entries keep them (missing size is filled in).
- * 2. Children without entries are layered by the connection graph projected onto
- *    this scope (longest-path in declaration order — cycle-safe), placed in
- *    columns left→right, stacked top→bottom, then nudged down past collisions.
+ * - A document with no positions at all (or `reset`) is arranged from scratch
+ *   by the layered engine (`layered.ts`): connections flow left → right with
+ *   few crossings and straight edges, planes wrap their children.
+ * - Otherwise existing positions are kept. A new container gets its interior
+ *   laid out by the same engine; each new component (or container) is then
+ *   placed in free space next to the components it connects to — right of
+ *   its sources, left of its targets. Planes grow to fit their children, and
+ *   siblings a grown plane would overlap are nudged right/down.
  */
-export function autoLayout(doc: ArchDoc): ArchDoc {
+export function autoLayout(doc: ArchDoc, opts: AutoLayoutOptions = {}): ArchDoc {
   const base = normalizeLayout(doc);
-  const existing = layoutMap(base);
-  const out = new Map<string, LayoutEntry>();
+  const given = new Map<string, LayoutEntry>();
+  for (const e of base.layout) {
+    given.set(
+      pathToString(e.path),
+      opts.reset
+        ? { kind: "layout-entry", path: e.path, display: e.display, span: e.span }
+        : e,
+    );
+  }
 
-  // Edges projected onto a scope: child-id -> set of child-ids it points at.
-  const scopeEdges = (prefix: string, childIds: Set<string>) => {
-    const edges = new Map<string, Set<string>>();
-    for (const id of childIds) edges.set(id, new Set());
-    const project = (path: string[]): string | null => {
-      const p = pathToString(path);
-      if (prefix === "") {
-        const head = path[0];
-        return head !== undefined && childIds.has(head) ? head : null;
-      }
-      if (!p.startsWith(prefix + ".")) return null;
-      const head = path[prefix.split(".").length];
-      return head !== undefined && childIds.has(head) ? head : null;
-    };
-    for (const c of base.connections) {
-      const s = project(c.source);
-      const t = project(c.target);
-      if (s !== null && t !== null && s !== t) edges.get(s)!.add(t);
+  const comps = new Map<string, ComponentNode>();
+  const index = (items: readonly ComponentNode[], pre: string) => {
+    for (const c of items) {
+      const path = pre === "" ? c.id : `${pre}.${c.id}`;
+      if (comps.has(path)) continue;
+      comps.set(path, c);
+      index(c.children, path);
     }
-    return edges;
+  };
+  index(base.components, "");
+
+  const isPlane = (path: string, c: ComponentNode) =>
+    c.children.length > 0 && effectiveDisplay(c, given.get(path)) === "plane";
+  const boxSize = (path: string): [number, number] => given.get(path)?.size ?? LEAF_SIZE;
+
+  const out = new Map<string, LayoutEntry>();
+  const put = (path: string, at: [number, number], size: [number, number]) => {
+    const g = given.get(path);
+    out.set(path, {
+      kind: "layout-entry",
+      path: path.split("."),
+      at,
+      size,
+      display: g?.display,
+      span: g?.span ?? ZERO_SPAN,
+    });
   };
 
-  /** Lay out one scope's children; returns the bounding box of all of them. */
-  const layoutScope = (
-    nodes: ComponentNode[],
-    prefix: string,
-  ): { w: number; h: number } => {
-    // Bottom-up: size containers first.
-    const sizes = new Map<string, [number, number]>();
-    for (const n of nodes) {
-      const p = prefix === "" ? n.id : `${prefix}.${n.id}`;
-      const entry = existing.get(p);
-      const inner = layoutScope(n.children, p);
-      let size: [number, number];
-      if (entry?.size) {
-        size = entry.size;
-      } else if (effectiveDisplay(n, entry) === "plane" && n.children.length > 0) {
-        size = [
-          PLANE_INNER_ORIGIN[0] + inner.w + PLANE_INNER_MARGIN[0],
-          PLANE_INNER_ORIGIN[1] + inner.h + PLANE_INNER_MARGIN[1],
-        ];
-      } else {
-        size = LEAF_SIZE;
-      }
-      sizes.set(n.id, size);
+  /** Arrange a forest from scratch; its top-level boxes are offset by `origin`. */
+  const layForest = (items: readonly ComponentNode[], pre: string, origin: [number, number]) => {
+    const placed = layeredLayout(items, pre, base.connections, {
+      isPlane,
+      boxSize: (path) => boxSize(path),
+    });
+    for (const [path, p] of placed) {
+      const top = parentOf(path) === pre;
+      put(path, top ? [p.at[0] + origin[0], p.at[1] + origin[1]] : p.at, p.size);
+      const c = comps.get(path)!;
+      if (c.children.length > 0 && !isPlane(path, c)) layForest(c.children, path, PLANE_INNER_ORIGIN);
     }
+  };
 
-    // Layering (longest-path, declaration order, cycle-safe: only consider
-    // predecessors already assigned).
-    const ids = nodes.map((n) => n.id);
-    const idSet = new Set(ids);
-    const edges = scopeEdges(prefix, idSet);
-    const layer = new Map<string, number>();
-    for (const id of ids) {
-      let l = 0;
-      for (const [from, tos] of edges) {
-        if (tos.has(id) && layer.has(from)) l = Math.max(l, layer.get(from)! + 1);
-      }
-      layer.set(id, l);
-    }
+  const fixed = [...given.values()].filter((e) => e.at).map((e) => pathToString(e.path));
+  if (fixed.length === 0) {
+    layForest(base.components, "", [0, 0]);
+    return { ...base, layout: [...out.values()] };
+  }
 
-    const placed: Rect[] = [];
-    const origin: [number, number] =
-      prefix === "" ? [0, 0] : PLANE_INNER_ORIGIN;
+  // ------------------------------------------------ incremental placement
+  const freshInside = (path: string) => !fixed.some((p) => p.startsWith(path + "."));
 
-    // Fixed entries participate in collision avoidance and the bounding box.
-    for (const n of nodes) {
-      const p = prefix === "" ? n.id : `${prefix}.${n.id}`;
-      const entry = existing.get(p);
-      if (entry?.at) {
-        const rect: Rect = { at: entry.at, size: sizes.get(n.id)! };
-        placed.push(rect);
-        out.set(p, {
-          kind: "layout-entry",
-          path: entry.path,
-          at: entry.at,
-          size: sizes.get(n.id)!,
-          display: entry.display,
-          span: entry.span,
-        });
-      }
-    }
-
-    // Auto-placed nodes, grouped by layer (declaration order preserved).
-    const layers = [...new Set([...layer.values()])].sort((a, b) => a - b);
-    const autoByLayer = new Map<number, ComponentNode[]>();
-    for (const n of nodes) {
-      const p = prefix === "" ? n.id : `${prefix}.${n.id}`;
-      if (existing.get(p)?.at) continue;
-      const l = layer.get(n.id)!;
-      autoByLayer.set(l, [...(autoByLayer.get(l) ?? []), n]);
-    }
-
-    // Each layer is a vertical band that WRAPS into side-by-side sub-columns
-    // once it grows taller than TARGET_COL_H, so sibling-heavy scopes (e.g. a
-    // plane full of unconnected children) come out roughly rectangular
-    // instead of one endless column.
-    let x = origin[0];
-    for (const l of layers) {
-      const members = autoByLayer.get(l);
-      if (!members || members.length === 0) continue;
-      const totalH = members.reduce(
-        (acc, n) => acc + sizes.get(n.id)![1] + V_GAP,
-        -V_GAP,
-      );
-      const cap = Math.max(
-        Math.ceil(totalH / Math.max(1, Math.ceil(totalH / TARGET_COL_H))),
-        Math.max(...members.map((n) => sizes.get(n.id)![1])),
-      );
-
-      let subX = x;
-      let subW = 0;
-      let y = origin[1];
-      for (const n of members) {
-        const p = prefix === "" ? n.id : `${prefix}.${n.id}`;
-        const entry = existing.get(p);
-        const size = sizes.get(n.id)!;
-        if (y > origin[1] && y - origin[1] + size[1] > cap) {
-          subX += subW + H_GAP;
-          subW = 0;
-          y = origin[1];
-        }
-        const rect: Rect = { at: [subX, y], size };
-        while (placed.some((r) => intersects(r, rect)))
-          rect.at = [rect.at[0], rect.at[1] + 1];
-        placed.push(rect);
-        y = rect.at[1] + size[1] + V_GAP;
-        subW = Math.max(subW, size[0]);
-        out.set(p, {
-          kind: "layout-entry",
-          path: p.split("."),
-          at: rect.at,
-          size,
-          display: entry?.display,
-          span:
-            entry?.span ??
-            ({ start: { line: 0, col: 0, offset: 0 }, end: { line: 0, col: 0, offset: 0 } } as const),
-        });
-      }
-      x = subX + subW + H_GAP;
-    }
-
+  /** Size of an interior from its children's entries (0 when none placed yet). */
+  const fitSize = (path: string): [number, number] | undefined => {
+    const c = comps.get(path);
+    if (!c) return undefined;
     let w = 0;
     let h = 0;
-    for (const r of placed) {
-      w = Math.max(w, r.at[0] + r.size[0] - origin[0]);
-      h = Math.max(h, r.at[1] + r.size[1] - origin[1]);
+    let any = false;
+    for (const child of c.children) {
+      const e = out.get(`${path}.${child.id}`);
+      if (!e?.at || !e.size) continue;
+      any = true;
+      w = Math.max(w, e.at[0] + e.size[0]);
+      h = Math.max(h, e.at[1] + e.size[1]);
     }
-    return { w, h };
+    return any ? [w + PLANE_INNER_MARGIN[0], h + PLANE_INNER_MARGIN[1]] : undefined;
+  };
+  const sizeFor = (path: string, c: ComponentNode): [number, number] => {
+    if (!isPlane(path, c)) return boxSize(path);
+    const fit = fitSize(path);
+    const had = given.get(path)?.size;
+    if (fit && had) return [Math.max(fit[0], had[0]), Math.max(fit[1], had[1])];
+    return fit ?? had ?? LEAF_SIZE;
   };
 
-  layoutScope(base.components, "");
+  /** The component actually drawn for `path` (a collapsed ancestor hides it). */
+  const drawnAs = (path: string): string => {
+    const segs = path.split(".");
+    for (let i = 1; i < segs.length; i++) {
+      const p = segs.slice(0, i).join(".");
+      const c = comps.get(p);
+      if (c && !isPlane(p, c)) return p;
+    }
+    return path;
+  };
+  /** Top-left of a scope's local frame in absolute cells ("" = the root). */
+  const absOrigin = (pre: string): [number, number] | undefined => {
+    let x = 0;
+    let y = 0;
+    const segs = pre === "" ? [] : pre.split(".");
+    for (let i = 1; i <= segs.length; i++) {
+      const e = out.get(segs.slice(0, i).join("."));
+      if (!e?.at) return undefined;
+      x += e.at[0];
+      y += e.at[1];
+    }
+    return [x, y];
+  };
+  /** A component's rect in the local frame of scope `pre`, when known. */
+  const localRect = (path: string, pre: string): Rect | undefined => {
+    const e = out.get(path);
+    if (!e?.at || !e.size) return undefined;
+    const segs = path.split(".");
+    const depth = pre === "" ? 0 : pre.split(".").length;
+    if (isUnder(path, pre)) {
+      let x = 0;
+      let y = 0;
+      for (let i = depth + 1; i <= segs.length; i++) {
+        const a = out.get(segs.slice(0, i).join("."));
+        if (!a?.at) return undefined;
+        x += a.at[0];
+        y += a.at[1];
+      }
+      return { x, y, w: e.size[0], h: e.size[1] };
+    }
+    const abs = absOrigin(parentOf(path));
+    const own = absOrigin(pre);
+    if (!abs || !own) return undefined;
+    return {
+      x: abs[0] + e.at[0] - own[0],
+      y: abs[1] + e.at[1] - own[1],
+      w: e.size[0],
+      h: e.size[1],
+    };
+  };
+
+  /** Known neighbours of `path` (outside its subtree), in `pre`'s frame. */
+  const anchors = (path: string, pre: string) => {
+    const found: { r: Rect; incoming: boolean }[] = [];
+    for (const c of base.connections) {
+      const s = drawnAs(pathToString(c.source));
+      const t = drawnAs(pathToString(c.target));
+      const sIn = isUnder(s, path);
+      const tIn = isUnder(t, path);
+      if (sIn === tIn) continue;
+      const r = localRect(sIn ? t : s, pre);
+      if (r) found.push({ r, incoming: tIn });
+    }
+    return found;
+  };
+
+  const overlaps = (a: Rect, b: Rect, gx: number, gy: number) =>
+    a.x - gx < b.x + b.w && b.x < a.x + a.w + gx && a.y - gy < b.y + b.h && b.y < a.y + a.h + gy;
+
+  /** Best free spot for a w×h box near its neighbours in `pre`'s frame. */
+  const findSpot = (
+    size: [number, number],
+    near: { r: Rect; incoming: boolean }[],
+    placed: Rect[],
+    pre: string,
+  ): [number, number] => {
+    const [w, h] = size;
+    const min: [number, number] = pre === "" ? [-Infinity, -Infinity] : PLANE_INNER_ORIGIN;
+    const limit = pre === "" ? undefined : (out.get(pre)?.size ?? given.get(pre)?.size);
+    if (placed.length === 0) return pre === "" ? [0, 0] : [...PLANE_INNER_ORIGIN];
+
+    let ix: number;
+    let iy: number;
+    let wx = 2;
+    let wy = 1;
+    if (near.length === 0) {
+      // Unconnected: start a row under everything already here.
+      ix = Math.min(...placed.map((r) => r.x));
+      iy = Math.max(...placed.map((r) => r.y + r.h)) + ROW_GAP;
+      wx = 1;
+      wy = 2;
+    } else {
+      const after = near.filter((n) => n.incoming).map((n) => n.r.x + n.r.w + COL_GAP);
+      const before = near.filter((n) => !n.incoming).map((n) => n.r.x - COL_GAP - w);
+      if (after.length > 0 && before.length > 0) {
+        const lo = Math.max(...after);
+        const hi = Math.min(...before);
+        ix = lo <= hi ? Math.round((lo + hi) / 2) : lo;
+      } else ix = after.length > 0 ? Math.max(...after) : Math.min(...before);
+      const mids = near.map((n) => n.r.y + n.r.h / 2).sort((a, b) => a - b);
+      iy = Math.round(mids[Math.floor((mids.length - 1) / 2)]! - h / 2);
+    }
+    ix = Math.max(ix, min[0]);
+    iy = Math.max(iy, min[1]);
+
+    let best: [number, number] | undefined;
+    let bestCost = Infinity;
+    for (let dy = -SEARCH_RADIUS; dy <= SEARCH_RADIUS; dy++) {
+      for (let dx = -SEARCH_RADIUS; dx <= SEARCH_RADIUS; dx++) {
+        const x = ix + dx;
+        const y = iy + dy;
+        if (x < min[0] || y < min[1]) continue;
+        let cost = Math.abs(dx) * (dx < 0 ? wx + 1 : wx) + Math.abs(dy) * wy;
+        if (limit) {
+          const grow =
+            Math.max(0, x + w + PLANE_INNER_MARGIN[0] - limit[0]) +
+            Math.max(0, y + h + PLANE_INNER_MARGIN[1] - limit[1]);
+          cost += 4 * grow;
+        }
+        if (cost >= bestCost) continue;
+        const rect = { x, y, w, h };
+        if (placed.some((r) => overlaps(rect, r, COL_GAP, ROW_GAP))) continue;
+        best = [x, y];
+        bestCost = cost;
+      }
+    }
+    return best ?? [ix, Math.max(...placed.map((r) => r.y + r.h)) + ROW_GAP];
+  };
+
+  const placeScope = (items: readonly ComponentNode[], pre: string) => {
+    const pathOf = (c: ComponentNode) => (pre === "" ? c.id : `${pre}.${c.id}`);
+    const interior = (c: ComponentNode) => {
+      const path = pathOf(c);
+      if (freshInside(path)) layForest(c.children, path, PLANE_INNER_ORIGIN);
+      else placeScope(c.children, path);
+    };
+    // New containers first, so their sizes are known before placing them.
+    for (const c of items) if (c.children.length > 0 && !given.get(pathOf(c))?.at) interior(c);
+
+    const placed: Rect[] = [];
+    const pending: ComponentNode[] = [];
+    for (const c of items) {
+      const path = pathOf(c);
+      const at = given.get(path)?.at;
+      if (!at) {
+        pending.push(c);
+        continue;
+      }
+      const size = sizeFor(path, c);
+      put(path, at, size);
+      placed.push({ x: at[0], y: at[1], w: size[0], h: size[1] });
+    }
+    // Most-connected first, so each lands next to neighbours already placed.
+    while (pending.length > 0) {
+      let pick = 0;
+      let pickNear = anchors(pathOf(pending[0]!), pre);
+      for (let i = 1; i < pending.length; i++) {
+        const near = anchors(pathOf(pending[i]!), pre);
+        if (near.length > pickNear.length) {
+          pick = i;
+          pickNear = near;
+        }
+      }
+      const c = pending.splice(pick, 1)[0]!;
+      const path = pathOf(c);
+      const size = sizeFor(path, c);
+      const at = findSpot(size, pickNear, placed, pre);
+      put(path, at, size);
+      placed.push({ x: at[0], y: at[1], w: size[0], h: size[1] });
+    }
+
+    for (const c of items) if (c.children.length > 0 && given.get(pathOf(c))?.at) interior(c);
+  };
+
+  /** Grow planes to fit their children (bottom-up); push aside what they now overlap. */
+  const growScope = (items: readonly ComponentNode[], pre: string) => {
+    const paths = items.map((c) => (pre === "" ? c.id : `${pre}.${c.id}`));
+    items.forEach((c, i) => c.children.length > 0 && growScope(c.children, paths[i]!));
+    const grown: string[] = [];
+    items.forEach((c, i) => {
+      const path = paths[i]!;
+      const e = out.get(path);
+      if (!e?.size || !isPlane(path, c)) return;
+      const fit = fitSize(path);
+      if (!fit || (fit[0] <= e.size[0] && fit[1] <= e.size[1])) return;
+      e.size = [Math.max(fit[0], e.size[0]), Math.max(fit[1], e.size[1])];
+      grown.push(path);
+    });
+    const rect = (p: string): Rect => {
+      const e = out.get(p)!;
+      return { x: e.at![0], y: e.at![1], w: e.size![0], h: e.size![1] };
+    };
+    // Every push moves right or down, so this settles.
+    const queue = [...grown];
+    for (let guard = 0; queue.length > 0 && guard < 10_000; guard++) {
+      const moverPath = queue.shift()!;
+      const mover = rect(moverPath);
+      for (const p of paths) {
+        if (p === moverPath) continue;
+        const r = rect(p);
+        if (!overlaps(mover, r, COL_GAP - 1, ROW_GAP - 1)) continue;
+        const dx = mover.x + mover.w + COL_GAP - r.x;
+        const dy = mover.y + mover.h + ROW_GAP - r.y;
+        out.get(p)!.at = dx <= dy ? [r.x + dx, r.y] : [r.x, r.y + dy];
+        queue.push(p);
+      }
+    }
+  };
+
+  placeScope(base.components, "");
+  growScope(base.components, "");
   return { ...base, layout: [...out.values()] };
 }
