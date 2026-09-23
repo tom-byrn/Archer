@@ -1,17 +1,28 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { THEME_KEY, THEME_SCRIPT, readThemeChoice, setThemeChoice } from "../lib/theme";
+import { THEME_KEY, THEME_SCRIPT, readThemeChoice, setThemeChoice, switchTheme } from "../lib/theme";
 
 /**
  * A page for THEME_SCRIPT (inline in app/layout.tsx) to run on: <html>,
  * localStorage and the OS color scheme, all fake. `storage: "blocked"` throws
- * on every access, as browsers do when site data is blocked.
+ * on every access, as browsers do when site data is blocked. The viewport is
+ * 1000x800; `viewTransitions` gives it document.startViewTransition, which
+ * records each transition for the test to run the way a browser would.
  */
 function page({
   stored,
   osDark = false,
   storage = "ok",
-}: { stored?: string; osDark?: boolean; storage?: "ok" | "blocked" } = {}) {
+  viewTransitions = false,
+  reducedMotion = false,
+}: {
+  stored?: string;
+  osDark?: boolean;
+  storage?: "ok" | "blocked";
+  viewTransitions?: boolean;
+  reducedMotion?: boolean;
+} = {}) {
   const attributes = new Map<string, string>();
+  const style = new Map<string, string>();
   const items = new Map<string, string>(stored === undefined ? [] : [[THEME_KEY, stored]]);
   const blocked = () => {
     throw new DOMException("The operation is insecure.", "SecurityError");
@@ -29,15 +40,49 @@ function page({
     matches: osDark,
     addEventListener: (_type: string, listener: () => void) => void osListeners.push(listener),
   };
-  const window = Object.assign(new EventTarget(), { matchMedia: () => os });
-  const document = { documentElement: { setAttribute: (k: string, v: string) => void attributes.set(k, v) } };
+  const window = Object.assign(new EventTarget(), {
+    matchMedia: (query: string) => (query.includes("reduced-motion") ? { matches: reducedMotion } : os),
+    innerWidth: 1000,
+    innerHeight: 800,
+  });
+  const transitions: { update: () => void; finish: () => Promise<void> }[] = [];
+  const document = {
+    documentElement: {
+      getAttribute: (k: string) => attributes.get(k) ?? null,
+      setAttribute: (k: string, v: string) => void attributes.set(k, v),
+      removeAttribute: (k: string) => void attributes.delete(k),
+      style: {
+        setProperty: (k: string, v: string) => void style.set(k, v),
+        removeProperty: (k: string) => void style.delete(k),
+      },
+    },
+    ...(viewTransitions && {
+      startViewTransition(update: () => void) {
+        let resolve!: () => void;
+        const finished = new Promise<void>((r) => (resolve = r));
+        // Resolves `finished` (as the animation ending, or a newer transition
+        // skipping this one, does) and waits until its reactions have run.
+        const finish = async () => {
+          resolve();
+          await finished;
+        };
+        transitions.push({ update, finish });
+        return { finished };
+      },
+    }),
+  };
 
   new Function("window", "document", "localStorage", THEME_SCRIPT)(window, document, localStorage);
 
   return {
     window,
+    document,
     localStorage,
     items,
+    attributes,
+    style,
+    /** View transitions started, in order: run `update` as the browser would, then `finish`. */
+    transitions,
     theme: () => attributes.get("data-theme"),
     setOsDark(dark: boolean) {
       os.matches = dark;
@@ -52,9 +97,10 @@ function page({
   };
 }
 
-/** Points lib/theme.ts's window and localStorage at a fake page. */
+/** Points lib/theme.ts's window, document and localStorage at a fake page. */
 function useAsGlobals(p: ReturnType<typeof page>) {
   vi.stubGlobal("window", p.window);
+  vi.stubGlobal("document", p.document);
   vi.stubGlobal("localStorage", p.localStorage);
 }
 
@@ -134,5 +180,78 @@ describe("setThemeChoice", () => {
     p.setOsDark(false);
     p.setOsDark(true);
     expect(p.theme()).toBe("light");
+  });
+});
+
+/** A control, `size` px square with its top left at (left, top). */
+const control = (left: number, top: number, size = 32) =>
+  ({ getBoundingClientRect: () => ({ left, top, width: size, height: size }) }) as Element;
+
+describe("switchTheme", () => {
+  it("spreads a new theme from the control, in a view transition", async () => {
+    const p = page({ viewTransitions: true });
+    useAsGlobals(p);
+
+    switchTheme("dark", control(100, 20));
+    // A circle centered on the control, reaching the far corner (884, 764 away).
+    expect(p.attributes.has("data-theme-switch")).toBe(true);
+    expect(Object.fromEntries(p.style)).toEqual({
+      "--theme-switch-x": "116px",
+      "--theme-switch-y": "36px",
+      "--theme-switch-r": `${Math.hypot(884, 764)}px`,
+    });
+    // The switch itself waits for the browser to take its still of the old page.
+    expect(p.transitions).toHaveLength(1);
+    expect(p.theme()).toBe("light");
+    p.transitions[0]!.update();
+    expect(p.theme()).toBe("dark");
+    expect(p.items.get(THEME_KEY)).toBe("dark");
+
+    await p.transitions[0]!.finish();
+    expect(p.attributes.has("data-theme-switch")).toBe(false);
+    expect(p.style.size).toBe(0);
+  });
+
+  it("just switches without view transitions, or for reduced motion", () => {
+    for (const p of [page(), page({ viewTransitions: true, reducedMotion: true })]) {
+      useAsGlobals(p);
+      switchTheme("dark", control(100, 20));
+      expect(p.theme()).toBe("dark");
+      expect(p.transitions).toHaveLength(0);
+      expect(p.attributes.has("data-theme-switch")).toBe(false);
+      expect(p.style.size).toBe(0);
+    }
+  });
+
+  it("only animates a choice that changes the theme", () => {
+    const p = page({ viewTransitions: true, stored: "dark", osDark: true });
+    useAsGlobals(p);
+
+    // Back to following the OS, which is dark too.
+    switchTheme("system", control(100, 20));
+    expect(readThemeChoice()).toBe("system");
+    expect(p.transitions).toHaveLength(0);
+
+    switchTheme("light", control(100, 20));
+    expect(p.transitions).toHaveLength(1);
+  });
+
+  it("leaves cleaning up to a newer switch that cut it short", async () => {
+    const p = page({ viewTransitions: true });
+    useAsGlobals(p);
+
+    switchTheme("dark", control(100, 20));
+    p.transitions[0]!.update();
+    // A second switch skips the first transition, which finishes early.
+    switchTheme("light", control(500, 400, 20));
+    await p.transitions[0]!.finish();
+    expect(p.attributes.has("data-theme-switch")).toBe(true);
+    expect(p.style.get("--theme-switch-x")).toBe("510px");
+
+    p.transitions[1]!.update();
+    expect(p.theme()).toBe("light");
+    await p.transitions[1]!.finish();
+    expect(p.attributes.has("data-theme-switch")).toBe(false);
+    expect(p.style.size).toBe(0);
   });
 });

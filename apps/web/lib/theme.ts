@@ -4,7 +4,8 @@
  * in localStorage; "system" is stored as no entry at all. THEME_SCRIPT, inline
  * in app/layout.tsx, resolves it to <html data-theme="light|dark"> before the
  * first paint and keeps that current, and everything themed keys on it: the
- * tokens in globals.css, and useIsDark() for code.
+ * tokens in globals.css, and useIsDark() for code. A switch made with one of
+ * those controls is animated (switchTheme).
  */
 
 export type ThemeChoice = "system" | "light" | "dark";
@@ -67,4 +68,50 @@ export function setThemeChoice(choice: ThemeChoice): void {
     // Storage blocked: the choice holds until the page reloads.
   }
   window.dispatchEvent(new CustomEvent<ThemeChoice>(THEME_EVENT, { detail: choice }));
+}
+
+/** The switch in progress, which cleans up after itself unless a newer one skipped it. */
+let switching: ViewTransition | null = null;
+
+/**
+ * setThemeChoice for a theme control, `from` being the button the viewer
+ * used. When the page's theme changes, the new one spreads over the old in a
+ * circle from that button, out to the viewport's farthest corner: a view
+ * transition, animated in globals.css from the data-theme-switch attribute
+ * and the circle's --theme-switch-* properties set here. Browsers without view
+ * transitions, and viewers who prefer reduced motion, just switch.
+ */
+export function switchTheme(choice: ThemeChoice, from: Element): void {
+  const root = document.documentElement;
+  // Resolved as THEME_SCRIPT does.
+  const dark =
+    choice === "dark" ||
+    (choice !== "light" && window.matchMedia("(prefers-color-scheme: dark)").matches);
+  if (
+    dark === (root.getAttribute("data-theme") === "dark") ||
+    typeof document.startViewTransition !== "function" ||
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches
+  ) {
+    setThemeChoice(choice);
+    return;
+  }
+
+  const box = from.getBoundingClientRect();
+  const x = box.left + box.width / 2;
+  const y = box.top + box.height / 2;
+  const r = Math.hypot(Math.max(x, window.innerWidth - x), Math.max(y, window.innerHeight - y));
+  root.style.setProperty("--theme-switch-x", `${x}px`);
+  root.style.setProperty("--theme-switch-y", `${y}px`);
+  root.style.setProperty("--theme-switch-r", `${r}px`);
+  root.setAttribute("data-theme-switch", "");
+
+  const transition = document.startViewTransition(() => setThemeChoice(choice));
+  switching = transition;
+  const done = () => {
+    if (switching !== transition) return;
+    switching = null;
+    root.removeAttribute("data-theme-switch");
+    for (const p of ["x", "y", "r"]) root.style.removeProperty(`--theme-switch-${p}`);
+  };
+  transition.finished.then(done, done);
 }

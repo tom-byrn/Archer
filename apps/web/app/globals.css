@@ -249,12 +249,67 @@ select:focus-visible,
   }
 }
 
-/* What differs between the themes by more than a token (the theme toggle's
-   icon, the docs' diagrams) comes in both versions, each shown in its own
-   theme only. Keyed on data-theme, so it's right from the first paint. */
+/* What differs between the themes by more than a token (the docs' diagrams,
+   the theme toggle's icon below) comes in both versions, each shown in its
+   own theme only. Keyed on data-theme, so it's right from the first paint. */
 :root[data-theme="dark"] .theme-light-only,
 :root:not([data-theme="dark"]) .theme-dark-only {
   display: none;
+}
+
+/* The theme toggle's icons (components/ThemeToggle.tsx) share one spot, and
+   fade rather than vanish. With motion, switching turns the old one out and
+   then the new one in, both the same way round, the new one overshooting a
+   little. A change runs on its destination state's `transition`: the base
+   one brings an icon in, the hidden state's takes it out. */
+.theme-toggle-moon,
+.theme-toggle-sun {
+  transition: opacity 150ms ease;
+}
+:root[data-theme="dark"] .theme-toggle-moon,
+:root:not([data-theme="dark"]) .theme-toggle-sun {
+  opacity: 0;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .theme-toggle-moon,
+  .theme-toggle-sun {
+    transition:
+      transform 500ms cubic-bezier(0.34, 1.56, 0.64, 1) 100ms,
+      opacity 250ms ease 100ms;
+  }
+  :root[data-theme="dark"] .theme-toggle-moon,
+  :root:not([data-theme="dark"]) .theme-toggle-sun {
+    transition:
+      transform 300ms ease-in,
+      opacity 200ms ease-in;
+  }
+  :root[data-theme="dark"] .theme-toggle-moon {
+    transform: rotate(90deg) scale(0.5);
+  }
+  :root:not([data-theme="dark"]) .theme-toggle-sun {
+    transform: rotate(-90deg) scale(0.5);
+  }
+}
+
+/* A theme switched with a control (switchTheme in lib/theme.ts) arrives as a
+   view transition: the new page, live, is revealed over a still of the old
+   in a circle growing from the control. The script sets data-theme-switch
+   for its duration, and the circle's center and final radius. */
+:root[data-theme-switch]::view-transition-old(root),
+:root[data-theme-switch]::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+:root[data-theme-switch]::view-transition-new(root) {
+  animation: theme-switch 550ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+@keyframes theme-switch {
+  from {
+    clip-path: circle(0 at var(--theme-switch-x) var(--theme-switch-y));
+  }
+  to {
+    clip-path: circle(var(--theme-switch-r) at var(--theme-switch-x) var(--theme-switch-y));
+  }
 }
 
 .tok-kw { color: var(--tok-kw); font-weight: 600; }
