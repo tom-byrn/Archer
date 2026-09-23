@@ -478,7 +478,7 @@ export default function Home() {
 
   const createButtons = (
     <>
-      <Button icon={<Icon.Duplicate />} onClick={() => setSampleOpen(true)}>
+      <Button icon={<Icon.Diagram />} onClick={() => setSampleOpen(true)}>
         From sample
       </Button>
       <Button variant="primary" icon={<Icon.Plus />} onClick={() => void newDoc(BLANK, "Untitled")}>
