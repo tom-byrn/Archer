@@ -1,0 +1,8 @@
+# Recorded frames, renders, audio and installed fonts are all reproducible.
+out/
+node_modules/
+node_modules_fonts
+music/*.wav
+music/*.png
+music/_dev/
+__pycache__/

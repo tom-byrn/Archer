@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Archer launch video thumbnail</title>
+    <link rel="stylesheet" href="stage.css" />
+    <style>
+      .tw { position: absolute; z-index: 2; left: 118px; top: 300px; font-family: var(--display); font-weight: 900; font-size: 230px; letter-spacing: -0.04em; line-height: 0.8; color: var(--ink); }
+      .tl { position: absolute; left: 124px; top: 520px; width: 760px; font-family: var(--serif); font-weight: 500; font-variation-settings: "opsz" 72; font-size: 72px; letter-spacing: -0.012em; line-height: 1.02; color: var(--ink); }
+      .tl em { font-style: normal; color: var(--accent); }
+      .tu { position: absolute; left: 128px; top: 720px; font-family: var(--mono); font-size: 34px; color: var(--ink-2); }
+      .win { position: absolute; left: 880px; top: 196px; width: 990px; height: 610px; border-radius: 16px; overflow: hidden; border: 1px solid var(--line-2); background: var(--ground); box-shadow: 0 40px 100px rgba(26,25,22,0.18), 0 2px 6px rgba(26,25,22,0.08); }
+      .win img { position: absolute; transform-origin: 0 0; }
+      .snip { position: absolute; left: 800px; top: 660px; width: 540px; }
+      .snip .code { padding: 18px 24px; font-size: 20px; line-height: 31px; }
+    </style>
+  </head>
+  <body>
+    <div id="stage" style="position:relative">
+      <div class="layer paper"></div>
+      <div class="tw">Archer</div>
+      <div class="tl">Software architecture for your <em>agents.</em></div>
+      <div class="tu">archer.tombyrne.dev</div>
+      <div class="win"><img id="diagram" /></div>
+      <div class="card snip">
+        <div class="bar"><span class="dots"><i></i><i></i><i></i></span><span class="title">architecture.arch</span></div>
+        <div class="code" id="code"></div>
+      </div>
+    </div>
+    <script>
+      // The build shot's last frame, cropped to the diagram (app px 272–1232 × 115–645).
+      (async () => {
+        const meta = await (await fetch('/shots/build/meta.json')).json();
+        const img = document.getElementById('diagram');
+        img.src = `/shots/build/f${String(meta.frames - 1).padStart(5, '0')}.jpg`;
+        await img.decode();
+        const s = 0.98; // CSS px → thumbnail px
+        img.style.width = `${1280 * s}px`;
+        img.style.height = `${720 * s}px`;
+        img.style.left = `${-(752 - 990 / 2 / s) * s}px`;
+        img.style.top = `${-(380 - 610 / 2 / s) * s}px`;
+        const lines = [
+          '<span class="tok-kw">component</span> services <span class="tok-string">"Services"</span> <span class="tok-type">@aws.eks</span> {',
+          '  <span class="tok-kw">component</span> playback <span class="tok-string">"Playback"</span>',
+          '}',
+          'gateway <span class="tok-arrow">-></span> services <span class="tok-type">@http</span>',
+        ];
+        document.getElementById('code').innerHTML = lines.map((l) => `<span class="ln">${l}</span>`).join('');
+        await document.fonts.ready;
+        window.thumbReady = true;
+      })();
+    </script>
+  </body>
+</html>

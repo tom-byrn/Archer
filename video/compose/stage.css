@@ -1,0 +1,151 @@
+/* Brand fonts (the families the app loads) and tokens (apps/web/app/globals.css, light). */
+@font-face { font-family: "Inter"; src: url(/fonts/inter/files/inter-latin-wght-normal.woff2) format("woff2"); font-weight: 100 900; }
+@font-face { font-family: "Newsreader"; src: url(/fonts/newsreader/files/newsreader-latin-opsz-normal.woff2) format("woff2"); font-weight: 200 800; }
+@font-face { font-family: "Playfair Display"; src: url(/fonts/playfair-display/files/playfair-display-latin-wght-normal.woff2) format("woff2"); font-weight: 400 900; }
+@font-face { font-family: "Geist Mono"; src: url(/fonts/geist-mono/files/geist-mono-latin-wght-normal.woff2) format("woff2"); font-weight: 100 900; }
+
+:root {
+  --bg: #fbfaf8;
+  --surface: #ffffff;
+  --surface-2: #f4f2ee;
+  --surface-3: #eae7e1;
+  --ink: #1a1916;
+  --ink-2: #5f5a52;
+  --ink-3: #9b958b;
+  --line: #e7e3dc;
+  --line-2: #d2ccc3;
+  --accent: #0c8c5e;
+  --accent-soft: rgba(12, 140, 94, 0.12);
+  --danger: #b42318;
+  --danger-soft: rgba(180, 35, 24, 0.1);
+  --ground: #f7f5f1;
+  --code-bg: #faf9f7;
+  --code-fg: #3d3934;
+  --tok-kw: #6d3fd6;
+  --tok-string: #0b7a52;
+  --tok-type: #a85a0a;
+  --tok-arrow: #1a1916;
+  --tok-num: #b42a6a;
+  --tok-comment: #9b958b;
+  --tok-fence: #9b958b;
+  --tok-version: #0c6d82;
+  --landing-fade: #edeae4;
+  --serif: "Newsreader", Georgia, serif;
+  --sans: "Inter", system-ui, sans-serif;
+  --mono: "Geist Mono", ui-monospace, monospace;
+  --display: "Playfair Display", Georgia, serif;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { width: 1920px; height: 1080px; overflow: hidden; background: var(--bg); }
+body { font-family: var(--sans); color: var(--ink); -webkit-font-smoothing: antialiased; text-rendering: geometricPrecision; }
+
+#stage { position: relative; width: 1920px; height: 1080px; overflow: hidden; background: var(--bg); }
+.layer { position: absolute; inset: 0; }
+.hidden { display: none !important; }
+
+/* Paper with the landing's dotted texture, fading down the frame. */
+.paper { background: var(--bg); }
+.paper::before {
+  content: "";
+  position: absolute; inset: -40px;
+  background: radial-gradient(circle at 1px 1px, rgba(26, 25, 22, 0.13) 1.1px, transparent 1.6px) 0 0 / 14px 14px;
+  -webkit-mask-image: linear-gradient(180deg, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.35) 45%, rgba(0,0,0,0.12) 100%);
+  mask-image: linear-gradient(180deg, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.35) 45%, rgba(0,0,0,0.12) 100%);
+  transform: scale(var(--dots-scale, 1));
+}
+.paper::after {
+  content: "";
+  position: absolute; inset: 0;
+  background: linear-gradient(180deg, var(--landing-fade) 0%, rgba(237, 234, 228, 0) 55%);
+  opacity: 0.8;
+}
+
+/* Big statements: the landing headline's setting. */
+.statement {
+  position: absolute; left: 0; right: 0;
+  text-align: center;
+  font-family: var(--serif); font-weight: 500; font-variation-settings: "opsz" 72;
+  letter-spacing: -0.012em; line-height: 1.02; color: var(--ink);
+  z-index: 5;
+}
+.statement .w { display: inline-block; white-space: pre; will-change: transform, opacity; }
+.statement em { font-style: normal; color: var(--accent); }
+
+/* Lower-third captions over app footage. */
+.scrim {
+  position: absolute; left: 0; bottom: 0; width: 1920px; height: 420px; z-index: 8;
+  background: radial-gradient(1500px 360px at 0% 100%, rgba(251,250,248,0.97) 0%, rgba(251,250,248,0.9) 42%, rgba(251,250,248,0) 100%);
+}
+.scrim.top { top: 0; bottom: auto; background: radial-gradient(1500px 320px at 0% 0%, rgba(251,250,248,0.97) 0%, rgba(251,250,248,0.9) 42%, rgba(251,250,248,0) 100%); }
+.caption {
+  position: absolute; left: 104px; bottom: 76px; z-index: 9;
+  font-family: var(--serif); font-weight: 500; font-variation-settings: "opsz" 72;
+  font-size: 64px; letter-spacing: -0.012em; line-height: 1.05; color: var(--ink);
+  white-space: nowrap;
+}
+.caption.top { top: 58px; bottom: auto; }
+.caption.right { left: auto; right: 110px; bottom: auto; top: 470px; text-align: right; font-size: 62px; line-height: 1.12; }
+.caption .w { display: inline-block; white-space: pre; }
+.caption em { font-style: normal; color: var(--accent); }
+
+/* App footage: a clipped viewport with a camera; the frame is the real app at 1280×720 CSS px. */
+.shot { position: absolute; overflow: hidden; background: var(--bg); }
+.shot .cam { position: absolute; left: 0; top: 0; width: 1280px; height: 720px; transform-origin: 0 0; will-change: transform; }
+.shot .cam img.frame { position: absolute; left: 0; top: 0; width: 1280px; height: 720px; display: block; }
+.shot.windowed { border-radius: 14px; border: 1px solid var(--line-2); box-shadow: 0 30px 80px rgba(26,25,22,0.16), 0 2px 6px rgba(26,25,22,0.08); }
+
+/* Pointer drawn from the recorded track (headless Chromium draws none). */
+.cursor { position: absolute; left: 0; top: 0; width: 26px; height: 26px; pointer-events: none; z-index: 20; transform-origin: 0 0; }
+.cursor svg { position: absolute; left: 0; top: 0; overflow: visible; filter: drop-shadow(0 1px 1.5px rgba(0,0,0,0.35)); }
+.ripple { position: absolute; left: 0; top: 0; width: 44px; height: 44px; margin: -22px 0 0 -22px; border-radius: 50%; border: 2px solid var(--accent); background: var(--accent-soft); opacity: 0; z-index: 19; }
+
+/* Cards (code, terminal, stills). */
+.card {
+  position: absolute; background: var(--surface); border: 1px solid var(--line-2); border-radius: 14px;
+  box-shadow: 0 30px 80px rgba(26,25,22,0.14), 0 2px 6px rgba(26,25,22,0.06); overflow: hidden;
+}
+.card .bar { height: 52px; display: flex; align-items: center; gap: 10px; padding: 0 20px; border-bottom: 1px solid var(--line); background: var(--surface); }
+.dots { display: flex; gap: 8px; }
+.dots i { width: 13px; height: 13px; border-radius: 50%; background: var(--line-2); display: block; }
+.card .title { font-family: var(--mono); font-size: 19px; color: var(--ink-2); }
+.card .chip { margin-left: auto; font-family: var(--sans); font-size: 17px; color: var(--accent); display: flex; align-items: center; gap: 9px; }
+.card .chip b { width: 9px; height: 9px; border-radius: 50%; background: var(--accent); display: block; }
+
+.code { font-family: var(--mono); color: var(--code-fg); background: var(--code-bg); white-space: pre; }
+.code .ln { display: block; }
+.tok-kw { color: var(--tok-kw); }
+.tok-string { color: var(--tok-string); }
+.tok-type { color: var(--tok-type); }
+.tok-arrow { color: var(--tok-arrow); font-weight: 600; }
+.tok-num { color: var(--tok-num); }
+.tok-comment { color: var(--tok-comment); }
+.tok-fence { color: var(--tok-fence); }
+.tok-version { color: var(--tok-version); }
+.caret { display: inline-block; width: 0.6em; height: 1.1em; vertical-align: -0.18em; background: var(--ink); margin-left: 1px; }
+
+.term { font-family: var(--mono); color: var(--code-fg); white-space: pre-wrap; }
+.term .prompt { color: var(--accent); }
+.term .err { color: var(--danger); }
+.term .ok { color: var(--accent); }
+.term .dim { color: var(--ink-3); }
+
+.keycap {
+  position: absolute; z-index: 12; display: flex; gap: 14px; left: 50%; transform: translateX(-50%);
+}
+.keycap span {
+  min-width: 84px; height: 84px; padding: 0 22px; border-radius: 16px; background: var(--surface);
+  border: 1px solid var(--line-2); box-shadow: 0 6px 0 var(--surface-3), 0 16px 40px rgba(26,25,22,0.18);
+  display: flex; align-items: center; justify-content: center; font-family: var(--sans); font-weight: 500; font-size: 40px; color: var(--ink);
+}
+
+.still { position: absolute; display: block; }
+.tile-card { position: absolute; background: var(--surface); border: 1px solid var(--line-2); border-radius: 18px; overflow: hidden; box-shadow: 0 30px 80px rgba(26,25,22,0.14); }
+.tile-card img { display: block; width: 100%; height: 100%; }
+
+.eyebrow { position: absolute; left: 0; right: 0; text-align: center; font-family: var(--mono); font-size: 22px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-3); z-index: 5; }
+.tools { position: absolute; left: 0; right: 0; display: flex; flex-wrap: wrap; justify-content: center; gap: 14px; padding: 0 180px; }
+.tools span { font-family: var(--mono); font-size: 22px; color: var(--ink-2); background: var(--surface); border: 1px solid var(--line-2); border-radius: 8px; padding: 9px 16px; box-shadow: 0 2px 6px rgba(26,25,22,0.05); }
+
+.wordmark { position: absolute; left: 0; right: 0; text-align: center; font-family: var(--display); font-weight: 900; letter-spacing: -0.04em; line-height: 0.8; color: var(--ink); }
+.endline { position: absolute; left: 0; right: 0; text-align: center; }
