@@ -1,21 +1,38 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
+import { THEME_EVENT, readThemeChoice, type ThemeChoice } from "./theme";
+
+const subscribeToTheme = (onChange: () => void) => {
+  const observer = new MutationObserver(onChange);
+  observer.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+  return () => observer.disconnect();
+};
 
 /**
- * Tracks the OS color scheme, which every page follows (see globals.css).
- * SSR-safe; starts light, corrects on mount.
+ * Whether the page shows the dark theme: the viewer's choice, or the OS scheme
+ * until they make one (lib/theme.ts). SSR-safe; starts light, corrects on mount.
  */
 export function useIsDark(): boolean {
-  const [isDark, setIsDark] = useState(false);
-  useEffect(() => {
-    const mq = window.matchMedia("(prefers-color-scheme: dark)");
-    const sync = () => setIsDark(mq.matches);
-    sync();
-    mq.addEventListener("change", sync);
-    return () => mq.removeEventListener("change", sync);
-  }, []);
-  return isDark;
+  return useSyncExternalStore(
+    subscribeToTheme,
+    () => document.documentElement.getAttribute("data-theme") === "dark",
+    () => false,
+  );
+}
+
+const subscribeToChoice = (onChange: () => void) => {
+  window.addEventListener(THEME_EVENT, onChange);
+  window.addEventListener("storage", onChange);
+  return () => {
+    window.removeEventListener(THEME_EVENT, onChange);
+    window.removeEventListener("storage", onChange);
+  };
+};
+
+/** The viewer's theme choice, "system" until they pick light or dark. SSR-safe. */
+export function useThemeChoice(): ThemeChoice {
+  return useSyncExternalStore(subscribeToChoice, readThemeChoice, () => "system");
 }
 
 /** Relative luminance (0..1) of a #rrggbb color. */

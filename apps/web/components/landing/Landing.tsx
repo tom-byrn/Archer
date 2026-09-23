@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { newsreader } from "@/lib/fonts";
 import { HEADLINE, LEDE } from "@/lib/landingCopy";
+import { ThemeToggle } from "../ThemeToggle";
 import { Icon, buttonCls, cx } from "../ui";
 import { AgentPrompt, CopyPromptButton } from "./AgentPrompt";
 import { ClientLogos } from "./ClientLogos";
@@ -55,6 +56,7 @@ const header = (
       </Link>
     </nav>
     <div className="ml-auto flex items-center gap-2">
+      <ThemeToggle />
       <Link href="/sign-in" className={buttonCls("secondary")}>
         Sign in
       </Link>

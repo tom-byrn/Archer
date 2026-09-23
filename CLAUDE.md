@@ -81,10 +81,15 @@ Router + React Flow + Convex).
   tokens in `app/globals.css` (exposed as Tailwind utilities: `bg-surface`,
   `text-ink-2`, `border-line`, `rounded-md`, `text-sm`…). Never use the raw
   Tailwind palette (`slate-*`) or `dark:` variants — dark mode is handled by
-  the tokens. Build controls from `components/ui.tsx` (Button, IconButton,
-  Input, Menu, Dialog, Section, PropertyRow, Chip, Icon). Code editing goes
-  through `components/CodeMirror.tsx`. React Flow chrome lives in
-  `components/canvas.css`.
+  the tokens. The theme is `data-theme="light|dark"` on `<html>`: the
+  viewer's System/Light/Dark choice (localStorage, `lib/theme.ts`; toggle in
+  the site header, setting in the account menu), resolved before first paint
+  by the inline script in `app/layout.tsx`. Key CSS on
+  `:root[data-theme="dark"]` and code on `useIsDark()`, never on
+  `prefers-color-scheme`. Build controls from `components/ui.tsx` (Button,
+  IconButton, Input, Menu, Dialog, Section, PropertyRow, Chip, Icon). Code
+  editing goes through `components/CodeMirror.tsx`. React Flow chrome lives
+  in `components/canvas.css`.
 - Language/product specs live in `docs/`; keep `docs/language-spec.md` in
   sync with `packages/*/src/languageSpec.ts` copies when the grammar changes.
 

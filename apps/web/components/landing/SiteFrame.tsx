@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import Link from "next/link";
+import { ThemeToggle } from "../ThemeToggle";
 import { buttonCls, cx } from "../ui";
 import "./landing.css";
 
@@ -9,13 +10,13 @@ const navLink =
   "rounded-sm text-sm text-ink-2 transition-colors duration-100 hover:text-ink";
 
 /**
- * The site shell: one ruled column with diamond joints, header and footer,
- * following the OS color scheme. `backdrop` sits behind the column (the
- * landing's dither); `footerNav` goes above the footer links (the landing's
- * link columns) and `footerExtra` under them (the landing's wordmark). `header`
- * replaces the default header row (wordmark + public nav) and `footerLinks` the
- * default footer links, for pages that have their own; with `footerNav` there
- * are no default footer links.
+ * The site shell: one ruled column with diamond joints, header and footer, in
+ * the viewer's theme. `backdrop` sits behind the column (the landing's
+ * dither); `footerNav` goes above the footer links (the landing's link
+ * columns) and `footerExtra` under them (the landing's wordmark). `header`
+ * replaces the default header row (wordmark, public nav, theme toggle) and
+ * `footerLinks` the default footer links, for pages that have their own; with
+ * `footerNav` there are no default footer links.
  */
 export function SiteFrame({
   children,
@@ -56,9 +57,12 @@ export function SiteFrame({
                 <Link href="/language" className={navLink}>
                   Docs
                 </Link>
-                <Link href="/sign-in" className={buttonCls("secondary")}>
-                  Sign in
-                </Link>
+                <div className="flex items-center gap-2">
+                  <ThemeToggle />
+                  <Link href="/sign-in" className={buttonCls("secondary")}>
+                    Sign in
+                  </Link>
+                </div>
               </nav>
             </>
           )}

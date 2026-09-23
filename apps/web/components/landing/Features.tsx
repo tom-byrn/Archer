@@ -46,7 +46,7 @@ ${USERS.map(([c, t]) => `  | ${c!.padEnd(10)} | ${t!.padEnd(11)} |`).join("\n")}
 /**
  * A catalog type's glyph on its tinted tile, in the type's color for each
  * scheme (near-black brand colors are lifted for dark mode, as on the canvas).
- * `.landing-type-tile` in landing.css picks the one for the OS scheme.
+ * `.landing-type-tile` in landing.css picks the one for the page's theme.
  */
 function TypeTile({ tag, size = "md" }: { tag: string; size?: "sm" | "md" }) {
   const entry = lookupType(tag);
