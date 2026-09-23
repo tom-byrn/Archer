@@ -2,27 +2,18 @@
 
 import { useEffect, useState } from "react";
 
-/** Class on <html> that forces the dark tokens regardless of the OS (see globals.css). */
-export const FORCED_DARK_CLASS = "theme-dark";
-
 /**
- * Tracks the effective color scheme: the OS setting, or dark while a page has
- * forced it on <html>. SSR-safe; starts light, corrects on mount.
+ * Tracks the OS color scheme, which every page follows (see globals.css).
+ * SSR-safe; starts light, corrects on mount.
  */
 export function useIsDark(): boolean {
   const [isDark, setIsDark] = useState(false);
   useEffect(() => {
-    const root = document.documentElement;
     const mq = window.matchMedia("(prefers-color-scheme: dark)");
-    const sync = () => setIsDark(mq.matches || root.classList.contains(FORCED_DARK_CLASS));
+    const sync = () => setIsDark(mq.matches);
     sync();
     mq.addEventListener("change", sync);
-    const observer = new MutationObserver(sync);
-    observer.observe(root, { attributes: true, attributeFilter: ["class"] });
-    return () => {
-      mq.removeEventListener("change", sync);
-      observer.disconnect();
-    };
+    return () => mq.removeEventListener("change", sync);
   }, []);
   return isDark;
 }

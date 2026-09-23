@@ -177,6 +177,14 @@ export const COLOR_GROUPS: TokenGroup[] = [
       { token: "tok-version", role: "Versions: v0.1" },
     ],
   },
+  {
+    title: "Landing",
+    note: "The landing page's own background, and the dithered fade down its first screen.",
+    tokens: [
+      { token: "landing-bg", role: "Landing page background" },
+      { token: "landing-fade", role: "Top of the backdrop's fade" },
+    ],
+  },
 ];
 
 /** COLOR_GROUPS limited to tokens that exist, plus any unlisted color token under "Other". */

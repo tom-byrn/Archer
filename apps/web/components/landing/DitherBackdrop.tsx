@@ -1,33 +1,68 @@
 "use client";
 
-import { ShaderMount } from "@paper-design/shaders-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { ShaderMount, getShaderColorFromString } from "@paper-design/shaders-react";
 
 /**
- * Page backdrop: a straight grey-to-black fade down the first screen of the
- * page (it scrolls away with the content, leaving the page black),
- * drawn as a 4x4 Bayer dither. Paper's Dithering shader has no linear shape,
- * so this runs a small fragment shader of our own through its ShaderMount.
- * The smooth CSS gradient under it (`.landing-dither` in landing.css) covers
- * first paint and any browser without WebGL. Static, so nothing to pause for
- * reduced motion. Fixed colors: the landing page has one look.
+ * Page backdrop: a straight fade from --landing-fade into the page color
+ * (--landing-bg) down the first screen of the page, grey to black in dark
+ * mode. It scrolls away with the content, leaving the plain page. Drawn as a
+ * 4x4 Bayer dither: Paper's Dithering shader has no linear shape, so this runs
+ * a small fragment shader of our own through its ShaderMount. The smooth CSS
+ * gradient under it (`.landing-dither` in landing.css) covers first paint and
+ * any browser without WebGL. Static, so nothing to pause for reduced motion.
  */
 export function DitherBackdrop() {
+  const ref = useRef<HTMLDivElement>(null);
+  // The two colors as the stylesheet has them for the OS scheme, read again
+  // when it changes. Until they are read there is no shader, so it never
+  // draws the other scheme's colors (or none) over the CSS gradient.
+  const [colors, setColors] = useState<{ back: string; front: string } | null>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const mq = window.matchMedia("(prefers-color-scheme: dark)");
+    const read = () => {
+      const style = getComputedStyle(el);
+      const back = style.getPropertyValue("--landing-bg").trim();
+      const front = style.getPropertyValue("--landing-fade").trim();
+      if (back && front) setColors({ back, front });
+    };
+    read();
+    mq.addEventListener("change", read);
+    return () => mq.removeEventListener("change", read);
+  }, []);
+
+  // ShaderMount sends its uniforms again whenever this object changes.
+  const uniforms = useMemo(
+    () =>
+      colors && {
+        ...UNIFORMS,
+        u_colorBack: getShaderColorFromString(colors.back),
+        u_colorFront: getShaderColorFromString(colors.front),
+      },
+    [colors],
+  );
+
   return (
-    <div className="landing-dither pointer-events-none absolute inset-x-0 top-0 -z-10 h-svh" aria-hidden>
-      <ShaderMount
-        className="absolute inset-0"
-        fragmentShader={FRAGMENT_SHADER}
-        uniforms={UNIFORMS}
-        speed={0}
-      />
+    <div
+      ref={ref}
+      className="landing-dither pointer-events-none absolute inset-x-0 top-0 -z-10 h-svh"
+      aria-hidden
+    >
+      {uniforms && (
+        <ShaderMount
+          className="absolute inset-0"
+          fragmentShader={FRAGMENT_SHADER}
+          uniforms={uniforms}
+          speed={0}
+        />
+      )}
     </div>
   );
 }
 
 const UNIFORMS = {
-  // #000000 and #121212 as linear 0–1 RGBA.
-  u_colorBack: [0, 0, 0, 1],
-  u_colorFront: [0x12 / 255, 0x12 / 255, 0x12 / 255, 1],
   // Size of one dither cell, in CSS pixels.
   u_pxSize: 2,
   // Fraction of the viewport height, from the top, over which the fade runs.
