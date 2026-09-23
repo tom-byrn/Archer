@@ -178,7 +178,6 @@ export function AgentPrompt() {
           <span className={cx(dot, "group-hover:bg-accent")} />
         </span>
         <Button
-          variant="primary"
           size="sm"
           className="min-w-[104px] rounded-none!"
           icon={copied ? <Icon.Check /> : <Icon.Copy />}

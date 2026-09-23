@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { newsreader } from "@/lib/fonts";
 import { HEADLINE, LEDE } from "@/lib/landingCopy";
-import { Icon, buttonCls } from "../ui";
+import { Icon, buttonCls, cx } from "../ui";
 import { AgentPrompt, CopyPromptButton } from "./AgentPrompt";
 import { ClientLogos } from "./ClientLogos";
 import { DitherBackdrop } from "./DitherBackdrop";
@@ -91,8 +91,7 @@ const footerNav = (
 export function Landing() {
   return (
     <SiteFrame
-      dark
-      className={newsreader.variable}
+      className={cx(newsreader.variable, "landing-page")}
       backdrop={<DitherBackdrop />}
       header={header}
       footerNav={footerNav}

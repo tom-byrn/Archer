@@ -5,7 +5,7 @@
  */
 
 export interface Example {
-  /** URL fragment and `/new?example=` key. */
+  /** URL fragment, `/sandbox/<slug>` and `/new?example=` key. */
   slug: string;
   /** Matches the `arch "…"` header. */
   title: string;

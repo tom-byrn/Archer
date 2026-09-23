@@ -19,12 +19,12 @@ import {
   type ArchDoc,
 } from "@archer/lang";
 import Link from "next/link";
+import { useAuth } from "@clerk/nextjs";
 import { lookupType } from "@archer/catalog";
-import { ACME_SAAS } from "@/lib/samples/acme-saas";
 import { toFlow } from "@/lib/toFlow";
 import { resolveDropTarget } from "@/lib/dropTarget";
 import { deriveDoc, useArchDoc } from "@/lib/useArchDoc";
-import { useUserLibrary } from "@/lib/userLibrary";
+import type { UserLibrary } from "@/lib/userLibrary";
 import { useIsDark } from "@/lib/useIsDark";
 import type { Id } from "@/convex/_generated/dataModel";
 import { authorLabel, useDocumentActivity } from "@/lib/activity";
@@ -41,7 +41,48 @@ import { CodePane } from "./CodePane";
 import { CommandPalette } from "./CommandPalette";
 import { DetailPanel, connectionKey, type Selection } from "./DetailPanel";
 import { Palette } from "./Palette";
-import { Button, Chip, Icon, IconButton, Input, Kbd, Menu, cx, relativeTime, type MenuItem } from "./ui";
+import {
+  Button,
+  Chip,
+  Icon,
+  IconButton,
+  Input,
+  Kbd,
+  Menu,
+  buttonCls,
+  cx,
+  relativeTime,
+  type MenuItem,
+} from "./ui";
+
+/**
+ * What the editor has open, which decides what it offers beyond editing.
+ * Saving, history, sharing and export all need a stored document, so a
+ * sandbox gets the same canvas, code pane, palette and inspector without them.
+ */
+export type EditorSession =
+  | {
+      /** A workspace document: autosaved, with history, drift, sharing, export and a repo link. */
+      kind: "document";
+      id: Id<"documents">;
+      workspaceId: string;
+      seenRevisionAt?: number;
+      /** Share slug when "anyone with the link" is on. */
+      publicSlug: string | null;
+      /** Linked GitHub repository (commit timeline, src deep links). */
+      repo: RepoLink | null;
+      persist: (source: string, title: string) => Promise<void> | void;
+    }
+  | {
+      /**
+       * An in-memory copy that anyone can open, signed in or not (the docs
+       * examples). Nothing is saved, shared or exported, and leaving the page
+       * discards every edit.
+       */
+      kind: "sandbox";
+      /** The header's way out, e.g. back to the example on the docs page. */
+      back: { href: string; label: string };
+    };
 
 /** What the canvas is comparing against, when in diff mode. */
 type DiffView =
@@ -119,29 +160,25 @@ function TitleField({ value, onCommit }: { value: string; onCommit: (v: string) 
 }
 
 export function Editor({
-  initialSource = ACME_SAAS,
-  onPersist,
-  documentId = null,
-  workspaceId = null,
-  seenRevisionAt,
-  publicSlug = null,
-  repo = null,
+  initialSource,
+  library,
+  session,
 }: {
-  initialSource?: string;
-  onPersist?: (source: string, title: string) => Promise<void> | void;
-  /** Persisted documents get history and drift; unset = scratch editor. */
-  documentId?: Id<"documents"> | null;
-  workspaceId?: string | null;
-  seenRevisionAt?: number;
-  /** Share slug when "anyone with the link" is on. */
-  publicSlug?: string | null;
-  /** Linked GitHub repository (commit timeline, src deep links). */
-  repo?: RepoLink | null;
+  initialSource: string;
+  /** Custom component types: the workspace's, or in-memory ones in a sandbox. */
+  library: UserLibrary;
+  session: EditorSession;
 }) {
+  // Everything that saves, shares or exports checks `stored`; a sandbox has none of it.
+  const stored = session.kind === "document" ? session : null;
+  const persist = stored?.persist;
+  const repo = stored?.repo ?? null;
+  const back =
+    session.kind === "sandbox" ? session.back : { href: "/", label: "All documents" };
   const { source, setSource, mutate, undo, redo, canUndo, canRedo } =
     useArchDoc(initialSource);
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved">("idle");
-  const library = useUserLibrary();
+  const { isSignedIn } = useAuth();
   const isDark = useIsDark();
   const customTags = useMemo(
     () => new Set(library.items.map((t) => t.tag)),
@@ -162,7 +199,11 @@ export function Editor({
   const [codeOpen, setCodeOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const exportRef = useRef<(() => void) | null>(null);
-  const activity = useDocumentActivity(documentId, workspaceId, seenRevisionAt);
+  const activity = useDocumentActivity(
+    stored?.id ?? null,
+    stored?.workspaceId ?? null,
+    stored?.seenRevisionAt,
+  );
   const [panel, setPanel] = useState<ActivityTab | null>(null);
   const [shareOpen, setShareOpen] = useState(false);
   const [repoOpen, setRepoOpen] = useState(false);
@@ -318,18 +359,18 @@ export function Editor({
   // Debounced autosave of the source text.
   const titleForSave = derived.doc.title;
   useEffect(() => {
-    if (!onPersist || source === persisted.current) return;
+    if (!persist || source === persisted.current) return;
     setSaveState("saving");
     const t = setTimeout(() => {
       const text = source;
-      void Promise.resolve(onPersist(text, titleForSave)).then(() => {
+      void Promise.resolve(persist(text, titleForSave)).then(() => {
         persisted.current = text;
         setSaveState("saved");
       });
     }, 600);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [source, onPersist]);
+  }, [source, persist]);
 
   // Global shortcuts: undo/redo (except while typing), ⌘K, Escape to go up a level.
   useEffect(() => {
@@ -366,6 +407,14 @@ export function Editor({
 
   const relayout = () =>
     mutate((d) => autoLayout({ ...parse(format(d)).doc, layout: [] }));
+
+  // Sandbox: back to the source it opened with, as one undoable step.
+  const edited = source !== initialSource;
+  const reset = () => {
+    setSource(initialSource);
+    setFocus([]);
+    setSelection(null);
+  };
 
   const [toast, setToast] = useState<string | null>(null);
   const notify = (msg: string) => {
@@ -427,9 +476,9 @@ export function Editor({
     <div className="flex h-dvh flex-col overscroll-none bg-bg">
       <header className="flex h-10 shrink-0 items-center gap-1 border-b border-line bg-surface px-2">
         <Link
-          href="/"
+          href={back.href}
           className="flex h-7 shrink-0 items-center gap-2 rounded-md px-1.5 transition-colors hover:bg-surface-2"
-          title="All documents"
+          title={back.label}
         >
           <Icon.ChevronLeft className="h-4 w-4 text-ink-2 md:hidden" />
           <span className="hidden font-display text-[17px] leading-none md:inline">Archer</span>
@@ -439,6 +488,7 @@ export function Editor({
           value={derived.doc.title}
           onCommit={(title) => mutate((d) => ({ ...d, title }))}
         />
+        {!stored && <Chip className="ml-1 shrink-0">Sandbox</Chip>}
         <IconButton
           label={
             derived.valid
@@ -465,7 +515,9 @@ export function Editor({
         <div className="ml-auto flex items-center gap-1.5">
           {toast ? (
             <span className="pr-2 text-xs text-accent">{toast}</span>
-          ) : onPersist && saveState !== "idle" ? (
+          ) : !stored ? (
+            <span className="hidden pr-2 text-xs text-ink-3 md:inline">Edits aren&apos;t saved</span>
+          ) : saveState !== "idle" ? (
             <span className="pr-2 text-xs text-ink-3">
               {saveState === "saving" ? "Saving…" : "Saved"}
             </span>
@@ -477,6 +529,11 @@ export function Editor({
             <Icon.Redo />
           </IconButton>
           <span className="hidden md:contents">
+            {!stored && (
+              <IconButton label="Reset" onClick={reset} disabled={!edited}>
+                <Icon.Reset />
+              </IconButton>
+            )}
             <IconButton label="Auto-layout" onClick={relayout}>
               <Icon.Layout />
             </IconButton>
@@ -484,7 +541,7 @@ export function Editor({
           <IconButton label="Add component (⌘K)" onClick={() => setPaletteOpen(true)}>
             <Icon.Plus />
           </IconButton>
-          {documentId && (
+          {stored && (
             <IconButton
               label={`Activity · ${activity.revisions.length} revisions`}
               onClick={() => (panel ? setPanel(null) : openPanel("history"))}
@@ -497,46 +554,56 @@ export function Editor({
               )}
             </IconButton>
           )}
-          <div className="hidden items-center gap-1.5 md:flex">
-            <span className="mx-1.5 h-4 w-px bg-line" />
-            {documentId && (
+          {stored ? (
+            <div className="hidden items-center gap-1.5 md:flex">
+              <span className="mx-1.5 h-4 w-px bg-line" />
               <Button size="sm" icon={<Icon.Link />} onClick={() => setShareOpen(true)} className="ml-1">
                 Share
               </Button>
-            )}
-            <Menu
-              width={260}
-              items={exportItems}
-              trigger={({ open, toggle }) => (
-                <Button
-                  variant="primary"
-                  size="sm"
-                  onClick={toggle}
-                  aria-expanded={open}
-                  className="ml-1 pr-2"
-                >
-                  Export
-                  <Icon.ChevronDown className="h-3.5 w-3.5 opacity-70" />
-                </Button>
-              )}
-            />
-            {documentId && (
-              <>
-                <span className="mx-1 h-4 w-px bg-line" />
-                <AccountMenu />
-              </>
-            )}
-          </div>
+              <Menu
+                width={260}
+                items={exportItems}
+                trigger={({ open, toggle }) => (
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={toggle}
+                    aria-expanded={open}
+                    className="ml-1 pr-2"
+                  >
+                    Export
+                    <Icon.ChevronDown className="h-3.5 w-3.5 opacity-70" />
+                  </Button>
+                )}
+              />
+              <span className="mx-1 h-4 w-px bg-line" />
+              <AccountMenu />
+            </div>
+          ) : (
+            isSignedIn === false && (
+              <div className="hidden items-center gap-1.5 md:flex">
+                <span className="mx-1.5 h-4 w-px bg-line" />
+                <Link href="/sign-in" className={cx(buttonCls("secondary", "sm"), "ml-1")}>
+                  Sign in
+                </Link>
+                <Link href="/sign-up" className={cx(buttonCls("primary", "sm"), "ml-1")}>
+                  Get started
+                </Link>
+              </div>
+            )
+          )}
           <div className="md:hidden">
             <Menu
               width={240}
               items={[
                 { label: "Auto-layout", icon: <Icon.Layout />, onSelect: relayout },
-                ...(documentId
-                  ? [{ label: "Share", icon: <Icon.Link />, onSelect: () => setShareOpen(true) }]
-                  : []),
-                "separator",
-                ...exportItems,
+                ...(stored
+                  ? [
+                      { label: "Share", icon: <Icon.Link />, onSelect: () => setShareOpen(true) },
+                      "separator" as const,
+                      ...exportItems,
+                    ]
+                  : [{ label: "Reset", icon: <Icon.Reset />, disabled: !edited, onSelect: reset }]),
               ]}
               trigger={({ open, toggle }) => (
                 <IconButton label="More" active={open} onClick={toggle} aria-expanded={open}>
@@ -559,8 +626,8 @@ export function Editor({
           onToggle={toggleCode}
           title={derived.doc.title}
           valid={derived.valid}
-          onCopyCode={() => copy("code")}
-          onCopyForAgent={() => copy("agent")}
+          onCopyCode={stored ? () => copy("code") : undefined}
+          onCopyForAgent={stored ? () => copy("agent") : undefined}
           selectedPath={selectedPath}
           onSelectPath={(path) =>
             setSelection(path === null ? null : { kind: "component", path })
@@ -679,13 +746,13 @@ export function Editor({
             />
           </div>
         </main>
-        {panel && documentId && workspaceId ? (
+        {panel && stored ? (
           <ActivityPanel
             tab={panel}
             onTabChange={setPanel}
             onClose={() => setPanel(null)}
             activity={activity}
-            documentId={documentId}
+            documentId={stored.id}
             title={derived.doc.title}
             viewingRevisionId={viewingRevisionId}
             onViewRevision={(id) => setDiffView(id ? { kind: "revision", id } : null)}
@@ -708,22 +775,24 @@ export function Editor({
         )}
       </div>
 
-      {documentId && workspaceId && (
-        <ShareDialog
-          open={shareOpen}
-          onClose={() => setShareOpen(false)}
-          documentId={documentId}
-          workspaceId={workspaceId}
-          publicSlug={publicSlug}
-        />
-      )}
-      {documentId && workspaceId && (
-        <RepoDialog
-          open={repoOpen}
-          onClose={() => setRepoOpen(false)}
-          current={repo}
-          onSave={(next) => setRepo({ id: documentId, workspaceId, repo: next })}
-        />
+      {stored && (
+        <>
+          <ShareDialog
+            open={shareOpen}
+            onClose={() => setShareOpen(false)}
+            documentId={stored.id}
+            workspaceId={stored.workspaceId}
+            publicSlug={stored.publicSlug}
+          />
+          <RepoDialog
+            open={repoOpen}
+            onClose={() => setRepoOpen(false)}
+            current={repo}
+            onSave={(next) =>
+              setRepo({ id: stored.id, workspaceId: stored.workspaceId, repo: next })
+            }
+          />
+        </>
       )}
       <CommandPalette
         open={paletteOpen}

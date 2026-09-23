@@ -8,6 +8,7 @@ import type { Id } from "@/convex/_generated/dataModel";
 import { useAuth } from "@clerk/nextjs";
 import { Loading } from "loading-dev";
 import { useWorkspaceId } from "@/lib/workspace";
+import { useUserLibrary } from "@/lib/userLibrary";
 import { Editor } from "@/components/Editor";
 import { DocumentViewer } from "@/components/DocumentViewer";
 
@@ -25,6 +26,7 @@ export default function DocumentPage({
     workspaceId ? { id: id as Id<"documents">, workspaceId } : "skip",
   );
   const updateSource = useMutation(api.documents.updateSource);
+  const library = useUserLibrary();
 
   const persist = useCallback(
     async (source: string, title: string) => {
@@ -69,12 +71,16 @@ export default function DocumentPage({
     <Editor
       key={doc._id}
       initialSource={doc.source}
-      onPersist={persist}
-      documentId={doc._id}
-      workspaceId={workspaceId}
-      seenRevisionAt={doc.seenRevisionAt}
-      publicSlug={doc.publicSlug ?? null}
-      repo={doc.repo ?? null}
+      library={library}
+      session={{
+        kind: "document",
+        id: doc._id,
+        workspaceId,
+        seenRevisionAt: doc.seenRevisionAt,
+        publicSlug: doc.publicSlug ?? null,
+        repo: doc.repo ?? null,
+        persist,
+      }}
     />
   );
 }
