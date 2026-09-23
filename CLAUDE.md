@@ -98,7 +98,8 @@ Router + React Flow + Convex).
   the tokens. Build controls from `components/ui.tsx` (Button, IconButton,
   Input, Menu, Dialog, Section, PropertyRow, Chip, Icon). Icons are Phosphor:
   UI icons are `@phosphor-icons/react` (bold) behind `Icon` — add a name there,
-  don't import Phosphor elsewhere; component glyphs are Phosphor paths
+  don't import Phosphor elsewhere (`GitHubMark` stays GitHub's own mark on
+  purpose); component glyphs are Phosphor paths
   generated into `packages/catalog/src/glyphs.ts` by `scripts/glyphs.ts`
   (strings, so `lib/svg.ts` and the OG image can draw them). Code editing goes
   through `components/CodeMirror.tsx`. React Flow chrome lives in
