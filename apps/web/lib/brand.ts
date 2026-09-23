@@ -180,10 +180,13 @@ export const COLOR_GROUPS: TokenGroup[] = [
   },
   {
     title: "Landing",
-    note: "The landing page's own background, and the dithered fade down its first screen.",
+    note: "The landing page's own background, the dithered fade down its first screen, and the agent prompt's window dots, which don't change with the theme.",
     tokens: [
       { token: "landing-bg", role: "Landing page background" },
       { token: "landing-fade", role: "Top of the backdrop's fade" },
+      { token: "landing-close", role: "Agent prompt's red dot, on hover" },
+      { token: "landing-minimize", role: "Agent prompt's orange dot, on hover" },
+      { token: "landing-zoom", role: "Agent prompt's green dot, on hover" },
     ],
   },
 ];
