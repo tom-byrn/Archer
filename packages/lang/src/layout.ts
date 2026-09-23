@@ -41,10 +41,12 @@ const intersects = (a: Rect, b: Rect): boolean =>
 
 /**
  * Complete the layout block: every component gets an `at` and `size`; existing
- * entries are preserved untouched. Deterministic. Never mutates the input.
+ * entries are preserved, except that an expanded plane grows to hold its
+ * children. Deterministic. Never mutates the input.
  *
  * Scope-by-scope (bottom-up so container sizes are known):
- * 1. Children with entries keep them (missing size is filled in).
+ * 1. Children with entries keep them (missing size is filled in; a plane too
+ *    small for its children is enlarged).
  * 2. Children without entries are layered by the connection graph projected onto
  *    this scope (longest-path in declaration order — cycle-safe), placed in
  *    columns left→right, stacked top→bottom, then nudged down past collisions.
@@ -88,15 +90,19 @@ export function autoLayout(doc: ArchDoc): ArchDoc {
       const entry = existing.get(p);
       const inner = layoutScope(n.children, p);
       let size: [number, number];
-      if (entry?.size) {
-        size = entry.size;
-      } else if (effectiveDisplay(n, entry) === "plane" && n.children.length > 0) {
-        size = [
+      if (effectiveDisplay(n, entry) === "plane" && n.children.length > 0) {
+        const fit: [number, number] = [
           PLANE_INNER_ORIGIN[0] + inner.w + PLANE_INNER_MARGIN[0],
           PLANE_INNER_ORIGIN[1] + inner.h + PLANE_INNER_MARGIN[1],
         ];
+        // A stored size can only add room: one too small to hold the children
+        // (kept from when it was an icon, or from before children were added)
+        // would leave them hanging outside the plane.
+        size = entry?.size
+          ? [Math.max(entry.size[0], fit[0]), Math.max(entry.size[1], fit[1])]
+          : fit;
       } else {
-        size = LEAF_SIZE;
+        size = entry?.size ?? LEAF_SIZE;
       }
       sizes.set(n.id, size);
     }

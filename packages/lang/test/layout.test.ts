@@ -92,6 +92,26 @@ describe("autoLayout", () => {
     }
   });
 
+  it("grows planes whose stored size can't hold their children", () => {
+    // a.p was saved with its collapsed icon's size; a is too small for it.
+    const src =
+      HEADER +
+      "component a { component p { component x\ncomponent y } }\n" +
+      "layout {\n  a: { at: [0, 0], size: [6, 6] }\n  a.p: { at: [1, 2], size: [4, 3], display: plane }\n" +
+      "  a.p.x: { at: [1, 2], size: [4, 3] }\n  a.p.y: { at: [8, 2], size: [4, 3] }\n}";
+    const map = layoutMap(autoLayout(parse(src).doc));
+    expect(map.get("a.p")!.size).toEqual([13, 6]);
+    expect(map.get("a")!.size).toEqual([15, 9]);
+    expect(map.get("a.p")!.at).toEqual([1, 2]);
+    expect(map.get("a.p.y")!.at).toEqual([8, 2]);
+  });
+
+  it("keeps a plane's stored size when its children fit", () => {
+    const src =
+      HEADER + "component p { component x }\nlayout { p: { at: [0, 0], size: [20, 15] } }";
+    expect(layoutMap(autoLayout(parse(src).doc)).get("p")!.size).toEqual([20, 15]);
+  });
+
   it("collapsed (display: icon) containers keep leaf size", () => {
     const src =
       HEADER +

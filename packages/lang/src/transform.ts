@@ -9,7 +9,13 @@ import {
   type PayloadNode,
 } from "./types";
 import { componentPaths, findComponent } from "./validate";
-import { LEAF_SIZE, PLANE_INNER_ORIGIN, layoutMap } from "./layout";
+import {
+  LEAF_SIZE,
+  PLANE_INNER_MARGIN,
+  PLANE_INNER_ORIGIN,
+  effectiveDisplay,
+  layoutMap,
+} from "./layout";
 
 /**
  * Pure AST transforms — the single mutation path for every canvas edit.
@@ -291,10 +297,30 @@ export function setDisplay(
   display: DisplayMode,
 ): ArchDoc {
   const next = clone(doc);
+  const node = findComponent(next, path);
   const entry = entryFor(next, path);
+  const expanding =
+    display === "plane" &&
+    node !== undefined &&
+    node.children.length > 0 &&
+    effectiveDisplay(node, entry) === "icon";
   entry.display = display;
-  if (display === "icon" && !entry.size) entry.size = LEAF_SIZE;
   if (display === "icon") entry.size = LEAF_SIZE;
+  if (expanding) {
+    // Its size is the icon's: fit the plane around its children again (they
+    // kept their places while it was collapsed) and make room for it upstream.
+    const layout = layoutMap(next);
+    let [w, h] = PLANE_INNER_ORIGIN;
+    for (const child of node.children) {
+      const e = layout.get(pathToString([...path, child.id]));
+      if (!e?.at) continue;
+      const size = e.size ?? LEAF_SIZE;
+      w = Math.max(w, e.at[0] + size[0]);
+      h = Math.max(h, e.at[1] + size[1]);
+    }
+    entry.size = [w + PLANE_INNER_MARGIN[0], h + PLANE_INNER_MARGIN[1]];
+    growAncestors(next, path);
+  }
   return next;
 }
 

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   addComponent,
   addConnection,
+  autoLayout,
   format,
   layoutMap,
   moveComponent,
@@ -17,6 +18,7 @@ import {
   setDisplay,
   setPayload,
   validate,
+  type ArchDoc,
 } from "../src/index";
 
 const HEADER = 'arch "X" v0.1\n';
@@ -129,6 +131,44 @@ describe("transforms", () => {
     const d1 = setDisplay(d0, ["p"], "icon");
     expect(layoutMap(d1).get("p")!.display).toBe("icon");
     expect(layoutMap(d1).get("p")!.size).toEqual([4, 3]);
+  });
+
+  it("setDisplay plane after icon fits the plane around its children again", () => {
+    // One canvas click: lay out the saved source, transform, save the result.
+    const click = (src: string, fn: (d: ArchDoc) => ArchDoc) =>
+      format(fn(autoLayout(parse(src).doc)));
+    const s0 = click(
+      HEADER + "component web\ncomponent p { component x\ncomponent y\ncomponent z }\nweb -> p.x\np.x -> p.y",
+      (d) => d,
+    );
+    const s1 = click(s0, (d) => setDisplay(d, ["p"], "icon"));
+    const s2 = click(s1, (d) => setDisplay(d, ["p"], "plane"));
+    const [before, after] = [layoutMap(doc(s0)), layoutMap(doc(s2))];
+    expect(after.get("p")!.display).toBe("plane");
+    expect(after.get("p")!.size).toEqual(before.get("p")!.size);
+    for (const id of ["p.x", "p.y", "p.z"]) {
+      expect(after.get(id)!.at).toEqual(before.get(id)!.at);
+      expect(after.get(id)!.size).toEqual(before.get(id)!.size);
+    }
+  });
+
+  it("setDisplay plane grows the planes around a nested expansion", () => {
+    const d0 = doc(
+      HEADER +
+        "component a { component b { component x\ncomponent y } }\n" +
+        "layout {\n  a: { at: [0, 0], size: [6, 6] }\n  a.b: { at: [1, 2], size: [4, 3], display: icon }\n" +
+        "  a.b.x: { at: [1, 2], size: [4, 3] }\n  a.b.y: { at: [6, 2], size: [4, 3] }\n}",
+    );
+    const map = layoutMap(setDisplay(d0, ["a", "b"], "plane"));
+    expect(map.get("a.b")!.size).toEqual([11, 6]);
+    expect(map.get("a")!.size).toEqual([13, 9]);
+  });
+
+  it("setDisplay plane leaves an already expanded plane's size alone", () => {
+    const d0 = doc(
+      HEADER + "component p { component x }\nlayout { p: { at: [0,0], size: [10,9] } }",
+    );
+    expect(layoutMap(setDisplay(d0, ["p"], "plane")).get("p")!.size).toEqual([10, 9]);
   });
 
   it("addConnection validates endpoints and self-loops", () => {
