@@ -56,6 +56,8 @@ function plan() {
   await editorWith(rec, D.full());
   await openCode(rec);
   await hideCodeModal(rec);
+  // This shot is shown cropped to the diagram; the zoom controls would sit in its corner.
+  await rec.css('.react-flow__controls{display:none!important}', 'rec-no-controls');
   const steps = plan();
   await setSource(rec, `${D.HEADER}\n\n${D.LAYOUT}\n`);
   await rec.advance(300);
