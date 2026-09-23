@@ -40,7 +40,7 @@ The recorder blocks requests to those placeholder hosts, so nothing waits on the
 
 Setup: `cd video && npm install` (Playwright + the fonts; this folder is not
 part of the pnpm workspace), ffmpeg with libx264 on `PATH` (or `FFMPEG=…`),
-and Python 3 with numpy and scipy.
+and Python 3 with numpy and scipy (plus matplotlib for the optional spectrogram).
 
 **Shots.**
 
@@ -69,5 +69,5 @@ cuts land on downbeats. Preview any moment with
 `node compose/render.cjs --stills 12.5,30,57`.
 
 **Music.** `music/make_music.py` synthesizes a temp bed with numpy/scipy (no
-samples). Replace `music/music.wav` with a licensed track (48 kHz WAV, 103.8 s)
+samples). Replace `music/music.wav` with a licensed track (48 kHz WAV, 100.8 s)
 and run `./make.sh render`.

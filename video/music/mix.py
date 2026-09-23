@@ -14,7 +14,7 @@ from scipy.io import wavfile
 ROOT = Path(__file__).resolve().parent.parent
 SR = 48000
 DURATION = 100.8
-FADE = 1.6  # seconds of fade-out at the end
+FADE = 0.4  # safety fade; the music already ends in silence
 
 
 def load(path):
