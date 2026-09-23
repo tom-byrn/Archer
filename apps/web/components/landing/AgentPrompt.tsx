@@ -173,9 +173,9 @@ export function AgentPrompt() {
       <div className="flex items-center justify-between border-b border-line bg-surface py-1 pl-3 pr-1">
         {/* Grey like an unfocused window until the pointer is over it. */}
         <span className="flex gap-1.5" aria-hidden>
-          <span className={cx(dot, "group-hover:bg-danger")} />
-          <span className={cx(dot, "group-hover:bg-warn")} />
-          <span className={cx(dot, "group-hover:bg-accent")} />
+          <span className={cx(dot, "group-hover:bg-[var(--landing-close)]")} />
+          <span className={cx(dot, "group-hover:bg-[var(--landing-minimize)]")} />
+          <span className={cx(dot, "group-hover:bg-[var(--landing-zoom)]")} />
         </span>
         <Button
           size="sm"
