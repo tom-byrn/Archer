@@ -1,5 +1,3 @@
-import Link from "next/link";
-
 const FAQ: { q: string; a: string }[] = [
   {
     q: "Do I need an account to try it?",
@@ -30,18 +28,10 @@ const FAQ: { q: string; a: string }[] = [
 export function Faq() {
   return (
     <section id="faq" className="landing-joints border-b border-line">
-      <div className="grid items-end gap-x-14 gap-y-5 px-5 pt-16 sm:px-10 sm:pt-20 lg:grid-cols-2">
-        <h2 className="landing-headline text-display-sm text-ink sm:text-display-md">FAQ</h2>
-        <p className="max-w-[46ch] text-lg text-ink-2">
-          Anything else is probably in the{" "}
-          <Link
-            href="/language"
-            className="text-accent underline decoration-accent/40 underline-offset-2 hover:decoration-current"
-          >
-            language reference
-          </Link>
-          .
-        </p>
+      <div className="px-5 pt-16 text-center sm:px-10 sm:pt-20">
+        <h2 className="landing-headline text-display-sm text-ink sm:text-display-md">
+          Frequently Asked Questions
+        </h2>
       </div>
       {/* The 1px gaps over a line-colored background draw the rules between answers. */}
       <dl className="mt-12 grid gap-px border-t border-line bg-line md:grid-cols-2 lg:grid-cols-3">

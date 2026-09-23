@@ -280,9 +280,13 @@ function Payload() {
 export function Features() {
   return (
     <section id="features" className="landing-joints border-b border-line">
-      <h2 className="sr-only">Features</h2>
+      <div className="px-5 pt-16 text-center sm:px-10 sm:pt-20">
+        <h2 className="landing-headline text-display-sm text-ink sm:text-display-md">
+          Everything your architecture needs
+        </h2>
+      </div>
       {/* The 1px gaps over a line-colored background draw the rules between tiles. */}
-      <div className="grid gap-px bg-line md:grid-cols-2 lg:grid-cols-3">
+      <div className="mt-12 grid gap-px border-t border-line bg-line md:grid-cols-2 lg:grid-cols-3">
         <Tile title={`${TYPE_COUNT}+ component types`} visual={<Palette />} className="md:col-span-2">
           AWS, GCP, Azure, Vercel, databases, queues and SaaS, each with its own glyph. Missing
           one? Add a custom type and it shows up in everyone&apos;s palette.

@@ -157,10 +157,10 @@ export function Landing() {
 
       <section className="flex flex-col items-center px-5 py-20 text-center sm:px-10 sm:py-24">
         <h2 className="landing-headline max-w-[16ch] text-display-sm text-ink sm:text-display">
-          Draw it once. Let every agent read it.
+          Design systems, with your AI agents.
         </h2>
         <p className="max-w-[52ch] pt-5 text-lede text-ink-2">
-          Start on the canvas, or hand your agent the prompt and let it map the repo you already
+          Start on the canvas, or hand your agent the prompt and let it map the codebase you already
           have.
         </p>
         <div className="flex flex-wrap justify-center gap-3 pt-8">
