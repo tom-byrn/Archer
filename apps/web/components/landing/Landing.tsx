@@ -1,20 +1,11 @@
 "use client";
 
-import { Newsreader } from "next/font/google";
+import { newsreader } from "@/lib/fonts";
 import { HEADLINE, LEDE } from "@/lib/landingCopy";
 import { AgentPrompt } from "./AgentPrompt";
 import { DitherBackdrop } from "./DitherBackdrop";
 import { SandboxLoader } from "./SandboxLoader";
 import { SiteFrame } from "./SiteFrame";
-
-// Headline only. The wordmark and the rest of the product stay on Playfair.
-const newsreader = Newsreader({
-  subsets: ["latin"],
-  weight: "variable",
-  axes: ["opsz"],
-  display: "swap",
-  variable: "--font-newsreader",
-});
 
 export function Landing() {
   return (
