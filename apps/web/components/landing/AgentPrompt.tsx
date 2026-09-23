@@ -153,7 +153,7 @@ export function CopyPromptButton() {
   const { copied, copy } = useCopyPrompt();
   return (
     <Button size="lg" icon={copied ? <Icon.Check /> : <Icon.Copy />} onClick={copy}>
-      <span aria-live="polite">{copied ? "Copied" : "Copy the agent prompt"}</span>
+      <span aria-live="polite">{copied ? "Copied" : "Copy agent prompt"}</span>
     </Button>
   );
 }

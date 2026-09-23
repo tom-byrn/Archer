@@ -123,20 +123,18 @@ function MiniNode({ tag, label }: { tag: string; label: string }) {
 }
 
 function Nesting() {
-  const color = displayColor(lookupType("aws.vpc")?.color, true) ?? "var(--ink-3)";
-  const tint = (pct: number) => `color-mix(in srgb, ${color} ${pct}%, transparent)`;
   return (
     <div>
       <p className="mono pb-2 text-xs text-ink-3">
         Acme <span className="px-1">/</span> <span className="text-ink-2">Private network</span>
       </p>
-      <div className="rounded-lg border" style={{ borderColor: tint(35), backgroundColor: tint(5) }}>
-        <div className="flex h-8 items-center gap-2 border-b px-2.5" style={{ borderColor: tint(20) }}>
+      <div className="rounded-lg border border-line-2 bg-surface-2">
+        <div className="flex h-8 items-center gap-2 border-b border-line px-2.5">
           <svg
             width={16}
             height={16}
             viewBox="0 0 24 24"
-            style={{ color }}
+            className="text-ink-2"
             dangerouslySetInnerHTML={{ __html: GLYPHS.cloud! }}
           />
           <span className="text-sm font-semibold text-ink">Private network</span>
@@ -175,11 +173,11 @@ function Share() {
   const host = new URL(SITE_URL).host;
   return (
     <div className="flex flex-col gap-2">
-      <div className="flex h-8 items-center gap-2 rounded-md border border-line-2 bg-surface pl-2.5 pr-1">
+      <div className="flex h-8 items-center gap-2 border border-line-2 bg-surface pl-2.5 pr-1">
         <span className="mono min-w-0 flex-1 truncate text-sm text-ink-2">
           {host}/share/{SHARE_SLUG}
         </span>
-        <span className="rounded-sm bg-ink px-2 py-0.5 text-xs font-medium text-bg">Copy</span>
+        <span className="bg-ink px-2 py-0.5 text-xs font-medium text-bg">Copy</span>
       </div>
       <div className="mono truncate border border-line bg-[var(--code-bg)] px-2.5 py-2 text-sm text-ink-2">
         ![Architecture](…/{SHARE_SLUG}/<span className="text-[var(--tok-string)]">image.svg</span>)
@@ -240,7 +238,7 @@ function Team() {
 
 function Payload() {
   return (
-    <div className="grid gap-4 md:grid-cols-2">
+    <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_auto]">
       <div className="border border-line bg-surface">
         <div className="flex h-9 items-center gap-2 border-b border-line px-3">
           <span className="text-sm font-semibold text-ink">users</span>
@@ -267,9 +265,9 @@ function Payload() {
           </tbody>
         </table>
       </div>
-      <pre className="mono overflow-x-auto border border-line bg-[var(--code-bg)] py-3 text-sm leading-[20px] text-[var(--code-fg)]">
+      <pre className="mono overflow-x-auto border border-line bg-[var(--code-bg)] py-3 text-xs leading-[18px] text-[var(--code-fg)]">
         {PAYLOAD_SOURCE.split("\n").map((line, i) => (
-          <span key={i} className="block px-4">
+          <span key={i} className="block px-3">
             {highlight(line)}
           </span>
         ))}

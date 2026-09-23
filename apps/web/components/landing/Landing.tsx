@@ -5,6 +5,7 @@ import { Newsreader } from "next/font/google";
 import { HEADLINE, LEDE } from "@/lib/landingCopy";
 import { Icon, buttonCls } from "../ui";
 import { AgentPrompt, CopyPromptButton } from "./AgentPrompt";
+import { ClientLogos } from "./ClientLogos";
 import { DitherBackdrop } from "./DitherBackdrop";
 import { Faq } from "./Faq";
 import { Features } from "./Features";
@@ -19,9 +20,6 @@ const newsreader = Newsreader({
   display: "swap",
   variable: "--font-newsreader",
 });
-
-// Clients with remote (Streamable HTTP) MCP support, which is all /mcp needs.
-const MCP_CLIENTS = ["Claude Code", "Cursor", "Codex", "Windsurf", "VS Code"];
 
 const FOOTER_COLUMNS: { title: string; links: [label: string, href: string][] }[] = [
   {
@@ -135,12 +133,6 @@ export function Landing() {
                 Try the sandbox
               </Link>
             </div>
-            <p
-              className="landing-rise pt-3.5 text-sm text-ink-3"
-              style={{ "--i": 2 } as React.CSSProperties}
-            >
-              The sandbox below is the real canvas. No account needed.
-            </p>
           </div>
           <div className="landing-rise" style={{ "--i": 3 } as React.CSSProperties}>
             <AgentPrompt />
@@ -152,18 +144,11 @@ export function Landing() {
         <p className="mono text-xs uppercase tracking-[0.08em] text-ink-3">
           Works with any MCP client
         </p>
-        <ul className="flex flex-wrap items-center gap-x-8 gap-y-2 text-lg font-semibold text-ink-3">
-          {MCP_CLIENTS.map((client) => (
-            <li key={client}>{client}</li>
-          ))}
-        </ul>
+        <ClientLogos />
       </section>
 
       <section id="sandbox" className="landing-joints border-b border-line px-5 py-12 sm:px-10 sm:py-16">
         <SandboxLoader />
-        <p className="max-w-[64ch] pt-5 text-lg text-ink-2">
-          Try it. Drag a box, or pull a line from the edge of one box to another.
-        </p>
       </section>
 
       <Features />

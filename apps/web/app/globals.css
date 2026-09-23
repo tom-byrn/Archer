@@ -226,6 +226,13 @@ body {
   height: 100%;
 }
 
+/* In-page anchor links (#sandbox, #features…) glide instead of jumping. */
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
 body {
   @apply antialiased font-sans text-base;
   background: var(--bg);

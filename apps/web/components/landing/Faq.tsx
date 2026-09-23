@@ -31,12 +31,7 @@ export function Faq() {
   return (
     <section id="faq" className="landing-joints border-b border-line">
       <div className="grid items-end gap-x-14 gap-y-5 px-5 pt-16 sm:px-10 sm:pt-20 lg:grid-cols-2">
-        <div>
-          <p className="mono text-sm uppercase tracking-[0.08em] text-accent">FAQ</p>
-          <h2 className="landing-headline pt-4 text-display-sm text-ink sm:text-display-md">
-            Questions, answered.
-          </h2>
-        </div>
+        <h2 className="landing-headline text-display-sm text-ink sm:text-display-md">FAQ</h2>
         <p className="max-w-[46ch] text-lg text-ink-2">
           Anything else is probably in the{" "}
           <Link
@@ -45,7 +40,7 @@ export function Faq() {
           >
             language reference
           </Link>
-          . It&apos;s one page, written so an agent can read it in a single pass.
+          .
         </p>
       </div>
       {/* The 1px gaps over a line-colored background draw the rules between answers. */}
