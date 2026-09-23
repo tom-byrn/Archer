@@ -101,8 +101,11 @@ Router + React Flow + Convex).
   the tokens. The theme is `data-theme="light|dark"` on `<html>`: the
   viewer's System/Light/Dark choice (localStorage, `lib/theme.ts`; toggle in
   the site header, setting in the account menu), resolved before first paint
-  by the inline script in `app/layout.tsx`. Key CSS on
-  `:root[data-theme="dark"]` and code on `useIsDark()`, never on
+  by the inline script in `app/layout.tsx`. Theme controls call
+  `switchTheme(choice, button)`, which animates the change: a view
+  transition, the new theme spreading from the button in a circle (CSS in
+  `globals.css`); a plain switch without support or with reduced motion. Key
+  CSS on `:root[data-theme="dark"]` and code on `useIsDark()`, never on
   `prefers-color-scheme`. Build controls from `components/ui.tsx` (Button,
   IconButton, Input, Menu, Dialog, Section, PropertyRow, Chip, Icon). Code
   editing goes through `components/CodeMirror.tsx`. React Flow chrome lives
