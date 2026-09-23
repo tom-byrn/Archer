@@ -235,6 +235,20 @@ select:focus-visible,
   text-transform: uppercase;
 }
 
+/* Content that takes over from a loading placeholder (the dashboard's header
+   and documents) fades in rather than popping. It plays when the element
+   mounts or gets the class. */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .fade-in {
+    animation: fade-in 200ms ease-out;
+  }
+}
+
 /* What differs between the themes by more than a token (the theme toggle's
    icon, the docs' diagrams) comes in both versions, each shown in its own
    theme only. Keyed on data-theme, so it's right from the first paint. */

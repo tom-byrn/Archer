@@ -26,6 +26,7 @@ import {
   Input,
   Menu,
   type MenuItem,
+  cx,
   relativeTime,
 } from "@/components/ui";
 
@@ -419,6 +420,16 @@ function WorkspaceSwitcher({
   );
 }
 
+/** Stand-ins for the workspace switcher and the account avatar until the header's controls load. */
+function HeaderSkeleton() {
+  return (
+    <>
+      <div className="h-8 w-24 animate-pulse rounded-md bg-surface-2" />
+      <div className="ml-auto h-7 w-7 animate-pulse rounded-full bg-surface-2" />
+    </>
+  );
+}
+
 function Skeletons() {
   return (
     <>
@@ -490,21 +501,35 @@ export default function Home() {
   const loading = docs === undefined;
   const empty = docs !== undefined && docs.length === 0;
 
+  // The header's controls depend on Clerk, the workspace list and the
+  // documents, which arrive one after another; shown as each arrived, they
+  // would pop in one at a time and push each other along. So the header holds
+  // placeholders until the documents load, then appears with them. Latched:
+  // a later workspace switch reloads only the grid.
+  const [settled, setSettled] = useState(false);
+  if (!settled && !loading) setSettled(true);
+
   return (
     <SiteFrame
       header={
         <>
           <span className="font-display text-[19px] leading-none text-ink">Archer</span>
           <span className="h-4 w-px bg-line" />
-          <WorkspaceSwitcher workspaces={workspaces} current={current} onSelect={select} />
-          <div className="ml-auto flex items-center gap-2">
-            <Button icon={<Icon.Plug />} onClick={() => setConnectOpen(true)}>
-              Connect an agent
-            </Button>
-            {!empty && canEdit && createButtons}
-            <span className="mx-1 h-4 w-px bg-line" />
-            <AccountMenu />
-          </div>
+          {settled ? (
+            <div className="fade-in flex flex-1 items-center gap-5">
+              <WorkspaceSwitcher workspaces={workspaces} current={current} onSelect={select} />
+              <div className="ml-auto flex items-center gap-2">
+                <Button icon={<Icon.Plug />} onClick={() => setConnectOpen(true)}>
+                  Connect an agent
+                </Button>
+                {!empty && canEdit && createButtons}
+                <span className="mx-1 h-4 w-px bg-line" />
+                <AccountMenu />
+              </div>
+            </div>
+          ) : (
+            <HeaderSkeleton />
+          )}
         </>
       }
       footerLinks={
@@ -514,7 +539,7 @@ export default function Home() {
       }
     >
       {empty ? (
-        <section className="landing-joints border-b border-line">
+        <section className="landing-joints fade-in border-b border-line">
           <div className="relative overflow-hidden bg-ground px-6 py-20 text-center">
             <div className="pointer-events-none absolute inset-0 p-10 opacity-[0.18]">
               <DocPreview source={ACME_SAAS} />
@@ -536,7 +561,14 @@ export default function Home() {
           </div>
         </section>
       ) : (
-        <div className="grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-4 px-5 py-8 sm:px-10">
+        // Fades in when the class arrives (the documents loaded), not per card:
+        // cards move as the list re-sorts, and a moved node replays its animation.
+        <div
+          className={cx(
+            "grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-4 px-5 py-8 sm:px-10",
+            !loading && "fade-in",
+          )}
+        >
           {loading ? (
             <Skeletons />
           ) : (
