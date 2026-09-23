@@ -69,9 +69,18 @@ Router + React Flow + Convex).
   `lib/examples.ts`). Example sources must stay canonical and validate clean —
   `apps/web/test/examples.test.ts` enforces it, so the code shown, the diagram
   (`lib/svg.ts`, prerendered at `/language/examples/<slug>/{light,dark}.svg`)
-  and the editor copy always agree. "Open in editor" goes to
-  `/new?example=<slug>`, which copies the example into the selected workspace
-  (reusing an untouched earlier copy) and opens it.
+  and the editor copy always agree. "Open in sandbox" goes to
+  `/sandbox/<slug>` (see Editor sessions). `/new?example=<slug>`, which copies
+  the example into the selected workspace (reusing an untouched earlier copy),
+  still works but nothing links to it.
+- Editor sessions: `components/Editor.tsx` takes a `session` — a stored
+  document (`kind: "document"`: autosave, history/drift, share, export, repo
+  link, account menu) or a sandbox (`kind: "sandbox"`: in memory only). The
+  sandbox is `/sandbox/<slug>` (public, prerendered per example;
+  `components/SandboxEditor.tsx`): the same editor, with custom types from
+  `useLocalLibrary`, and leaving the page discards every edit. Anything new
+  that saves, shares or exports goes behind `stored` in the editor so the
+  sandbox never gets it; everything else reaches the sandbox automatically.
 - Brand kit: `/branding` (signed-in only, deliberately linked from nowhere —
   keep it that way) shows the logo, colors, type, radii, icons and ui.tsx
   primitives. Values are parsed from `app/globals.css` at build time

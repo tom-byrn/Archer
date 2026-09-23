@@ -64,8 +64,9 @@ export interface CodePaneProps {
   title: string;
   /** Agent export is only offered for valid documents. */
   valid: boolean;
-  onCopyCode: () => void;
-  onCopyForAgent: () => void;
+  /** Copy buttons; each is left out when its handler is (no export). */
+  onCopyCode?: () => void;
+  onCopyForAgent?: () => void;
 }
 
 export function CodePane({
@@ -235,28 +236,32 @@ export function CodePane({
           </Chip>
         )}
         <div className="ml-auto flex items-center gap-1.5">
-          <Button
-            size="sm"
-            icon={copied === "code" ? <Icon.Check /> : <Icon.Copy />}
-            onClick={() => flash("code", onCopyCode)}
-            title="Copy code"
-          >
-            <span className="hidden md:inline">{copied === "code" ? "Copied" : "Copy code"}</span>
-          </Button>
-          <Button
-            size="sm"
-            icon={copied === "agent" ? <Icon.Check /> : <Icon.Sparkle />}
-            disabled={!valid}
-            title={
-              valid
-                ? "Layout stripped, language guide prepended — paste it to an agent"
-                : "Fix validation errors first"
-            }
-            onClick={() => flash("agent", onCopyForAgent)}
-          >
-            <span className="hidden md:inline">{copied === "agent" ? "Copied" : "Copy for agent"}</span>
-          </Button>
-          <span className="mx-1 h-4 w-px bg-line" />
+          {onCopyCode && (
+            <Button
+              size="sm"
+              icon={copied === "code" ? <Icon.Check /> : <Icon.Copy />}
+              onClick={() => flash("code", onCopyCode)}
+              title="Copy code"
+            >
+              <span className="hidden md:inline">{copied === "code" ? "Copied" : "Copy code"}</span>
+            </Button>
+          )}
+          {onCopyForAgent && (
+            <Button
+              size="sm"
+              icon={copied === "agent" ? <Icon.Check /> : <Icon.Sparkle />}
+              disabled={!valid}
+              title={
+                valid
+                  ? "Layout stripped, language guide prepended — paste it to an agent"
+                  : "Fix validation errors first"
+              }
+              onClick={() => flash("agent", onCopyForAgent)}
+            >
+              <span className="hidden md:inline">{copied === "agent" ? "Copied" : "Copy for agent"}</span>
+            </Button>
+          )}
+          {(onCopyCode || onCopyForAgent) && <span className="mx-1 h-4 w-px bg-line" />}
           <IconButton label="Close (esc)" onClick={onToggle}>
             <Icon.Close />
           </IconButton>

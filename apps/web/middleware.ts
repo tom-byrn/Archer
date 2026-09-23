@@ -2,13 +2,14 @@ import { NextResponse, type NextRequest } from "next/server";
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 
 // Everything is private except the landing page, the sign-in flow, the docs
-// under /language (which users hand to agents as a docs link), and
-// shared-link views.
+// under /language (which users hand to agents as a docs link), the docs
+// examples' sandbox, and shared-link views.
 const isPublic = createRouteMatcher([
   "/welcome(.*)",
   "/sign-in(.*)",
   "/sign-up(.*)",
   "/language(.*)",
+  "/sandbox(.*)",
   "/share(.*)",
   // Hosted MCP server: it verifies OAuth bearer tokens itself, and its
   // discovery documents must be readable by unauthenticated clients.
