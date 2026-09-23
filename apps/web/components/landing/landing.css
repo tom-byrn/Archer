@@ -126,7 +126,7 @@
 }
 
 /* A catalog glyph on its tinted tile (Features). The tile carries the type's
-   color for both schemes inline; picking one here keeps it right from the
+   color for both themes inline; picking one here keeps it right from the
    first paint. */
 .landing-type-tile {
   --type: var(--type-light);
@@ -134,11 +134,9 @@
   background-color: color-mix(in srgb, var(--type) 14%, transparent);
 }
 
-@media (prefers-color-scheme: dark) {
-  .landing-canvas {
-    --edge-strong: #fff;
-  }
-  .landing-type-tile {
-    --type: var(--type-dark);
-  }
+:root[data-theme="dark"] .landing-canvas {
+  --edge-strong: #fff;
+}
+:root[data-theme="dark"] .landing-type-tile {
+  --type: var(--type-dark);
 }

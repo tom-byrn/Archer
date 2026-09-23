@@ -28,24 +28,32 @@ const imageSize = (source: string): { width: number; height: number } => {
   return m ? { width: Number(m[1]), height: Number(m[2]) } : { width: 800, height: 400 };
 };
 
+/** Each theme's diagram, and the class that shows it in that theme only (globals.css). */
+const DIAGRAM_THEMES = [
+  { theme: "light", only: "theme-light-only" },
+  { theme: "dark", only: "theme-dark-only" },
+] as const;
+
 function Diagram({ example }: { example: Example }) {
   const { width, height } = imageSize(example.source);
   const base = `/language/examples/${example.slug}`;
   return (
     <figure className="overflow-x-auto border border-line bg-ground">
-      <picture>
-        <source media="(prefers-color-scheme: dark)" srcSet={`${base}/dark.svg`} />
-        {/* eslint-disable-next-line @next/next/no-img-element */}
+      {DIAGRAM_THEMES.map(({ theme, only }) => (
+        // eslint-disable-next-line @next/next/no-img-element
         <img
-          src={`${base}/light.svg`}
+          key={theme}
+          src={`${base}/${theme}.svg`}
           alt={`The ${example.title} document as Archer draws it`}
           width={width}
           height={height}
+          // Lazy, so the other theme's image (display: none) is never fetched.
+          loading="lazy"
           // Scale down to fit, but scroll rather than shrink past legibility.
           style={{ width: "100%", maxWidth: width, minWidth: Math.min(width, 640), height: "auto" }}
-          className="mx-auto block"
+          className={`${only} mx-auto block`}
         />
-      </picture>
+      ))}
     </figure>
   );
 }

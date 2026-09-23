@@ -185,35 +185,41 @@ export function Section({
   );
 }
 
-/** Segmented control. */
+/** Segmented control. An option with an `icon` shows just the icon, named by its label. */
 export function Segmented<T extends string>({
   value,
   options,
   onChange,
   mono,
+  label,
 }: {
   value: T;
-  options: { value: T; label: string; title?: string }[];
+  options: { value: T; label: string; title?: string; icon?: ReactNode }[];
   onChange: (v: T) => void;
   mono?: boolean;
+  /** Names the control for assistive tech. */
+  label?: string;
 }) {
   return (
-    <div className="inline-flex h-7 rounded-md border border-line bg-surface-2 p-0.5">
+    <div role="group" aria-label={label} className="inline-flex h-7 rounded-md border border-line bg-surface-2 p-0.5">
       {options.map((o) => (
         <button
           key={o.value}
           type="button"
-          title={o.title}
+          aria-pressed={o.value === value}
+          aria-label={o.icon ? o.label : undefined}
+          title={o.title ?? (o.icon ? o.label : undefined)}
           onClick={() => onChange(o.value)}
           className={cx(
-            "rounded-[4px] px-2.5 text-sm font-medium transition-colors duration-100",
+            "rounded-[4px] text-sm font-medium transition-colors duration-100",
+            o.icon ? "flex w-6 items-center justify-center [&>svg]:h-3.5 [&>svg]:w-3.5" : "px-2.5",
             mono && "mono",
             o.value === value
               ? "bg-surface text-ink shadow-sm"
               : "text-ink-2 hover:text-ink",
           )}
         >
-          {o.label}
+          {o.icon ?? o.label}
         </button>
       ))}
     </div>
@@ -424,6 +430,20 @@ export interface MenuItem {
   onSelect: () => void;
 }
 
+/** A row with a control of its own (the account menu's theme switcher), used without closing the menu. */
+export interface MenuControl {
+  label: string;
+  icon?: ReactNode;
+  control: ReactNode;
+}
+
+const menuIcon = (icon: ReactNode) =>
+  icon && (
+    <span className="flex w-4 shrink-0 items-center justify-center text-ink-2 [&>svg]:h-3.5 [&>svg]:w-3.5">
+      {icon}
+    </span>
+  );
+
 /**
  * Dropdown menu anchored to its trigger. `trigger` receives the open state and
  * a toggle handler. Closes on outside click, Escape, or selection.
@@ -435,7 +455,7 @@ export function Menu({
   width = 220,
 }: {
   trigger: (props: { open: boolean; toggle: () => void }) => ReactNode;
-  items: (MenuItem | "separator")[];
+  items: (MenuItem | MenuControl | "separator")[];
   align?: "start" | "end";
   width?: number;
 }) {
@@ -472,6 +492,12 @@ export function Menu({
           {items.map((item, i) =>
             item === "separator" ? (
               <div key={i} className="my-1 h-px bg-line" />
+            ) : "control" in item ? (
+              <div key={i} className="flex items-center gap-2 px-2 py-0.5 text-sm text-ink">
+                {menuIcon(item.icon)}
+                <span className="min-w-0 flex-1 truncate">{item.label}</span>
+                {item.control}
+              </div>
             ) : (
               <button
                 key={i}
@@ -489,11 +515,7 @@ export function Menu({
                     : "text-ink hover:bg-surface-2",
                 )}
               >
-                {item.icon && (
-                  <span className="flex w-4 shrink-0 items-center justify-center text-ink-2 [&>svg]:h-3.5 [&>svg]:w-3.5">
-                    {item.icon}
-                  </span>
-                )}
+                {menuIcon(item.icon)}
                 <span className="min-w-0 flex-1">
                   <span className="block truncate">{item.label}</span>
                   {item.hint && (
@@ -664,6 +686,18 @@ export const Icon = {
   ),
   User: (p: { className?: string }) => (
     <I {...p}><circle cx="8" cy="5.5" r="2.75" /><path d="M2.75 14a5.25 5.25 0 0110.5 0" /></I>
+  ),
+  Sun: (p: { className?: string }) => (
+    <I {...p}><circle cx="8" cy="8" r="2.5" /><path d="M8 1.75V3M8 13v1.25M1.75 8H3M13 8h1.25M3.58 3.58l.88.88M11.54 11.54l.88.88M3.58 12.42l.88-.88M11.54 4.46l.88-.88" /></I>
+  ),
+  Moon: (p: { className?: string }) => (
+    <I {...p}><path d="M13.75 8.5A5.75 5.75 0 117.5 2.25a4.5 4.5 0 006.25 6.25z" /></I>
+  ),
+  Monitor: (p: { className?: string }) => (
+    <I {...p}><rect x="2" y="2.5" width="12" height="8.5" rx="1.5" /><path d="M5.5 13.5h5M8 11v2.5" /></I>
+  ),
+  Contrast: (p: { className?: string }) => (
+    <I {...p}><circle cx="8" cy="8" r="5.75" /><path d="M8 2.25a5.75 5.75 0 010 11.5z" fill="currentColor" stroke="none" /></I>
   ),
   Link: (p: { className?: string }) => (
     <I {...p}><path d="M6.5 9.5l3-3" /><path d="M7 4.5l1-1a2.5 2.5 0 013.5 3.5l-1 1" /><path d="M9 11.5l-1 1a2.5 2.5 0 01-3.5-3.5l1-1" /></I>

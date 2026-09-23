@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useClerk, useUser } from "@clerk/nextjs";
 import { useWorkspace } from "@/lib/workspace";
 import { ConnectAgentDialog } from "./ConnectAgentDialog";
+import { ThemeSwitcher } from "./ThemeToggle";
 import { Icon, Menu, cx } from "./ui";
 
 const initials = (name: string | null | undefined, email: string | null | undefined): string => {
@@ -13,7 +14,7 @@ const initials = (name: string | null | undefined, email: string | null | undefi
   return (parts.length > 1 ? parts[0]![0]! + parts[1]![0]! : src.slice(0, 2)).toUpperCase();
 };
 
-/** Avatar at the right end of a header: account details, connecting agents, sign out. */
+/** Avatar at the right end of a header: account details, connecting agents, the theme, sign out. */
 export function AccountMenu({ className }: { className?: string }) {
   const { user, isLoaded } = useUser();
   const { signOut } = useClerk();
@@ -44,6 +45,8 @@ export function AccountMenu({ className }: { className?: string }) {
             icon: <Icon.Plug />,
             onSelect: () => setConnectOpen(true),
           },
+          "separator",
+          { label: "Theme", icon: <Icon.Contrast />, control: <ThemeSwitcher /> },
           "separator",
           {
             label: "Sign out",
