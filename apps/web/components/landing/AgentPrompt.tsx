@@ -137,17 +137,35 @@ function useTypewriter(text: string, ref: RefObject<HTMLElement | null>) {
   return { shown, typing, finish: () => finishRef.current() };
 }
 
-export function AgentPrompt() {
-  const root = useRef<HTMLDivElement>(null);
-  const { shown, typing, finish } = useTypewriter(PROMPT, root);
-  const done = shown === PROMPT.length;
+/** Copies the prompt; `copied` stays true for a moment afterwards. */
+function useCopyPrompt() {
   const [copied, setCopied] = useState(false);
-  const copy = () => {
-    finish();
+  const copy = () =>
     void navigator.clipboard.writeText(PROMPT).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 1600);
     });
+  return { copied, copy };
+}
+
+/** The prompt's copy action on its own, for the page's closing call to action. */
+export function CopyPromptButton() {
+  const { copied, copy } = useCopyPrompt();
+  return (
+    <Button size="lg" icon={copied ? <Icon.Check /> : <Icon.Copy />} onClick={copy}>
+      <span aria-live="polite">{copied ? "Copied" : "Copy agent prompt"}</span>
+    </Button>
+  );
+}
+
+export function AgentPrompt() {
+  const root = useRef<HTMLDivElement>(null);
+  const { shown, typing, finish } = useTypewriter(PROMPT, root);
+  const done = shown === PROMPT.length;
+  const { copied, copy: copyPrompt } = useCopyPrompt();
+  const copy = () => {
+    finish();
+    copyPrompt();
   };
   const dot = "size-2.5 rounded-full bg-line-2 transition-colors duration-150";
   return (

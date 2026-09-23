@@ -1,0 +1,43 @@
+"$schema" = "https://conductor.build/schemas/settings.repo.schema.json"
+
+# Conductor config for the Archer monorepo (pnpm 10, Node 22).
+# Files to copy is left at the default `.env*` pattern, which picks up
+# apps/web/.env.local (Clerk keys, Convex URL) from the root checkout.
+
+[scripts]
+setup = """
+set -e
+pnpm install
+if [ ! -f apps/web/.env.local ]; then
+  echo "note: apps/web/.env.local missing — copy apps/web/.env.example and fill in Clerk/Convex values"
+fi
+"""
+
+# `web` is safe to run in several workspaces at once (own port; it only reads
+# the shared cloud Convex dev deployment). `full` also runs `convex dev`, which
+# pushes THIS workspace's functions to keen-iguana-117 — run it from one
+# workspace at a time.
+run_mode = "concurrent"
+
+[scripts.run.web]
+available_in = [ "local" ]
+command = "pnpm --filter @archer/web exec next dev -p $CONDUCTOR_PORT"
+default = true
+icon = "globe"
+
+[scripts.run.full]
+available_in = [ "local" ]
+command = 'pnpm --filter @archer/web exec concurrently -k -n convex,next -c magenta,cyan "convex dev" "next dev -p $CONDUCTOR_PORT"'
+icon = "server"
+
+[scripts.run.test]
+command = "pnpm test"
+icon = "test-tube"
+
+[scripts.run.typecheck]
+command = "pnpm typecheck"
+icon = "braces"
+
+[[preview_urls]]
+name = "Web"
+url = "http://localhost:$CONDUCTOR_PORT"

@@ -13,9 +13,11 @@ const navLink =
  * The site shell: one ruled column with diamond joints, header and footer.
  * It follows the OS color scheme unless `dark` forces the dark tokens (the
  * landing page, whose backdrop is black). `backdrop` sits behind the column (the
- * landing's dither); `footerExtra` goes under the footer links (the landing's
- * wordmark). `header` replaces the default header row (wordmark + public nav)
- * and `footerLinks` the default footer links, for pages that have their own.
+ * landing's dither); `footerNav` goes above the footer links (the landing's
+ * link columns) and `footerExtra` under them (the landing's wordmark). `header`
+ * replaces the default header row (wordmark + public nav) and `footerLinks` the
+ * default footer links, for pages that have their own; with `footerNav` there
+ * are no default footer links.
  */
 export function SiteFrame({
   children,
@@ -23,6 +25,7 @@ export function SiteFrame({
   dark = false,
   backdrop,
   header,
+  footerNav,
   footerLinks,
   footerExtra,
 }: {
@@ -31,6 +34,7 @@ export function SiteFrame({
   dark?: boolean;
   backdrop?: ReactNode;
   header?: ReactNode;
+  footerNav?: ReactNode;
   footerLinks?: ReactNode;
   footerExtra?: ReactNode;
 }) {
@@ -81,17 +85,24 @@ export function SiteFrame({
         <main className="flex-1">{children}</main>
 
         <footer className="landing-joints landing-joints-top border-t border-line">
-          <div className="flex flex-wrap items-center gap-x-6 gap-y-2 px-5 py-6 sm:px-10">
-            {footerLinks ?? (
-              <>
-                <Link href="/language" className={navLink}>
-                  Docs
-                </Link>
-                <Link href="/sign-in" className={navLink}>
-                  Sign in
-                </Link>
-              </>
+          {footerNav}
+          <div
+            className={cx(
+              "flex flex-wrap items-center gap-x-6 gap-y-2 px-5 py-6 sm:px-10",
+              footerNav !== undefined && "border-t border-line",
             )}
+          >
+            {footerLinks ??
+              (footerNav === undefined && (
+                <>
+                  <Link href="/language" className={navLink}>
+                    Docs
+                  </Link>
+                  <Link href="/sign-in" className={navLink}>
+                    Sign in
+                  </Link>
+                </>
+              ))}
             <span className="ml-auto text-sm text-ink-3">© 2026 Archer</span>
           </div>
           {footerExtra}
