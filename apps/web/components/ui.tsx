@@ -535,9 +535,11 @@ export function Dialog({
     return () => document.removeEventListener("keydown", onKey);
   }, [open, onClose]);
   if (!open) return null;
+  // The column is the screen's width. An auto column would grow to the
+  // dialog's own width, and then maxWidth could not keep it on a phone.
   return (
     <div
-      className="fixed inset-0 z-[100] grid place-items-center bg-[rgba(10,10,8,0.45)] p-4 backdrop-blur-[2px]"
+      className="fixed inset-0 z-[100] grid grid-cols-[minmax(0,1fr)] place-items-center bg-[rgba(10,10,8,0.45)] p-4 backdrop-blur-[2px]"
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}

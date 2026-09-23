@@ -20,7 +20,7 @@ import {
 } from "@archer/lang";
 import Link from "next/link";
 import { lookupType } from "@archer/catalog";
-import { SAMPLE } from "@/lib/sample";
+import { ACME_SAAS } from "@/lib/samples/acme-saas";
 import { toFlow } from "@/lib/toFlow";
 import { resolveDropTarget } from "@/lib/dropTarget";
 import { deriveDoc, useArchDoc } from "@/lib/useArchDoc";
@@ -119,7 +119,7 @@ function TitleField({ value, onCommit }: { value: string; onCommit: (v: string) 
 }
 
 export function Editor({
-  initialSource = SAMPLE,
+  initialSource = ACME_SAAS,
   onPersist,
   documentId = null,
   workspaceId = null,
