@@ -52,6 +52,14 @@ fails, call \`get_workspace_info\` and relay what it reports.
 2. \`create_project\` with your source. Same validation gates as update.
 3. The result includes an editor URL — share it with the user.
 
+### Use a worked example
+1. \`list_examples\` — the worked examples from the docs, each with the
+   language features it shows and links for the user (its docs section, and
+   a sandbox that opens it in the editor without an account).
+2. \`get_example\` — one example's full, canonical source: a model to follow
+   when writing, or pass it to \`create_project\` to give the user an
+   editable copy.
+
 ### Add a technology/service that has no type in the catalog
 1. \`list_types\` with a search term to confirm it's missing.
 2. Either use an untyped component (fine, renders generic), or
@@ -176,7 +184,8 @@ with full source), manage the custom component library
 (\`create_custom_type\`/\`delete_custom_type\`), arrange the canvas
 (\`auto_layout\`, \`set_display\`, or explicit layout entries), review history
 (\`get_history\`/\`get_revision\`/\`diff_project\`), report drift (\`report_drift\`/\`get_drift\`), switch workspaces
-(\`get_workspace_info\`, \`list_workspaces\`/\`use_workspace\`), and export the agent spec
+(\`get_workspace_info\`, \`list_workspaces\`/\`use_workspace\`), read the docs' worked
+examples (\`list_examples\`/\`get_example\`), and export the agent spec
 (\`compile_for_agent\`). The only human-app-exclusive feature is PNG export —
 point users at the Export menu in the editor.
 

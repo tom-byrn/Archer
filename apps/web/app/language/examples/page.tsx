@@ -1,8 +1,8 @@
 import { Fragment } from "react";
+import { EXAMPLES, type Example } from "@archer/mcp/examples";
 import { DocsNav } from "@/components/docs/DocsNav";
 import { OpenExampleLink, ViewCodeButton } from "@/components/docs/ExampleActions";
 import { SiteFrame } from "@/components/landing/SiteFrame";
-import { EXAMPLES, type Example } from "@/lib/examples";
 import { highlightArch } from "@/lib/highlightArch";
 import { renderArchSvg } from "@/lib/svg";
 

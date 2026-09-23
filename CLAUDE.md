@@ -45,7 +45,7 @@ Router + React Flow + Convex).
   server-only service credential `svc_<ARCHER_SERVICE_SECRET>.<userId>` passed
   in the functions' `apiKey` argument (legacy name; `convex/access.ts` →
   `effectiveUser`); the same secret must be set on the Convex deployment and
-  in the web env. `registerArcherTools(server)` registers 24 tools. The CLI
+  in the web env. `registerArcherTools(server)` registers 26 tools. The CLI
   (`archer login`) runs the same OAuth flow as any MCP client (DCR + PKCE +
   localhost redirect, client name "Archer CLI"), stores the session in
   `~/.archer/auth.json`, and calls the tools; the JSON shapes it reads are
@@ -66,10 +66,12 @@ Router + React Flow + Convex).
   Flow stays out of the first paint. Absolute URLs come from `lib/site.ts`
   (`NEXT_PUBLIC_SITE_URL`, default `https://archer.tombyrne.dev`).
 - Docs: `/language` (the spec) and `/language/examples` (worked examples from
-  `lib/examples.ts`). Example sources must stay canonical and validate clean —
-  `apps/web/test/examples.test.ts` enforces it, so the code shown, the diagram
-  (`lib/svg.ts`, prerendered at `/language/examples/<slug>/{light,dark}.svg`)
-  and the editor copy always agree. "Open in sandbox" goes to
+  `packages/mcp/src/examples.ts`, which agents also read through the MCP
+  tools `list_examples`/`get_example`). Example sources must stay canonical
+  and validate clean — `apps/web/test/examples.test.ts` enforces it, so the
+  code shown, the diagram (`lib/svg.ts`, prerendered at
+  `/language/examples/<slug>/{light,dark}.svg`), the editor copy and what
+  agents read always agree. "Open in sandbox" goes to
   `/sandbox/<slug>` (see Editor sessions). "View code" opens the source in
   the editor's code popout (`components/CodeDialog.tsx`, shared with
   `CodePane`), highlighted on the server by `lib/highlightArch.ts` so the page
