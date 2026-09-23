@@ -9,7 +9,18 @@ import {
   type ComponentNode,
   type DisplayMode,
 } from "@archer/lang";
-import { BOX_COST, chipWidth, routeEdge, type Obstacle, type Rect } from "./edgeRoute";
+import {
+  BOX_COST,
+  bendOf,
+  chipWidth,
+  routeEdge,
+  separateBends,
+  untangle,
+  type EdgeRoute,
+  type Obstacle,
+  type Rect,
+  type RoutedEdge,
+} from "./edgeRoute";
 
 /** One grid cell in pixels. */
 export const CELL = 40;
@@ -185,17 +196,41 @@ export function toFlow(
     return out;
   };
 
-  const edges: ArchEdge[] = [];
+  // Route every edge first, then untangle shared handles and keep parallel
+  // bends from merging.
+  const routed: {
+    c: ArchDoc["connections"][number];
+    i: number;
+    source: string;
+    target: string;
+    edge?: RoutedEdge;
+  }[] = [];
   doc.connections.forEach((c, i) => {
     const source = visibleAncestor.get(pathToString(c.source));
     const target = visibleAncestor.get(pathToString(c.target));
     if (source === undefined || target === undefined || source === target) return;
     const s = rects.get(source);
     const t = rects.get(target);
-    const route =
-      s && t
-        ? routeEdge(s, t, obstaclesFor(source, target), chipWidth(c.type, c.label, c.payloads.length))
-        : undefined;
+    if (!s || !t) {
+      routed.push({ c, i, source, target });
+      return;
+    }
+    const route = routeEdge(
+      s,
+      t,
+      obstaclesFor(source, target),
+      chipWidth(c.type, c.label, c.payloads.length),
+    );
+    const headAtTarget = c.arrow !== "--";
+    routed.push({ c, i, source, target, edge: { source, target, s, t, route, headAtTarget } });
+  });
+  const withRoutes = routed.flatMap((r) => (r.edge ? [r.edge] : []));
+  untangle(withRoutes, obstaclesFor);
+  separateBends(withRoutes.map((e) => bendOf(e.route, e.s, e.t, e.source, e.target)));
+
+  const edges: ArchEdge[] = [];
+  for (const { c, i, source, target, edge } of routed) {
+    const route: EdgeRoute | undefined = edge?.route;
     const sourceHandle = `s${route?.from ?? "r"}`;
     const targetHandle = `t${route?.to ?? "l"}`;
     edges.push({
@@ -215,10 +250,10 @@ export function toFlow(
           const d = opts.edgeDiff?.get(edgeKey(c));
           return d ? { diff: d } : {};
         })(),
-        ...(route ? { mid: route.mid, horizontal: route.horizontal } : {}),
+        ...(route && !route.corner ? { mid: route.mid, horizontal: route.horizontal } : {}),
       },
     });
-  });
+  }
 
   return { nodes, edges };
 }

@@ -109,15 +109,13 @@ export function autoLayout(doc: ArchDoc, opts: AutoLayoutOptions = {}): ArchDoc 
 
   /** Arrange a forest from scratch; its top-level boxes are offset by `origin`. */
   const layForest = (items: readonly ComponentNode[], pre: string, origin: [number, number]) => {
-    const placed = layeredLayout(items, pre, base.connections, {
-      isPlane,
-      boxSize: (path) => boxSize(path),
-    });
+    const placed = layeredLayout(items, pre, base.connections, { isPlane, boxSize });
     for (const [path, p] of placed) {
       const top = parentOf(path) === pre;
       put(path, top ? [p.at[0] + origin[0], p.at[1] + origin[1]] : p.at, p.size);
       const c = comps.get(path)!;
-      if (c.children.length > 0 && !isPlane(path, c)) layForest(c.children, path, PLANE_INNER_ORIGIN);
+      if (c.children.length > 0 && !isPlane(path, c))
+        layForest(c.children, path, PLANE_INNER_ORIGIN);
     }
   };
 
@@ -130,7 +128,7 @@ export function autoLayout(doc: ArchDoc, opts: AutoLayoutOptions = {}): ArchDoc 
   // ------------------------------------------------ incremental placement
   const freshInside = (path: string) => !fixed.some((p) => p.startsWith(path + "."));
 
-  /** Size of an interior from its children's entries (0 when none placed yet). */
+  /** Size of a plane from its children's entries (undefined until one is placed). */
   const fitSize = (path: string): [number, number] | undefined => {
     const c = comps.get(path);
     if (!c) return undefined;

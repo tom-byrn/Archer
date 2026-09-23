@@ -14,7 +14,16 @@ import {
   type ComponentNode,
 } from "@archer/lang";
 import { GLYPHS, lookupType } from "@archer/catalog";
-import { BOX_COST, chipWidth, routeEdge, type Obstacle } from "./edgeRoute";
+import {
+  BOX_COST,
+  bendOf,
+  chipWidth,
+  routeEdge,
+  separateBends,
+  untangle,
+  type Obstacle,
+  type RoutedEdge,
+} from "./edgeRoute";
 
 /** One grid cell in pixels (mirrors lib/toFlow.ts, which is client-only). */
 const CELL = 40;
@@ -263,10 +272,11 @@ export function renderArchSvg(source: string, opts: RenderOptions = {}): string 
     }
     return list;
   };
-  doc.connections.forEach((c) => {
+  const routed: (RoutedEdge & { c: ArchDoc["connections"][number] })[] = [];
+  for (const c of doc.connections) {
     const s = byPath.get(visibleAncestor.get(pathToString(c.source)) ?? "");
     const t = byPath.get(visibleAncestor.get(pathToString(c.target)) ?? "");
-    if (!s || !t || s === t) return;
+    if (!s || !t || s === t) continue;
     const sr = { x: s.x + dx, y: s.y + dy, w: s.w, h: s.h };
     const tr = { x: t.x + dx, y: t.y + dy, w: t.w, h: t.h };
     const route = routeEdge(
@@ -275,6 +285,13 @@ export function renderArchSvg(source: string, opts: RenderOptions = {}): string 
       obstaclesFor(s.path, t.path),
       chipWidth(c.type, c.label, c.payloads.length),
     );
+    const headAtTarget = c.arrow !== "--";
+    routed.push({ c, source: s.path, target: t.path, s: sr, t: tr, route, headAtTarget });
+  }
+  // Untangle shared handles, then keep parallel bends from merging.
+  untangle(routed, obstaclesFor);
+  separateBends(routed.map((e) => bendOf(e.route, e.s, e.t, e.source, e.target)));
+  for (const { c, s: sr, t: tr, route } of routed) {
     let p1: { x: number; y: number };
     let p2: { x: number; y: number };
     let d: string;
@@ -282,7 +299,17 @@ export function renderArchSvg(source: string, opts: RenderOptions = {}): string 
     // near-source and near-target segments. The first one that overlaps no
     // leaf node and no earlier chip wins.
     const candidates: { x: number; y: number }[] = [];
-    if (route.horizontal) {
+    if (route.corner) {
+      const right = route.from === "r";
+      const down = route.to === "t";
+      p1 = { x: right ? sr.x + sr.w : sr.x, y: sr.y + sr.h / 2 };
+      p2 = { x: tr.x + tr.w / 2, y: down ? tr.y : tr.y + tr.h };
+      d = `M${p1.x} ${p1.y}H${p2.x}V${p2.y}`;
+      candidates.push(
+        { x: (p1.x + p2.x) / 2, y: p1.y },
+        { x: p2.x, y: (p1.y + p2.y) / 2 },
+      );
+    } else if (route.horizontal) {
       const right = route.from === "r";
       const sign = right ? 1 : -1;
       p1 = { x: right ? sr.x + sr.w : sr.x, y: sr.y + sr.h / 2 };
@@ -355,7 +382,7 @@ export function renderArchSvg(source: string, opts: RenderOptions = {}): string 
           `</g>`,
       );
     }
-  });
+  }
 
   const defs =
     `<defs>` +

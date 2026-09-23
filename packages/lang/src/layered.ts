@@ -363,7 +363,8 @@ export function layeredLayout(
       for (const seg of list) gapOf.set(seg, list);
     }
   const segIndex = new Map(segs.map((seg, i) => [seg, i]));
-  const crossings = (): number => gapLists.reduce((acc, list) => acc + gapCrossings(list, center), 0);
+  const crossings = (): number =>
+    gapLists.reduce((acc, list) => acc + gapCrossings(list, center), 0);
   /** Crossings involving any of `moved` (each pair once). */
   const crossingsOf = (moved: Set<Seg>): number => {
     let total = 0;
@@ -764,7 +765,8 @@ function solveRows(scopes: readonly Scope[], segs: readonly Seg[]) {
             weight: 0,
           });
           const [v, off] = lower(layer[layer.length - 1]!);
-          cs.push({ from: v, to: bottom.get(owner)!, minlen: off + PLANE_INNER_MARGIN[1], weight: 0 });
+          const minlen = off + PLANE_INNER_MARGIN[1];
+          cs.push({ from: v, to: bottom.get(owner)!, minlen, weight: 0 });
         }
       } else {
         for (const layer of s.layers)
