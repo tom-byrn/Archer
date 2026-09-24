@@ -97,6 +97,15 @@ Router + React Flow + Convex).
   and blurb in `lib/samples/index.ts`). Choosing one saves the source as a new
   document verbatim, so like the docs examples, samples stay canonical and
   validate clean — `apps/web/test/samples.test.ts` enforces it.
+- Catalog (`packages/catalog`): two kinds of type. Vendor-neutral
+  system-design building blocks (`@load_balancer`, `@rate_limiter`, `@cache`…)
+  are slate `#64748b`, grouped by concern (generic, network, compute, storage,
+  messaging, data, observability, security, platform, topology); real
+  technologies use their brand color and a vendor group (aws, gcp, azure,
+  vercel, databases, infra, saas). The palette lists the neutral groups first,
+  in `NEUTRAL_NAMESPACES` order (`components/Palette.tsx`) — a new namespace
+  needs a label in `NAMESPACE_LABELS` there. Tags and glyph keys end up in
+  saved documents and custom types: add freely, never rename or remove one.
 - Brand kit: `/branding` (signed-in only, deliberately linked from nowhere —
   keep it that way) shows the logo, colors, type, radii, icons and ui.tsx
   primitives. Values are parsed from `app/globals.css` at build time

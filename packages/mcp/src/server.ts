@@ -318,7 +318,7 @@ export function registerArcherTools(server: McpServer): void {
     {
       title: "List component & connection types",
       description:
-        "List usable type tags: the built-in technology catalog (~75 types across aws/gcp/azure/vercel/databases/infra/saas/generic), this workspace's custom types, the standard connection types (@http, @sql, @queue, ...), and the glyph names available when creating custom types. Optional search filters by tag/name/namespace. Type tags are OPTIONAL on components — untyped components are valid and render as generic boxes; unknown tags are only a warning.",
+        "List usable type tags: the built-in catalog (~150 types — vendor-neutral system-design building blocks in generic/network/compute/storage/messaging/data/observability/security/platform/topology, e.g. @load_balancer, @rate_limiter, @cdn, @queue, @database, plus real technologies across aws/gcp/azure/vercel/databases/infra/saas), this workspace's custom types, the standard connection types (@http, @sql, @queue, ...), and the glyph names available when creating custom types. Optional search filters by tag/name/namespace. Type tags are OPTIONAL on components — untyped components are valid and render as generic boxes; unknown tags are only a warning.",
       inputSchema: {
         search: z.string().optional().describe("Case-insensitive filter on tag, name, or namespace"),
       },

@@ -14,11 +14,105 @@ export interface CatalogType {
 }
 
 export const CATALOG: readonly CatalogType[] = [
-  // Generic / logical
+  // Generic: your own code, its clients, and third parties
   { tag: "service", name: "Service", namespace: "generic", color: "#64748b", glyph: "box" },
   { tag: "frontend", name: "Frontend", namespace: "generic", color: "#64748b", glyph: "globe" },
-  { tag: "worker", name: "Worker", namespace: "generic", color: "#64748b", glyph: "bolt" },
+  { tag: "worker", name: "Worker", namespace: "generic", color: "#64748b", glyph: "gear" },
   { tag: "external", name: "External", namespace: "generic", color: "#94a3b8", glyph: "cloud" },
+  { tag: "payment_gateway", name: "Payment Gateway", namespace: "generic", color: "#64748b", glyph: "card" },
+  { tag: "browser", name: "Browser", namespace: "generic", color: "#64748b", glyph: "window" },
+  { tag: "mobile", name: "Mobile App", namespace: "generic", color: "#64748b", glyph: "phone" },
+  { tag: "desktop", name: "Desktop App", namespace: "generic", color: "#64748b", glyph: "desktop" },
+  { tag: "cli", name: "CLI", namespace: "generic", color: "#64748b", glyph: "terminal" },
+  { tag: "iot_device", name: "IoT Device", namespace: "generic", color: "#64748b", glyph: "chip" },
+  { tag: "user", name: "User", namespace: "generic", color: "#64748b", glyph: "user" },
+
+  // System-design building blocks: vendor-neutral, slate like the generic types,
+  // one palette group per concern (labels and order in apps/web/components/Palette.tsx).
+
+  // Networking & traffic
+  { tag: "dns", name: "DNS", namespace: "network", color: "#64748b", glyph: "signpost" },
+  { tag: "cdn", name: "CDN", namespace: "network", color: "#64748b", glyph: "earth" },
+  { tag: "load_balancer", name: "Load Balancer", namespace: "network", color: "#64748b", glyph: "split" },
+  { tag: "reverse_proxy", name: "Reverse Proxy", namespace: "network", color: "#64748b", glyph: "proxy" },
+  { tag: "forward_proxy", name: "Forward Proxy", namespace: "network", color: "#64748b", glyph: "forward" },
+  { tag: "api_gateway", name: "API Gateway", namespace: "network", color: "#64748b", glyph: "gateway" },
+  { tag: "rate_limiter", name: "Rate Limiter", namespace: "network", color: "#64748b", glyph: "gauge" },
+  { tag: "circuit_breaker", name: "Circuit Breaker", namespace: "network", color: "#64748b", glyph: "unplug" },
+  { tag: "service_mesh", name: "Service Mesh", namespace: "network", color: "#64748b", glyph: "mesh" },
+  { tag: "vpn", name: "VPN", namespace: "network", color: "#64748b", glyph: "lock" },
+
+  // Compute
+  { tag: "server", name: "Server / VM", namespace: "compute", color: "#64748b", glyph: "server" },
+  { tag: "container", name: "Container", namespace: "compute", color: "#64748b", glyph: "cube" },
+  { tag: "function", name: "Serverless Function", namespace: "compute", color: "#64748b", glyph: "lambda" },
+  { tag: "edge_function", name: "Edge Function", namespace: "compute", color: "#64748b", glyph: "lambda" },
+  { tag: "cron", name: "Cron / Scheduler", namespace: "compute", color: "#64748b", glyph: "clock" },
+  { tag: "workflow", name: "Workflow Engine", namespace: "compute", color: "#64748b", glyph: "flow" },
+
+  // Storage
+  { tag: "database", name: "Database", namespace: "storage", color: "#64748b", glyph: "database" },
+  { tag: "kv_store", name: "Key-Value Store", namespace: "storage", color: "#64748b", glyph: "hash" },
+  { tag: "document_store", name: "Document Store", namespace: "storage", color: "#64748b", glyph: "files" },
+  { tag: "wide_column_store", name: "Wide-Column Store", namespace: "storage", color: "#64748b", glyph: "columns" },
+  { tag: "graph_db", name: "Graph Database", namespace: "storage", color: "#64748b", glyph: "graph" },
+  { tag: "time_series_db", name: "Time-Series Database", namespace: "storage", color: "#64748b", glyph: "plot" },
+  { tag: "vector_db", name: "Vector Database", namespace: "storage", color: "#64748b", glyph: "vector" },
+  { tag: "search_index", name: "Search Index", namespace: "storage", color: "#64748b", glyph: "search" },
+  { tag: "cache", name: "Cache", namespace: "storage", color: "#64748b", glyph: "bolt" },
+  { tag: "object_storage", name: "Object Storage", namespace: "storage", color: "#64748b", glyph: "bucket" },
+  { tag: "file_storage", name: "File Storage", namespace: "storage", color: "#64748b", glyph: "folder" },
+  { tag: "block_storage", name: "Block Storage", namespace: "storage", color: "#64748b", glyph: "disk" },
+
+  // Messaging
+  { tag: "queue", name: "Queue", namespace: "messaging", color: "#64748b", glyph: "queue" },
+  { tag: "pubsub", name: "Pub/Sub", namespace: "messaging", color: "#64748b", glyph: "broadcast" },
+  { tag: "event_bus", name: "Event Bus", namespace: "messaging", color: "#64748b", glyph: "hub" },
+  { tag: "stream", name: "Event Stream", namespace: "messaging", color: "#64748b", glyph: "waves" },
+  { tag: "email", name: "Email", namespace: "messaging", color: "#64748b", glyph: "mail" },
+  { tag: "sms", name: "SMS", namespace: "messaging", color: "#64748b", glyph: "chat" },
+  { tag: "push", name: "Push Notifications", namespace: "messaging", color: "#64748b", glyph: "bell" },
+
+  // Data & AI
+  { tag: "data_warehouse", name: "Data Warehouse", namespace: "data", color: "#64748b", glyph: "warehouse" },
+  { tag: "data_lake", name: "Data Lake", namespace: "data", color: "#64748b", glyph: "drop" },
+  { tag: "etl", name: "ETL Pipeline", namespace: "data", color: "#64748b", glyph: "merge" },
+  { tag: "stream_processor", name: "Stream Processor", namespace: "data", color: "#64748b", glyph: "signal" },
+  { tag: "batch_processor", name: "Batch Processor", namespace: "data", color: "#64748b", glyph: "stack" },
+  { tag: "analytics", name: "Analytics", namespace: "data", color: "#64748b", glyph: "chart" },
+  { tag: "ml_model", name: "ML Model", namespace: "data", color: "#64748b", glyph: "brain" },
+  { tag: "llm", name: "LLM", namespace: "data", color: "#64748b", glyph: "sparkle" },
+  { tag: "agent", name: "AI Agent", namespace: "data", color: "#64748b", glyph: "robot" },
+  { tag: "mcp_server", name: "MCP Server", namespace: "data", color: "#64748b", glyph: "plug" },
+
+  // Observability
+  { tag: "metrics", name: "Metrics / Monitoring", namespace: "observability", color: "#64748b", glyph: "pulse" },
+  { tag: "logging", name: "Logging", namespace: "observability", color: "#64748b", glyph: "scroll" },
+  { tag: "tracing", name: "Tracing", namespace: "observability", color: "#64748b", glyph: "path" },
+  { tag: "alerting", name: "Alerting", namespace: "observability", color: "#64748b", glyph: "siren" },
+
+  // Security
+  { tag: "auth", name: "Auth Service", namespace: "security", color: "#64748b", glyph: "shield" },
+  { tag: "secrets_manager", name: "Secrets Manager", namespace: "security", color: "#64748b", glyph: "vault" },
+  { tag: "kms", name: "Key Management", namespace: "security", color: "#64748b", glyph: "key" },
+  { tag: "waf", name: "Web App Firewall", namespace: "security", color: "#64748b", glyph: "funnel" },
+  { tag: "firewall", name: "Firewall", namespace: "security", color: "#64748b", glyph: "wall" },
+
+  // Platform services
+  { tag: "service_discovery", name: "Service Discovery", namespace: "platform", color: "#64748b", glyph: "directory" },
+  { tag: "coordination", name: "Coordination Service", namespace: "platform", color: "#64748b", glyph: "handshake" },
+  { tag: "config_service", name: "Config Service", namespace: "platform", color: "#64748b", glyph: "sliders" },
+  { tag: "feature_flags", name: "Feature Flags", namespace: "platform", color: "#64748b", glyph: "flag" },
+  { tag: "id_generator", name: "ID Generator", namespace: "platform", color: "#64748b", glyph: "fingerprint" },
+  { tag: "ci_cd", name: "CI/CD Pipeline", namespace: "platform", color: "#64748b", glyph: "infinity" },
+
+  // Topology: boundaries to nest the rest in, usually shown as planes
+  { tag: "region", name: "Region", namespace: "topology", color: "#64748b", glyph: "map" },
+  { tag: "zone", name: "Availability Zone", namespace: "topology", color: "#64748b", glyph: "dashed" },
+  { tag: "data_center", name: "Data Center", namespace: "topology", color: "#64748b", glyph: "building" },
+  { tag: "network", name: "Network / VPC", namespace: "topology", color: "#64748b", glyph: "network" },
+  { tag: "subnet", name: "Subnet", namespace: "topology", color: "#64748b", glyph: "grid" },
+  { tag: "cluster", name: "Cluster", namespace: "topology", color: "#64748b", glyph: "circles" },
 
   // AWS
   { tag: "aws", name: "AWS", namespace: "aws", color: "#ff9900", glyph: "cloud" },
@@ -107,28 +201,29 @@ export const CATALOG: readonly CatalogType[] = [
   { tag: "netlify", name: "Netlify", namespace: "saas", color: "#00c7b7", glyph: "globe" },
   { tag: "fly", name: "Fly.io", namespace: "saas", color: "#7b3ff2", glyph: "cloud" },
   { tag: "railway", name: "Railway", namespace: "saas", color: "#13111c", glyph: "cloud" },
-
-  // Clients & generic extras
-  { tag: "browser", name: "Browser", namespace: "generic", color: "#64748b", glyph: "globe" },
-  { tag: "mobile", name: "Mobile App", namespace: "generic", color: "#64748b", glyph: "phone" },
-  { tag: "user", name: "User", namespace: "generic", color: "#64748b", glyph: "user" },
-  { tag: "cron", name: "Cron / Scheduler", namespace: "generic", color: "#64748b", glyph: "clock" },
-  { tag: "cdn", name: "CDN", namespace: "generic", color: "#64748b", glyph: "globe" },
-  { tag: "queue", name: "Queue", namespace: "generic", color: "#64748b", glyph: "queue" },
-  { tag: "cache", name: "Cache", namespace: "generic", color: "#64748b", glyph: "bolt" },
 ] as const;
 
 export const CONNECTION_TYPES: readonly string[] = [
   "http",
   "grpc",
+  "graphql",
   "ws",
+  "sse",
+  "webrtc",
+  "tcp",
+  "udp",
   "sql",
   "queue",
   "event",
   "stream",
+  "mqtt",
+  "webhook",
+  "cdc",
   "auth",
   "reads",
   "writes",
+  "replicates",
+  "triggers",
   "deploys",
   "contains",
   "depends",

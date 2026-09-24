@@ -48,7 +48,11 @@ fails, call \`get_workspace_info\` and relay what it reports.
    Fix the diagnostics and resend. Warnings do not block.
 
 ### Create a new architecture
-1. Optionally \`list_types\` to use component types that render with real icons.
+1. Optionally \`list_types\` to use component types that render with real icons:
+   vendor-neutral building blocks for system designs (\`@load_balancer\`,
+   \`@api_gateway\`, \`@rate_limiter\`, \`@cdn\`, \`@cache\`, \`@queue\`,
+   \`@database\`, \`@object_storage\`, …) and real technologies for concrete
+   stacks (\`@postgres\`, \`@aws.sqs\`, \`@kafka\`, …).
 2. \`create_project\` with your source. Same validation gates as update.
 3. The result includes an editor URL — share it with the user.
 

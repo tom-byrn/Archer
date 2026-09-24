@@ -12,6 +12,15 @@ export const DND_MIME = "application/archer-type";
 export const NAMESPACE_LABELS: Record<string, string> = {
   custom: "My components",
   generic: "Generic",
+  network: "Networking",
+  compute: "Compute",
+  storage: "Storage",
+  messaging: "Messaging",
+  data: "Data & AI",
+  observability: "Observability",
+  security: "Security",
+  platform: "Platform",
+  topology: "Topology",
   aws: "AWS",
   gcp: "Google Cloud",
   azure: "Azure",
@@ -23,12 +32,30 @@ export const NAMESPACE_LABELS: Record<string, string> = {
 export const namespaceLabel = (ns: string): string =>
   NAMESPACE_LABELS[ns] ?? ns.charAt(0).toUpperCase() + ns.slice(1);
 
-/** Namespaces in palette order: custom, generic, then the rest alphabetically. */
+/** The vendor-neutral groups — system-design building blocks — in palette order. */
+const NEUTRAL_NAMESPACES = [
+  "generic",
+  "network",
+  "compute",
+  "storage",
+  "messaging",
+  "data",
+  "observability",
+  "security",
+  "platform",
+  "topology",
+];
+
+/**
+ * Namespaces in palette order: custom (always), the vendor-neutral groups,
+ * then vendors alphabetically.
+ */
 export const orderedNamespaces = (namespaces: Iterable<string>): string[] => {
-  const rest = [...new Set(namespaces)]
-    .filter((ns) => ns !== "custom" && ns !== "generic")
+  const present = new Set(namespaces);
+  const rest = [...present]
+    .filter((ns) => ns !== "custom" && !NEUTRAL_NAMESPACES.includes(ns))
     .sort((a, b) => namespaceLabel(a).localeCompare(namespaceLabel(b)));
-  return ["custom", "generic", ...rest];
+  return ["custom", ...NEUTRAL_NAMESPACES.filter((ns) => present.has(ns)), ...rest];
 };
 
 /** Search rank: 0 = name prefix, 1 = name/tag/namespace substring, -1 = no match. */
@@ -177,7 +204,8 @@ const GLYPH_CHOICES = [
   "api", "gateway", "queue", "bolt", "shield", "globe",
   "doc", "card", "cloud", "spark", "cube", "user",
   "phone", "clock", "mail", "chat", "chart", "gear",
-  "search", "flame",
+  "search", "flame", "brain", "sparkle", "robot", "bell",
+  "broadcast", "lock", "key", "flag", "sliders", "folder",
 ];
 const COLOR_CHOICES = [
   "#64748b", "#ef4444", "#f97316", "#eab308", "#22c55e", "#14b8a6",

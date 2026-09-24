@@ -150,7 +150,8 @@ Payloads attach structured or freeform data to a component — or to a connectio
 ## 5. Types
 
 A type tag connects a component or connection to the **catalog** — the curated library
-of real technologies plus the user's saved custom types.
+of vendor-neutral building blocks (\`@load_balancer\`, \`@rate_limiter\`, \`@cdn\`, \`@queue\`,
+\`@database\`, …) and real technologies, plus the user's saved custom types.
 
 - Syntax: \`@namespace.name\` or \`@name\` (e.g. \`@aws.s3\`, \`@aws.lambda\`, \`@postgres\`,
   \`@vercel\`, \`@vercel.functions\`, \`@redis\`, \`@stripe\`).
@@ -168,7 +169,8 @@ of real technologies plus the user's saved custom types.
 
 ### 5.1 Initial connection-type library
 
-\`@http\` \`@grpc\` \`@ws\` \`@sql\` \`@queue\` \`@event\` \`@stream\` \`@auth\` \`@reads\` \`@writes\`
+\`@http\` \`@grpc\` \`@graphql\` \`@ws\` \`@sse\` \`@webrtc\` \`@tcp\` \`@udp\` \`@sql\` \`@queue\` \`@event\`
+\`@stream\` \`@mqtt\` \`@webhook\` \`@cdc\` \`@auth\` \`@reads\` \`@writes\` \`@replicates\` \`@triggers\`
 \`@deploys\` \`@contains\` \`@depends\` — plus user-defined. All optional.
 
 ## 6. Connections
