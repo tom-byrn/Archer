@@ -111,7 +111,8 @@ Router + React Flow + Convex).
   `prefers-color-scheme`. Build controls from `components/ui.tsx` (Button,
   IconButton, Input, Menu, Dialog, Section, PropertyRow, Chip, Icon). An icon
   that changes on click (copy → check) is a `SwapIcon`, which animates the
-  swap; never a bare ternary between two icons. Icons
+  swap, and a label that does (Copy → Copied) is a `SwapText`, which keeps
+  the button's width; never a bare ternary between two icons or labels. Icons
   are Phosphor: UI icons are `@phosphor-icons/react` (bold) behind `Icon` —
   add a name there, don't import Phosphor elsewhere (`GitHubMark` stays
   GitHub's own mark on purpose); component glyphs are Phosphor paths

@@ -2,7 +2,7 @@
 
 import { Fragment, useEffect, useRef, useState, type RefObject } from "react";
 import { SITE_URL } from "@/lib/site";
-import { Button, Icon, SwapIcon, cx } from "../ui";
+import { Button, Icon, SwapIcon, SwapText, cx } from "../ui";
 
 const PROMPT = `Read ${SITE_URL}/language to learn the Archer language.
 
@@ -157,7 +157,9 @@ export function CopyPromptButton() {
       icon={<SwapIcon swapped={copied} from={<Icon.Copy />} to={<Icon.Check />} />}
       onClick={copy}
     >
-      <span aria-live="polite">{copied ? "Copied" : "Copy agent prompt"}</span>
+      <span aria-live="polite">
+        <SwapText swapped={copied} from="Copy agent prompt" to="Copied" />
+      </span>
     </Button>
   );
 }
@@ -183,11 +185,13 @@ export function AgentPrompt() {
         </span>
         <Button
           size="sm"
-          className="min-w-[104px] rounded-none!"
+          className="rounded-none!"
           icon={<SwapIcon swapped={copied} from={<Icon.Copy />} to={<Icon.Check />} />}
           onClick={copy}
         >
-          <span aria-live="polite">{copied ? "Copied" : "Copy prompt"}</span>
+          <span aria-live="polite">
+            <SwapText swapped={copied} from="Copy prompt" to="Copied" />
+          </span>
         </Button>
       </div>
       {/* Pressing anywhere in the text finishes the typing, so a selection starts on the whole prompt. */}
