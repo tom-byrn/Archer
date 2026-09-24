@@ -7,7 +7,7 @@ import { ThemeToggle } from "../ThemeToggle";
 import { Icon, buttonCls, cx } from "../ui";
 import { AgentPrompt, CopyPromptButton } from "./AgentPrompt";
 import { ClientLogos } from "./ClientLogos";
-import { DitherBackdrop } from "./DitherBackdrop";
+import { Dither, DitherBackdrop } from "./Dither";
 import { Faq } from "./Faq";
 import { Features } from "./Features";
 import { SandboxLoader } from "./SandboxLoader";
@@ -145,8 +145,10 @@ export function Landing() {
 
       <Features />
 
-      {/* Features and FAQ are both ruled grids; the hatched band keeps them apart. */}
-      <div aria-hidden className="landing-joints landing-hatch h-16 border-b border-line sm:h-24" />
+      {/* Features and FAQ are both ruled grids; a band of the page's dither keeps them apart. */}
+      <div className="landing-joints h-16 border-b border-line sm:h-24">
+        <Dither className="absolute inset-0" fadeLength={1} />
+      </div>
 
       <Faq />
 

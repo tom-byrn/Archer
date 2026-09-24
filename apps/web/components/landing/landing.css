@@ -1,6 +1,6 @@
 /* Landing page. Colors come from the tokens in globals.css; this file only
    holds what utilities can't express: the page color, the headline setting,
-   the backdrop fallback, the one load sequence, the agent prompt's cursor and
+   the dither fallback, the one load sequence, the agent prompt's cursor and
    the source pane's changed-line flash. */
 
 /* The landing sits on its own page color (black in dark mode). Setting --bg
@@ -18,16 +18,17 @@
   text-wrap: balance;
 }
 
-/* --landing-fade at the top of the viewport fading into the page (grey to
-   black in dark mode). The dithered version is drawn over it by
-   DitherBackdrop; this smooth one covers first paint. The middle stop follows
-   the shader's curve. */
+/* --landing-fade at the top of the box fading into the page over
+   --dither-length of it (grey to black in dark mode). The dithered version is
+   drawn over it by Dither; this smooth one covers first paint. The middle stop
+   follows the shader's curve. */
 .landing-dither {
   background: linear-gradient(
     180deg,
     var(--landing-fade) 0%,
-    color-mix(in srgb, var(--landing-fade) 30%, var(--landing-bg)) 45%,
-    var(--landing-bg) 85%
+    color-mix(in srgb, var(--landing-fade) 30%, var(--landing-bg))
+      calc(var(--dither-length) * 0.53),
+    var(--landing-bg) var(--dither-length)
   );
 }
 
@@ -116,14 +117,6 @@
 .landing-joints-top::after {
   top: -4.5px;
   bottom: auto;
-}
-
-/* A hatched band between two sections, drawn like the cut in a section
-   drawing: 45° hairlines in the rule color, on a square tile so they run
-   unbroken from one tile into the next. */
-.landing-hatch {
-  background-image: repeating-linear-gradient(315deg, var(--line) 0 1px, transparent 0 50%);
-  background-size: 10px 10px;
 }
 
 /* Connectors read as ink on the landing canvas, and go all the way to black
