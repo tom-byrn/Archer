@@ -2,7 +2,7 @@
 
 import { Fragment, useEffect, useRef, useState, type RefObject } from "react";
 import { SITE_URL } from "@/lib/site";
-import { Button, Icon, cx } from "../ui";
+import { Button, Icon, SwapIcon, cx } from "../ui";
 
 const PROMPT = `Read ${SITE_URL}/language to learn the Archer language.
 
@@ -152,7 +152,11 @@ function useCopyPrompt() {
 export function CopyPromptButton() {
   const { copied, copy } = useCopyPrompt();
   return (
-    <Button size="lg" icon={copied ? <Icon.Check /> : <Icon.Copy />} onClick={copy}>
+    <Button
+      size="lg"
+      icon={<SwapIcon swapped={copied} from={<Icon.Copy />} to={<Icon.Check />} />}
+      onClick={copy}
+    >
       <span aria-live="polite">{copied ? "Copied" : "Copy agent prompt"}</span>
     </Button>
   );
@@ -180,7 +184,7 @@ export function AgentPrompt() {
         <Button
           size="sm"
           className="min-w-[104px] rounded-none!"
-          icon={copied ? <Icon.Check /> : <Icon.Copy />}
+          icon={<SwapIcon swapped={copied} from={<Icon.Copy />} to={<Icon.Check />} />}
           onClick={copy}
         >
           <span aria-live="polite">{copied ? "Copied" : "Copy prompt"}</span>

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { SITE_URL } from "@/lib/site";
-import { Dialog, Icon, IconButton } from "./ui";
+import { Dialog, Icon, IconButton, SwapIcon } from "./ui";
 
 function CopyButton({ text, label }: { text: string; label: string }) {
   const [done, setDone] = useState(false);
@@ -17,7 +17,7 @@ function CopyButton({ text, label }: { text: string; label: string }) {
         });
       }}
     >
-      {done ? <Icon.Check /> : <Icon.Copy />}
+      <SwapIcon swapped={done} from={<Icon.Copy />} to={<Icon.Check />} />
     </IconButton>
   );
 }

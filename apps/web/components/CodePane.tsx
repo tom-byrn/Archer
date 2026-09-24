@@ -7,7 +7,7 @@ import { StateEffect, StateField, EditorSelection } from "@codemirror/state";
 import { lintGutter, setDiagnostics } from "@codemirror/lint";
 import { CodeDialog } from "./CodeDialog";
 import { CodeEditor } from "./CodeMirror";
-import { Button, Chip, Icon, cx } from "./ui";
+import { Button, Chip, Icon, SwapIcon, cx } from "./ui";
 import {
   archLanguage,
   archerLinter,
@@ -210,7 +210,7 @@ export function CodePane({
             {onCopyCode && (
               <Button
                 size="sm"
-                icon={copied === "code" ? <Icon.Check /> : <Icon.Copy />}
+                icon={<SwapIcon swapped={copied === "code"} from={<Icon.Copy />} to={<Icon.Check />} />}
                 onClick={() => flash("code", onCopyCode)}
                 title="Copy code"
               >
@@ -220,7 +220,7 @@ export function CodePane({
             {onCopyForAgent && (
               <Button
                 size="sm"
-                icon={copied === "agent" ? <Icon.Check /> : <Icon.Sparkle />}
+                icon={<SwapIcon swapped={copied === "agent"} from={<Icon.Sparkle />} to={<Icon.Check />} />}
                 disabled={!valid}
                 title={
                   valid

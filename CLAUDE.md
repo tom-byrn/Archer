@@ -109,7 +109,9 @@ Router + React Flow + Convex).
   `globals.css`); a plain switch without support or with reduced motion. Key
   CSS on `:root[data-theme="dark"]` and code on `useIsDark()`, never on
   `prefers-color-scheme`. Build controls from `components/ui.tsx` (Button,
-  IconButton, Input, Menu, Dialog, Section, PropertyRow, Chip, Icon). Icons
+  IconButton, Input, Menu, Dialog, Section, PropertyRow, Chip, Icon). An icon
+  that changes on click (copy → check) is a `SwapIcon`, which animates the
+  swap; never a bare ternary between two icons. Icons
   are Phosphor: UI icons are `@phosphor-icons/react` (bold) behind `Icon` —
   add a name there, don't import Phosphor elsewhere (`GitHubMark` stays
   GitHub's own mark on purpose); component glyphs are Phosphor paths

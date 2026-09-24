@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { CodeDialog } from "../CodeDialog";
-import { Button, Icon, buttonCls } from "../ui";
+import { Button, Icon, SwapIcon, buttonCls } from "../ui";
 
 /** Copies an example's `.arch` source: the popout's "Copy code", as in the editor. */
 function CopyCodeButton({ source }: { source: string }) {
@@ -11,7 +11,7 @@ function CopyCodeButton({ source }: { source: string }) {
   return (
     <Button
       size="sm"
-      icon={copied ? <Icon.Check /> : <Icon.Copy />}
+      icon={<SwapIcon swapped={copied} from={<Icon.Copy />} to={<Icon.Check />} />}
       title="Copy code"
       onClick={() =>
         void navigator.clipboard.writeText(source).then(() => {
