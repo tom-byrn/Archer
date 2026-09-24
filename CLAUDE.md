@@ -103,12 +103,15 @@ Router + React Flow + Convex).
   the tokens. The theme is `data-theme="light|dark"` on `<html>`: the
   viewer's System/Light/Dark choice (localStorage, `lib/theme.ts`; toggle in
   the site header, setting in the account menu), resolved before first paint
-  by the inline script in `app/layout.tsx`. Theme controls call
-  `switchTheme(choice, button)`, which animates the change: a view
-  transition, the new theme spreading from the button in a circle (CSS in
-  `globals.css`); a plain switch without support or with reduced motion. Key
-  CSS on `:root[data-theme="dark"]` and code on `useIsDark()`, never on
-  `prefers-color-scheme`. Build controls from `components/ui.tsx` (Button,
+  by the inline script in `app/layout.tsx`, which also links that theme's tab
+  icon (`THEME_ICONS`: `public/icon-{light,dark}.svg`; `app/favicon.ico` is
+  the fallback). Don't add an `app/icon.svg` — Next would link it as well.
+  Theme controls call `switchTheme(choice, button)`, which animates the
+  change: a view transition, the new theme spreading from the button in a
+  circle (CSS in `globals.css`); a plain switch without support or with
+  reduced motion. Key CSS on `:root[data-theme="dark"]` and code on
+  `useIsDark()`, never on `prefers-color-scheme`. Build controls from
+  `components/ui.tsx` (Button,
   IconButton, Input, Menu, Dialog, Section, PropertyRow, Chip, Icon). Icons
   are Phosphor: UI icons are `@phosphor-icons/react` (bold) behind `Icon` —
   add a name there, don't import Phosphor elsewhere (`GitHubMark` stays

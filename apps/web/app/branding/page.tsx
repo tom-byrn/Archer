@@ -19,6 +19,7 @@ import { highlightArch } from "@/lib/highlightArch";
 import { HEADLINE, LEDE } from "@/lib/landingCopy";
 import { LANDING_SAMPLE } from "@/lib/landingSample";
 import { renderArchSvg } from "@/lib/svg";
+import { THEME_ICONS } from "@/lib/theme";
 
 /**
  * Brand kit: the mark, colors, type and primitives on one page. Signed-in
@@ -185,9 +186,10 @@ const Code = ({ children }: { children: ReactNode }) => (
 const ICON_SIZES = [96, 64, 32, 16];
 
 const DOWNLOADS = [
-  { href: "/icon.svg", label: "icon.svg", note: "Vector app icon" },
+  { href: THEME_ICONS.light, label: "icon-light.svg", note: "Vector app icon, light theme" },
+  { href: THEME_ICONS.dark, label: "icon-dark.svg", note: "Vector app icon, dark theme" },
   { href: "/apple-icon.png", label: "apple-icon.png", note: "180 × 180" },
-  { href: "/favicon.ico", label: "favicon.ico", note: "Browser tab" },
+  { href: "/favicon.ico", label: "favicon.ico", note: "Browser tab, without SVG" },
 ];
 
 function LogoSection({ tokens }: { tokens: BrandTokens }) {
@@ -235,13 +237,16 @@ function LogoSection({ tokens }: { tokens: BrandTokens }) {
         </div>
       </Block>
 
-      <Block title="App icon" note="A light capital A on a near-black rounded square, at every size.">
+      <Block
+        title="App icon"
+        note="A capital A on a rounded square, at every size: light on near-black for the light theme, inverted for the dark. The browser tab shows the viewer's theme."
+      >
         <div className="grid gap-4 sm:grid-cols-2">
           {THEMES.map((theme) => (
             <Panel key={theme} tokens={tokens} theme={theme} className="flex h-48 items-center justify-center gap-6 px-6">
               {ICON_SIZES.map((size) => (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img key={size} src="/icon.svg" alt="" width={size} height={size} />
+                <img key={size} src={THEME_ICONS[theme]} alt="" width={size} height={size} />
               ))}
             </Panel>
           ))}

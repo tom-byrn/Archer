@@ -1,12 +1,21 @@
+import { existsSync } from "node:fs";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { THEME_KEY, THEME_SCRIPT, readThemeChoice, setThemeChoice, switchTheme } from "../lib/theme";
+import {
+  THEME_ICONS,
+  THEME_KEY,
+  THEME_SCRIPT,
+  readThemeChoice,
+  setThemeChoice,
+  switchTheme,
+} from "../lib/theme";
 
 /**
- * A page for THEME_SCRIPT (inline in app/layout.tsx) to run on: <html>,
- * localStorage and the OS color scheme, all fake. `storage: "blocked"` throws
- * on every access, as browsers do when site data is blocked. The viewport is
- * 1000x800; `viewTransitions` gives it document.startViewTransition, which
- * records each transition for the test to run the way a browser would.
+ * A page for THEME_SCRIPT (inline in app/layout.tsx) to run on: <html>, its
+ * <head>, localStorage and the OS color scheme, all fake. `storage:
+ * "blocked"` throws on every access, as browsers do when site data is
+ * blocked. The viewport is 1000x800; `viewTransitions` gives it
+ * document.startViewTransition, which records each transition for the test
+ * to run the way a browser would.
  */
 function page({
   stored,
@@ -46,7 +55,21 @@ function page({
     innerHeight: 800,
   });
   const transitions: { update: () => void; finish: () => Promise<void> }[] = [];
+  const head: { tag: string; attributes: Map<string, string> }[] = [];
   const document = {
+    createElement(tag: string) {
+      const element = { tag, attributes: new Map<string, string>() };
+      return {
+        setAttribute: (k: string, v: string) => void element.attributes.set(k, v),
+        get isConnected() {
+          return head.includes(element);
+        },
+        element,
+      };
+    },
+    head: {
+      appendChild: (child: { element: (typeof head)[number] }) => void head.push(child.element),
+    },
     documentElement: {
       getAttribute: (k: string) => attributes.get(k) ?? null,
       setAttribute: (k: string, v: string) => void attributes.set(k, v),
@@ -84,6 +107,10 @@ function page({
     /** View transitions started, in order: run `update` as the browser would, then `finish`. */
     transitions,
     theme: () => attributes.get("data-theme"),
+    /** What the page has in <head>, as tag names and attributes. */
+    head: () => head.map(({ tag, attributes }) => ({ tag, ...Object.fromEntries(attributes) })),
+    /** The href of the tab icon the script linked. */
+    icon: () => head[0]?.attributes.get("href"),
     setOsDark(dark: boolean) {
       os.matches = dark;
       for (const listener of osListeners) listener();
@@ -148,6 +175,32 @@ describe("theme script", () => {
     p.items.set(THEME_KEY, "dark");
     p.otherTab(null, null);
     expect(p.theme()).toBe("light");
+  });
+
+  it("links the theme's tab icon", () => {
+    const light = page({ osDark: false });
+    expect(light.head()).toEqual([
+      { tag: "link", rel: "icon", type: "image/svg+xml", sizes: "any", href: THEME_ICONS.light },
+    ]);
+    expect(page({ stored: "dark" }).icon()).toBe(THEME_ICONS.dark);
+  });
+
+  it("keeps the tab icon on the theme through every change, in one <link>", () => {
+    const p = page({ osDark: false });
+    p.setOsDark(true);
+    expect(p.icon()).toBe(THEME_ICONS.dark);
+    p.otherTab("light");
+    expect(p.icon()).toBe(THEME_ICONS.light);
+    useAsGlobals(p);
+    setThemeChoice("dark");
+    expect(p.icon()).toBe(THEME_ICONS.dark);
+    expect(p.head()).toHaveLength(1);
+  });
+
+  it("links icons that exist", () => {
+    for (const href of Object.values(THEME_ICONS)) {
+      expect(existsSync(new URL(`../public${href}`, import.meta.url))).toBe(true);
+    }
   });
 });
 

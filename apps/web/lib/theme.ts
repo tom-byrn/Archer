@@ -4,8 +4,8 @@
  * in localStorage; "system" is stored as no entry at all. THEME_SCRIPT, inline
  * in app/layout.tsx, resolves it to <html data-theme="light|dark"> before the
  * first paint and keeps that current, and everything themed keys on it: the
- * tokens in globals.css, and useIsDark() for code. A switch made with one of
- * those controls is animated (switchTheme).
+ * tokens in globals.css, useIsDark() for code, and the tab icon. A switch made
+ * with one of those controls is animated (switchTheme).
  */
 
 export type ThemeChoice = "system" | "light" | "dark";
@@ -17,22 +17,39 @@ export const THEME_KEY = "archer.theme";
 export const THEME_EVENT = "archer:theme";
 
 /**
+ * The tab icon for each theme, in public/: a light A on a near-black tile for
+ * light, inverted for dark, so it stands out on either tab strip.
+ * THEME_SCRIPT links the current one; app/favicon.ico (the light one) is the
+ * fallback without JavaScript or SVG favicons.
+ */
+export const THEME_ICONS = { light: "/icon-light.svg", dark: "/icon-dark.svg" } as const;
+
+/**
  * Runs in <head>, before the body paints: sets data-theme from the stored
- * choice, or from the OS scheme without one. Sets it again when the OS scheme
- * changes, when another tab changes the choice (a storage event), and on
- * THEME_EVENT. Plain ES5, as it runs unbundled.
+ * choice, or from the OS scheme without one, and links that theme's tab icon.
+ * Sets both again when the OS scheme changes, when another tab changes the
+ * choice (a storage event), and on THEME_EVENT. The icon's <link> is the
+ * script's own, outside React's tree, so hydration never finds it changed.
+ * Plain ES5, as it runs unbundled.
  */
 export const THEME_SCRIPT = `(function () {
   var key = ${JSON.stringify(THEME_KEY)};
+  var icons = ${JSON.stringify(THEME_ICONS)};
   var root = document.documentElement;
   var os = window.matchMedia("(prefers-color-scheme: dark)");
   var choice = null;
+  var icon = document.createElement("link");
+  icon.setAttribute("rel", "icon");
+  icon.setAttribute("type", "image/svg+xml");
+  icon.setAttribute("sizes", "any");
   function read() {
     try { choice = localStorage.getItem(key); } catch (e) {}
   }
   function apply() {
-    var dark = choice === "dark" || (choice !== "light" && os.matches);
-    root.setAttribute("data-theme", dark ? "dark" : "light");
+    var theme = choice === "dark" || (choice !== "light" && os.matches) ? "dark" : "light";
+    root.setAttribute("data-theme", theme);
+    icon.setAttribute("href", icons[theme]);
+    if (!icon.isConnected) document.head.appendChild(icon);
   }
   read();
   apply();
