@@ -168,7 +168,9 @@ of real technologies plus the user's saved custom types.
 ### 5.1 Initial connection-type library
 
 `@http` `@grpc` `@ws` `@sql` `@queue` `@event` `@stream` `@auth` `@reads` `@writes`
-`@deploys` `@contains` `@depends` — plus user-defined. All optional.
+`@deploys` `@contains` `@depends` `@mcp` `@a2a` — plus user-defined. All optional.
+`@mcp` is an agent calling an MCP server (Model Context Protocol); `@a2a` is one agent
+calling another (Agent2Agent protocol).
 
 ## 6. Connections
 
