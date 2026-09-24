@@ -9,6 +9,7 @@
 import {
   useEffect,
   useId,
+  useLayoutEffect,
   useRef,
   useState,
   type ButtonHTMLAttributes,
@@ -20,16 +21,20 @@ import {
 import {
   ArrowCounterClockwiseIcon,
   ArrowDownIcon,
+  ArrowElbowDownRightIcon,
   ArrowRightIcon,
+  ArrowsLeftRightIcon,
   ArrowSquareOutIcon,
   ArrowUUpLeftIcon,
   ArrowUUpRightIcon,
+  BoundingBoxIcon,
   CaretDownIcon,
   CaretLeftIcon,
   CaretRightIcon,
   CheckCircleIcon,
   CheckIcon,
   CircleHalfIcon,
+  ClipboardTextIcon,
   ClockCounterClockwiseIcon,
   CodeIcon,
   CommandIcon,
@@ -50,6 +55,8 @@ import {
   PlugIcon,
   PlusIcon,
   RobotIcon,
+  ScissorsIcon,
+  SelectionAllIcon,
   SparkleIcon,
   SquaresFourIcon,
   SunIcon,
@@ -534,45 +541,113 @@ export function Menu({
             align === "end" ? "right-0" : "left-0",
           )}
         >
-          {items.map((item, i) =>
-            item === "separator" ? (
-              <div key={i} className="my-1 h-px bg-line" />
-            ) : "control" in item ? (
-              <div key={i} className="flex items-center gap-2 px-2 py-0.5 text-sm text-ink">
-                {menuIcon(item.icon)}
-                <span className="min-w-0 flex-1 truncate">{item.label}</span>
-                {item.control}
-              </div>
-            ) : (
-              <button
-                key={i}
-                type="button"
-                role="menuitem"
-                disabled={item.disabled}
-                onClick={() => {
-                  setOpen(false);
-                  item.onSelect();
-                }}
-                className={cx(
-                  "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors duration-75 disabled:opacity-40",
-                  item.danger
-                    ? "text-danger hover:bg-danger-soft"
-                    : "text-ink hover:bg-surface-2",
-                )}
-              >
-                {menuIcon(item.icon)}
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate">{item.label}</span>
-                  {item.hint && (
-                    <span className="block truncate text-xs text-ink-3">{item.hint}</span>
-                  )}
-                </span>
-                {item.shortcut && <Kbd>{item.shortcut}</Kbd>}
-              </button>
-            ),
-          )}
+          <MenuRows items={items} onClose={() => setOpen(false)} />
         </div>
       )}
+    </div>
+  );
+}
+
+/** The rows shared by Menu and ContextMenu; choosing one closes the menu first. */
+function MenuRows({
+  items,
+  onClose,
+}: {
+  items: (MenuItem | MenuControl | "separator")[];
+  onClose: () => void;
+}) {
+  return (
+    <>
+      {items.map((item, i) =>
+        item === "separator" ? (
+          <div key={i} className="my-1 h-px bg-line" />
+        ) : "control" in item ? (
+          <div key={i} className="flex items-center gap-2 px-2 py-0.5 text-sm text-ink">
+            {menuIcon(item.icon)}
+            <span className="min-w-0 flex-1 truncate">{item.label}</span>
+            {item.control}
+          </div>
+        ) : (
+          <button
+            key={i}
+            type="button"
+            role="menuitem"
+            disabled={item.disabled}
+            onClick={() => {
+              onClose();
+              item.onSelect();
+            }}
+            className={cx(
+              "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors duration-75 disabled:opacity-40",
+              item.danger ? "text-danger hover:bg-danger-soft" : "text-ink hover:bg-surface-2",
+            )}
+          >
+            {menuIcon(item.icon)}
+            <span className="min-w-0 flex-1">
+              <span className="block truncate">{item.label}</span>
+              {item.hint && <span className="block truncate text-xs text-ink-3">{item.hint}</span>}
+            </span>
+            {item.shortcut && <Kbd>{item.shortcut}</Kbd>}
+          </button>
+        ),
+      )}
+    </>
+  );
+}
+
+/**
+ * A menu opened at a point (right-click), kept inside the viewport. Closes on
+ * a click outside, Escape, resize, the window losing focus, or a choice.
+ */
+export function ContextMenu({
+  at,
+  items,
+  onClose,
+  width = 240,
+}: {
+  /** Viewport coordinates; null = closed. */
+  at: { x: number; y: number } | null;
+  items: (MenuItem | "separator")[];
+  onClose: () => void;
+  width?: number;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!at || !el) return;
+    const r = el.getBoundingClientRect();
+    el.style.left = `${Math.max(4, Math.min(at.x, window.innerWidth - r.width - 4))}px`;
+    el.style.top = `${Math.max(4, Math.min(at.y, window.innerHeight - r.height - 4))}px`;
+  }, [at]);
+  useEffect(() => {
+    if (!at) return;
+    const onDown = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) onClose();
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("mousedown", onDown, true);
+    document.addEventListener("keydown", onKey);
+    window.addEventListener("blur", onClose);
+    window.addEventListener("resize", onClose);
+    return () => {
+      document.removeEventListener("mousedown", onDown, true);
+      document.removeEventListener("keydown", onKey);
+      window.removeEventListener("blur", onClose);
+      window.removeEventListener("resize", onClose);
+    };
+  }, [at, onClose]);
+  if (!at) return null;
+  return (
+    <div
+      ref={ref}
+      role="menu"
+      style={{ position: "fixed", left: at.x, top: at.y, width }}
+      className="z-[90] rounded-lg border border-line bg-surface p-1 shadow-md"
+      onContextMenu={(e) => e.preventDefault()}
+    >
+      <MenuRows items={items} onClose={onClose} />
     </div>
   );
 }
@@ -686,6 +761,12 @@ export const Icon = {
   Diff: (p: IconProps) => <GitDiffIcon {...UI} {...p} />,
   Send: (p: IconProps) => <PaperPlaneTiltIcon {...UI} {...p} />,
   Command: (p: IconProps) => <CommandIcon {...UI} {...p} />,
+  Group: (p: IconProps) => <BoundingBoxIcon {...UI} {...p} />,
+  AddChild: (p: IconProps) => <ArrowElbowDownRightIcon {...UI} {...p} />,
+  Cut: (p: IconProps) => <ScissorsIcon {...UI} {...p} />,
+  Paste: (p: IconProps) => <ClipboardTextIcon {...UI} {...p} />,
+  SelectAll: (p: IconProps) => <SelectionAllIcon {...UI} {...p} />,
+  Swap: (p: IconProps) => <ArrowsLeftRightIcon {...UI} {...p} />,
 };
 
 /**

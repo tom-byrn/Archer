@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   addComponent,
   addConnection,
+  autoLayout,
   format,
   layoutMap,
   moveComponent,
@@ -129,6 +130,20 @@ describe("transforms", () => {
     const d1 = setDisplay(d0, ["p"], "icon");
     expect(layoutMap(d1).get("p")!.display).toBe("icon");
     expect(layoutMap(d1).get("p")!.size).toEqual([4, 3]);
+  });
+
+  it("setDisplay plane re-fits a collapsed container around its children", () => {
+    const d0 = doc(
+      HEADER +
+        "component p {\n  component x\n  component y\n}\nlayout { p: { at: [0,0], size: [4,3], display: icon } }",
+    );
+    const d1 = autoLayout(setDisplay(autoLayout(d0), ["p"], "plane"));
+    const map = layoutMap(d1);
+    for (const child of ["p.x", "p.y"]) {
+      const c = map.get(child)!;
+      expect(c.at![0] + c.size![0]).toBeLessThan(map.get("p")!.size![0]);
+      expect(c.at![1] + c.size![1]).toBeLessThan(map.get("p")!.size![1]);
+    }
   });
 
   it("addConnection validates endpoints and self-loops", () => {

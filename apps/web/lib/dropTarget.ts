@@ -18,8 +18,8 @@ export interface DropTarget {
 export interface ResolveOptions {
   /** The view's root (drill-down focus); containment starts at its children. */
   base?: string[];
-  /** Path whose subtree can't be a target (the node being dragged). */
-  exclude?: string[];
+  /** Paths whose subtrees can't be a target (the nodes being dragged). */
+  exclude?: readonly (readonly string[])[];
   /** Top-left of the dropped rect in flow px; defaults to centering around the point. */
   topLeft?: { x: number; y: number };
   /** Grid size of the dropped rect, for centering. */
@@ -38,7 +38,7 @@ export function resolveDropTarget(
 ): DropTarget {
   const layout = layoutMap(doc);
   const base = opts.base ?? [];
-  const excludeKey = opts.exclude?.join(".");
+  const excluded = (opts.exclude ?? []).map((p) => p.join("."));
   let best: { parent: string[]; originPx: [number, number]; depth: number } = {
     parent: [...base],
     originPx: [0, 0],
@@ -57,8 +57,7 @@ export function resolveDropTarget(
     for (const c of items) {
       const path = [...prefix, c.id];
       const key = path.join(".");
-      if (excludeKey !== undefined && (key === excludeKey || key.startsWith(excludeKey + ".")))
-        continue;
+      if (excluded.some((x) => key === x || key.startsWith(x + "."))) continue;
       const entry = layout.get(key);
       if (!entry?.at || !entry.size) continue;
       if (effectiveDisplay(c, entry) !== "plane" || c.children.length === 0) continue;

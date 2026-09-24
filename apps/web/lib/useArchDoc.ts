@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import {
   autoLayout,
   format,
@@ -23,13 +23,19 @@ interface HistoryState {
 
 export interface ArchDocState {
   source: string;
-  /** Update from the code pane (no history entry — the textarea has its own). */
+  /** Replace the text (code pane edits, remote saves, reset) as one undoable step. */
   setSource: (text: string) => void;
   /**
    * Apply an AST transform to the laid-out doc and commit the formatted result
    * as one undoable step. Returns false if the transform threw.
    */
-  mutate: (fn: (doc: ArchDoc) => ArchDoc) => void;
+  mutate: (fn: (doc: ArchDoc) => ArchDoc) => boolean;
+  /**
+   * `mutate` for transforms that also produce something the caller needs
+   * (the paths of what they created). Applied synchronously, so the value
+   * comes back right away; undefined if the transform threw.
+   */
+  mutateWith: <T>(fn: (doc: ArchDoc) => { doc: ArchDoc; value: T }) => T | undefined;
   undo: () => void;
   redo: () => void;
   canUndo: boolean;
@@ -42,67 +48,61 @@ export function useArchDoc(initial: string): ArchDocState {
     past: [],
     future: [],
   });
-
-  const setSource = useCallback(
-    (text: string) =>
-      setState((s) =>
-        text === s.source
-          ? s
-          : {
-              source: text,
-              past: [...s.past.slice(-HISTORY_LIMIT), s.source],
-              future: [],
-            },
-      ),
-    [],
+  // The latest state, updated as each change is committed, so edits apply in
+  // order and can return results without waiting for a render.
+  const latest = useRef(state);
+  const commit = useCallback((next: HistoryState) => {
+    latest.current = next;
+    setState(next);
+  }, []);
+  const push = useCallback(
+    (text: string) => {
+      const s = latest.current;
+      if (text === s.source) return;
+      commit({ source: text, past: [...s.past.slice(-HISTORY_LIMIT), s.source], future: [] });
+    },
+    [commit],
   );
 
-  const mutate = useCallback((fn: (doc: ArchDoc) => ArchDoc) => {
-    setState((s) => {
+  const mutateWith = useCallback(
+    <T,>(fn: (doc: ArchDoc) => { doc: ArchDoc; value: T }): T | undefined => {
       try {
-        const laidOut = autoLayout(parse(s.source).doc);
-        const text = format(fn(laidOut));
-        if (text === s.source) return s;
-        return {
-          source: text,
-          past: [...s.past.slice(-HISTORY_LIMIT), s.source],
-          future: [],
-        };
+        const laidOut = autoLayout(parse(latest.current.source).doc);
+        const { doc, value } = fn(laidOut);
+        push(format(doc));
+        return value;
       } catch (e) {
         console.warn("[archer] transform rejected:", e);
-        return s;
+        return undefined;
       }
-    });
-  }, []);
-
-  const undo = useCallback(
-    () =>
-      setState((s) => {
-        const prev = s.past[s.past.length - 1];
-        if (prev === undefined) return s;
-        return {
-          source: prev,
-          past: s.past.slice(0, -1),
-          future: [s.source, ...s.future],
-        };
-      }),
-    [],
+    },
+    [push],
   );
 
-  const redo = useCallback(
-    () =>
-      setState((s) => {
-        const [next, ...rest] = s.future;
-        if (next === undefined) return s;
-        return { source: next, past: [...s.past, s.source], future: rest };
-      }),
-    [],
+  const mutate = useCallback(
+    (fn: (doc: ArchDoc) => ArchDoc) => mutateWith((d) => ({ doc: fn(d), value: true })) ?? false,
+    [mutateWith],
   );
+
+  const undo = useCallback(() => {
+    const s = latest.current;
+    const prev = s.past[s.past.length - 1];
+    if (prev === undefined) return;
+    commit({ source: prev, past: s.past.slice(0, -1), future: [s.source, ...s.future] });
+  }, [commit]);
+
+  const redo = useCallback(() => {
+    const s = latest.current;
+    const [next, ...rest] = s.future;
+    if (next === undefined) return;
+    commit({ source: next, past: [...s.past, s.source], future: rest });
+  }, [commit]);
 
   return {
     source: state.source,
-    setSource,
+    setSource: push,
     mutate,
+    mutateWith,
     undo,
     redo,
     canUndo: state.past.length > 0,
