@@ -118,6 +118,14 @@
   bottom: auto;
 }
 
+/* A hatched band between two sections, drawn like the cut in a section
+   drawing: 45° hairlines in the rule color, on a square tile so they run
+   unbroken from one tile into the next. */
+.landing-hatch {
+  background-image: repeating-linear-gradient(315deg, var(--line) 0 1px, transparent 0 50%);
+  background-size: 10px 10px;
+}
+
 /* Connectors read as ink on the landing canvas, and go all the way to black
    (white in dark mode) under the pointer. */
 .landing-canvas {

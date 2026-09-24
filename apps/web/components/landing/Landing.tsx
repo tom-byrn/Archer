@@ -145,6 +145,9 @@ export function Landing() {
 
       <Features />
 
+      {/* Features and FAQ are both ruled grids; the hatched band keeps them apart. */}
+      <div aria-hidden className="landing-joints landing-hatch h-16 border-b border-line sm:h-24" />
+
       <Faq />
 
       <section className="flex flex-col items-center px-5 py-20 text-center sm:px-10 sm:py-24">
