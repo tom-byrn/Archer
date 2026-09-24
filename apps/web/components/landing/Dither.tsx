@@ -1,19 +1,30 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { ShaderMount, getShaderColorFromString } from "@paper-design/shaders-react";
 import { useIsDark } from "@/lib/useIsDark";
+import { cx } from "../ui";
 
 /**
- * Page backdrop: a straight fade from --landing-fade into the page color
- * (--landing-bg) down the first screen of the page, grey to black in dark
- * mode. It scrolls away with the content, leaving the plain page. Drawn as a
- * 4x4 Bayer dither: Paper's Dithering shader has no linear shape, so this runs
- * a small fragment shader of our own through its ShaderMount. The smooth CSS
- * gradient under it (`.landing-dither` in landing.css) covers first paint and
- * any browser without WebGL. Static, so nothing to pause for reduced motion.
+ * A straight fade from --landing-fade into the page color (--landing-bg) down
+ * its box, grey to black in dark mode, drawn as a 4x4 Bayer dither: Paper's
+ * Dithering shader has no linear shape, so this runs a small fragment shader
+ * of our own through its ShaderMount. `fadeLength` is the fraction of the
+ * box's height, from the top, over which the fade runs, and `curve` how much
+ * sooner it ends at the side edges than in the middle, as a fraction of the
+ * height: the gentle arc of its lower edge. The smooth CSS gradient under it
+ * (`.landing-dither` in landing.css) covers first paint and any browser
+ * without WebGL. Static, so nothing to pause for reduced motion.
  */
-export function DitherBackdrop() {
+export function Dither({
+  className,
+  fadeLength,
+  curve = 0,
+}: {
+  className: string;
+  fadeLength: number;
+  curve?: number;
+}) {
   const ref = useRef<HTMLDivElement>(null);
   const isDark = useIsDark();
   // The two colors as the stylesheet has them for the page's theme, read again
@@ -35,16 +46,20 @@ export function DitherBackdrop() {
     () =>
       colors && {
         ...UNIFORMS,
+        u_fadeLength: fadeLength,
+        u_curve: curve,
         u_colorBack: getShaderColorFromString(colors.back),
         u_colorFront: getShaderColorFromString(colors.front),
       },
-    [colors],
+    [colors, fadeLength, curve],
   );
 
   return (
     <div
       ref={ref}
-      className="landing-dither pointer-events-none absolute inset-x-0 top-0 -z-10 h-svh"
+      className={cx("landing-dither", className)}
+      // The CSS gradient fades over the same length as the shader.
+      style={{ "--dither-length": `${fadeLength * 100}%` } as CSSProperties}
       aria-hidden
     >
       {uniforms && (
@@ -59,14 +74,23 @@ export function DitherBackdrop() {
   );
 }
 
+/**
+ * Page backdrop: the fade down the first screen of the page, arcing slightly.
+ * It scrolls away with the content, leaving the plain page.
+ */
+export function DitherBackdrop() {
+  return (
+    <Dither
+      className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-svh"
+      fadeLength={0.85}
+      curve={0.15}
+    />
+  );
+}
+
 const UNIFORMS = {
   // Size of one dither cell, in CSS pixels.
   u_pxSize: 2,
-  // Fraction of the viewport height, from the top, over which the fade runs.
-  u_fadeLength: 0.85,
-  // How much sooner the fade ends at the side edges than in the middle, as a
-  // fraction of the viewport height: the gentle arc of its lower edge.
-  u_curve: 0.15,
 };
 
 const FRAGMENT_SHADER = `#version 300 es

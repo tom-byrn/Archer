@@ -7,7 +7,7 @@ import { ThemeToggle } from "../ThemeToggle";
 import { Icon, buttonCls, cx } from "../ui";
 import { AgentPrompt, CopyPromptButton } from "./AgentPrompt";
 import { ClientLogos } from "./ClientLogos";
-import { DitherBackdrop } from "./DitherBackdrop";
+import { Dither, DitherBackdrop } from "./Dither";
 import { Faq } from "./Faq";
 import { Features } from "./Features";
 import { SandboxLoader } from "./SandboxLoader";
@@ -144,6 +144,12 @@ export function Landing() {
       </section>
 
       <Features />
+
+      {/* Features and FAQ are both ruled grids; a band of the page's dither, arced like the
+          one at the top, keeps them apart. */}
+      <div className="landing-joints h-20 border-b border-line sm:h-32">
+        <Dither className="absolute inset-0" fadeLength={1.2} curve={0.8} />
+      </div>
 
       <Faq />
 
