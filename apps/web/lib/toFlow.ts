@@ -1,5 +1,6 @@
 import type { Edge, Node } from "@xyflow/react";
 import {
+  PLANE_INNER_MARGIN,
   effectiveDisplay,
   findComponent,
   layoutMap,
@@ -12,6 +13,8 @@ import {
 
 /** One grid cell in pixels. */
 export const CELL = 40;
+/** Smallest a plain component can be resized to, in grid cells. */
+export const MIN_LEAF_SIZE: [number, number] = [3, 2];
 
 /** Position-independent identity of a connection (mirrors @archer/lang connectionKey). */
 const edgeKey = (c: ArchDoc["connections"][number]): string =>
@@ -40,6 +43,13 @@ export interface ArchNodeData extends Record<string, unknown> {
   accent?: string;
   glyphKey?: string;
   marks?: NodeMarks;
+  /**
+   * Smallest size a resize may leave it, in grid cells: a plane must still
+   * hold its children.
+   */
+  minSize: [number, number];
+  /** Show resize handles (set by the canvas on the one selected node). */
+  resizable?: boolean;
 }
 
 export type ArchNode = Node<ArchNodeData>;
@@ -47,6 +57,8 @@ export type ArchNode = Node<ArchNodeData>;
 export interface ArchEdgeData extends Record<string, unknown> {
   /** Index into `doc.connections`. */
   index: number;
+  /** Position-independent identity (`connectionKey`), which selection is keyed on. */
+  key: string;
   arrow: Arrow;
   /** Protocol tag without the `@`, e.g. "http". */
   protocol?: string;
@@ -123,6 +135,15 @@ export function toFlow(
           y: absPx[1] + (size[1] * CELL) / 2,
         });
         const isPlane = display === "plane" && c.children.length > 0;
+        const minSize: [number, number] = [...MIN_LEAF_SIZE];
+        if (isPlane) {
+          for (const child of c.children) {
+            const e = layout.get(`${path}.${child.id}`);
+            if (!e?.at || !e.size) continue;
+            minSize[0] = Math.max(minSize[0], e.at[0] + e.size[0] + PLANE_INNER_MARGIN[0]);
+            minSize[1] = Math.max(minSize[1], e.at[1] + e.size[1] + PLANE_INNER_MARGIN[1]);
+          }
+        }
         nodes.push({
           id: path,
           type: isPlane ? "archPlane" : "archComponent",
@@ -138,6 +159,7 @@ export function toFlow(
             display,
             childCount: c.children.length,
             payloadCount: c.payloads.length,
+            minSize,
             ...(c.type !== undefined ? (() => {
               const v = opts.resolveType?.(c.type!);
               return v ? { accent: v.color, glyphKey: v.glyph } : {};
@@ -188,6 +210,7 @@ export function toFlow(
       type: "archEdge",
       data: {
         index: i,
+        key: edgeKey(c),
         arrow: c.arrow,
         ...(c.type !== undefined ? { protocol: c.type } : {}),
         ...(c.label !== undefined ? { label: c.label } : {}),

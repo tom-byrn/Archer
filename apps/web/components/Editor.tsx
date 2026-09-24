@@ -8,20 +8,32 @@ import {
   compileForAgent,
   componentPaths,
   diffDocs,
+  duplicateComponents,
+  effectiveDisplay,
+  extractFragment,
   findComponent,
   format,
+  freshId,
+  groupComponents,
+  insertFragment,
+  layoutMap,
   mergeForDiff,
   moveComponent,
   parse,
+  relayoutComponents,
   removeComponent,
   removeConnection,
   reparentComponent,
+  resizeComponent,
+  setConnectionEndpoints,
+  setDisplay,
   type ArchDoc,
 } from "@archer/lang";
 import Link from "next/link";
 import { useAuth } from "@clerk/nextjs";
 import { lookupType } from "@archer/catalog";
 import { toFlow } from "@/lib/toFlow";
+import { fragmentSize, parseFragment } from "@/lib/clipboard";
 import { resolveDropTarget } from "@/lib/dropTarget";
 import { deriveDoc, useArchDoc } from "@/lib/useArchDoc";
 import type { UserLibrary } from "@/lib/userLibrary";
@@ -36,14 +48,30 @@ import { AccountMenu } from "./AccountMenu";
 import { RepoDialog } from "./RepoDialog";
 import { ShareDialog } from "./ShareDialog";
 import { ActivityPanel, type ActivityTab } from "./ActivityPanel";
-import { ArchCanvas, type CanvasCallbacks } from "./ArchCanvas";
+import {
+  ArchCanvas,
+  type CanvasApi,
+  type CanvasCallbacks,
+  type ContextTarget,
+} from "./ArchCanvas";
 import { CodePane } from "./CodePane";
-import { CommandPalette } from "./CommandPalette";
-import { DetailPanel, connectionKey, type Selection } from "./DetailPanel";
+import {
+  CommandPalette,
+  type PaletteCommand,
+  type PaletteComponent,
+  type PaletteMode,
+} from "./CommandPalette";
+import {
+  DetailPanel,
+  connectionKey,
+  type MultiSelection,
+  type Selection,
+} from "./DetailPanel";
 import { Palette } from "./Palette";
 import {
   Button,
   Chip,
+  ContextMenu,
   Icon,
   IconButton,
   Input,
@@ -115,8 +143,79 @@ function setSrc(
 }
 
 /** Drop paths that sit inside another path in the same set (delete parent deletes them). */
-const outermostOnly = (paths: string[]): string[] =>
+const outermostOnly = (paths: readonly string[]): string[] =>
   paths.filter((p) => !paths.some((q) => q !== p && p.startsWith(q + ".")));
+
+/** What's selected on the canvas: component paths and connection keys. */
+type Sel = { nodes: string[]; edges: string[] };
+const NONE: Sel = { nodes: [], edges: [] };
+const only = (path: string): Sel => ({ nodes: [path], edges: [] });
+
+/** Toggle `item` in a list (shift/⌘-click). */
+const toggle = (list: string[], item: string): string[] =>
+  list.includes(item) ? list.filter((x) => x !== item) : [...list, item];
+
+/** Focus in a text field, a textarea or the code editor: keys belong to it. */
+const isTyping = (target: EventTarget | null): boolean => {
+  const el = target as HTMLElement | null;
+  if (!el || !el.tagName) return false;
+  return (
+    el.tagName === "TEXTAREA" ||
+    el.tagName === "INPUT" ||
+    el.isContentEditable ||
+    !!el.closest?.(".cm-editor")
+  );
+};
+
+/** Focus on the canvas or on nothing in particular (not a panel control that uses arrows itself). */
+const onCanvas = (target: EventTarget | null): boolean => {
+  const el = target as HTMLElement | null;
+  return !el || el === document.body || !!el.closest?.(".react-flow");
+};
+
+const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
+
+/** Rewrite a path that moved (or sits inside one that did). */
+const remapPath = (p: string, moved: ReadonlyMap<string, string>): string => {
+  for (const [from, to] of moved) {
+    if (p === from) return to;
+    if (p.startsWith(from + ".")) return to + p.slice(from.length);
+  }
+  return p;
+};
+
+/** Arrow keys nudge the selection one grid cell (four with shift). */
+const ARROWS: Record<string, [number, number]> = {
+  ArrowLeft: [-1, 0],
+  ArrowRight: [1, 0],
+  ArrowUp: [0, -1],
+  ArrowDown: [0, 1],
+};
+
+/** What shortcuts and clipboard events can do; refreshed on every render. */
+interface EditorActions {
+  editable: boolean;
+  paletteOpen: boolean;
+  hasSelection: boolean;
+  togglePalette: () => void;
+  find: () => void;
+  undo: () => void;
+  redo: () => void;
+  escape: () => void;
+  selectAll: () => void;
+  duplicate: () => void;
+  group: () => void;
+  nudge: (dx: number, dy: number) => void;
+  /** The selection as `.arch` text, or null when no component is selected. */
+  copyText: () => string | null;
+  copied: () => void;
+  cutDone: () => void;
+  paste: (fragment: ArchDoc) => void;
+}
+
+/** ⌘ on Mac, Ctrl elsewhere, for shortcut hints. */
+const MOD =
+  typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform) ? "⌘" : "Ctrl+";
 
 /** Click-to-edit document title. Commits on blur / Enter, reverts on Escape. */
 function TitleField({ value, onCommit }: { value: string; onCommit: (v: string) => void }) {
@@ -175,7 +274,7 @@ export function Editor({
   const repo = stored?.repo ?? null;
   const back =
     session.kind === "sandbox" ? session.back : { href: "/", label: "All documents" };
-  const { source, setSource, mutate, undo, redo, canUndo, canRedo } =
+  const { source, setSource, mutate, mutateWith, undo, redo, canUndo, canRedo } =
     useArchDoc(initialSource);
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved">("idle");
   const { isSignedIn } = useAuth();
@@ -194,11 +293,18 @@ export function Editor({
     [library.items],
   );
   const derived = useMemo(() => deriveDoc(source, customTags), [source, customTags]);
-  const [selection, setSelection] = useState<Selection>(null);
+  const [sel, setSel] = useState<Sel>(NONE);
   const [focus, setFocus] = useState<string[]>([]);
   const [codeOpen, setCodeOpen] = useState(false);
-  const [paletteOpen, setPaletteOpen] = useState(false);
+  const [palette, setPalette] = useState<PaletteMode | null>(null);
+  const [menu, setMenu] = useState<{ target: ContextTarget; at: { x: number; y: number } } | null>(
+    null,
+  );
+  const [reveal, setReveal] = useState<{ path: string; nonce: number } | null>(null);
   const exportRef = useRef<(() => void) | null>(null);
+  const canvasApi = useRef<CanvasApi | null>(null);
+  /** Where "Add component…" from the canvas menu should put the new one. */
+  const addAt = useRef<{ x: number; y: number } | null>(null);
   const activity = useDocumentActivity(
     stored?.id ?? null,
     stored?.workspaceId ?? null,
@@ -283,68 +389,151 @@ export function Editor({
 
   const callbacks: CanvasCallbacks = useMemo(
     () => ({
-      onNodeDragEnd: (path, info) =>
-        mutate((d) => {
-          const segs = path.split(".");
-          const target = resolveDropTarget(d, info.center, {
-            base: liveFocus,
-            exclude: segs,
-            topLeft: info.topLeft,
-            sizeGrid: info.sizeGrid,
+      onNodesDragEnd: (moves) => {
+        const moved = mutateWith((d) => {
+          const dragged = moves.map((m) => m.path.split("."));
+          // Every landing spot is decided on the doc as it was, before any of them moves.
+          const targets = moves.map(({ info }) =>
+            resolveDropTarget(d, info.center, {
+              base: liveFocus,
+              exclude: dragged,
+              topLeft: info.topLeft,
+              sizeGrid: info.sizeGrid,
+            }),
+          );
+          const renamed = new Map<string, string>();
+          let next = d;
+          dragged.forEach((segs, i) => {
+            const target = targets[i]!;
+            if (target.parent.join(".") === segs.slice(0, -1).join(".")) {
+              next = moveComponent(next, segs, target.at);
+              return;
+            }
+            // Reparenting keeps the id unless it clashes in the new parent.
+            const id = segs[segs.length - 1]!;
+            const siblings =
+              target.parent.length === 0
+                ? next.components
+                : (findComponent(next, target.parent)?.children ?? []);
+            const newId = siblings.some((c) => c.id === id) ? freshId(next, target.parent, id) : id;
+            next = reparentComponent(next, segs, target.parent, target.at);
+            renamed.set(segs.join("."), [...target.parent, newId].join("."));
           });
-          const currentParent = segs.slice(0, -1).join(".");
-          if (target.parent.join(".") === currentParent)
-            return moveComponent(d, segs, target.at);
-          return reparentComponent(d, segs, target.parent, target.at);
-        }),
+          return { doc: next, value: renamed };
+        });
+        if (moved && moved.size > 0)
+          setSel((s) => ({ ...s, nodes: s.nodes.map((p) => remapPath(p, moved)) }));
+      },
       onDrillIn: (path) => {
         const segs = path.split(".");
         const node = findComponent(derived.doc, segs);
         if (node && node.children.length > 0) {
           setFocus(segs);
-          setSelection(null);
+          setSel(NONE);
         }
       },
-      onSelectNode: (path) => setSelection({ kind: "component", path }),
-      onSelectEdge: (index) => {
+      onSelectNode: (path, additive) =>
+        setSel((s) => (additive ? { ...s, nodes: toggle(s.nodes, path) } : only(path))),
+      onSelectEdge: (index, additive) => {
         const conn = derived.doc.connections[index];
-        setSelection(conn ? { kind: "connection", key: connectionKey(conn) } : null);
+        if (!conn) return;
+        const key = connectionKey(conn);
+        setSel((s) => (additive ? { ...s, edges: toggle(s.edges, key) } : { nodes: [], edges: [key] }));
       },
-      onClearSelection: () => setSelection(null),
+      onSelectMany: (paths) => setSel({ nodes: paths, edges: [] }),
+      onClearSelection: () => setSel(NONE),
       onConnect: (s, t) => mutate((d) => addConnection(d, s.split("."), t.split("."))),
-      onDeleteNodes: (paths) =>
-        mutate((d) =>
-          outermostOnly(paths).reduce((acc, p) => removeComponent(acc, p.split(".")), d),
-        ),
-      onDeleteEdges: (indices) =>
-        mutate((d) =>
-          [...indices].sort((a, b) => b - a).reduce((acc, i) => removeConnection(acc, i), d),
-        ),
+      onDelete: (paths, indices) => {
+        mutate((d) => {
+          // Connections first, by index on the unchanged doc; then components.
+          const withoutEdges = [...new Set(indices)]
+            .sort((a, b) => b - a)
+            .reduce((acc, i) => removeConnection(acc, i), d);
+          return outermostOnly(paths).reduce(
+            (acc, p) => removeComponent(acc, p.split(".")),
+            withoutEdges,
+          );
+        });
+        setSel(NONE);
+      },
       onDropType: (tag, pos) =>
         mutate((d) => {
           const target = resolveDropTarget(d, pos, { base: liveFocus });
           return addComponent(d, target.parent, { type: tag, at: target.at }).doc;
         }),
+      onReconnect: (index, end, path) => {
+        const key = mutateWith((d) => {
+          const c = d.connections[index];
+          if (!c) throw new Error(`No connection at index ${index}.`);
+          const segs = path.split(".");
+          const next = setConnectionEndpoints(
+            d,
+            index,
+            end === "source" ? segs : c.source,
+            end === "target" ? segs : c.target,
+          );
+          return { doc: next, value: connectionKey(next.connections[index]!) };
+        });
+        if (key) setSel({ nodes: [], edges: [key] });
+      },
+      onResize: (path, { at, size }) =>
+        mutate((d) => {
+          const segs = path.split(".");
+          return moveComponent(resizeComponent(d, segs, size), segs, at);
+        }),
+      onContextMenu: (target, at) => {
+        // Right-clicking something outside the selection selects just it.
+        if (target.kind === "node")
+          setSel((s) => (s.nodes.includes(target.path) ? s : only(target.path)));
+        if (target.kind === "edge") {
+          const conn = derived.doc.connections[target.index];
+          const key = conn && connectionKey(conn);
+          if (key) setSel((s) => (s.edges.includes(key) ? s : { nodes: [], edges: [key] }));
+        }
+        setMenu({ target, at });
+      },
     }),
-    [mutate, derived, liveFocus],
+    [mutate, mutateWith, derived, liveFocus],
   );
 
-  // Drop a selection that no longer resolves (component deleted, connection edited away).
-  const liveSelection: Selection = useMemo(() => {
-    if (selection === null) return null;
-    if (selection.kind === "component") {
-      return componentPaths(derived.doc).has(selection.path) ? selection : null;
-    }
-    return derived.doc.connections.some((c) => connectionKey(c) === selection.key)
-      ? selection
-      : null;
-  }, [selection, derived]);
+  // What's selected, minus anything that no longer resolves (deleted, renamed,
+  // connection edited away). One thing selected opens its inspector.
+  const liveSel: Sel = useMemo(() => {
+    const paths = componentPaths(derived.doc);
+    const keys = new Set(derived.doc.connections.map(connectionKey));
+    const nodes = sel.nodes.filter((p) => paths.has(p));
+    const edges = sel.edges.filter((k) => keys.has(k));
+    return nodes.length === sel.nodes.length && edges.length === sel.edges.length
+      ? sel
+      : { nodes, edges };
+  }, [sel, derived]);
+  const liveSelection: Selection =
+    liveSel.nodes.length === 1 && liveSel.edges.length === 0
+      ? { kind: "component", path: liveSel.nodes[0]! }
+      : liveSel.nodes.length === 0 && liveSel.edges.length === 1
+        ? { kind: "connection", key: liveSel.edges[0]! }
+        : null;
+  const setSelection = useCallback(
+    (s: Selection) =>
+      setSel(s === null ? NONE : s.kind === "component" ? only(s.path) : { nodes: [], edges: [s.key] }),
+    [],
+  );
   const selectedPath = liveSelection?.kind === "component" ? liveSelection.path : null;
 
   const addFromPalette = useCallback(
-    (tag: string | undefined) =>
-      mutate((d) => addComponent(d, liveFocus, { type: tag }).doc),
-    [mutate, liveFocus],
+    (tag: string | undefined) => {
+      const point = addAt.current;
+      addAt.current = null;
+      const path = mutateWith((d) => {
+        const target = point ? resolveDropTarget(d, point, { base: liveFocus }) : null;
+        const r = target
+          ? addComponent(d, target.parent, { type: tag, at: target.at })
+          : addComponent(d, liveFocus, { type: tag });
+        return { doc: r.doc, value: r.path.join(".") };
+      });
+      if (path) setSel(only(path));
+    },
+    [mutateWith, liveFocus],
   );
 
   // The last text known to be stored. Remote saves (an agent over MCP) arrive
@@ -372,48 +561,99 @@ export function Editor({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [source, persist]);
 
-  // Global shortcuts: undo/redo (except while typing), ⌘K, Escape to go up a level.
+  // Keyboard shortcuts and the clipboard, dispatched to the latest actions
+  // (assigned further down, every render).
+  const actions = useRef<EditorActions | null>(null);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      const el = e.target as HTMLElement;
-      const typing =
-        el.tagName === "TEXTAREA" || el.tagName === "INPUT" || el.isContentEditable ||
-        !!el.closest?.(".cm-editor");
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+      const a = actions.current;
+      if (!a) return;
+      const mod = e.metaKey || e.ctrlKey;
+      const key = e.key.toLowerCase();
+      if (mod && key === "k") {
         e.preventDefault();
-        setPaletteOpen((o) => !o);
+        a.togglePalette();
         return;
       }
-      if (typing) return;
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "z") {
+      if (isTyping(e.target) || a.paletteOpen) return;
+      if (mod && key === "z") {
         e.preventDefault();
-        if (e.shiftKey) redo();
-        else undo();
+        if (e.shiftKey) a.redo();
+        else a.undo();
+        return;
+      }
+      if (mod && key === "f") {
+        e.preventDefault();
+        a.find();
+        return;
       }
       if (e.key === "Escape") {
-        setDiffView((v) => {
-          if (v) return null;
-          setFocus((f) => f.slice(0, -1));
-          return v;
-        });
+        a.escape();
+        return;
+      }
+      if (!a.editable) return;
+      if (mod && key === "a") {
+        e.preventDefault();
+        a.selectAll();
+      } else if (mod && key === "d") {
+        e.preventDefault();
+        a.duplicate();
+      } else if (mod && key === "g") {
+        e.preventDefault();
+        a.group();
+      } else if (!mod && ARROWS[e.key] && a.hasSelection && onCanvas(e.target)) {
+        // Capture phase, so this beats React Flow's own arrow-key move (which
+        // only moves the node on screen, not in the document).
+        e.preventDefault();
+        e.stopPropagation();
+        const [dx, dy] = ARROWS[e.key]!;
+        const step = e.shiftKey ? 4 : 1;
+        a.nudge(dx * step, dy * step);
       }
     };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [undo, redo]);
+    // Text selected on the page, or focus in a field: the browser's copy wins.
+    const textCopy = (e: ClipboardEvent) =>
+      isTyping(e.target) || (window.getSelection()?.toString() ?? "") !== "";
+    const onCopy = (e: ClipboardEvent) => {
+      const a = actions.current;
+      if (!a || a.paletteOpen || textCopy(e)) return;
+      const text = a.copyText();
+      if (text === null) return;
+      e.clipboardData?.setData("text/plain", text);
+      e.preventDefault();
+      if (e.type === "cut" && a.editable) a.cutDone();
+      else a.copied();
+    };
+    const onPaste = (e: ClipboardEvent) => {
+      const a = actions.current;
+      if (!a || !a.editable || a.paletteOpen || isTyping(e.target)) return;
+      const fragment = parseFragment(e.clipboardData?.getData("text/plain") ?? "");
+      if (!fragment) return;
+      e.preventDefault();
+      a.paste(fragment);
+    };
+    window.addEventListener("keydown", onKey, true);
+    document.addEventListener("copy", onCopy);
+    document.addEventListener("cut", onCopy);
+    document.addEventListener("paste", onPaste);
+    return () => {
+      window.removeEventListener("keydown", onKey, true);
+      document.removeEventListener("copy", onCopy);
+      document.removeEventListener("cut", onCopy);
+      document.removeEventListener("paste", onPaste);
+    };
+  }, []);
 
   const errors = derived.diagnostics.filter((d) => d.severity === "error");
   const warnings = derived.diagnostics.length - errors.length;
 
-  const relayout = () =>
-    mutate((d) => autoLayout({ ...parse(format(d)).doc, layout: [] }));
 
   // Sandbox: back to the source it opened with, as one undoable step.
   const edited = source !== initialSource;
   const reset = () => {
     setSource(initialSource);
     setFocus([]);
-    setSelection(null);
+    setSel(NONE);
   };
 
   const [toast, setToast] = useState<string | null>(null);
@@ -421,7 +661,7 @@ export function Editor({
     setToast(msg);
     setTimeout(() => setToast(null), 1600);
   };
-  const copy = (kind: "code" | "agent") => {
+  const copyDoc = (kind: "code" | "agent") => {
     const text =
       kind === "agent" ? compileForAgent(derived.doc) : format(derived.doc);
     void navigator.clipboard.writeText(text).then(() =>
@@ -442,7 +682,289 @@ export function Editor({
     });
   const openPanel = (tab: ActivityTab) => {
     setPanel(tab);
-    setSelection(null);
+    setSel(NONE);
+  };
+
+  /* ---- Selection actions (canvas menu, palette, inspector, shortcuts) ---- */
+
+  // Diff mode shows a past or merged doc read-only; nothing edits it.
+  const editable = diff === null;
+  const selCount = liveSel.nodes.length;
+  const selPaths = () => liveSel.nodes.map((p) => p.split("."));
+  /** Paths of the components at the current level (the view's roots). */
+  const levelPaths = (d: ArchDoc) =>
+    (liveFocus.length === 0 ? d.components : (findComponent(d, liveFocus)?.children ?? [])).map(
+      (c) => [...liveFocus, c.id],
+    );
+  const selectCreated = (paths: string[][] | undefined, verb: string) => {
+    if (!paths || paths.length === 0) return;
+    setSel({ nodes: paths.map((p) => p.join(".")), edges: [] });
+    notify(`${verb} ${plural(paths.length, "component")}`);
+  };
+
+  const copyText = () =>
+    selCount === 0 ? null : format(extractFragment(derived.laidOut, selPaths()));
+  const deleteSelection = () => {
+    const paths = outermostOnly(liveSel.nodes);
+    const keys = liveSel.edges;
+    if (paths.length === 0 && keys.length === 0) return;
+    mutate((d) => {
+      const withoutEdges = keys
+        .map((k) => d.connections.findIndex((c) => connectionKey(c) === k))
+        .filter((i) => i >= 0)
+        .sort((a, b) => b - a)
+        .reduce((acc, i) => removeConnection(acc, i), d);
+      return paths.reduce((acc, p) => removeComponent(acc, p.split(".")), withoutEdges);
+    });
+    setSel(NONE);
+  };
+  // Menu and palette versions go through the async clipboard API; the keyboard
+  // uses copy/cut/paste events instead, which need no permission.
+  const copySelection = (cut = false) => {
+    const text = copyText();
+    if (text === null) return;
+    const n = plural(selCount, "component");
+    void navigator.clipboard.writeText(text).then(
+      () => {
+        if (cut) deleteSelection();
+        notify(`${cut ? "Cut" : "Copied"} ${n}`);
+      },
+      () => notify(`Press ${MOD}${cut ? "X" : "C"} to ${cut ? "cut" : "copy"}`),
+    );
+  };
+  const pasteFragment = (fragment: ArchDoc, point?: { x: number; y: number }) => {
+    const anchor = point ?? canvasApi.current?.pasteAnchor();
+    const created = mutateWith((d) => {
+      // Centered on the pointer, inside whichever plane is under it.
+      const target = anchor
+        ? resolveDropTarget(d, anchor, { base: liveFocus, sizeGrid: fragmentSize(fragment) })
+        : null;
+      const r = insertFragment(d, fragment, target?.parent ?? liveFocus, target?.at);
+      return { doc: r.doc, value: r.paths };
+    });
+    selectCreated(created, "Pasted");
+  };
+  const pasteFromClipboard = (point?: { x: number; y: number }) =>
+    void navigator.clipboard.readText().then(
+      (text) => {
+        const fragment = parseFragment(text);
+        if (fragment) pasteFragment(fragment, point);
+        else notify("No components on the clipboard");
+      },
+      () => notify(`Press ${MOD}V to paste`),
+    );
+  const duplicateSelection = () => {
+    if (selCount === 0) return;
+    const created = mutateWith((d) => {
+      const r = duplicateComponents(d, selPaths());
+      return { doc: r.doc, value: r.paths };
+    });
+    selectCreated(created, "Duplicated");
+  };
+  const groupSelection = () => {
+    if (selCount === 0) return;
+    const path = mutateWith((d) => {
+      const r = groupComponents(d, selPaths());
+      return { doc: r.doc, value: r.path.join(".") };
+    });
+    if (path) setSel(only(path));
+  };
+  const addChild = (path: string) => {
+    const child = mutateWith((d) => {
+      const segs = path.split(".");
+      // A collapsed container opens up to show what's being added to it.
+      const base = layoutMap(d).get(path)?.display === "icon" ? setDisplay(d, segs, "plane") : d;
+      const added = addComponent(base, segs);
+      // Auto-layout finds it a free spot inside; moving it there grows the parent around it.
+      const laid = autoLayout(added.doc);
+      const at = layoutMap(laid).get(added.path.join("."))?.at ?? [1, 2];
+      return { doc: moveComponent(laid, added.path, at), value: added.path.join(".") };
+    });
+    if (child) setSel(only(child));
+  };
+  const toggleDisplay = (path: string) => {
+    const node = findComponent(derived.doc, path.split("."));
+    if (!node) return;
+    const display = effectiveDisplay(node, layoutMap(derived.laidOut).get(path));
+    mutate((d) => setDisplay(d, path.split("."), display === "plane" ? "icon" : "plane"));
+  };
+  const relayoutSelection = () => {
+    if (selCount > 0) mutate((d) => relayoutComponents(d, selPaths()));
+  };
+  const relayoutLevel = () => mutate((d) => relayoutComponents(d, levelPaths(d)));
+  const relayoutAll = () =>
+    mutate((d) => relayoutComponents(d, d.components.map((c) => [c.id])));
+  const selectAll = () =>
+    setSel({ nodes: levelPaths(derived.doc).map((p) => p.join(".")), edges: [] });
+  const nudge = (dx: number, dy: number) => {
+    const paths = outermostOnly(liveSel.nodes);
+    if (paths.length === 0) return;
+    mutate((d) => {
+      const layout = layoutMap(d);
+      return paths.reduce((acc, p) => {
+        const at = layout.get(p)?.at;
+        return at ? moveComponent(acc, p.split("."), [at[0] + dx, at[1] + dy]) : acc;
+      }, d);
+    });
+  };
+  const reverseEdge = (index: number) => {
+    const key = mutateWith((d) => {
+      const c = d.connections[index];
+      if (!c) throw new Error(`No connection at index ${index}.`);
+      const next = setConnectionEndpoints(d, index, c.target, c.source);
+      return { doc: next, value: connectionKey(next.connections[index]!) };
+    });
+    if (key) setSel({ nodes: [], edges: [key] });
+  };
+  const deleteEdge = (index: number) => {
+    mutate((d) => removeConnection(d, index));
+    setSel(NONE);
+  };
+
+  /** Find / go to: switch to a level where it's visible, select it, and pan to it. */
+  const goTo = (path: string) => {
+    const segs = path.split(".");
+    const layout = layoutMap(derived.laidOut);
+    // The deepest collapsed container above it: the view has to be inside that one.
+    let inside: string[] = [];
+    for (let i = 1; i < segs.length; i++) {
+      const anc = segs.slice(0, i);
+      const node = findComponent(derived.doc, anc);
+      if (node && effectiveDisplay(node, layout.get(anc.join("."))) === "icon") inside = anc;
+    }
+    const current = liveFocus.join(".");
+    const parent = segs.slice(0, -1).join(".");
+    const underCurrent = current === "" || parent === current || parent.startsWith(current + ".");
+    if (!underCurrent || inside.length > liveFocus.length) setFocus(inside);
+    setDiffView(null);
+    setSel(only(path));
+    setReveal((r) => ({ path, nonce: (r?.nonce ?? 0) + 1 }));
+  };
+
+  const closeMenu = useCallback(() => setMenu(null), []);
+  const clearReveal = useCallback(() => setReveal(null), []);
+  const openPalette = (mode: PaletteMode, at?: { x: number; y: number }) => {
+    addAt.current = at ?? null;
+    setPalette(mode);
+  };
+  const escape = () => {
+    if (menu) setMenu(null);
+    else if (diffView) setDiffView(null);
+    else if (liveSel.nodes.length > 0 || liveSel.edges.length > 0) setSel(NONE);
+    else setFocus((f) => f.slice(0, -1));
+  };
+
+  actions.current = {
+    editable,
+    paletteOpen: palette !== null,
+    hasSelection: selCount > 0,
+    togglePalette: () => {
+      addAt.current = null;
+      setPalette((p) => (p ? null : "all"));
+    },
+    find: () => openPalette("find"),
+    undo,
+    redo,
+    escape,
+    selectAll,
+    duplicate: duplicateSelection,
+    group: groupSelection,
+    nudge,
+    copyText,
+    copied: () => notify(`Copied ${plural(selCount, "component")}`),
+    cutDone: () => {
+      notify(`Cut ${plural(selCount, "component")}`);
+      deleteSelection();
+    },
+    paste: (fragment) => pasteFragment(fragment),
+  };
+
+  const relayoutItems: MenuItem[] = [
+    {
+      label: "Re-layout selection",
+      hint: selCount > 0 ? "Tidy what's selected and what's inside it" : "Select components first",
+      icon: <Icon.Layout />,
+      disabled: selCount === 0,
+      onSelect: relayoutSelection,
+    },
+    ...(liveFocus.length > 0
+      ? [
+          {
+            label: "Re-layout this level",
+            hint: `Everything inside ${liveFocus[liveFocus.length - 1]}`,
+            icon: <Icon.Layout />,
+            onSelect: relayoutLevel,
+          },
+        ]
+      : []),
+    {
+      label: "Re-layout everything",
+      hint: "Tidy the whole document",
+      icon: <Icon.Layout />,
+      onSelect: relayoutAll,
+    },
+  ];
+
+  /** Actions on the selected components: canvas menu and multi-select panel. */
+  const selectionActions = (withRelayout: boolean): (MenuItem | "separator")[] => [
+    { label: "Copy", icon: <Icon.Copy />, shortcut: `${MOD}C`, onSelect: () => copySelection() },
+    { label: "Cut", icon: <Icon.Cut />, shortcut: `${MOD}X`, onSelect: () => copySelection(true) },
+    { label: "Duplicate", icon: <Icon.Duplicate />, shortcut: `${MOD}D`, onSelect: duplicateSelection },
+    "separator",
+    { label: "Group in container", icon: <Icon.Group />, shortcut: `${MOD}G`, onSelect: groupSelection },
+    ...(withRelayout
+      ? [{ label: selCount > 1 ? "Re-layout selection" : "Re-layout inside", icon: <Icon.Layout />, onSelect: relayoutSelection }]
+      : []),
+    "separator",
+    {
+      label: selCount > 1 ? `Delete ${plural(selCount, "component")}` : "Delete",
+      icon: <Icon.Trash />,
+      shortcut: "⌫",
+      danger: true,
+      onSelect: deleteSelection,
+    },
+  ];
+
+  const menuItems = (): (MenuItem | "separator")[] => {
+    if (!menu) return [];
+    const t = menu.target;
+    if (t.kind === "node" && selCount > 1) return selectionActions(true);
+    if (t.kind === "node") {
+      const node = findComponent(derived.doc, t.path.split("."));
+      const isContainer = !!node && node.children.length > 0;
+      const display = node ? effectiveDisplay(node, layoutMap(derived.laidOut).get(t.path)) : "icon";
+      return [
+        ...(isContainer
+          ? [{ label: "Open", icon: <Icon.ChevronRight />, onSelect: () => callbacks.onDrillIn(t.path) }]
+          : []),
+        { label: "Add child", icon: <Icon.AddChild />, onSelect: () => addChild(t.path) },
+        ...(isContainer
+          ? [
+              {
+                label: display === "plane" ? "Collapse to icon" : "Expand to plane",
+                icon: <Icon.Layout />,
+                onSelect: () => toggleDisplay(t.path),
+              },
+            ]
+          : []),
+        "separator",
+        ...selectionActions(isContainer),
+      ];
+    }
+    if (t.kind === "edge") {
+      return [
+        { label: "Reverse direction", icon: <Icon.Swap />, onSelect: () => reverseEdge(t.index) },
+        "separator",
+        { label: "Delete connection", icon: <Icon.Trash />, shortcut: "⌫", danger: true, onSelect: () => deleteEdge(t.index) },
+      ];
+    }
+    return [
+      { label: "Paste here", icon: <Icon.Paste />, shortcut: `${MOD}V`, onSelect: () => pasteFromClipboard(t.at) },
+      { label: "Add component…", icon: <Icon.Plus />, onSelect: () => openPalette("add", t.at) },
+      { label: "Select all", icon: <Icon.SelectAll />, shortcut: `${MOD}A`, onSelect: selectAll },
+      "separator",
+      ...relayoutItems,
+    ];
   };
   const exportItems: (MenuItem | "separator")[] = [
     {
@@ -452,13 +974,13 @@ export function Editor({
         : "Fix validation errors first",
       icon: <Icon.Sparkle />,
       disabled: !derived.valid,
-      onSelect: () => copy("agent"),
+      onSelect: () => copyDoc("agent"),
     },
     {
       label: "Copy .arch source",
       hint: "Exactly what the code pane shows",
       icon: <Icon.Copy />,
-      onSelect: () => copy("code"),
+      onSelect: () => copyDoc("code"),
     },
     "separator",
     {
@@ -468,6 +990,87 @@ export function Editor({
       onSelect: () => exportRef.current?.(),
     },
   ];
+  // ⌘K: everything the editor can do right now, above find and add.
+  const single = liveSelection?.kind === "component" ? liveSelection.path : null;
+  const paletteCommands: PaletteCommand[] = [
+    ...(editable && selCount > 0
+      ? [
+          { id: "duplicate", label: "Duplicate selection", icon: <Icon.Duplicate />, shortcut: `${MOD}D`, run: duplicateSelection },
+          { id: "group", label: "Group selection in a container", keywords: "wrap frame", icon: <Icon.Group />, shortcut: `${MOD}G`, run: groupSelection },
+          { id: "copy", label: "Copy selection", icon: <Icon.Copy />, shortcut: `${MOD}C`, run: () => copySelection() },
+          { id: "relayout-selection", label: "Re-layout selection", keywords: "tidy arrange auto-layout", icon: <Icon.Layout />, run: relayoutSelection },
+          { id: "delete", label: `Delete ${plural(selCount, "component")}`, icon: <Icon.Trash />, shortcut: "⌫", run: deleteSelection },
+        ]
+      : []),
+    ...(editable && single
+      ? [{ id: "child", label: `Add a child to ${findComponent(derived.doc, single.split("."))?.name ?? single}`, keywords: "nest inside", icon: <Icon.AddChild />, run: () => addChild(single) }]
+      : []),
+    ...(editable
+      ? [
+          { id: "paste", label: "Paste", icon: <Icon.Paste />, shortcut: `${MOD}V`, run: () => pasteFromClipboard() },
+          { id: "select-all", label: "Select all", icon: <Icon.SelectAll />, shortcut: `${MOD}A`, run: selectAll },
+          ...(liveFocus.length > 0
+            ? [{ id: "relayout-level", label: "Re-layout this level", keywords: "tidy arrange auto-layout", icon: <Icon.Layout />, run: relayoutLevel }]
+            : []),
+          { id: "relayout-all", label: "Re-layout everything", keywords: "tidy arrange auto-layout", icon: <Icon.Layout />, run: relayoutAll },
+        ]
+      : []),
+    { id: "find", label: "Find a component", keywords: "search go to jump", icon: <Icon.Search />, shortcut: `${MOD}F`, run: () => openPalette("find") },
+    { id: "fit", label: "Zoom to fit", keywords: "fit view", icon: <Icon.FitView />, run: () => canvasApi.current?.fitView() },
+    { id: "code", label: codeOpen ? "Hide code" : "Show code (.arch)", icon: <Icon.Code />, run: toggleCode },
+    ...(liveFocus.length > 0
+      ? [
+          { id: "up", label: "Go up a level", icon: <Icon.ChevronLeft />, shortcut: "esc", run: () => setFocus(liveFocus.slice(0, -1)) },
+          { id: "top", label: "Go to the top level", icon: <Icon.ChevronLeft />, run: () => setFocus([]) },
+        ]
+      : []),
+    ...(stored
+      ? [
+          ...(derived.valid
+            ? [{ id: "agent", label: "Copy for agent", icon: <Icon.Sparkle />, run: () => copyDoc("agent") }]
+            : []),
+          { id: "source", label: "Copy .arch source", icon: <Icon.Copy />, run: () => copyDoc("code") },
+          { id: "png", label: "Download PNG", icon: <Icon.Download />, run: () => exportRef.current?.() },
+          { id: "share", label: "Share…", icon: <Icon.Link />, run: () => setShareOpen(true) },
+          { id: "history", label: "Show history", icon: <Icon.History />, run: () => openPanel("history") },
+        ]
+      : []),
+  ];
+  const paletteComponents: PaletteComponent[] = useMemo(() => {
+    if (palette === null || palette === "add") return [];
+    const out: PaletteComponent[] = [];
+    const walk = (items: ArchDoc["components"], prefix: string) => {
+      for (const c of items) {
+        const path = prefix === "" ? c.id : `${prefix}.${c.id}`;
+        const look = c.type ? resolveType(c.type) : undefined;
+        out.push({ path, name: c.name ?? c.id, type: c.type, color: look?.color, glyph: look?.glyph });
+        walk(c.children, path);
+      }
+    };
+    walk(derived.doc.components, "");
+    return out;
+  }, [palette, derived.doc, resolveType]);
+
+  // Several things selected: the inspector lists them and offers bulk actions.
+  const multi: MultiSelection | null =
+    liveSelection === null && liveSel.nodes.length + liveSel.edges.length > 1
+      ? {
+          components: liveSel.nodes.map((path) => {
+            const c = findComponent(derived.doc, path.split("."));
+            return { path, name: c?.name ?? c?.id ?? path, type: c?.type };
+          }),
+          connections: liveSel.edges.length,
+          actions:
+            selCount > 0
+              ? editable
+                ? selectionActions(true)
+                : [{ label: "Copy", icon: <Icon.Copy />, shortcut: `${MOD}C`, onSelect: () => copySelection() }]
+              : editable
+                ? [{ label: `Delete ${plural(liveSel.edges.length, "connection")}`, icon: <Icon.Trash />, shortcut: "⌫", danger: true, onSelect: deleteSelection }]
+                : [],
+        }
+      : null;
+
   const unseen = activity.unseenAgentRevisions;
   const latestAgent = unseen[0];
   const viewingRevisionId = diffView?.kind === "revision" ? diffView.id : null;
@@ -534,11 +1137,18 @@ export function Editor({
                 <Icon.Reset />
               </IconButton>
             )}
-            <IconButton label="Auto-layout" onClick={relayout}>
-              <Icon.Layout />
-            </IconButton>
+            <Menu
+              width={260}
+              align="end"
+              items={relayoutItems}
+              trigger={({ open, toggle }) => (
+                <IconButton label="Re-layout" active={open} onClick={toggle} aria-expanded={open}>
+                  <Icon.Layout />
+                </IconButton>
+              )}
+            />
           </span>
-          <IconButton label="Add component (⌘K)" onClick={() => setPaletteOpen(true)}>
+          <IconButton label="Add component" onClick={() => openPalette("add")}>
             <Icon.Plus />
           </IconButton>
           {stored && (
@@ -596,7 +1206,7 @@ export function Editor({
             <Menu
               width={240}
               items={[
-                { label: "Auto-layout", icon: <Icon.Layout />, onSelect: relayout },
+                ...relayoutItems,
                 ...(stored
                   ? [
                       { label: "Share", icon: <Icon.Link />, onSelect: () => setShareOpen(true) },
@@ -626,8 +1236,8 @@ export function Editor({
           onToggle={toggleCode}
           title={derived.doc.title}
           valid={derived.valid}
-          onCopyCode={stored ? () => copy("code") : undefined}
-          onCopyForAgent={stored ? () => copy("agent") : undefined}
+          onCopyCode={stored ? () => copyDoc("code") : undefined}
+          onCopyForAgent={stored ? () => copyDoc("agent") : undefined}
           selectedPath={selectedPath}
           onSelectPath={(path) =>
             setSelection(path === null ? null : { kind: "component", path })
@@ -740,9 +1350,12 @@ export function Editor({
               title={derived.doc.title}
               callbacks={callbacks}
               isDark={isDark}
-              selectedPath={selectedPath}
+              selection={liveSel}
+              reveal={reveal}
+              onRevealed={clearReveal}
               exportRef={exportRef}
-              readOnly={diff !== null}
+              apiRef={canvasApi}
+              readOnly={!editable}
             />
           </div>
         </main>
@@ -757,7 +1370,7 @@ export function Editor({
             viewingRevisionId={viewingRevisionId}
             onViewRevision={(id) => setDiffView(id ? { kind: "revision", id } : null)}
             onRestore={restore}
-            onSelectPath={(path) => setSelection({ kind: "component", path })}
+            onSelectPath={goTo}
             onAddComponent={addFromDrift}
             repo={repo}
             onLinkRepo={() => setRepoOpen(true)}
@@ -766,6 +1379,7 @@ export function Editor({
           <DetailPanel
             doc={derived.laidOut}
             selection={liveSelection}
+            multi={multi}
             mutate={mutate}
             onSelect={setSelection}
             onDrillIn={callbacks.onDrillIn}
@@ -795,11 +1409,16 @@ export function Editor({
         </>
       )}
       <CommandPalette
-        open={paletteOpen}
-        onClose={() => setPaletteOpen(false)}
+        open={palette !== null}
+        mode={palette ?? "all"}
+        onClose={() => setPalette(null)}
         onAdd={addFromPalette}
         library={library}
+        commands={paletteCommands}
+        components={paletteComponents}
+        onGoTo={goTo}
       />
+      <ContextMenu at={menu?.at ?? null} items={menuItems()} onClose={closeMenu} />
     </div>
   );
 }

@@ -1,16 +1,21 @@
 "use client";
 
+import { createContext, useContext } from "react";
 import {
   BaseEdge,
   EdgeLabelRenderer,
   Handle,
+  NodeResizeControl,
+  NodeResizer,
   Position,
+  ResizeControlVariant,
   getSmoothStepPath,
   type EdgeProps,
   type NodeProps,
+  type ResizeParams,
 } from "@xyflow/react";
 import { GLYPHS, GLYPH_VIEWBOX, lookupType } from "@archer/catalog";
-import type { ArchEdge, ArchNode, NodeMarks } from "@/lib/toFlow";
+import { CELL, type ArchEdge, type ArchNode, type NodeMarks } from "@/lib/toFlow";
 import { displayColor, useIsDark } from "@/lib/useIsDark";
 import { Icon, cx } from "./ui";
 
@@ -72,6 +77,36 @@ const EdgeHandles = () => (
   </>
 );
 
+/** How a node reports a finished resize to the canvas (unset: resizing is off). */
+export const ResizeContext = createContext<
+  ((id: string, params: ResizeParams) => void) | null
+>(null);
+
+/**
+ * Resize handles on the selected node. A plain component resizes from any
+ * side; a plane only from its right and bottom, so its children, which are
+ * placed relative to its top-left, stay where they are.
+ */
+function Resizer({ id, data }: { id: string; data: ArchNode["data"] }) {
+  const onResizeEnd = useContext(ResizeContext);
+  if (!onResizeEnd || !data.resizable) return null;
+  const common = {
+    minWidth: data.minSize[0] * CELL,
+    minHeight: data.minSize[1] * CELL,
+    onResizeEnd: (_: unknown, params: ResizeParams) => onResizeEnd(id, params),
+  };
+  if (data.display === "plane" && data.childCount > 0) {
+    return (
+      <>
+        <NodeResizeControl {...common} position="right" variant={ResizeControlVariant.Line} className="arch-resize-line" />
+        <NodeResizeControl {...common} position="bottom" variant={ResizeControlVariant.Line} className="arch-resize-line" />
+        <NodeResizeControl {...common} position="bottom-right" className="arch-resize-handle" />
+      </>
+    );
+  }
+  return <NodeResizer {...common} lineClassName="arch-resize-line" handleClassName="arch-resize-handle" />;
+}
+
 /** Root class for a node's diff status (styled in canvas.css). */
 const diffClass = (marks: NodeMarks | undefined): string | undefined =>
   marks?.diff ? `arch-diff-${marks.diff}` : undefined;
@@ -118,7 +153,7 @@ function Badges({ marks }: { marks: NodeMarks | undefined }) {
 const SrcHint = ({ src }: { src: string | undefined }) =>
   src ? <Icon.Link className="ml-1 inline h-[10px] w-[10px] align-[-1px] text-ink-3" /> : null;
 
-export function ArchComponentNode({ data, width, height }: NodeProps<ArchNode>) {
+export function ArchComponentNode({ id, data, width, height }: NodeProps<ArchNode>) {
   const isDark = useIsDark();
   const entry = lookupType(data.typeTag);
   const accent = displayColor(data.accent ?? entry?.color, isDark);
@@ -133,6 +168,7 @@ export function ArchComponentNode({ data, width, height }: NodeProps<ArchNode>) 
         diffClass(marks),
       )}
     >
+      <Resizer id={id} data={data} />
       <EdgeHandles />
       <Badges marks={marks} />
       <div
@@ -157,7 +193,7 @@ export function ArchComponentNode({ data, width, height }: NodeProps<ArchNode>) 
   );
 }
 
-export function ArchPlaneNode({ data, width, height }: NodeProps<ArchNode>) {
+export function ArchPlaneNode({ id, data, width, height }: NodeProps<ArchNode>) {
   const isDark = useIsDark();
   const entry = lookupType(data.typeTag);
   const accent = displayColor(data.accent ?? entry?.color, isDark);
@@ -178,6 +214,7 @@ export function ArchPlaneNode({ data, width, height }: NodeProps<ArchNode>) {
         diffClass(marks),
       )}
     >
+      <Resizer id={id} data={data} />
       <EdgeHandles />
       <Badges marks={marks} />
       <div
@@ -265,6 +302,12 @@ export function ArchEdgeComponent({
           className={cx("arch-edge-arrow", diffCls)}
           points={arrowhead(sourceX, sourceY, sourcePosition)}
         />
+      )}
+      {selected && (
+        <>
+          <circle className="arch-edge-end" cx={sourceX} cy={sourceY} r={4} />
+          <circle className="arch-edge-end" cx={targetX} cy={targetY} r={4} />
+        </>
       )}
       {hasLabel && (
         <EdgeLabelRenderer>

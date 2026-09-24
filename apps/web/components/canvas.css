@@ -222,6 +222,32 @@
   color: var(--ink-3);
 }
 
+/* ---- Resize (the one selected node) ---- */
+/* Edges are invisible hit areas; the selection ring already outlines the node. */
+.react-flow__resize-control.line.arch-resize-line {
+  border-color: transparent;
+}
+.react-flow__resize-control.handle.arch-resize-handle {
+  width: 9px;
+  height: 9px;
+  background: var(--surface);
+  border: 1.5px solid var(--accent);
+  border-radius: 2px;
+}
+
+/* ---- Edge ends (drag to reconnect) ---- */
+.arch-edge-end {
+  fill: var(--surface);
+  stroke: var(--accent);
+  stroke-width: 1.5;
+  opacity: 0;
+  pointer-events: none;
+}
+/* Only where the edge can be reconnected: React Flow renders the updaters then. */
+.react-flow__edge.selected:has(.react-flow__edgeupdater) .arch-edge-end {
+  opacity: 1;
+}
+
 /* ---- Selection rectangle ---- */
 .react-flow__selection,
 .react-flow__nodesselection-rect {
@@ -236,6 +262,10 @@
   .arch-handle {
     width: 14px !important;
     height: 14px !important;
+  }
+  .react-flow__resize-control.handle.arch-resize-handle {
+    width: 16px;
+    height: 16px;
   }
   .react-flow__controls-button {
     width: 36px;

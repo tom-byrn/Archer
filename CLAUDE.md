@@ -86,6 +86,12 @@ Router + React Flow + Convex).
   `useLocalLibrary`, and leaving the page discards every edit. Anything new
   that saves, shares or exports goes behind `stored` in the editor so the
   sandbox never gets it; everything else reaches the sandbox automatically.
+  The editor owns the canvas selection (component paths + connection keys) and
+  `ArchCanvas` mirrors it onto React Flow's `selected` flags; edits that span
+  several components (copy/paste fragments, duplicate, group, partial
+  re-layout, re-pointing an edge) are pure transforms in `packages/lang`
+  (`transform.ts`), run through `useArchDoc`'s `mutate`/`mutateWith`. The
+  clipboard format is plain `.arch` text (`extractFragment`/`insertFragment`).
 - Samples: "From sample" on the dashboard opens `components/SampleDialog.tsx`,
   a gallery of `lib/samples` (one module per source, listed with its title
   and blurb in `lib/samples/index.ts`). Choosing one saves the source as a new

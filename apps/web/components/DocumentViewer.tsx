@@ -83,7 +83,7 @@ export function DocumentViewer({
 
   const callbacks: CanvasCallbacks = useMemo(
     () => ({
-      onNodeDragEnd: noop,
+      onNodesDragEnd: noop,
       onDrillIn: (path) => {
         const node = findComponent(derived.doc, path.split("."));
         if (node && node.children.length > 0) {
@@ -95,8 +95,7 @@ export function DocumentViewer({
       onSelectEdge: () => setSelected(null),
       onClearSelection: () => setSelected(null),
       onConnect: noop,
-      onDeleteNodes: noop,
-      onDeleteEdges: noop,
+      onDelete: noop,
       onDropType: noop,
     }),
     [derived],

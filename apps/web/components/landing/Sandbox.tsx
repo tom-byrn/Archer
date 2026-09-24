@@ -87,15 +87,17 @@ export default function Sandbox() {
 
   const callbacks: CanvasCallbacks = useMemo(
     () => ({
-      onNodeDragEnd: (path, info) =>
+      onNodesDragEnd: (moves) =>
         mutate((d) => {
-          const segs = path.split(".");
-          const target = resolveDropTarget(d, info.center, {
-            exclude: segs,
-            topLeft: info.topLeft,
-            sizeGrid: info.sizeGrid,
-          });
-          return moveComponent(d, segs, target.at);
+          const dragged = moves.map((m) => m.path.split("."));
+          return moves.reduce((acc, { info }, i) => {
+            const target = resolveDropTarget(d, info.center, {
+              exclude: dragged,
+              topLeft: info.topLeft,
+              sizeGrid: info.sizeGrid,
+            });
+            return moveComponent(acc, dragged[i]!, target.at);
+          }, d);
         }),
       onConnect: (s, t) => mutate((d) => addConnection(d, s.split("."), t.split("."))),
       onSelectNode: (path) => {
@@ -111,8 +113,7 @@ export default function Sandbox() {
         setSelectedEdge(index);
         setSelected(null);
       },
-      onDeleteNodes: () => {},
-      onDeleteEdges: () => {},
+      onDelete: () => {},
       onDropType: () => {},
     }),
     [mutate],
