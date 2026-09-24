@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
-import { Dialog, Icon, IconButton, cx } from "./ui";
+import { Dialog, Icon, IconButton, SwapIcon, cx } from "./ui";
 
 /** README image variants: the image route paints the light palette unless `?theme=dark`. */
 const EMBED_THEMES = [
@@ -25,7 +25,7 @@ function CopyButton({ text, label }: { text: string; label: string }) {
         });
       }}
     >
-      {done ? <Icon.Check /> : <Icon.Copy />}
+      <SwapIcon swapped={done} from={<Icon.Copy />} to={<Icon.Check />} />
     </IconButton>
   );
 }

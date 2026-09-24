@@ -7,7 +7,7 @@ import { StateEffect, StateField, EditorSelection } from "@codemirror/state";
 import { lintGutter, setDiagnostics } from "@codemirror/lint";
 import { CodeDialog } from "./CodeDialog";
 import { CodeEditor } from "./CodeMirror";
-import { Button, Chip, Icon, cx } from "./ui";
+import { Button, Chip, Icon, SwapIcon, cx } from "./ui";
 import {
   archLanguage,
   archerLinter,
@@ -210,17 +210,17 @@ export function CodePane({
             {onCopyCode && (
               <Button
                 size="sm"
-                icon={copied === "code" ? <Icon.Check /> : <Icon.Copy />}
+                icon={<SwapIcon swapped={copied === "code"} from={<Icon.Copy />} to={<Icon.Check />} />}
                 onClick={() => flash("code", onCopyCode)}
                 title="Copy code"
               >
-                <span className="hidden md:inline">{copied === "code" ? "Copied" : "Copy code"}</span>
+                <span className="hidden md:inline">Copy code</span>
               </Button>
             )}
             {onCopyForAgent && (
               <Button
                 size="sm"
-                icon={copied === "agent" ? <Icon.Check /> : <Icon.Sparkle />}
+                icon={<SwapIcon swapped={copied === "agent"} from={<Icon.Sparkle />} to={<Icon.Check />} />}
                 disabled={!valid}
                 title={
                   valid
@@ -229,7 +229,7 @@ export function CodePane({
                 }
                 onClick={() => flash("agent", onCopyForAgent)}
               >
-                <span className="hidden md:inline">{copied === "agent" ? "Copied" : "Copy for agent"}</span>
+                <span className="hidden md:inline">Copy for agent</span>
               </Button>
             )}
           </>

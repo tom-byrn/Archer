@@ -117,7 +117,7 @@ export function Button({
       {...rest}
       className={cx(buttonCls(variant, size), className)}
     >
-      {icon && <span className="-ml-0.5 flex shrink-0 items-center [&>svg]:h-3.5 [&>svg]:w-3.5">{icon}</span>}
+      {icon && <span className="-ml-0.5 flex shrink-0 items-center [&_svg]:h-3.5 [&_svg]:w-3.5">{icon}</span>}
       {children}
     </button>
   );
@@ -144,7 +144,7 @@ export function IconButton({
       {...rest}
       className={cx(
         "inline-flex shrink-0 items-center justify-center rounded-md text-ink-2 transition-colors duration-100 hover:bg-surface-2 hover:text-ink disabled:cursor-not-allowed disabled:opacity-40",
-        size === "sm" ? "h-6 w-6 [&>svg]:h-3.5 [&>svg]:w-3.5" : "h-8 w-8 [&>svg]:h-[18px] [&>svg]:w-[18px]",
+        size === "sm" ? "h-6 w-6 [&_svg]:h-3.5 [&_svg]:w-3.5" : "h-8 w-8 [&_svg]:h-[18px] [&_svg]:w-[18px]",
         active && "bg-surface-3 text-ink",
         className,
       )}
@@ -768,6 +768,22 @@ export const Icon = {
   SelectAll: (p: IconProps) => <SelectionAllIcon {...UI} {...p} />,
   Swap: (p: IconProps) => <ArrowsLeftRightIcon {...UI} {...p} />,
 };
+
+/**
+ * Two icons in one spot that trade places when `swapped` flips, like a copy
+ * button's copy → check. The old one shrinks and blurs away as the new one
+ * grows in (a plain fade with reduced motion; `.icon-swap` in globals.css).
+ * Sized like a lone icon by Button's and IconButton's icon rules, or by a
+ * className on each icon.
+ */
+export function SwapIcon({ swapped, from, to }: { swapped: boolean; from: ReactNode; to: ReactNode }) {
+  return (
+    <span className="icon-swap" data-swapped={swapped || undefined}>
+      {from}
+      {to}
+    </span>
+  );
+}
 
 /**
  * GitHub's own mark, deliberately not Phosphor's (filled, unlike the set
