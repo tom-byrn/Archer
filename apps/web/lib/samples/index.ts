@@ -9,6 +9,7 @@
  */
 
 import { ACME_SAAS } from "./acme-saas";
+import { AI_SUPPORT_AGENT } from "./ai-support-agent";
 
 export interface Sample {
   /** Stable, URL-safe id. */
@@ -26,5 +27,11 @@ export const SAMPLES: readonly Sample[] = [
     title: "Acme SaaS",
     description: "Next.js on Vercel, Supabase Postgres, Cognito sign-in and Stripe checkout.",
     source: ACME_SAAS,
+  },
+  {
+    slug: "ai-support-agent",
+    title: "AI Support Agent",
+    description: "A Claude support agent with RAG, MCP tools, guardrails and human approval.",
+    source: AI_SUPPORT_AGENT,
   },
 ];
