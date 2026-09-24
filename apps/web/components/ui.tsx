@@ -705,21 +705,6 @@ export function SwapIcon({ swapped, from, to }: { swapped: boolean; from: ReactN
 }
 
 /**
- * Two labels in one spot, showing `to` when `swapped`: a button whose text
- * changes on click (Copy → Copied) keeps the width of the longer one instead
- * of shrinking. Both start at the left, so the shorter one stays by the icon;
- * the hidden one is invisible, so it isn't read out either.
- */
-export function SwapText({ swapped, from, to }: { swapped: boolean; from: ReactNode; to: ReactNode }) {
-  return (
-    <span className="inline-grid justify-items-start">
-      <span className={cx("col-start-1 row-start-1", swapped && "invisible")}>{from}</span>
-      <span className={cx("col-start-1 row-start-1", !swapped && "invisible")}>{to}</span>
-    </span>
-  );
-}
-
-/**
  * GitHub's own mark, deliberately not Phosphor's (filled, unlike the set
  * above): marks a linked repository.
  */

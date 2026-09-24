@@ -28,7 +28,7 @@ import {
   IconButton,
   Segmented,
   SidePanel,
-  SwapText,
+  SwapIcon,
   cx,
   relativeTime,
 } from "./ui";
@@ -445,8 +445,12 @@ function DriftTab({
           {prompt}
         </pre>
         <div className="pt-2">
-          <Button size="sm" icon={<Icon.Copy />} onClick={() => copy(prompt)}>
-            <SwapText swapped={copied} from="Copy prompt" to="Copied" />
+          <Button
+            size="sm"
+            icon={<SwapIcon swapped={copied} from={<Icon.Copy />} to={<Icon.Check />} />}
+            onClick={() => copy(prompt)}
+          >
+            Copy prompt
           </Button>
         </div>
       </div>
@@ -466,8 +470,14 @@ function DriftTab({
               : "No commits since"}
           </Chip>
         )}
-        <Button size="sm" variant="ghost" className="ml-auto" onClick={() => copy(prompt)}>
-          <SwapText swapped={copied} from="Copy prompt" to="Copied" />
+        <Button
+          size="sm"
+          variant="ghost"
+          className="ml-auto"
+          icon={<SwapIcon swapped={copied} from={<Icon.Copy />} to={<Icon.Check />} />}
+          onClick={() => copy(prompt)}
+        >
+          Copy prompt
         </Button>
         <Button size="sm" variant="ghost" onClick={() => void activity.clearDrift()}>
           Clear

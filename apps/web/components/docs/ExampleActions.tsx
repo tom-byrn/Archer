@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { CodeDialog } from "../CodeDialog";
-import { Button, Icon, SwapIcon, SwapText, buttonCls } from "../ui";
+import { Button, Icon, SwapIcon, buttonCls } from "../ui";
 
 /** Copies an example's `.arch` source: the popout's "Copy code", as in the editor. */
 function CopyCodeButton({ source }: { source: string }) {
@@ -20,9 +20,7 @@ function CopyCodeButton({ source }: { source: string }) {
         })
       }
     >
-      <span className="hidden md:inline">
-        <SwapText swapped={copied} from="Copy code" to="Copied" />
-      </span>
+      <span className="hidden md:inline">Copy code</span>
     </Button>
   );
 }

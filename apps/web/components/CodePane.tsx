@@ -7,7 +7,7 @@ import { StateEffect, StateField, EditorSelection } from "@codemirror/state";
 import { lintGutter, setDiagnostics } from "@codemirror/lint";
 import { CodeDialog } from "./CodeDialog";
 import { CodeEditor } from "./CodeMirror";
-import { Button, Chip, Icon, SwapIcon, SwapText, cx } from "./ui";
+import { Button, Chip, Icon, SwapIcon, cx } from "./ui";
 import {
   archLanguage,
   archerLinter,
@@ -214,9 +214,7 @@ export function CodePane({
                 onClick={() => flash("code", onCopyCode)}
                 title="Copy code"
               >
-                <span className="hidden md:inline">
-                  <SwapText swapped={copied === "code"} from="Copy code" to="Copied" />
-                </span>
+                <span className="hidden md:inline">Copy code</span>
               </Button>
             )}
             {onCopyForAgent && (
@@ -231,9 +229,7 @@ export function CodePane({
                 }
                 onClick={() => flash("agent", onCopyForAgent)}
               >
-                <span className="hidden md:inline">
-                  <SwapText swapped={copied === "agent"} from="Copy for agent" to="Copied" />
-                </span>
+                <span className="hidden md:inline">Copy for agent</span>
               </Button>
             )}
           </>

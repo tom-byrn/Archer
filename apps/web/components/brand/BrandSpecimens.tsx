@@ -17,7 +17,6 @@ import {
   Kbd,
   Segmented,
   SwapIcon,
-  SwapText,
   cx,
 } from "../ui";
 
@@ -159,7 +158,7 @@ function SwapSpecimen() {
         setTimeout(() => setSwapped(false), 1200);
       }}
     >
-      <SwapText swapped={swapped} from="Copy" to="Copied" />
+      Copy
     </Button>
   );
 }
