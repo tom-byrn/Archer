@@ -6,13 +6,15 @@ import { useIsDark } from "@/lib/useIsDark";
 import { cx } from "../ui";
 
 /**
- * A straight fade from --landing-fade into the page color (--landing-bg) down
- * its box, grey to black in dark mode, drawn as a 4x4 Bayer dither: Paper's
- * Dithering shader has no linear shape, so this runs a small fragment shader
- * of our own through its ShaderMount. `fadeLength` is the fraction of the
- * box's height, from the top, over which the fade runs, and `curve` how much
- * sooner it ends at the side edges than in the middle, as a fraction of the
- * height: the gentle arc of its lower edge. The smooth CSS gradient under it
+ * A straight fade from a color token (`front`, --landing-fade unless given)
+ * into the page color (--landing-bg) down its box, drawn as a 4x4 Bayer
+ * dither: Paper's Dithering shader has no linear shape, so this runs a small
+ * fragment shader of our own through its ShaderMount. `fadeLength` is the
+ * fraction of the box's height, from the top, over which the fade runs, and
+ * `curve` how much sooner it ends at the side edges than in the middle, as a
+ * fraction of the height: the gentle arc of its lower edge. Cells are `cell`
+ * CSS pixels square, each drawn as a square or, with `dot`, as a round dot
+ * that fraction of the cell across. The smooth CSS gradient under it
  * (`.landing-dither` in landing.css) covers first paint and any browser
  * without WebGL. Static, so nothing to pause for reduced motion.
  */
@@ -20,10 +22,16 @@ export function Dither({
   className,
   fadeLength,
   curve = 0,
+  cell = 2,
+  dot,
+  front = "--landing-fade",
 }: {
   className: string;
   fadeLength: number;
   curve?: number;
+  cell?: number;
+  dot?: number;
+  front?: string;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const isDark = useIsDark();
@@ -36,22 +44,23 @@ export function Dither({
     if (!el) return;
     const style = getComputedStyle(el);
     const back = style.getPropertyValue("--landing-bg").trim();
-    const front = style.getPropertyValue("--landing-fade").trim();
-    if (!back || !front) return;
-    setColors((prev) => (prev?.back === back && prev.front === front ? prev : { back, front }));
-  }, [isDark]);
+    const fore = style.getPropertyValue(front).trim();
+    if (!back || !fore) return;
+    setColors((prev) => (prev?.back === back && prev.front === fore ? prev : { back, front: fore }));
+  }, [isDark, front]);
 
   // ShaderMount sends its uniforms again whenever this object changes.
   const uniforms = useMemo(
     () =>
       colors && {
-        ...UNIFORMS,
+        u_pxSize: cell,
+        u_dot: dot ?? 0,
         u_fadeLength: fadeLength,
         u_curve: curve,
         u_colorBack: getShaderColorFromString(colors.back),
         u_colorFront: getShaderColorFromString(colors.front),
       },
-    [colors, fadeLength, curve],
+    [colors, fadeLength, curve, cell, dot],
   );
 
   return (
@@ -88,19 +97,16 @@ export function DitherBackdrop() {
   );
 }
 
-const UNIFORMS = {
-  // Size of one dither cell, in CSS pixels.
-  u_pxSize: 2,
-};
-
+// highp: positions are in device pixels, thousands across a wide screen.
 const FRAGMENT_SHADER = `#version 300 es
-precision mediump float;
+precision highp float;
 
 uniform vec2 u_resolution;
 uniform float u_pixelRatio;
 uniform vec4 u_colorBack;
 uniform vec4 u_colorFront;
 uniform float u_pxSize;
+uniform float u_dot;
 uniform float u_fadeLength;
 uniform float u_curve;
 
@@ -114,8 +120,13 @@ const int bayer4x4[16] = int[16](
 );
 
 void main() {
-  vec2 cell = floor(gl_FragCoord.xy / (u_pxSize * u_pixelRatio));
-  vec2 uv = (cell + .5) * u_pxSize * u_pixelRatio / u_resolution;
+  // The cell grid, in device pixels, centered so the part-cells at opposite
+  // edges match.
+  float size = u_pxSize * u_pixelRatio;
+  vec2 offset = .5 * mod(u_resolution, size);
+  vec2 cell = floor((gl_FragCoord.xy - offset) / size);
+  vec2 center = (cell + .5) * size + offset;
+  vec2 uv = center / u_resolution;
   // Distance down from the top edge (gl_FragCoord counts up from the bottom),
   // pushed further down toward the sides so the fade's edge arcs slightly.
   float x = 2. * uv.x - 1.;
@@ -125,6 +136,15 @@ void main() {
   ivec2 p = ivec2(mod(cell, 4.));
   float threshold = (float(bayer4x4[p.y * 4 + p.x]) + .5) / 16.;
   float on = step(threshold, shade);
+
+  if (u_dot > 0.) {
+    // A round dot in the middle of the cell, its edge smoothed over a device
+    // pixel. A part-cell at an edge gets none rather than a sliver of one.
+    float r = .5 * u_dot * size;
+    on *= 1. - smoothstep(r - .5, r + .5, distance(gl_FragCoord.xy, center));
+    vec2 inside = step(vec2(0.), center) * step(center, u_resolution);
+    on *= inside.x * inside.y;
+  }
 
   fragColor = mix(u_colorBack, u_colorFront, on);
 }
