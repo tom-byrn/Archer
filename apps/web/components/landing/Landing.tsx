@@ -145,9 +145,10 @@ export function Landing() {
 
       <Features />
 
-      {/* Features and FAQ are both ruled grids; a band of dithered dots keeps them apart. */}
+      {/* Features and FAQ are both ruled grids; a band of the page's dither, arced like the
+          one at the top, keeps them apart. */}
       <div className="landing-joints h-20 border-b border-line sm:h-32">
-        <Dither className="absolute inset-0" fadeLength={1} cell={4} dot={0.75} front="--line" />
+        <Dither className="absolute inset-0" fadeLength={1.2} curve={0.8} />
       </div>
 
       <Faq />
