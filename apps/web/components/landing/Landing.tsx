@@ -154,9 +154,11 @@ export function Landing() {
 
       {/* Features and FAQ are both ruled grids; a band of the page's dither, arced like the
           one at the top, keeps them apart. Like that one it sits under the page (-z-10), so
-          its canvas can't cover the rules when it's rounded a pixel over them. */}
-      <div className="landing-joints h-20 border-b border-line sm:h-32">
-        <Dither className="absolute inset-0 -z-10" fadeLength={1.2} curve={0.8} />
+          its canvas can't cover the rules when it's rounded a pixel over them. The fade runs
+          the band's whole height, so it thins out before the rule below instead of being cut
+          off by it. */}
+      <div className="landing-joints h-24 border-b border-line sm:h-40">
+        <Dither className="absolute inset-0 -z-10" fadeLength={1} curve={0.67} />
       </div>
 
       <Faq />
