@@ -69,7 +69,13 @@ any two revisions; defaults to the latest change).
 **Repository** — `link_repository` (record the GitHub repo + branch a
 project describes; `get_project` then returns it as `repository`, the app
 shows that repo's commits in the History panel next to revisions, and
-`src` paths deep-link into it).
+`src` paths deep-link into it). A project can also be *stored in* a `.arch`
+file in its repository (created From GitHub, or moved there in the app —
+see `docs/repo-sync.md`): `get_project` then returns `repository.path` and
+its `sync` state, and tells agents working in that repository to edit the
+file instead. `update_project` still works on such a project but only
+changes its unpublished draft (the result's `note` says so); a human
+publishes drafts to the repository as pull requests.
 
 **Workspace** — `get_workspace_info` (the signed-in user, current workspace
 and role, reachability, counts), `list_workspaces` (Personal + team workspaces

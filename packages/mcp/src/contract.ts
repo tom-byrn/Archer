@@ -20,7 +20,25 @@ export interface ProjectRead {
   errors: string[];
   warnings: string[];
   drift: { reported_at: string; findings_count: number } | null;
-  repository: { full_name: string; branch: string; url: string; hint: string } | null;
+  repository: {
+    full_name: string;
+    branch: string;
+    url: string;
+    hint: string;
+    /** Set when the project is stored in this .arch file (the source of truth). */
+    path?: string;
+    /** Repo sync state, for a project stored in a file. */
+    sync?: {
+      /** Commit of the file version the project is based on; null before the file exists. */
+      base_commit: string | null;
+      /** The project has changes not yet published to the file. */
+      unpublished_changes: boolean;
+      /** Open pull request from the last publish. */
+      pull_request: string | null;
+      /** The file changed on the branch in ways that conflict with the draft. */
+      conflict: boolean;
+    };
+  } | null;
   source: string;
 }
 
@@ -34,6 +52,8 @@ export interface ProjectCreated {
 export interface ProjectUpdated extends ProjectCreated {
   saved: true;
   attributed_to: string;
+  /** Set when the project is stored in a repository file: the write went to its draft. */
+  note?: string;
 }
 
 /** The error result of create_project / update_project when validation fails. */

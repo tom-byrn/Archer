@@ -31,9 +31,19 @@ import { authorLabel, useDocumentActivity } from "@/lib/activity";
 import type { NodeMarks } from "@/lib/toFlow";
 import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import type { RepoLink } from "@/lib/github";
+import { repoKey, type RepoLink } from "@/lib/github";
 import { AccountMenu } from "./AccountMenu";
 import { RepoDialog } from "./RepoDialog";
+import { GitHubFileDialog } from "./GitHubFileDialog";
+import {
+  ConflictBanner,
+  ProblemBanner,
+  PublishDialog,
+  StopSyncingDialog,
+  StorageControl,
+  outcomeToast,
+  useRepoSync,
+} from "./RepoSync";
 import { ShareDialog } from "./ShareDialog";
 import { ActivityPanel, type ActivityTab } from "./ActivityPanel";
 import { ArchCanvas, type CanvasCallbacks } from "./ArchCanvas";
@@ -44,6 +54,7 @@ import { Palette } from "./Palette";
 import {
   Button,
   Chip,
+  GitHubMark,
   Icon,
   IconButton,
   Input,
@@ -87,8 +98,10 @@ export type EditorSession =
 /** What the canvas is comparing against, when in diff mode. */
 type DiffView =
   | { kind: "revision"; id: Id<"revisions"> }
-  /** Everything agents changed since the user last reviewed. */
+  /** Everything agents (and commits to the repository) changed since the user last reviewed. */
   | { kind: "sinceSeen" }
+  /** The repository's conflicting version of the file, compared with the draft. */
+  | { kind: "incoming" }
   | null;
 
 const EMPTY_DOC = (like: ArchDoc): ArchDoc => ({
@@ -207,6 +220,9 @@ export function Editor({
   const [panel, setPanel] = useState<ActivityTab | null>(null);
   const [shareOpen, setShareOpen] = useState(false);
   const [repoOpen, setRepoOpen] = useState(false);
+  const [moveOpen, setMoveOpen] = useState(false);
+  const [publishOpen, setPublishOpen] = useState(false);
+  const [stopOpen, setStopOpen] = useState(false);
   const setRepo = useMutation(api.documents.setRepo);
   const [diffView, setDiffView] = useState<DiffView>(null);
 
@@ -233,6 +249,12 @@ export function Editor({
       next = parse(rev.source).doc;
       const older = activity.revisions[i + 1];
       base = older ? parse(older.source).doc : EMPTY_DOC(next);
+    } else if (diffView.kind === "incoming") {
+      const incoming = stored?.repo?.incoming;
+      if (!incoming) return null;
+      // The file has no layout: borrow the draft's so shared components stay put.
+      base = derived.doc;
+      next = { ...parse(incoming.source).doc, layout: derived.doc.layout };
     } else {
       if (!activity.baseline) return null;
       base = parse(activity.baseline.source).doc;
@@ -245,14 +267,14 @@ export function Editor({
       connections: merged.connections,
       summary: diffDocs(base, next),
     };
-  }, [diffView, activity.revisions, activity.baseline, derived.doc]);
+  }, [diffView, activity.revisions, activity.baseline, derived.doc, stored?.repo?.incoming]);
 
-  // Agent edits since the user last reviewed → "touched" badges.
+  // Agent and repository edits since the user last reviewed → "touched" badges.
   const touched = useMemo(() => {
-    if (activity.unseenAgentRevisions.length === 0 || !activity.baseline) return new Set<string>();
+    if (activity.unseenRevisions.length === 0 || !activity.baseline) return new Set<string>();
     const d = diffDocs(parse(activity.baseline.source).doc, derived.doc);
     return new Set(d.components.filter((c) => c.kind !== "removed").map((c) => c.path));
-  }, [activity.unseenAgentRevisions.length, activity.baseline, derived.doc]);
+  }, [activity.unseenRevisions.length, activity.baseline, derived.doc]);
 
   const marks = useCallback(
     (path: string, c: { src?: string }): NodeMarks | undefined => {
@@ -372,6 +394,37 @@ export function Editor({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [source, persist]);
 
+  // Save a pending edit now (before publishing or syncing, so the server sees the screen).
+  const latest = useRef(source);
+  latest.current = source;
+  const flush = useCallback(async () => {
+    if (!persist) return;
+    const text = latest.current;
+    if (text === persisted.current) return;
+    await persist(text, parse(text).doc.title);
+    persisted.current = text;
+    setSaveState("saved");
+  }, [persist]);
+
+  const [toast, setToast] = useState<string | null>(null);
+  const notify = useCallback((msg: string) => {
+    setToast(msg);
+    setTimeout(() => setToast(null), 2400);
+  }, []);
+
+  const repoSync = useRepoSync({
+    documentId: stored?.id ?? "",
+    workspaceId: stored?.workspaceId ?? "",
+    repo: stored ? repo : null,
+    source,
+    flush,
+    onOutcome: (o) => {
+      const line = outcomeToast(o, repoSync.file);
+      if (line) notify(line);
+    },
+  });
+  const syncFile = repoSync.file;
+
   // Global shortcuts: undo/redo (except while typing), ⌘K, Escape to go up a level.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -416,11 +469,6 @@ export function Editor({
     setSelection(null);
   };
 
-  const [toast, setToast] = useState<string | null>(null);
-  const notify = (msg: string) => {
-    setToast(msg);
-    setTimeout(() => setToast(null), 1600);
-  };
   const copy = (kind: "code" | "agent") => {
     const text =
       kind === "agent" ? compileForAgent(derived.doc) : format(derived.doc);
@@ -468,7 +516,7 @@ export function Editor({
       onSelect: () => exportRef.current?.(),
     },
   ];
-  const unseen = activity.unseenAgentRevisions;
+  const unseen = activity.unseenRevisions;
   const latestAgent = unseen[0];
   const viewingRevisionId = diffView?.kind === "revision" ? diffView.id : null;
 
@@ -557,6 +605,12 @@ export function Editor({
           {stored ? (
             <div className="hidden items-center gap-1.5 md:flex">
               <span className="mx-1.5 h-4 w-px bg-line" />
+              <StorageControl
+                sync={repoSync}
+                onMove={() => setMoveOpen(true)}
+                onStopSyncing={() => setStopOpen(true)}
+                onPublish={() => setPublishOpen(true)}
+              />
               <Button size="sm" icon={<Icon.Link />} onClick={() => setShareOpen(true)} className="ml-1">
                 Share
               </Button>
@@ -600,6 +654,15 @@ export function Editor({
                 ...(stored
                   ? [
                       { label: "Share", icon: <Icon.Link />, onSelect: () => setShareOpen(true) },
+                      syncFile
+                        ? {
+                            label: "Publish to GitHub…",
+                            hint: syncFile.path,
+                            icon: <GitHubMark />,
+                            disabled: repoSync.status?.kind === "synced" || repoSync.status?.kind === "conflict",
+                            onSelect: () => setPublishOpen(true),
+                          }
+                        : { label: "Move to GitHub…", icon: <GitHubMark />, onSelect: () => setMoveOpen(true) },
                       "separator" as const,
                       ...exportItems,
                     ]
@@ -679,8 +742,10 @@ export function Editor({
                   <Icon.Diff className="h-4 w-4 text-ink-2" />
                   <span className="text-sm text-ink md:whitespace-nowrap">
                     {diffView?.kind === "sinceSeen"
-                      ? "Agent changes since you last reviewed"
-                      : "Viewing a past revision"}
+                      ? "Changes since you last reviewed"
+                      : diffView?.kind === "incoming"
+                        ? `${syncFile?.branch ?? "The repository"}'s version compared with your draft`
+                        : "Viewing a past revision"}
                   </span>
                   <span className="flex items-center gap-1">
                     {diff.summary.components.filter((c) => c.kind === "added").length > 0 && (
@@ -706,21 +771,66 @@ export function Editor({
                       Mark reviewed
                     </Button>
                   )}
+                  {diffView?.kind === "incoming" && (
+                    <>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        disabled={repoSync.syncing}
+                        onClick={() => {
+                          setDiffView(null);
+                          void repoSync.resolve("draft");
+                        }}
+                      >
+                        Keep mine
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        disabled={repoSync.syncing}
+                        onClick={() => {
+                          setDiffView(null);
+                          void repoSync.resolve("repo");
+                        }}
+                      >
+                        Keep theirs
+                      </Button>
+                    </>
+                  )}
                   <Button size="sm" variant="ghost" onClick={() => setDiffView(null)}>
                     Exit
                     <Kbd>esc</Kbd>
                   </Button>
                 </div>
               </div>
+            ) : syncFile?.incoming ? (
+              <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex justify-center p-2 md:p-3">
+                <ConflictBanner
+                  file={syncFile}
+                  busy={repoSync.syncing}
+                  onReview={() => setDiffView({ kind: "incoming" })}
+                  onResolve={(keep) => void repoSync.resolve(keep)}
+                />
+              </div>
+            ) : syncFile?.problem ? (
+              <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex justify-center p-2 md:p-3">
+                <ProblemBanner file={syncFile} />
+              </div>
             ) : latestAgent ? (
               <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex justify-center p-2 md:p-3">
                 <div className="pointer-events-auto flex min-h-9 max-w-full flex-wrap items-center gap-2 rounded-lg border border-line bg-surface py-1 pl-2 pr-1.5 shadow-md">
                   <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent-soft text-accent">
-                    <Icon.Bot className="h-3.5 w-3.5" />
+                    {latestAgent.author.kind === "git" ? (
+                      <GitHubMark className="h-3.5 w-3.5" />
+                    ) : (
+                      <Icon.Bot className="h-3.5 w-3.5" />
+                    )}
                   </span>
                   <span className="text-sm text-ink md:whitespace-nowrap">
                     <span className="font-medium">{authorLabel(latestAgent.author)}</span>
-                    {" "}made {unseen.length} change{unseen.length === 1 ? "" : "s"}
+                    {latestAgent.author.kind === "git" && syncFile
+                      ? ` changed ${syncFile.path} on ${syncFile.branch}`
+                      : ` made ${unseen.length} change${unseen.length === 1 ? "" : "s"}`}
                     <span className="text-ink-3"> · {relativeTime(latestAgent.createdAt)}</span>
                   </span>
                   <span className="mx-1 h-4 w-px bg-line" />
@@ -792,6 +902,36 @@ export function Editor({
               setRepo({ id: stored.id, workspaceId: stored.workspaceId, repo: next })
             }
           />
+          {moveOpen && (
+            <GitHubFileDialog
+              mode="move"
+              workspaceId={stored.workspaceId}
+              documentId={stored.id}
+              initialRepo={repo ? { full: repoKey(repo), branch: repo.branch } : undefined}
+              onClose={() => setMoveOpen(false)}
+              onDone={() => {
+                setMoveOpen(false);
+                notify("Stored in GitHub — publish to write the file");
+              }}
+            />
+          )}
+          {publishOpen && syncFile && (
+            <PublishDialog
+              sync={repoSync}
+              onClose={() => setPublishOpen(false)}
+              onPublished={(r) =>
+                notify(r.mode === "pr" ? `Opened pull request #${r.number}` : `Committed to ${syncFile.branch}`)
+              }
+            />
+          )}
+          {stopOpen && syncFile && (
+            <StopSyncingDialog
+              file={syncFile}
+              documentId={stored.id}
+              workspaceId={stored.workspaceId}
+              onClose={() => setStopOpen(false)}
+            />
+          )}
         </>
       )}
       <CommandPalette

@@ -31,7 +31,7 @@ npx archerctl init          # or: npm i -g archerctl  →  archer init
 | `archer workspace [id]` | List your workspaces (`*` marks the current one; `--json`), or switch to one. The current workspace is shared with your agents (it's the MCP `use_workspace` choice). |
 | `archer list` | Projects in the current workspace (`--json`). |
 | `archer push <file>` | Validate, then create the file's project — or update it if the file is already linked (or `--project <id>`). `-m <summary>` shows in the app's activity feed. Same gates as the MCP `create_project`/`update_project` (it calls them): errors reject the write; canvas positions of surviving components are preserved. Saves are attributed to "Archer CLI". |
-| `archer pull <file>` | Overwrite the file with the project's saved (canonical) source. Refuses if the file differs unless `--force`. |
+| `archer pull <file>` | Overwrite the file with the project's saved (canonical) source. Refuses if the file differs unless `--force`. For a project stored in a repository file (`docs/repo-sync.md`) it writes the architecture without the layout block, exactly as the app publishes it, so the result is ready to commit. |
 | `archer mcp` | The hosted MCP server over stdio, for clients that can only launch local servers: relays every message to `/mcp` with your `archer login` session (see `docs/mcp.md`). |
 
 `-` as a path reads stdin (`check`, `fmt`; `fmt -` writes to stdout).
@@ -49,6 +49,12 @@ under `--check`, rejected push) · `2` usage, IO or auth error.
 form drops them (the app behaves the same way). `fmt` therefore refuses to
 rewrite a file containing comments unless you pass `--drop-comments`; `push`
 never modifies the local file.
+
+**Projects stored in a repository.** When a project lives in a `.arch` file
+in its GitHub repository (created *From GitHub* in the app, see
+`docs/repo-sync.md`), that file is the source of truth: edit and commit it,
+and gate it in CI with `check` and `fmt --check`. `push` to such a project
+only updates its unpublished draft, and says so.
 
 **Links.** `push`/`pull` record `file → project id` in `./archer.json`. Commit
 it so teammates push to the same project (team members switch to the team

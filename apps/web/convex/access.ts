@@ -49,22 +49,48 @@ export async function effectiveUser(
 
 const SERVICE_PREFIX = "svc_";
 
+/** Whether `given` is the deployment's service secret (constant time). */
+function isServiceSecret(given: string): boolean {
+  const secret = process.env.ARCHER_SERVICE_SECRET;
+  if (!secret || secret.length < 32 || given.length !== secret.length) return false;
+  let diff = 0;
+  for (let i = 0; i < secret.length; i++) diff |= given.charCodeAt(i) ^ secret.charCodeAt(i);
+  return diff === 0;
+}
+
 /** The user id a valid service credential acts for, else null. */
 function serviceUser(serviceKey?: string): string | null {
   if (!serviceKey || !serviceKey.startsWith(SERVICE_PREFIX)) return null;
-  const secret = process.env.ARCHER_SERVICE_SECRET;
-  if (!secret || secret.length < 32) return null;
   const body = serviceKey.slice(SERVICE_PREFIX.length);
   const dot = body.lastIndexOf(".");
   if (dot <= 0) return null;
-  const given = body.slice(0, dot);
   const userId = body.slice(dot + 1);
   if (!/^user_[A-Za-z0-9]+$/.test(userId)) return null;
-  // Constant-time comparison.
-  if (given.length !== secret.length) return null;
-  let diff = 0;
-  for (let i = 0; i < secret.length; i++) diff |= given.charCodeAt(i) ^ secret.charCodeAt(i);
-  return diff === 0 ? userId : null;
+  return isServiceSecret(body.slice(0, dot)) ? userId : null;
+}
+
+/**
+ * The user a server-held service credential acts for. Throws for any other
+ * caller: some writes must only come through the web server, because it checks
+ * something first that a browser could skip (repo sync verifies the user can
+ * read a repository before linking a document to it).
+ */
+export function requireServiceUser(serviceKey?: string): string {
+  const userId = serviceUser(serviceKey);
+  if (!userId) throw new Error("Only the Archer server can do this.");
+  return userId;
+}
+
+/**
+ * The bare server credential, `svc_<ARCHER_SERVICE_SECRET>` with no user: the
+ * web server acting for itself before it knows which user to act as. Only a
+ * GitHub push webhook needs this, to find the documents stored in the pushed
+ * repository (`repoSync.documentsForPush`); everything it then changes is
+ * done as a user.
+ */
+export function requireServer(serviceKey?: string): void {
+  if (!serviceKey?.startsWith(SERVICE_PREFIX) || !isServiceSecret(serviceKey.slice(SERVICE_PREFIX.length)))
+    throw new Error("Not authorized.");
 }
 
 /** The caller's role in a workspace, or null. */

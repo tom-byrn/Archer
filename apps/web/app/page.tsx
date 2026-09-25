@@ -15,6 +15,7 @@ import { ACME_SAAS } from "@/lib/samples/acme-saas";
 import { DocPreview } from "@/lib/preview";
 import { ConnectAgentDialog } from "@/components/ConnectAgentDialog";
 import { SampleDialog } from "@/components/SampleDialog";
+import { GitHubFileDialog } from "@/components/GitHubFileDialog";
 import { SiteFrame, siteNavLinkCls } from "@/components/landing/SiteFrame";
 import {
   Button,
@@ -84,10 +85,16 @@ function DocCard({
               <>
                 <span
                   className="flex min-w-0 items-center gap-1 text-ink-2"
-                  title={`Linked to ${repoKey(doc.repo)} @ ${doc.repo.branch}`}
+                  title={
+                    doc.repo.path
+                      ? `Stored in ${repoKey(doc.repo)}/${doc.repo.path} on ${doc.repo.branch}`
+                      : `Linked to ${repoKey(doc.repo)} @ ${doc.repo.branch}`
+                  }
                 >
                   <GitHubMark className="h-3 w-3 shrink-0" />
-                  <span className="truncate">{repoKey(doc.repo)}</span>
+                  <span className="truncate">
+                    {doc.repo.path ? `${doc.repo.name}/${doc.repo.path}` : repoKey(doc.repo)}
+                  </span>
                 </span>
                 <span aria-hidden>·</span>
               </>
@@ -451,6 +458,7 @@ export default function Home() {
 
   const [connectOpen, setConnectOpen] = useState(false);
   const [sampleOpen, setSampleOpen] = useState(false);
+  const [githubOpen, setGithubOpen] = useState(false);
   const [pending, setPending] = useState<Pending>(null);
 
   const newDoc = async (source: string, title: string) => {
@@ -480,6 +488,9 @@ export default function Home() {
     <>
       <Button icon={<Icon.Diagram />} onClick={() => setSampleOpen(true)}>
         From sample
+      </Button>
+      <Button icon={<GitHubMark className="h-3.5 w-3.5" />} onClick={() => setGithubOpen(true)}>
+        From GitHub
       </Button>
       <Button variant="primary" icon={<Icon.Plus />} onClick={() => void newDoc(BLANK, "Untitled")}>
         New document
@@ -559,6 +570,16 @@ export default function Home() {
         onClose={() => setConnectOpen(false)}
         workspaceName={current?.name ?? "this workspace"}
       />
+      {githubOpen && workspaceId && (
+        <GitHubFileDialog
+          mode="create"
+          workspaceId={workspaceId}
+          onClose={() => setGithubOpen(false)}
+          onDone={({ id }) => {
+            if (id) router.push(`/documents/${id}`);
+          }}
+        />
+      )}
       {sampleOpen && (
         <SampleDialog
           workspaceName={current?.name ?? "this workspace"}

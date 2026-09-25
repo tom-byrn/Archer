@@ -11,13 +11,20 @@ import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import type { Doc, Id } from "@/convex/_generated/dataModel";
 
-export type Author = { kind: "user" | "agent"; name?: string };
+/** "git": a commit to the repository the document is stored in (repo sync). */
+export type Author = { kind: "user" | "agent" | "git"; name?: string };
 export type Revision = Doc<"revisions">;
 export type DriftReport = Doc<"drift">;
 export type DriftFinding = DriftReport["findings"][number];
 
 export const authorLabel = (a: Author): string =>
-  a.kind === "user" ? "You" : a.name && a.name.trim() !== "" ? a.name : "Agent";
+  a.kind === "user"
+    ? "You"
+    : a.name && a.name.trim() !== ""
+      ? a.name
+      : a.kind === "git"
+        ? "GitHub"
+        : "Agent";
 
 export interface DocumentActivity {
   ready: boolean;
@@ -25,8 +32,8 @@ export interface DocumentActivity {
   revisions: Revision[];
   /** Revision the user last reviewed (null before any review or when none exists). */
   baseline: Revision | null | undefined;
-  /** Agent revisions newer than `seenRevisionAt`. */
-  unseenAgentRevisions: Revision[];
+  /** Agent and repository (git) revisions newer than `seenRevisionAt`: changes the user didn't make. */
+  unseenRevisions: Revision[];
   drift: DriftReport | null | undefined;
   driftByPath: Map<string, DriftFinding>;
 
@@ -52,10 +59,10 @@ export function useDocumentActivity(
   const dismissM = useMutation(api.drift.dismiss);
   const clearM = useMutation(api.drift.clear);
 
-  const unseenAgentRevisions = useMemo(
+  const unseenRevisions = useMemo(
     () =>
       (revisions ?? []).filter(
-        (r) => r.author.kind === "agent" && r.createdAt > (seenRevisionAt ?? 0),
+        (r) => r.author.kind !== "user" && r.createdAt > (seenRevisionAt ?? 0),
       ),
     [revisions, seenRevisionAt],
   );
@@ -78,7 +85,7 @@ export function useDocumentActivity(
     ready: !!documentId && !!workspaceId && revisions !== undefined,
     revisions: revisions ?? [],
     baseline,
-    unseenAgentRevisions,
+    unseenRevisions,
     drift,
     driftByPath,
     markSeen: () => guard(({ documentId, workspaceId }) => markSeenM({ id: documentId, workspaceId })),

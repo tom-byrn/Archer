@@ -6,6 +6,7 @@ import {
   componentPaths,
   diffDocs,
   format,
+  isEmptyDiff,
   parse,
   setDisplay,
   summarizeDiff,
@@ -24,6 +25,7 @@ import {
   requestContext,
   type RequestContext,
   type DriftFinding,
+  type ProjectDoc,
   type Workspace,
   type RevisionRow,
 } from "./backend";
@@ -143,6 +145,33 @@ const revisionView = (r: RevisionRow, previous: ArchDoc | null) => {
     title: r.title,
     changes: summary,
     description: describeSummary(summary),
+  };
+};
+
+/** The repository a project describes, and the file it's stored in, as get_project reports it. */
+const repositoryView = (doc: ProjectDoc): ProjectRead["repository"] => {
+  const r = doc.repo;
+  if (!r) return null;
+  const common = {
+    full_name: `${r.owner}/${r.name}`,
+    branch: r.branch,
+    url: `https://github.com/${r.owner}/${r.name}/tree/${r.branch}`,
+  };
+  if (!r.path)
+    return { ...common, hint: "Drift checks and `src` paths refer to this repository at this branch." };
+  const unpublished = r.base
+    ? !isEmptyDiff(diffDocs(parse(r.base.source).doc, parse(doc.source).doc))
+    : true;
+  return {
+    ...common,
+    path: r.path,
+    hint: `This project is stored in ${r.path} in ${r.owner}/${r.name} on ${r.branch}: that file is the source of truth. If you are working in that repository, edit the file directly (with the code it describes; validate with \`archer check\`; no layout block) and the canvas follows when it reaches ${r.branch}. update_project only changes the project's unpublished draft, which a human publishes as a pull request.`,
+    sync: {
+      base_commit: r.base?.commit ?? null,
+      unpublished_changes: unpublished,
+      pull_request: r.pr?.url ?? null,
+      conflict: !!r.incoming,
+    },
   };
 };
 
@@ -372,7 +401,7 @@ export function registerArcherTools(server: McpServer): void {
     {
       title: "Read a project",
       description:
-        "Fetch a project's full Archer source plus its current diagnostics and a drift summary. ALWAYS call this before update_project and base your edit on the exact source returned — updates replace the whole document. Components may carry a `src` path pointing into the codebase — use it to locate implementations. The layout block at the end is machine-managed presentation: keep it out of your mental model, and normally omit it from your edits (the server preserves it for you).",
+        "Fetch a project's full Archer source plus its current diagnostics and a drift summary. ALWAYS call this before update_project and base your edit on the exact source returned — updates replace the whole document. Components may carry a `src` path pointing into the codebase — use it to locate implementations. The layout block at the end is machine-managed presentation: keep it out of your mental model, and normally omit it from your edits (the server preserves it for you). If `repository.path` is set, the project is stored in that .arch file in the repository: when you are working in that repository, edit the file instead of calling update_project.",
       inputSchema: { project_id: z.string() },
     },
     wrap(async ({ project_id }) => {
@@ -388,14 +417,7 @@ export function registerArcherTools(server: McpServer): void {
         errors: diagnosticsReport(a.errors),
         warnings: diagnosticsReport(a.warnings),
         drift: drift ? { reported_at: iso(drift.reportedAt), findings_count: drift.findings.length } : null,
-        repository: doc.repo
-          ? {
-              full_name: `${doc.repo.owner}/${doc.repo.name}`,
-              branch: doc.repo.branch,
-              url: `https://github.com/${doc.repo.owner}/${doc.repo.name}/tree/${doc.repo.branch}`,
-              hint: "Drift checks and `src` paths refer to this repository at this branch.",
-            }
-          : null,
+        repository: repositoryView(doc),
         source: doc.source,
       } satisfies ProjectRead);
     }),
@@ -406,7 +428,7 @@ export function registerArcherTools(server: McpServer): void {
     {
       title: "Link the project to a GitHub repository",
       description:
-        "Record which GitHub repository (and branch) this architecture describes — the same as the human clicking 'Link repository' in the app's History panel. Once linked, the app shows the repo's commits alongside architecture revisions, `src` paths deep-link into the repo, and drift checks are understood to be against that branch. Use it when the user tells you which repo a project belongs to. Pass repository: null to unlink.",
+        "Record which GitHub repository (and branch) this architecture describes — the same as the human clicking 'Link repository' in the app's History panel. Once linked, the app shows the repo's commits alongside architecture revisions, `src` paths deep-link into the repo, and drift checks are understood to be against that branch. Use it when the user tells you which repo a project belongs to. Pass repository: null to unlink (for a project stored in a repository file, that also stops syncing it). Storing a project in a .arch file in the repository is done in the app (From GitHub / Move to GitHub), which checks the user's GitHub access.",
       inputSchema: {
         project_id: z.string(),
         repository: z
@@ -497,6 +519,7 @@ export function registerArcherTools(server: McpServer): void {
           warnings: diagnosticsReport(prep.warnings),
         } satisfies WriteRejected);
       await db.updateProject(ws, project_id, prep.title, prep.text, summary);
+      const file = existing.repo?.path ? existing.repo : null;
       return text({
         id: project_id,
         title: prep.title,
@@ -504,6 +527,11 @@ export function registerArcherTools(server: McpServer): void {
         attributed_to: agentName(),
         editor_url: `${APP_URL}/documents/${project_id}`,
         warnings: diagnosticsReport(prep.warnings),
+        ...(file
+          ? {
+              note: `Saved to the unpublished draft. This project is stored in ${file.path} in ${file.owner}/${file.name} (${file.branch}); a human publishes the draft there as a pull request. If you are working in that repository, edit ${file.path} directly instead.`,
+            }
+          : {}),
       } satisfies ProjectUpdated);
     }),
   );

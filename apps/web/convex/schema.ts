@@ -5,22 +5,65 @@ import { v } from "convex/values";
 // the browser-generated UUID they were made with until `workspaces.claimLegacy`
 // moves them. Every function checks access via `requireWorkspace`.
 
-/** Who made a change: the human in the browser, or an agent over MCP. */
+/**
+ * Who made a change: the human in the browser, an agent over MCP, or a commit
+ * to the repository a document is stored in (imported by repo sync).
+ */
 export const author = v.object({
-  kind: v.union(v.literal("user"), v.literal("agent")),
-  /** Agent name (MCP client name, e.g. "claude-code"); undefined for the user. */
+  kind: v.union(v.literal("user"), v.literal("agent"), v.literal("git")),
+  /** Agent name (MCP client name, e.g. "claude-code"), or the commit author for "git"; undefined for the user. */
   name: v.optional(v.string()),
 });
 
 export const role = v.union(v.literal("owner"), v.literal("editor"), v.literal("viewer"));
 
+/** A version of a document's .arch file on its branch. */
+export const fileVersion = {
+  /** Commit that produced this version of the file. */
+  commit: v.string(),
+  /** Git blob sha of the file (what GitHub compares on write). */
+  blob: v.string(),
+  /** The file's architecture in canonical form, layout stripped. */
+  source: v.string(),
+};
+
+/**
+ * The GitHub repository a document describes. With `path` set the document is
+ * *stored in the repository*: the file on `branch` is the source of truth and
+ * the document is its working copy (see docs/repo-sync.md). Without it the
+ * link only feeds the commit timeline and `src` links.
+ */
 export const repoLink = v.object({
   owner: v.string(),
   name: v.string(),
   branch: v.string(),
-  /** Reserved for the .arch file sync: path of the file inside the repo. */
+  /** Path of the .arch file inside the repository. */
   path: v.optional(v.string()),
   linkedAt: v.number(),
+  /** User who linked the file; webhook syncs act as them. */
+  linkedBy: v.optional(v.string()),
+  /** The file as last imported from or published to `branch`: the draft is whatever differs from it. */
+  base: v.optional(v.object({ ...fileVersion, at: v.number() })),
+  /** Pull request opened by the last publish, until it merges or closes. */
+  pr: v.optional(
+    v.object({ number: v.number(), url: v.string(), branch: v.string(), openedAt: v.number() }),
+  ),
+  /** A newer version of the file that conflicts with the draft, waiting for the user. */
+  incoming: v.optional(
+    v.object({
+      ...fileVersion,
+      author: v.optional(v.string()),
+      message: v.optional(v.string()),
+      url: v.optional(v.string()),
+      /** One line per conflict, e.g. "api: changed desc on both sides". */
+      conflicts: v.array(v.string()),
+      at: v.number(),
+    }),
+  ),
+  /** Why the last sync failed (the file has errors, was deleted…), until one succeeds. */
+  problem: v.optional(v.object({ message: v.string(), commit: v.optional(v.string()), at: v.number() })),
+  /** When the branch was last checked. */
+  checkedAt: v.optional(v.number()),
 });
 
 export const driftStatus = v.union(
@@ -39,11 +82,17 @@ export default defineSchema({
     seenRevisionAt: v.optional(v.number()),
     /** Set when "anyone with the link can view" is on. */
     publicSlug: v.optional(v.string()),
-    /** Linked GitHub repository (commit timeline, src deep links). */
+    /** Linked GitHub repository (commit timeline, src deep links, and the stored file). */
     repo: v.optional(repoLink),
+    /**
+     * `owner/name@branch`, lowercased, while the document is stored in a
+     * repository: how a push webhook finds the documents it touches.
+     */
+    syncKey: v.optional(v.string()),
   })
     .index("by_workspace", ["workspaceId"])
-    .index("by_public_slug", ["publicSlug"]),
+    .index("by_public_slug", ["publicSlug"])
+    .index("by_sync_key", ["syncKey"]),
 
   /**
    * Team workspaces. A user's personal workspace has no row: its id is the
@@ -79,8 +128,10 @@ export default defineSchema({
     title: v.string(),
     createdAt: v.number(),
     author,
-    /** One-line description of the change (agents supply it; users rarely). */
+    /** One-line description of the change (agents supply it; users rarely; commit subject for "git"). */
     summary: v.optional(v.string()),
+    /** The commit a "git" revision was imported from. */
+    commit: v.optional(v.object({ sha: v.string(), url: v.string() })),
   })
     .index("by_document", ["documentId", "createdAt"])
     .index("by_workspace", ["workspaceId"]),

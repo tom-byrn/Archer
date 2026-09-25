@@ -15,6 +15,8 @@ const isPublic = createRouteMatcher([
   // discovery documents must be readable by unauthenticated clients.
   "/mcp(.*)",
   "/.well-known(.*)",
+  // GitHub webhook deliveries: authenticated by their signature.
+  "/api/github/webhook",
 ]);
 
 const configured =
