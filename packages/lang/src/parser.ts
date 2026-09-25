@@ -1,4 +1,5 @@
 import { lex, type Token, type TokenType } from "./lexer";
+import { SHAPES } from "./shapes";
 import {
   PAYLOAD_FORMATS,
   type ArchDoc,
@@ -142,11 +143,30 @@ export function parse(source: string): ParseResult {
               });
             }
             node.src = value;
+          } else if (at("ident", "shape") && !startsPayload()) {
+            const kwTok = next();
+            const t = peek();
+            if (t.type !== "ident") {
+              fail(
+                `Expected a shape name after 'shape' (${SHAPES.join(" | ")}), got ${describe(t)}.`,
+                t.span,
+              );
+            }
+            const value = next().value;
+            if (node.shape !== undefined) {
+              diagnostics.push({
+                code: "E004",
+                severity: "error",
+                message: `Component '${node.id}' has more than one 'shape'.`,
+                span: { start: kwTok.span.start, end: t.span.end },
+              });
+            }
+            node.shape = value;
           } else if (at("ident")) {
             node.payloads.push(parsePayload());
           } else {
             fail(
-              `Expected 'desc', 'src', 'component', or a payload inside a component body, got ${describe(peek())}.`,
+              `Expected 'desc', 'src', 'shape', 'component', or a payload inside a component body, got ${describe(peek())}.`,
               peek().span,
             );
           }
@@ -162,6 +182,13 @@ export function parse(source: string): ParseResult {
     }
     return node;
   };
+
+  /**
+   * `<name> <format> ```…```` ahead: a payload, even one named like a body
+   * keyword (`shape json ```…````, from before `shape` was one).
+   */
+  const startsPayload = (): boolean =>
+    peek(1).type === "ident" && peek(2).type === "fence";
 
   const parsePayload = () => {
     const nameTok = expect("ident", "a payload name");
@@ -291,6 +318,7 @@ export function parse(source: string): ParseResult {
       !at("ident", "component") &&
       !at("ident", "desc") &&
       !at("ident", "src") &&
+      !at("ident", "shape") &&
       !at("ident", "layout")
     ) {
       next();

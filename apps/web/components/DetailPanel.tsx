@@ -5,6 +5,7 @@ import {
   checkPayload,
   effectiveDisplay,
   findComponent,
+  isShape,
   layoutMap,
   pathToString,
   removeComponent,
@@ -17,6 +18,8 @@ import {
   setConnectionPayload,
   setDisplay,
   setPayload,
+  shapeOf,
+  SHAPE_INFO,
   type ArchDoc,
   type Arrow,
   type ComponentNode,
@@ -36,6 +39,7 @@ import type { RepoLink } from "@/lib/github";
 import { displayColor, useIsDark } from "@/lib/useIsDark";
 import { CodeEditor } from "./CodeMirror";
 import { Glyph } from "./nodes";
+import { ShapeIcon, ShapePicker } from "./ShapePicker";
 import { TypeCombobox } from "./TypeCombobox";
 import {
   Button,
@@ -376,6 +380,20 @@ export function ComponentDetails({
               </span>
             )}
           </ReadRow>
+          {node.shape !== undefined && (
+            <ReadRow label="Shape">
+              <span className="flex min-w-0 items-center gap-1.5">
+                <ShapeIcon shape={shapeOf(node)} width={18} className="text-ink-2" />
+                {isShape(node.shape) ? (
+                  <span className="truncate">{SHAPE_INFO[node.shape].name}</span>
+                ) : (
+                  <span className="truncate text-ink-3">
+                    <span className="mono">{node.shape}</span> (unknown, drawn as a box)
+                  </span>
+                )}
+              </span>
+            </ReadRow>
+          )}
           <ReadRow label="Description">
             {node.desc ? (
               <p className="whitespace-pre-wrap break-words">{node.desc}</p>
@@ -623,6 +641,7 @@ function ComponentInspector({
           <ComponentForm
             node={node}
             path={path}
+            plane={isContainer && display === "plane"}
             mutate={mutate}
             onSelect={onSelect}
             library={library}
@@ -640,6 +659,7 @@ function ComponentInspector({
 function ComponentForm({
   node,
   path,
+  plane,
   mutate,
   onSelect,
   library,
@@ -647,6 +667,8 @@ function ComponentForm({
 }: {
   node: ComponentNode;
   path: string;
+  /** Drawn as a plane right now (an expanded container). */
+  plane: boolean;
   mutate: (fn: (d: ArchDoc) => ArchDoc) => void;
   onSelect: (s: Selection) => void;
   library: UserLibrary;
@@ -686,6 +708,13 @@ function ComponentForm({
             onChange={(tag) =>
               mutate((d) => setComponentMeta(d, segments, { type: tag ?? null }))
             }
+          />
+        </PropertyRow>
+        <PropertyRow label="Shape" align="start">
+          <ShapePicker
+            value={node.shape}
+            plane={plane}
+            onChange={(shape) => mutate((d) => setComponentMeta(d, segments, { shape }))}
           />
         </PropertyRow>
         <PropertyRow label="Description" align="start">
