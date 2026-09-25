@@ -43,6 +43,7 @@ import {
   DotsThreeIcon,
   DownloadSimpleIcon,
   FrameCornersIcon,
+  GitBranchIcon,
   GitDiffIcon,
   LinkSimpleIcon,
   MagnifyingGlassIcon,
@@ -152,6 +153,51 @@ export function IconButton({
     >
       {children}
     </button>
+  );
+}
+
+/**
+ * A primary button with a menu on its caret, sized like Button size="sm": one
+ * dark shape split by a hairline. The main part runs `onClick`; the caret
+ * takes a Menu trigger's `open` and `toggle`, plus a name of its own.
+ */
+export function SplitButton({
+  icon,
+  title,
+  onClick,
+  menu,
+  children,
+}: {
+  icon?: ReactNode;
+  title?: string;
+  onClick: () => void;
+  menu: { open: boolean; toggle: () => void; label: string; title?: string };
+  children: ReactNode;
+}) {
+  const half = "flex items-center transition-colors duration-100 hover:bg-bg/10";
+  return (
+    <div className="flex h-7 shrink-0 select-none rounded-md bg-ink text-sm font-medium text-bg shadow-sm">
+      <button
+        type="button"
+        title={title}
+        onClick={onClick}
+        className={cx(half, "gap-1.5 whitespace-nowrap rounded-l-md pl-2.5 pr-2")}
+      >
+        {icon && <span className="-ml-0.5 flex shrink-0 items-center [&_svg]:h-3.5 [&_svg]:w-3.5">{icon}</span>}
+        {children}
+      </button>
+      <span aria-hidden className="my-1.5 w-px bg-bg/25" />
+      <button
+        type="button"
+        aria-label={menu.label}
+        aria-expanded={menu.open}
+        title={menu.title ?? menu.label}
+        onClick={menu.toggle}
+        className={cx(half, "w-6 justify-center rounded-r-md aria-expanded:bg-bg/15")}
+      >
+        <Icon.ChevronDown className="h-3.5 w-3.5 opacity-70" />
+      </button>
+    </div>
   );
 }
 
@@ -499,16 +545,19 @@ const menuIcon = (icon: ReactNode) =>
 
 /**
  * Dropdown menu anchored to its trigger. `trigger` receives the open state and
- * a toggle handler. Closes on outside click, Escape, or selection.
+ * a toggle handler. Closes on outside click, Escape, or selection. `header`
+ * sits above the items, ruled off from them: what the menu is about.
  */
 export function Menu({
   trigger,
   items,
+  header,
   align = "end",
   width = 220,
 }: {
   trigger: (props: { open: boolean; toggle: () => void }) => ReactNode;
   items: (MenuItem | MenuControl | "separator")[];
+  header?: ReactNode;
   align?: "start" | "end";
   width?: number;
 }) {
@@ -542,6 +591,12 @@ export function Menu({
             align === "end" ? "right-0" : "left-0",
           )}
         >
+          {header && (
+            <>
+              {header}
+              <div className="my-1 h-px bg-line" />
+            </>
+          )}
           <MenuRows items={items} onClose={() => setOpen(false)} />
         </div>
       )}
@@ -760,6 +815,7 @@ export const Icon = {
   Restore: (p: IconProps) => <ArrowCounterClockwiseIcon {...UI} {...p} />,
   Reset: (p: IconProps) => <ArrowCounterClockwiseIcon {...UI} {...p} />,
   Diff: (p: IconProps) => <GitDiffIcon {...UI} {...p} />,
+  Branch: (p: IconProps) => <GitBranchIcon {...UI} {...p} />,
   Send: (p: IconProps) => <PaperPlaneTiltIcon {...UI} {...p} />,
   Command: (p: IconProps) => <CommandIcon {...UI} {...p} />,
   Group: (p: IconProps) => <BoundingBoxIcon {...UI} {...p} />,

@@ -34,9 +34,11 @@ honored on import and dropped on the next publish. Publishing writes
 canonical form, so, as with `archer fmt`, `#` comments in the file don't
 survive a publish from Archer; keep notes in `desc` and payloads instead.
 
-Anything the draft changes relative to base is *unpublished*. The header
-shows the file, its status (Synced · N unpublished · Not created yet ·
-Conflict · Sync problem) and **Publish** when there's something to publish.
+Anything the draft changes relative to base is *unpublished*. The header's
+GitHub button says where the document stands (Synced · Conflict · Sync
+problem); while there's something to publish it becomes the primary
+**Publish** button with the number of changes (**Create file** before the
+file exists). Its menu names the file, repository and branch.
 
 ## Keeping up with the branch
 
