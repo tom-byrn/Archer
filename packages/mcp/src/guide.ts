@@ -169,8 +169,8 @@ The full language specification is at the end of this guide. Key habits:
   asks you to arrange the diagram); entries are \`path: { at: [col, row],
   size: [w, h], display: icon|plane }\` on an integer grid.
 - To collapse or expand a container without touching the source, use the
-  \`set_display\` tool. To re-arrange everything from scratch, \`auto_layout\`
-  with \`reset: true\`.
+  \`set_display\` tool. To re-arrange everything from scratch,
+  \`auto_layout_project\` with \`reset: true\`.
 
 ## Error reference (what blocks a write)
 
@@ -192,7 +192,7 @@ Everything a human can do in the app maps to a tool: browse projects
 components, connections, descriptions, payloads, nesting — (\`update_project\`
 with full source), manage the custom component library
 (\`create_custom_type\`/\`delete_custom_type\`), arrange the canvas
-(\`auto_layout\`, \`set_display\`, or explicit layout entries), review history
+(\`auto_layout_project\`, \`set_display\`, or explicit layout entries), review history
 (\`get_history\`/\`get_revision\`/\`diff_project\`), report drift (\`report_drift\`/\`get_drift\`), switch workspaces
 (\`get_workspace_info\`, \`list_workspaces\`/\`use_workspace\`), read the docs' worked
 examples (\`list_examples\`/\`get_example\`), and export the agent spec

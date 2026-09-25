@@ -47,7 +47,7 @@ backend.api -> backend.db @sql
 
 | package | what |
 | --- | --- |
-| `packages/lang` | The language: parser, validator (typed error codes), canonical formatter, grid auto-layout, AST transforms, agent-export compiler. Pure TypeScript, no app dependencies. |
+| `packages/lang` | The language: parser, validator (typed error codes), canonical formatter, layered auto-layout, AST transforms, agent-export compiler. Pure TypeScript, no app dependencies. |
 | `packages/catalog` | Curated component catalog (~350 types: vendor-neutral system-design and AI building blocks — load balancers, rate limiters, queues, LLMs, agents, MCP servers… — plus real technologies) + Phosphor glyphs. |
 | `packages/mcp` | MCP tools giving agents full human-parity access — projects CRUD, validated writes, custom types, layout control, spec compilation, the docs' worked examples — served by the app at `/mcp` with OAuth sign-in. See [docs/mcp.md](docs/mcp.md). |
 | `packages/cli` | The `archer` command (npm: `archerctl`): `check` / `fmt` for `.arch` files in CI and agent shells, `init`, `login`, `push` / `pull`, and `archer mcp` (stdio bridge to the hosted server). See [docs/cli.md](docs/cli.md). |

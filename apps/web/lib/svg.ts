@@ -14,11 +14,23 @@ import {
   type ComponentNode,
 } from "@archer/lang";
 import { GLYPHS, GLYPH_VIEWBOX, lookupType } from "@archer/catalog";
+import {
+  BOX_COST,
+  bendOf,
+  chipWidth,
+  routeEdge,
+  separateBends,
+  untangle,
+  type Obstacle,
+  type RoutedEdge,
+} from "./edgeRoute";
 
 /** One grid cell in pixels (mirrors lib/toFlow.ts, which is client-only). */
 const CELL = 40;
 const PAD = 40;
 const TITLE_H = 36;
+/** Height of a plane's title bar (the rule under the name). */
+const PLANE_TITLE = 32;
 
 export interface RenderOptions {
   theme?: "light" | "dark";
@@ -243,26 +255,66 @@ export function renderArchSvg(source: string, opts: RenderOptions = {}): string 
   const chipRects: { x: number; y: number; w: number; h: number }[] = [];
   let needEnd = false;
   let needStart = false;
-  doc.connections.forEach((c) => {
+  // Routed like the canvas (lib/edgeRoute.ts): bends go where the path clears
+  // boxes and plane title bars, and around unrelated planes when possible.
+  const obstaclesFor = (source: string, target: string): Obstacle[] => {
+    const list: Obstacle[] = [];
+    for (const b of boxes) {
+      if (b.path === source || b.path === target) continue;
+      const r = { x: b.x + dx, y: b.y + dy, w: b.w, h: b.h };
+      if (!b.plane) {
+        list.push({ ...r, cost: BOX_COST });
+        continue;
+      }
+      list.push({ ...r, h: PLANE_TITLE, cost: BOX_COST / 4 });
+      if (!source.startsWith(b.path + ".") && !target.startsWith(b.path + "."))
+        list.push({ ...r, cost: BOX_COST / 20 });
+    }
+    return list;
+  };
+  const routed: (RoutedEdge & { c: ArchDoc["connections"][number] })[] = [];
+  for (const c of doc.connections) {
     const s = byPath.get(visibleAncestor.get(pathToString(c.source)) ?? "");
     const t = byPath.get(visibleAncestor.get(pathToString(c.target)) ?? "");
-    if (!s || !t || s === t) return;
-    const sc = { x: s.x + dx + s.w / 2, y: s.y + dy + s.h / 2 };
-    const tc = { x: t.x + dx + t.w / 2, y: t.y + dy + t.h / 2 };
-    const ddx = tc.x - sc.x;
-    const ddy = tc.y - sc.y;
+    if (!s || !t || s === t) continue;
+    const sr = { x: s.x + dx, y: s.y + dy, w: s.w, h: s.h };
+    const tr = { x: t.x + dx, y: t.y + dy, w: t.w, h: t.h };
+    const route = routeEdge(
+      sr,
+      tr,
+      obstaclesFor(s.path, t.path),
+      chipWidth(c.type, c.label, c.payloads.length),
+    );
+    const headAtTarget = c.arrow !== "--";
+    routed.push({ c, source: s.path, target: t.path, s: sr, t: tr, route, headAtTarget });
+  }
+  // Untangle shared handles, then keep parallel bends from merging.
+  untangle(routed, obstaclesFor);
+  separateBends(routed.map((e) => bendOf(e.route, e.s, e.t, e.source, e.target)));
+  for (const { c, s: sr, t: tr, route } of routed) {
     let p1: { x: number; y: number };
     let p2: { x: number; y: number };
     let d: string;
-    // Candidate positions for the label chip: path midpoint first, then the
+    // Candidate positions for the label chip: the bend first, then the
     // near-source and near-target segments. The first one that overlaps no
     // leaf node and no earlier chip wins.
     const candidates: { x: number; y: number }[] = [];
-    if (Math.abs(ddx) >= Math.abs(ddy)) {
-      const sign = ddx >= 0 ? 1 : -1;
-      p1 = { x: sc.x + (sign * s.w) / 2, y: sc.y };
-      p2 = { x: tc.x - (sign * t.w) / 2, y: tc.y };
-      const mx = (p1.x + p2.x) / 2;
+    if (route.corner) {
+      const right = route.from === "r";
+      const down = route.to === "t";
+      p1 = { x: right ? sr.x + sr.w : sr.x, y: sr.y + sr.h / 2 };
+      p2 = { x: tr.x + tr.w / 2, y: down ? tr.y : tr.y + tr.h };
+      d = `M${p1.x} ${p1.y}H${p2.x}V${p2.y}`;
+      candidates.push(
+        { x: (p1.x + p2.x) / 2, y: p1.y },
+        { x: p2.x, y: (p1.y + p2.y) / 2 },
+      );
+    } else if (route.horizontal) {
+      const right = route.from === "r";
+      const sign = right ? 1 : -1;
+      p1 = { x: right ? sr.x + sr.w : sr.x, y: sr.y + sr.h / 2 };
+      p2 = { x: right ? tr.x : tr.x + tr.w, y: tr.y + tr.h / 2 };
+      const mx = route.mid;
       d = `M${p1.x} ${p1.y}H${mx}V${p2.y}H${p2.x}`;
       candidates.push(
         { x: mx, y: (p1.y + p2.y) / 2 },
@@ -271,10 +323,10 @@ export function renderArchSvg(source: string, opts: RenderOptions = {}): string 
         { x: p1.x + sign * 60, y: p1.y },
       );
     } else {
-      const sign = ddy >= 0 ? 1 : -1;
-      p1 = { x: sc.x, y: sc.y + (sign * s.h) / 2 };
-      p2 = { x: tc.x, y: tc.y - (sign * t.h) / 2 };
-      const my = (p1.y + p2.y) / 2;
+      const down = route.from === "b";
+      p1 = { x: sr.x + sr.w / 2, y: down ? sr.y + sr.h : sr.y };
+      p2 = { x: tr.x + tr.w / 2, y: down ? tr.y : tr.y + tr.h };
+      const my = route.mid;
       d = `M${p1.x} ${p1.y}V${my}H${p2.x}V${p2.y}`;
       candidates.push(
         { x: (p1.x + p2.x) / 2, y: my },
@@ -330,7 +382,7 @@ export function renderArchSvg(source: string, opts: RenderOptions = {}): string 
           `</g>`,
       );
     }
-  });
+  }
 
   const defs =
     `<defs>` +
