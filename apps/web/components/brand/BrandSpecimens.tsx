@@ -16,6 +16,7 @@ import {
   Input,
   Kbd,
   Segmented,
+  SwapIcon,
   cx,
 } from "../ui";
 
@@ -86,6 +87,9 @@ export function ControlSpecimens() {
           Copy
         </Button>
       </Row>
+      <Row label="SwapIcon">
+        <SwapSpecimen />
+      </Row>
       <Row label="IconButton">
         <IconButton label="Undo">
           <Icon.Undo />
@@ -139,6 +143,23 @@ export function ControlSpecimens() {
         </span>
       </Row>
     </div>
+  );
+}
+
+/** A copy button's feedback, without the copying: click to see the icons trade places. */
+function SwapSpecimen() {
+  const [swapped, setSwapped] = useState(false);
+  return (
+    <Button
+      size="sm"
+      icon={<SwapIcon swapped={swapped} from={<Icon.Copy />} to={<Icon.Check />} />}
+      onClick={() => {
+        setSwapped(true);
+        setTimeout(() => setSwapped(false), 1200);
+      }}
+    >
+      Copy
+    </Button>
   );
 }
 

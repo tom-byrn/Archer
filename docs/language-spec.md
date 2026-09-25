@@ -170,7 +170,9 @@ of vendor-neutral building blocks (`@load_balancer`, `@rate_limiter`, `@cdn`, `@
 
 `@http` `@grpc` `@graphql` `@ws` `@sse` `@webrtc` `@tcp` `@udp` `@sql` `@queue` `@event`
 `@stream` `@mqtt` `@webhook` `@cdc` `@auth` `@reads` `@writes` `@replicates` `@triggers`
-`@deploys` `@contains` `@depends` — plus user-defined. All optional.
+`@deploys` `@contains` `@depends` `@mcp` `@a2a` — plus user-defined. All optional.
+`@mcp` is an agent calling an MCP server (Model Context Protocol); `@a2a` is one agent
+calling another (Agent2Agent protocol).
 
 ## 6. Connections
 

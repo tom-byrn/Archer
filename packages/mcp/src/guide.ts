@@ -149,6 +149,12 @@ The full language specification is at the end of this guide. Key habits:
   communication. Both are allowed across any depth.
 - **Type tags are optional.** An unknown tag is only a warning (renders as a
   generic box); prefer catalog/custom tags when a good one exists.
+- **AI systems have their own building blocks:** \`@llm\`, \`@agent\`, \`@mcp\`
+  (an MCP server), \`@tool\`, \`@rag\`, \`@embeddings\`, \`@vector_db\`,
+  \`@memory\`, \`@guardrails\`, \`@evals\` and more (\`list_types\` with search
+  \`ai\`), beside the vendors (\`@anthropic\`, \`@openai\`, \`@pinecone\`, …).
+  Draw an agent's calls to MCP servers as \`@mcp\` connections, and one agent
+  calling another as \`@a2a\`.
 - Match the user's requested granularity: one \`@postgres\` node with a schema
   payload, or individual \`@postgres.table\` children — both are idiomatic.
 

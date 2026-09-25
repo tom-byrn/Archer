@@ -97,15 +97,17 @@ Router + React Flow + Convex).
   and blurb in `lib/samples/index.ts`). Choosing one saves the source as a new
   document verbatim, so like the docs examples, samples stay canonical and
   validate clean — `apps/web/test/samples.test.ts` enforces it.
-- Catalog (`packages/catalog`): two kinds of type. Vendor-neutral
-  system-design building blocks (`@load_balancer`, `@rate_limiter`, `@cache`…)
-  are slate `#64748b`, grouped by concern (generic, network, compute, storage,
-  messaging, data, observability, security, platform, topology); real
-  technologies use their brand color and a vendor group (aws, gcp, azure,
-  vercel, databases, infra, saas). The palette lists the neutral groups first,
-  in `NEUTRAL_NAMESPACES` order (`components/Palette.tsx`) — a new namespace
-  needs a label in `NAMESPACE_LABELS` there. Tags and glyph keys end up in
-  saved documents and custom types: add freely, never rename or remove one.
+- Catalog (`packages/catalog`): two kinds of type. Vendor-neutral building
+  blocks (`@load_balancer`, `@rate_limiter`, `@cache`, `@llm`…) are grouped by
+  concern (generic, ai, network, compute, storage, messaging, data,
+  observability, security, platform, topology) and slate `#64748b`, except
+  the AI & agents group (`ai`), which shares one violet; real technologies
+  use their brand color and a vendor group (ai_platforms, aws, gcp, azure,
+  vercel, databases, infra, saas). The palette lists the neutral groups
+  first, in `NEUTRAL_NAMESPACES` order (`components/Palette.tsx`) — a new
+  namespace needs a label in `NAMESPACE_LABELS` there. Tags and glyph keys
+  end up in saved documents and custom types: add freely, never rename or
+  remove one.
 - Brand kit: `/branding` (signed-in only, deliberately linked from nowhere —
   keep it that way) shows the logo, colors, type, radii, icons and ui.tsx
   primitives. Values are parsed from `app/globals.css` at build time
@@ -124,7 +126,10 @@ Router + React Flow + Convex).
   `globals.css`); a plain switch without support or with reduced motion. Key
   CSS on `:root[data-theme="dark"]` and code on `useIsDark()`, never on
   `prefers-color-scheme`. Build controls from `components/ui.tsx` (Button,
-  IconButton, Input, Menu, Dialog, Section, PropertyRow, Chip, Icon). Icons
+  IconButton, Input, Menu, Dialog, Section, PropertyRow, Chip, Icon). An icon
+  that changes on click (copy → check) is a `SwapIcon`, which animates the
+  swap; never a bare ternary between two icons. The button's label stays as
+  it is (no Copy → Copied), so the icon alone confirms and nothing resizes. Icons
   are Phosphor: UI icons are `@phosphor-icons/react` (bold) behind `Icon` —
   add a name there, don't import Phosphor elsewhere (`GitHubMark` stays
   GitHub's own mark on purpose); component glyphs are Phosphor paths

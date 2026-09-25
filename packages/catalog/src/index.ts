@@ -33,7 +33,7 @@ export const CATALOG: readonly CatalogType[] = [
   // Networking & traffic
   { tag: "dns", name: "DNS", namespace: "network", color: "#64748b", glyph: "signpost" },
   { tag: "cdn", name: "CDN", namespace: "network", color: "#64748b", glyph: "earth" },
-  { tag: "load_balancer", name: "Load Balancer", namespace: "network", color: "#64748b", glyph: "split" },
+  { tag: "load_balancer", name: "Load Balancer", namespace: "network", color: "#64748b", glyph: "router" },
   { tag: "reverse_proxy", name: "Reverse Proxy", namespace: "network", color: "#64748b", glyph: "proxy" },
   { tag: "forward_proxy", name: "Forward Proxy", namespace: "network", color: "#64748b", glyph: "forward" },
   { tag: "api_gateway", name: "API Gateway", namespace: "network", color: "#64748b", glyph: "gateway" },
@@ -57,7 +57,6 @@ export const CATALOG: readonly CatalogType[] = [
   { tag: "wide_column_store", name: "Wide-Column Store", namespace: "storage", color: "#64748b", glyph: "columns" },
   { tag: "graph_db", name: "Graph Database", namespace: "storage", color: "#64748b", glyph: "graph" },
   { tag: "time_series_db", name: "Time-Series Database", namespace: "storage", color: "#64748b", glyph: "plot" },
-  { tag: "vector_db", name: "Vector Database", namespace: "storage", color: "#64748b", glyph: "vector" },
   { tag: "search_index", name: "Search Index", namespace: "storage", color: "#64748b", glyph: "search" },
   { tag: "cache", name: "Cache", namespace: "storage", color: "#64748b", glyph: "bolt" },
   { tag: "object_storage", name: "Object Storage", namespace: "storage", color: "#64748b", glyph: "bucket" },
@@ -73,22 +72,18 @@ export const CATALOG: readonly CatalogType[] = [
   { tag: "sms", name: "SMS", namespace: "messaging", color: "#64748b", glyph: "chat" },
   { tag: "push", name: "Push Notifications", namespace: "messaging", color: "#64748b", glyph: "bell" },
 
-  // Data & AI
+  // Data & analytics
   { tag: "data_warehouse", name: "Data Warehouse", namespace: "data", color: "#64748b", glyph: "warehouse" },
   { tag: "data_lake", name: "Data Lake", namespace: "data", color: "#64748b", glyph: "drop" },
   { tag: "etl", name: "ETL Pipeline", namespace: "data", color: "#64748b", glyph: "merge" },
   { tag: "stream_processor", name: "Stream Processor", namespace: "data", color: "#64748b", glyph: "signal" },
   { tag: "batch_processor", name: "Batch Processor", namespace: "data", color: "#64748b", glyph: "stack" },
   { tag: "analytics", name: "Analytics", namespace: "data", color: "#64748b", glyph: "chart" },
-  { tag: "ml_model", name: "ML Model", namespace: "data", color: "#64748b", glyph: "brain" },
-  { tag: "llm", name: "LLM", namespace: "data", color: "#64748b", glyph: "sparkle" },
-  { tag: "agent", name: "AI Agent", namespace: "data", color: "#64748b", glyph: "robot" },
-  { tag: "mcp_server", name: "MCP Server", namespace: "data", color: "#64748b", glyph: "plug" },
 
   // Observability
   { tag: "metrics", name: "Metrics / Monitoring", namespace: "observability", color: "#64748b", glyph: "pulse" },
   { tag: "logging", name: "Logging", namespace: "observability", color: "#64748b", glyph: "scroll" },
-  { tag: "tracing", name: "Tracing", namespace: "observability", color: "#64748b", glyph: "path" },
+  { tag: "distributed_tracing", name: "Distributed Tracing", namespace: "observability", color: "#64748b", glyph: "path" },
   { tag: "alerting", name: "Alerting", namespace: "observability", color: "#64748b", glyph: "siren" },
 
   // Security
@@ -129,6 +124,7 @@ export const CATALOG: readonly CatalogType[] = [
   { tag: "vercel", name: "Vercel", namespace: "vercel", color: "#171717", glyph: "triangle" },
   { tag: "vercel.nextjs", name: "Next.js", namespace: "vercel", color: "#171717", glyph: "globe" },
   { tag: "vercel.functions", name: "Functions", namespace: "vercel", color: "#171717", glyph: "lambda" },
+  { tag: "vercel.ai_gateway", name: "AI Gateway", namespace: "vercel", color: "#171717", glyph: "router" },
 
   // Databases & infra
   { tag: "postgres", name: "Postgres", namespace: "databases", color: "#336791", glyph: "database" },
@@ -153,7 +149,9 @@ export const CATALOG: readonly CatalogType[] = [
   { tag: "aws.step_functions", name: "Step Functions", namespace: "aws", color: "#e7157b", glyph: "gear" },
   { tag: "aws.elasticache", name: "ElastiCache", namespace: "aws", color: "#527fff", glyph: "bolt" },
   { tag: "aws.vpc", name: "VPC", namespace: "aws", color: "#8c4fff", glyph: "cloud" },
-  { tag: "aws.elb", name: "ELB / ALB", namespace: "aws", color: "#8c4fff", glyph: "split" },
+  { tag: "aws.bedrock", name: "Bedrock", namespace: "aws", color: "#01a88d", glyph: "spark" },
+  { tag: "aws.sagemaker", name: "SageMaker", namespace: "aws", color: "#01a88d", glyph: "model" },
+  { tag: "aws.elb", name: "ELB / ALB", namespace: "aws", color: "#8c4fff", glyph: "router" },
   { tag: "aws.waf", name: "WAF", namespace: "aws", color: "#dd344c", glyph: "funnel" },
   { tag: "aws.kinesis", name: "Kinesis", namespace: "aws", color: "#8c4fff", glyph: "waves" },
   { tag: "aws.msk", name: "MSK (Kafka)", namespace: "aws", color: "#8c4fff", glyph: "queue" },
@@ -166,8 +164,6 @@ export const CATALOG: readonly CatalogType[] = [
   { tag: "aws.opensearch", name: "OpenSearch", namespace: "aws", color: "#8c4fff", glyph: "search" },
   { tag: "aws.efs", name: "EFS", namespace: "aws", color: "#7aa116", glyph: "folder" },
   { tag: "aws.glue", name: "Glue", namespace: "aws", color: "#8c4fff", glyph: "merge" },
-  { tag: "aws.bedrock", name: "Bedrock", namespace: "aws", color: "#01a88d", glyph: "sparkle" },
-  { tag: "aws.sagemaker", name: "SageMaker", namespace: "aws", color: "#01a88d", glyph: "brain" },
 
   // GCP
   { tag: "gcp", name: "Google Cloud", namespace: "gcp", color: "#4285f4", glyph: "cloud" },
@@ -176,12 +172,13 @@ export const CATALOG: readonly CatalogType[] = [
   { tag: "gcp.bigquery", name: "BigQuery", namespace: "gcp", color: "#669df6", glyph: "chart" },
   { tag: "gcp.pubsub", name: "Pub/Sub", namespace: "gcp", color: "#669df6", glyph: "queue" },
   { tag: "gcp.firestore", name: "Firestore", namespace: "gcp", color: "#ffa000", glyph: "database" },
+  { tag: "gcp.vertex_ai", name: "Vertex AI", namespace: "gcp", color: "#4285f4", glyph: "spark" },
   { tag: "firebase", name: "Firebase", namespace: "gcp", color: "#ffa000", glyph: "flame" },
   { tag: "fcm", name: "FCM", namespace: "gcp", color: "#ffa000", glyph: "bell" },
   { tag: "gcp.compute_engine", name: "Compute Engine", namespace: "gcp", color: "#4285f4", glyph: "server" },
   { tag: "gcp.gke", name: "GKE", namespace: "gcp", color: "#4285f4", glyph: "cube" },
   { tag: "gcp.cloud_functions", name: "Cloud Functions", namespace: "gcp", color: "#4285f4", glyph: "lambda" },
-  { tag: "gcp.load_balancing", name: "Load Balancing", namespace: "gcp", color: "#4285f4", glyph: "split" },
+  { tag: "gcp.load_balancing", name: "Load Balancing", namespace: "gcp", color: "#4285f4", glyph: "router" },
   { tag: "gcp.cloud_cdn", name: "Cloud CDN", namespace: "gcp", color: "#4285f4", glyph: "earth" },
   { tag: "gcp.cloud_armor", name: "Cloud Armor", namespace: "gcp", color: "#4285f4", glyph: "funnel" },
   { tag: "gcp.cloud_sql", name: "Cloud SQL", namespace: "gcp", color: "#4285f4", glyph: "database" },
@@ -189,17 +186,18 @@ export const CATALOG: readonly CatalogType[] = [
   { tag: "gcp.bigtable", name: "Bigtable", namespace: "gcp", color: "#4285f4", glyph: "columns" },
   { tag: "gcp.memorystore", name: "Memorystore", namespace: "gcp", color: "#4285f4", glyph: "bolt" },
   { tag: "gcp.dataflow", name: "Dataflow", namespace: "gcp", color: "#669df6", glyph: "signal" },
-  { tag: "gcp.vertex_ai", name: "Vertex AI", namespace: "gcp", color: "#4285f4", glyph: "sparkle" },
 
   // Azure
   { tag: "azure", name: "Azure", namespace: "azure", color: "#0078d4", glyph: "cloud" },
   { tag: "azure.functions", name: "Az Functions", namespace: "azure", color: "#0078d4", glyph: "lambda" },
   { tag: "azure.cosmos", name: "Cosmos DB", namespace: "azure", color: "#0078d4", glyph: "database" },
+  { tag: "azure.openai", name: "Azure OpenAI", namespace: "azure", color: "#0078d4", glyph: "spark" },
+  { tag: "azure.ai_search", name: "AI Search", namespace: "azure", color: "#0078d4", glyph: "search" },
   { tag: "azure.vm", name: "Virtual Machines", namespace: "azure", color: "#0078d4", glyph: "server" },
   { tag: "azure.app_service", name: "App Service", namespace: "azure", color: "#0078d4", glyph: "globe" },
   { tag: "azure.aks", name: "AKS", namespace: "azure", color: "#0078d4", glyph: "cube" },
   { tag: "azure.front_door", name: "Front Door", namespace: "azure", color: "#0078d4", glyph: "earth" },
-  { tag: "azure.app_gateway", name: "App Gateway", namespace: "azure", color: "#0078d4", glyph: "split" },
+  { tag: "azure.app_gateway", name: "App Gateway", namespace: "azure", color: "#0078d4", glyph: "router" },
   { tag: "azure.api_management", name: "API Management", namespace: "azure", color: "#0078d4", glyph: "gateway" },
   { tag: "azure.blob_storage", name: "Blob Storage", namespace: "azure", color: "#0078d4", glyph: "bucket" },
   { tag: "azure.sql", name: "Azure SQL", namespace: "azure", color: "#0078d4", glyph: "database" },
@@ -210,7 +208,6 @@ export const CATALOG: readonly CatalogType[] = [
   { tag: "azure.entra_id", name: "Entra ID", namespace: "azure", color: "#0078d4", glyph: "shield" },
   { tag: "azure.key_vault", name: "Key Vault", namespace: "azure", color: "#0078d4", glyph: "vault" },
   { tag: "azure.monitor", name: "Azure Monitor", namespace: "azure", color: "#0078d4", glyph: "pulse" },
-  { tag: "azure.openai", name: "Azure OpenAI", namespace: "azure", color: "#0078d4", glyph: "sparkle" },
 
   // More databases
   { tag: "mysql", name: "MySQL", namespace: "databases", color: "#00758f", glyph: "database" },
@@ -220,11 +217,15 @@ export const CATALOG: readonly CatalogType[] = [
   { tag: "neon", name: "Neon", namespace: "databases", color: "#00e599", glyph: "database" },
   { tag: "planetscale", name: "PlanetScale", namespace: "databases", color: "#f35815", glyph: "database" },
   { tag: "elasticsearch", name: "Elasticsearch", namespace: "databases", color: "#fec514", glyph: "search" },
-  { tag: "pinecone", name: "Pinecone", namespace: "databases", color: "#1c17ff", glyph: "search" },
+  { tag: "pinecone", name: "Pinecone", namespace: "databases", color: "#1c17ff", glyph: "vector" },
+  { tag: "qdrant", name: "Qdrant", namespace: "databases", color: "#dc244c", glyph: "vector" },
+  { tag: "chroma", name: "Chroma", namespace: "databases", color: "#ff6446", glyph: "vector" },
+  { tag: "milvus", name: "Milvus", namespace: "databases", color: "#00a1ea", glyph: "vector" },
+  { tag: "pgvector", name: "pgvector", namespace: "databases", color: "#336791", glyph: "vector" },
+  { tag: "neo4j", name: "Neo4j", namespace: "databases", color: "#4581c3", glyph: "graph" },
   { tag: "cassandra", name: "Cassandra", namespace: "databases", color: "#1287b1", glyph: "columns" },
   { tag: "memcached", name: "Memcached", namespace: "databases", color: "#098d6f", glyph: "bolt" },
   { tag: "cockroachdb", name: "CockroachDB", namespace: "databases", color: "#6933ff", glyph: "database" },
-  { tag: "neo4j", name: "Neo4j", namespace: "databases", color: "#018bff", glyph: "graph" },
   { tag: "influxdb", name: "InfluxDB", namespace: "databases", color: "#22adf6", glyph: "plot" },
 
   // More infra
@@ -234,7 +235,7 @@ export const CATALOG: readonly CatalogType[] = [
   { tag: "grafana", name: "Grafana", namespace: "infra", color: "#f46800", glyph: "chart" },
   { tag: "prometheus", name: "Prometheus", namespace: "infra", color: "#e6522c", glyph: "flame" },
   { tag: "temporal", name: "Temporal", namespace: "infra", color: "#444ce7", glyph: "clock" },
-  { tag: "haproxy", name: "HAProxy", namespace: "infra", color: "#106da9", glyph: "split" },
+  { tag: "haproxy", name: "HAProxy", namespace: "infra", color: "#106da9", glyph: "router" },
   { tag: "envoy", name: "Envoy", namespace: "infra", color: "#ac6199", glyph: "proxy" },
   { tag: "kong", name: "Kong", namespace: "infra", color: "#003459", glyph: "gateway" },
   { tag: "istio", name: "Istio", namespace: "infra", color: "#466bb0", glyph: "mesh" },
@@ -253,8 +254,6 @@ export const CATALOG: readonly CatalogType[] = [
   // SaaS
   { tag: "stripe", name: "Stripe", namespace: "saas", color: "#635bff", glyph: "card" },
   { tag: "github", name: "GitHub", namespace: "saas", color: "#1f2328", glyph: "branch" },
-  { tag: "openai", name: "OpenAI", namespace: "saas", color: "#10a37f", glyph: "spark" },
-  { tag: "anthropic", name: "Anthropic", namespace: "saas", color: "#d97757", glyph: "spark" },
   { tag: "auth0", name: "Auth0", namespace: "saas", color: "#eb5424", glyph: "shield" },
   { tag: "clerk", name: "Clerk", namespace: "saas", color: "#6c47ff", glyph: "shield" },
   { tag: "twilio", name: "Twilio", namespace: "saas", color: "#f22f46", glyph: "chat" },
@@ -271,6 +270,60 @@ export const CATALOG: readonly CatalogType[] = [
   { tag: "pagerduty", name: "PagerDuty", namespace: "saas", color: "#06ac38", glyph: "siren" },
   { tag: "launchdarkly", name: "LaunchDarkly", namespace: "saas", color: "#405bff", glyph: "flag" },
   { tag: "apns", name: "APNs", namespace: "saas", color: "#1d1d1f", glyph: "bell" },
+
+
+  // AI & agents: the generic building blocks of AI apps, one shared violet
+  { tag: "llm", name: "LLM", namespace: "ai", color: "#8b5cf6", glyph: "brain" },
+  { tag: "agent", name: "Agent", namespace: "ai", color: "#8b5cf6", glyph: "robot" },
+  { tag: "mcp", name: "MCP Server", namespace: "ai", color: "#8b5cf6", glyph: "plug" },
+  { tag: "tool", name: "Tool", namespace: "ai", color: "#8b5cf6", glyph: "wrench" },
+  { tag: "skill", name: "Skill", namespace: "ai", color: "#8b5cf6", glyph: "puzzle" },
+  { tag: "memory", name: "Memory", namespace: "ai", color: "#8b5cf6", glyph: "memory" },
+  { tag: "prompt", name: "Prompt", namespace: "ai", color: "#8b5cf6", glyph: "prompt" },
+  { tag: "chat_ui", name: "Chat UI", namespace: "ai", color: "#8b5cf6", glyph: "assistant" },
+  { tag: "rag", name: "RAG", namespace: "ai", color: "#8b5cf6", glyph: "retrieval" },
+  { tag: "embeddings", name: "Embeddings", namespace: "ai", color: "#8b5cf6", glyph: "embedding" },
+  { tag: "vector_db", name: "Vector DB", namespace: "ai", color: "#8b5cf6", glyph: "vector" },
+  { tag: "reranker", name: "Reranker", namespace: "ai", color: "#8b5cf6", glyph: "rank" },
+  { tag: "knowledge_base", name: "Knowledge Base", namespace: "ai", color: "#8b5cf6", glyph: "books" },
+  { tag: "knowledge_graph", name: "Knowledge Graph", namespace: "ai", color: "#8b5cf6", glyph: "graph" },
+  { tag: "guardrails", name: "Guardrails", namespace: "ai", color: "#8b5cf6", glyph: "guardrail" },
+  { tag: "evals", name: "Evals", namespace: "ai", color: "#8b5cf6", glyph: "eval" },
+  { tag: "tracing", name: "Tracing", namespace: "ai", color: "#8b5cf6", glyph: "pulse" },
+  { tag: "ai_gateway", name: "AI Gateway", namespace: "ai", color: "#8b5cf6", glyph: "router" },
+  { tag: "human_review", name: "Human Review", namespace: "ai", color: "#8b5cf6", glyph: "reviewer" },
+  { tag: "sandbox", name: "Code Sandbox", namespace: "ai", color: "#8b5cf6", glyph: "terminal" },
+  { tag: "computer_use", name: "Computer Use", namespace: "ai", color: "#8b5cf6", glyph: "cursor" },
+  { tag: "web_search", name: "Web Search", namespace: "ai", color: "#8b5cf6", glyph: "search" },
+  { tag: "speech_to_text", name: "Speech-to-Text", namespace: "ai", color: "#8b5cf6", glyph: "mic" },
+  { tag: "text_to_speech", name: "Text-to-Speech", namespace: "ai", color: "#8b5cf6", glyph: "speaker" },
+  { tag: "vision", name: "Vision / OCR", namespace: "ai", color: "#8b5cf6", glyph: "eye" },
+  { tag: "image_gen", name: "Image Generation", namespace: "ai", color: "#8b5cf6", glyph: "image" },
+  { tag: "model_server", name: "Model Server", namespace: "ai", color: "#8b5cf6", glyph: "gpu" },
+  { tag: "ml_model", name: "ML Model", namespace: "ai", color: "#8b5cf6", glyph: "model" },
+  { tag: "training", name: "Training", namespace: "ai", color: "#8b5cf6", glyph: "training" },
+  { tag: "dataset", name: "Dataset", namespace: "ai", color: "#8b5cf6", glyph: "stack" },
+
+  // AI platforms: model providers, model serving, voice, frameworks
+  { tag: "openai", name: "OpenAI", namespace: "ai_platforms", color: "#10a37f", glyph: "spark" },
+  { tag: "anthropic", name: "Anthropic", namespace: "ai_platforms", color: "#d97757", glyph: "spark" },
+  { tag: "gemini", name: "Gemini", namespace: "ai_platforms", color: "#8e75b2", glyph: "sparkle" },
+  { tag: "mistral", name: "Mistral AI", namespace: "ai_platforms", color: "#fa520f", glyph: "spark" },
+  { tag: "cohere", name: "Cohere", namespace: "ai_platforms", color: "#39594d", glyph: "spark" },
+  { tag: "xai", name: "xAI", namespace: "ai_platforms", color: "#000000", glyph: "spark" },
+  { tag: "deepseek", name: "DeepSeek", namespace: "ai_platforms", color: "#4d6bfe", glyph: "spark" },
+  { tag: "groq", name: "Groq", namespace: "ai_platforms", color: "#f55036", glyph: "spark" },
+  { tag: "perplexity", name: "Perplexity", namespace: "ai_platforms", color: "#1fb8cd", glyph: "search" },
+  { tag: "huggingface", name: "Hugging Face", namespace: "ai_platforms", color: "#ffd21e", glyph: "model" },
+  { tag: "ollama", name: "Ollama", namespace: "ai_platforms", color: "#000000", glyph: "gpu" },
+  { tag: "vllm", name: "vLLM", namespace: "ai_platforms", color: "#30a2ff", glyph: "gpu" },
+  { tag: "elevenlabs", name: "ElevenLabs", namespace: "ai_platforms", color: "#000000", glyph: "speaker" },
+  { tag: "deepgram", name: "Deepgram", namespace: "ai_platforms", color: "#13ef93", glyph: "mic" },
+  { tag: "langchain", name: "LangChain", namespace: "ai_platforms", color: "#1c3c3c", glyph: "link" },
+  { tag: "langgraph", name: "LangGraph", namespace: "ai_platforms", color: "#1c3c3c", glyph: "graph" },
+  { tag: "langsmith", name: "LangSmith", namespace: "ai_platforms", color: "#1c3c3c", glyph: "pulse" },
+  { tag: "llamaindex", name: "LlamaIndex", namespace: "ai_platforms", color: "#000000", glyph: "retrieval" },
+  { tag: "crewai", name: "CrewAI", namespace: "ai_platforms", color: "#ff5a50", glyph: "robot" },
 ] as const;
 
 export const CONNECTION_TYPES: readonly string[] = [
@@ -297,6 +350,8 @@ export const CONNECTION_TYPES: readonly string[] = [
   "deploys",
   "contains",
   "depends",
+  "mcp",
+  "a2a",
 ];
 
 const byTag = new Map(CATALOG.map((t) => [t.tag, t]));

@@ -2,7 +2,7 @@
 
 import { Fragment, useEffect, useRef, useState, type RefObject } from "react";
 import { SITE_URL } from "@/lib/site";
-import { Button, Icon, cx } from "../ui";
+import { Button, Icon, SwapIcon, cx } from "../ui";
 
 const PROMPT = `Read ${SITE_URL}/language to learn the Archer language.
 
@@ -148,13 +148,29 @@ function useCopyPrompt() {
   return { copied, copy };
 }
 
+/** Tells screen readers the prompt was copied: the button's label stays the same. */
+function CopiedStatus({ copied }: { copied: boolean }) {
+  return (
+    <span role="status" className="sr-only">
+      {copied ? "Copied" : ""}
+    </span>
+  );
+}
+
 /** The prompt's copy action on its own, for the page's closing call to action. */
 export function CopyPromptButton() {
   const { copied, copy } = useCopyPrompt();
   return (
-    <Button size="lg" icon={copied ? <Icon.Check /> : <Icon.Copy />} onClick={copy}>
-      <span aria-live="polite">{copied ? "Copied" : "Copy agent prompt"}</span>
-    </Button>
+    <>
+      <Button
+        size="lg"
+        icon={<SwapIcon swapped={copied} from={<Icon.Copy />} to={<Icon.Check />} />}
+        onClick={copy}
+      >
+        Copy agent prompt
+      </Button>
+      <CopiedStatus copied={copied} />
+    </>
   );
 }
 
@@ -179,12 +195,13 @@ export function AgentPrompt() {
         </span>
         <Button
           size="sm"
-          className="min-w-[104px] rounded-none!"
-          icon={copied ? <Icon.Check /> : <Icon.Copy />}
+          className="rounded-none!"
+          icon={<SwapIcon swapped={copied} from={<Icon.Copy />} to={<Icon.Check />} />}
           onClick={copy}
         >
-          <span aria-live="polite">{copied ? "Copied" : "Copy prompt"}</span>
+          Copy prompt
         </Button>
+        <CopiedStatus copied={copied} />
       </div>
       {/* Pressing anywhere in the text finishes the typing, so a selection starts on the whole prompt. */}
       <div

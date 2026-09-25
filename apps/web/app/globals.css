@@ -296,6 +296,40 @@ select:focus-visible,
   }
 }
 
+/* Icons that trade places on a click (SwapIcon in components/ui.tsx: a copy
+   button's copy → check) share one spot. With motion, the old one shrinks and
+   blurs away while the new one grows in, overshooting a little. As above, a
+   change runs on its destination state's `transition`. */
+.icon-swap {
+  display: inline-grid;
+  place-items: center;
+}
+.icon-swap > * {
+  grid-area: 1 / 1;
+  transition: opacity 150ms ease;
+}
+.icon-swap:not([data-swapped]) > :last-child,
+.icon-swap[data-swapped] > :first-child {
+  opacity: 0;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .icon-swap > * {
+    transition:
+      transform 400ms cubic-bezier(0.34, 1.56, 0.64, 1),
+      opacity 200ms ease-out,
+      filter 200ms ease-out;
+  }
+  .icon-swap:not([data-swapped]) > :last-child,
+  .icon-swap[data-swapped] > :first-child {
+    transform: scale(0.25);
+    filter: blur(3px);
+    transition:
+      transform 200ms ease-in,
+      opacity 150ms ease-in,
+      filter 150ms ease-in;
+  }
+}
+
 /* A theme switched with a control (switchTheme in lib/theme.ts) arrives as a
    view transition: the new page, live, is revealed over a still of the old
    in a circle growing from the control. The script sets data-theme-switch
