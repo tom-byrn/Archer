@@ -2,30 +2,23 @@
 
 import { useCallback, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { compileForAgent, componentPaths, findComponent, format, type PayloadFormat } from "@archer/lang";
+import { compileForAgent, componentPaths, findComponent, format } from "@archer/lang";
 import { lookupType } from "@archer/catalog";
-import { json } from "@codemirror/lang-json";
-import { yaml } from "@codemirror/lang-yaml";
-import { markdown } from "@codemirror/lang-markdown";
-import type { Extension } from "@codemirror/state";
 import { archLanguage } from "@/lib/archLanguage";
-import { githubTreeUrl } from "@/lib/githubApi";
 import type { RepoLink } from "@/lib/github";
 import { toFlow } from "@/lib/toFlow";
 import { deriveDoc } from "@/lib/useArchDoc";
 import { displayColor, useIsDark } from "@/lib/useIsDark";
 import { ArchCanvas, type CanvasCallbacks } from "./ArchCanvas";
 import { CodeEditor } from "./CodeMirror";
+import { ComponentDetails } from "./DetailPanel";
 import { Glyph } from "./nodes";
-import { Button, Chip, Icon, IconButton, Kbd, Menu, Section, SidePanel, cx, relativeTime } from "./ui";
+import { Button, Chip, Icon, IconButton, Kbd, Menu, SidePanel, cx, relativeTime } from "./ui";
 
 const resolveType = (tag: string) => {
   const entry = lookupType(tag);
   return entry ? { color: entry.color, glyph: entry.glyph } : undefined;
 };
-
-const langFor = (f: PayloadFormat): Extension =>
-  f === "json" ? json() : f === "yaml" ? yaml() : f === "markdown" ? markdown() : [];
 
 const noop = () => {};
 
@@ -282,16 +275,7 @@ function Details({
   repo: RepoLink | null;
 }) {
   const isDark = useIsDark();
-  const entry = lookupType(node.type);
-  const accent = displayColor(entry?.color, isDark) ?? "#64748b";
-  const isUrl = node.src ? /^https?:\/\//.test(node.src) : false;
-  const srcHref = node.src
-    ? isUrl
-      ? node.src
-      : repo
-        ? githubTreeUrl(repo.owner, repo.name, repo.branch, node.src)
-        : null
-    : null;
+  const accent = displayColor(lookupType(node.type)?.color, isDark) ?? "#64748b";
   return (
     <SidePanel className="md:w-[300px]">
       <div className="flex h-11 shrink-0 items-center gap-2.5 border-b border-line px-3">
@@ -310,70 +294,7 @@ function Details({
         </IconButton>
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto">
-        <Section title="Component">
-          <dl className="grid grid-cols-[88px_1fr] gap-x-3 gap-y-1.5 py-1 text-sm">
-            <dt className="text-ink-2">Type</dt>
-            <dd className="min-w-0">
-              {node.type ? (
-                <span className="inline-flex items-center gap-1.5">
-                  <span className="text-ink">{entry?.name ?? node.type}</span>
-                  <span className="mono text-xs text-ink-3">@{node.type}</span>
-                </span>
-              ) : (
-                <span className="text-ink-3">untyped</span>
-              )}
-            </dd>
-            {node.desc && (
-              <>
-                <dt className="text-ink-2">Description</dt>
-                <dd className="whitespace-pre-wrap text-ink">{node.desc}</dd>
-              </>
-            )}
-            {node.src && (
-              <>
-                <dt className="text-ink-2">Source</dt>
-                <dd className="min-w-0">
-                  {srcHref ? (
-                    <a
-                      href={srcHref}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="mono inline-flex max-w-full items-center gap-1 truncate text-xs text-accent hover:underline"
-                    >
-                      {node.src}
-                      <Icon.External className="h-3 w-3 shrink-0" />
-                    </a>
-                  ) : (
-                    <span className="mono break-all text-xs text-ink">{node.src}</span>
-                  )}
-                </dd>
-              </>
-            )}
-            {node.children.length > 0 && (
-              <>
-                <dt className="text-ink-2">Contains</dt>
-                <dd className="text-ink">{node.children.length} component{node.children.length === 1 ? "" : "s"}</dd>
-              </>
-            )}
-          </dl>
-        </Section>
-        {node.payloads.length > 0 && (
-          <Section title="Payloads">
-            <div className="space-y-2 py-1">
-              {node.payloads.map((p) => (
-                <div key={p.name} className="overflow-hidden rounded-md border border-line">
-                  <div className="flex h-7 items-center gap-2 border-b border-line bg-surface-2 px-2">
-                    <span className="mono text-sm font-semibold text-ink">{p.name}</span>
-                    <Chip className="ml-auto">{p.format}</Chip>
-                  </div>
-                  <div style={{ maxHeight: 280, overflow: "auto" }}>
-                    <CodeEditor value={p.content} readOnly lineNumbers={false} extensions={langFor(p.format)} />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </Section>
-        )}
+        <ComponentDetails node={node} repo={repo} />
       </div>
     </SidePanel>
   );
