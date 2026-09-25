@@ -30,7 +30,9 @@ three versions of its architecture:
 **The file holds architecture only**: canonical form, no `layout` block.
 Canvas positions stay in Archer, so moving boxes never needs a commit, and
 the repository only sees architecture changes. A layout block in the file is
-honored on import and dropped on the next publish.
+honored on import and dropped on the next publish. Publishing writes
+canonical form, so, as with `archer fmt`, `#` comments in the file don't
+survive a publish from Archer; keep notes in `desc` and payloads instead.
 
 Anything the draft changes relative to base is *unpublished*. The header
 shows the file, its status (Synced · N unpublished · Not created yet ·
