@@ -10,11 +10,25 @@ import {
   type ComponentNode,
   type DisplayMode,
 } from "@archer/lang";
+import {
+  BOX_COST,
+  bendOf,
+  chipWidth,
+  routeEdge,
+  separateBends,
+  untangle,
+  type EdgeRoute,
+  type Obstacle,
+  type Rect,
+  type RoutedEdge,
+} from "./edgeRoute";
 
 /** One grid cell in pixels. */
 export const CELL = 40;
 /** Smallest a plain component can be resized to, in grid cells. */
 export const MIN_LEAF_SIZE: [number, number] = [3, 2];
+/** Height of a plane's title bar in pixels (see ArchPlaneNode). */
+const PLANE_TITLE = 32;
 
 /** Position-independent identity of a connection (mirrors @archer/lang connectionKey). */
 const edgeKey = (c: ArchDoc["connections"][number]): string =>
@@ -67,6 +81,9 @@ export interface ArchEdgeData extends Record<string, unknown> {
   payloadCount: number;
   /** Diff view: connection added, removed, or (payloads) changed relative to the base. */
   diff?: "added" | "removed" | "changed";
+  /** Where the middle segment runs (`routeEdge`): x for left/right routes, y for top/bottom. */
+  mid?: number;
+  horizontal?: boolean;
 }
 
 export type ArchEdge = Edge<ArchEdgeData>;
@@ -106,8 +123,8 @@ export function toFlow(
   const rootItems =
     focus.length === 0 ? doc.components : (findComponent(doc, focus)?.children ?? []);
 
-  /** Absolute center (px) of each visible node, for edge-side selection. */
-  const centers = new Map<string, { x: number; y: number }>();
+  /** Absolute rect (px) of each visible node, for edge routing. */
+  const rects = new Map<string, Rect & { plane: boolean }>();
 
   const walk = (
     items: ComponentNode[],
@@ -130,11 +147,14 @@ export function toFlow(
         originPx[1] + at[1] * CELL,
       ];
       if (isVisible) {
-        centers.set(path, {
-          x: absPx[0] + (size[0] * CELL) / 2,
-          y: absPx[1] + (size[1] * CELL) / 2,
-        });
         const isPlane = display === "plane" && c.children.length > 0;
+        rects.set(path, {
+          x: absPx[0],
+          y: absPx[1],
+          w: size[0] * CELL,
+          h: size[1] * CELL,
+          plane: isPlane,
+        });
         const minSize: [number, number] = [...MIN_LEAF_SIZE];
         if (isPlane) {
           for (const child of c.children) {
@@ -180,27 +200,61 @@ export function toFlow(
   };
   walk(rootItems, rootPrefix, true, null, [0, 0]);
 
-  const edges: ArchEdge[] = [];
+  // Edges avoid boxes and plane title bars; an unrelated plane's body is a
+  // soft obstacle, so edges go around it when there is room.
+  const drawn = [...rects.entries()];
+  const obstaclesFor = (source: string, target: string): Obstacle[] => {
+    const out: Obstacle[] = [];
+    for (const [p, r] of drawn) {
+      if (p === source || p === target) continue;
+      if (!r.plane) {
+        out.push({ x: r.x, y: r.y, w: r.w, h: r.h, cost: BOX_COST });
+        continue;
+      }
+      out.push({ x: r.x, y: r.y, w: r.w, h: PLANE_TITLE, cost: BOX_COST / 4 });
+      if (!source.startsWith(p + ".") && !target.startsWith(p + "."))
+        out.push({ x: r.x, y: r.y, w: r.w, h: r.h, cost: BOX_COST / 20 });
+    }
+    return out;
+  };
+
+  // Route every edge first, then untangle shared handles and keep parallel
+  // bends from merging.
+  const routed: {
+    c: ArchDoc["connections"][number];
+    i: number;
+    source: string;
+    target: string;
+    edge?: RoutedEdge;
+  }[] = [];
   doc.connections.forEach((c, i) => {
     const source = visibleAncestor.get(pathToString(c.source));
     const target = visibleAncestor.get(pathToString(c.target));
     if (source === undefined || target === undefined || source === target) return;
-    // Attach the edge on the sides facing each other (dominant axis wins).
-    const sc = centers.get(source);
-    const tc = centers.get(target);
-    let sourceHandle = "sr";
-    let targetHandle = "tl";
-    if (sc && tc) {
-      const dx = tc.x - sc.x;
-      const dy = tc.y - sc.y;
-      if (Math.abs(dx) >= Math.abs(dy)) {
-        sourceHandle = dx >= 0 ? "sr" : "sl";
-        targetHandle = dx >= 0 ? "tl" : "tr";
-      } else {
-        sourceHandle = dy >= 0 ? "sb" : "st";
-        targetHandle = dy >= 0 ? "tt" : "tb";
-      }
+    const s = rects.get(source);
+    const t = rects.get(target);
+    if (!s || !t) {
+      routed.push({ c, i, source, target });
+      return;
     }
+    const route = routeEdge(
+      s,
+      t,
+      obstaclesFor(source, target),
+      chipWidth(c.type, c.label, c.payloads.length),
+    );
+    const headAtTarget = c.arrow !== "--";
+    routed.push({ c, i, source, target, edge: { source, target, s, t, route, headAtTarget } });
+  });
+  const withRoutes = routed.flatMap((r) => (r.edge ? [r.edge] : []));
+  untangle(withRoutes, obstaclesFor);
+  separateBends(withRoutes.map((e) => bendOf(e.route, e.s, e.t, e.source, e.target)));
+
+  const edges: ArchEdge[] = [];
+  for (const { c, i, source, target, edge } of routed) {
+    const route: EdgeRoute | undefined = edge?.route;
+    const sourceHandle = `s${route?.from ?? "r"}`;
+    const targetHandle = `t${route?.to ?? "l"}`;
     edges.push({
       id: `c${i}:${source}->${target}`,
       source,
@@ -219,9 +273,10 @@ export function toFlow(
           const d = opts.edgeDiff?.get(edgeKey(c));
           return d ? { diff: d } : {};
         })(),
+        ...(route && !route.corner ? { mid: route.mid, horizontal: route.horizontal } : {}),
       },
     });
-  });
+  }
 
   return { nodes, edges };
 }

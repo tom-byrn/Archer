@@ -299,7 +299,7 @@ export function registerArcherTools(server: McpServer): void {
     {
       title: "Auto-layout Archer source",
       description:
-        "Complete or rebuild the layout block of a raw Archer document (no saving). Components without positions get deterministic grid placement (connection sources left of targets, planes sized to contain children); existing positions are kept unless reset=true. You rarely need this — create_project/update_project auto-layout for you — but it's useful to preview canonical output or fully re-arrange.",
+        "Complete or rebuild the layout block of a raw Archer document (no saving). A document with no positions is arranged by the layered auto-layout (connections flow left to right with few crossings and straight edges, planes wrap their children); otherwise existing positions are kept and new components are placed next to what they connect to. reset=true discards every position (collapsed/expanded state is kept) and arranges from scratch. You rarely need this — create_project/update_project auto-layout for you — but it's useful to preview canonical output or fully re-arrange.",
       inputSchema: {
         source: z.string().describe("Full Archer document text"),
         reset: z.boolean().optional().describe("Discard existing positions and re-place everything (default false)"),
@@ -307,7 +307,7 @@ export function registerArcherTools(server: McpServer): void {
     },
     wrap(async ({ source, reset }) => {
       const doc = parse(source).doc;
-      return text(format(autoLayout(reset ? { ...doc, layout: [] } : doc)));
+      return text(format(autoLayout(doc, { reset })));
     }),
   );
 
@@ -318,7 +318,7 @@ export function registerArcherTools(server: McpServer): void {
     {
       title: "List component & connection types",
       description:
-        "List usable type tags: the built-in technology catalog (~140 types across generic/ai/ai_platforms/aws/gcp/azure/vercel/databases/infra/saas — `ai` holds the building blocks of AI apps: @llm, @agent, @mcp, @rag, @vector_db, ...), this workspace's custom types, the standard connection types (@http, @sql, @queue, @mcp, ...), and the glyph names available when creating custom types. Optional search filters by tag/name/namespace. Type tags are OPTIONAL on components — untyped components are valid and render as generic boxes; unknown tags are only a warning.",
+        "List usable type tags: the built-in catalog (~350 types — vendor-neutral building blocks grouped by concern in generic/ai/network/compute/storage/messaging/data/observability/security/platform/topology/patterns, e.g. @load_balancer, @rate_limiter, @cdn, @queue, @database, with `ai` holding the building blocks of AI apps: @llm, @agent, @mcp, @rag, @vector_db, ...; plus real technologies across ai_platforms/aws/gcp/azure/vercel/databases/infra/saas), this workspace's custom types, the standard connection types (@http, @sql, @queue, @mcp, ...), and the glyph names available when creating custom types. Optional search filters by tag/name/namespace. Type tags are OPTIONAL on components — untyped components are valid and render as generic boxes; unknown tags are only a warning.",
       inputSchema: {
         search: z.string().optional().describe("Case-insensitive filter on tag, name, or namespace"),
       },
@@ -612,7 +612,7 @@ export function registerArcherTools(server: McpServer): void {
     {
       title: "Re-arrange a project's canvas",
       description:
-        "Run the deterministic grid auto-layout on a stored project and save. With reset=false (default) only components missing positions are placed; with reset=true ALL manual positioning is discarded and the whole canvas is re-arranged — only do that when the user asks for a tidy-up, since it destroys their hand arrangement.",
+        "Run the auto-layout on a stored project and save. With reset=false (default) only components missing positions are placed, next to what they connect to; with reset=true ALL manual positioning is discarded and the whole canvas is re-arranged (collapsed/expanded state is kept) — only do that when the user asks for a tidy-up, since it destroys their hand arrangement.",
       inputSchema: {
         project_id: z.string(),
         reset: z.boolean().optional(),
@@ -623,7 +623,7 @@ export function registerArcherTools(server: McpServer): void {
       const existing = await db.getProject(ws, project_id);
       if (!existing) throw new Error(`No project with id ${project_id}.`);
       const doc = parse(existing.source).doc;
-      const next = format(autoLayout(reset ? { ...doc, layout: [] } : doc));
+      const next = format(autoLayout(doc, { reset }));
       await db.updateProject(
         ws, project_id, doc.title, next,
         reset ? "Re-arranged the canvas" : "Placed unpositioned components",

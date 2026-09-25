@@ -389,7 +389,7 @@ layout {
 }
 `,
     notes: [
-      "Each entry is `path: { at: [column, row], size: [width, height] }` on the canvas grid, plus `display: plane | icon` for containers.",
+      "Each entry is `path: { at: [column, row], size: [width, height] }` on the canvas grid, plus `display: plane | icon` for containers. With `reset: true` every position is recomputed, but collapsed containers stay collapsed.",
       "`create_project` and `update_project` lay out for you, so this is for previewing or re-arranging a source before you save it.",
     ],
   },
@@ -527,7 +527,7 @@ api -> db @sql
     args: { project_id: PROJECT, reset: true },
     result: { id: PROJECT, reset: true, saved: true },
     notes: [
-      "Without `reset`, only components that have no position are placed (\"Placed unpositioned components\"). With `reset: true` every position is recomputed (\"Re-arranged the canvas\"): the user's arrangement survives only in the previous revision.",
+      "Without `reset`, only components that have no position are placed, next to what they connect to (\"Placed unpositioned components\"). With `reset: true` every position is recomputed (\"Re-arranged the canvas\") and collapsed containers stay collapsed: the user's arrangement survives only in the previous revision.",
     ],
   },
 

@@ -792,8 +792,11 @@ export function Editor({
     if (selCount > 0) mutate((d) => relayoutComponents(d, selPaths()));
   };
   const relayoutLevel = () => mutate((d) => relayoutComponents(d, levelPaths(d)));
-  const relayoutAll = () =>
+  const relayoutAll = () => {
     mutate((d) => relayoutComponents(d, d.components.map((c) => [c.id])));
+    // Everything moved: fit the view once the new arrangement is on the canvas.
+    setTimeout(() => canvasApi.current?.fitView(), 50);
+  };
   const selectAll = () =>
     setSel({ nodes: levelPaths(derived.doc).map((p) => p.join(".")), edges: [] });
   const nudge = (dx: number, dy: number) => {

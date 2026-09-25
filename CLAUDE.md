@@ -109,6 +109,17 @@ Router + React Flow + Convex).
   and blurb in `lib/samples/index.ts`). Choosing one saves the source as a new
   document verbatim, so like the docs examples, samples stay canonical and
   validate clean — `apps/web/test/samples.test.ts` enforces it.
+- Catalog (`packages/catalog`): two kinds of type. Vendor-neutral building
+  blocks (`@load_balancer`, `@rate_limiter`, `@cache`, `@llm`…) are grouped by
+  concern (generic, ai, network, compute, storage, messaging, data,
+  observability, security, platform, topology, patterns) and slate
+  `#64748b`, except the AI & agents group (`ai`), which shares one violet;
+  real technologies use their brand color and a vendor group (ai_platforms,
+  aws, gcp, azure, vercel, databases, infra, saas). The palette lists the
+  neutral groups first, in `NEUTRAL_NAMESPACES` order
+  (`components/Palette.tsx`) — a new namespace needs a label in
+  `NAMESPACE_LABELS` there. Tags and glyph keys end up in saved documents
+  and custom types: add freely, never rename or remove one.
 - Brand kit: `/branding` (signed-in only, deliberately linked from nowhere —
   keep it that way) shows the logo, colors, type, radii, icons and ui.tsx
   primitives. Values are parsed from `app/globals.css` at build time
@@ -140,6 +151,12 @@ Router + React Flow + Convex).
   `components/canvas.css`.
 - Language/product specs live in `docs/`; keep `docs/language-spec.md` in
   sync with `packages/*/src/languageSpec.ts` copies when the grammar changes.
+- Auto-layout: `autoLayout` (`packages/lang/src/layout.ts`) arranges a doc
+  with no positions (or `{ reset: true }`) with the layered engine in
+  `layered.ts` (solver: `simplex.ts`); otherwise it keeps positions and places
+  new components next to their neighbours. Edges are drawn by
+  `apps/web/lib/edgeRoute.ts` for both the canvas (`toFlow`) and `lib/svg.ts`
+  — route through it so the two stay identical.
 
 ## Context.dev
 

@@ -76,8 +76,11 @@ agent** (canonical code, layout stripped, spec header prepended) and **Export PN
   mutation path (edit → AST transform → format → save → re-render). No separate
   canvas state that can drift.
 - One editor at a time (v1): last-write-wins on the stored text, no merging.
-- Auto-layout: deterministic grid layered layout (containers sized to content); runs
-  on any component lacking a layout entry, then persists the result. "Re-layout"
+- Auto-layout: deterministic layered layout on the grid — connections flow left to
+  right with few crossings and straight edges, planes wrap their children. A document
+  with no positions is arranged from scratch; otherwise existing positions are kept,
+  new components are placed next to what they connect to, and a plane that has to
+  grow nudges aside what it would overlap. The result is persisted. "Re-layout"
   re-runs it on the selection, the current level, or the whole document, keeping
   collapsed containers collapsed.
 - Selection: click, shift/⌘-click to add or remove, shift-drag on empty canvas to
