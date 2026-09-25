@@ -11,6 +11,8 @@ const nextConfig = {
     return [
       { source: "/d/:id", destination: "/documents/:id", permanent: true },
       { source: "/s/:path*", destination: "/share/:path*", permanent: true },
+      // The docs start at the language reference; /docs only holds the MCP and CLI pages.
+      { source: "/docs", destination: "/language", permanent: false },
     ];
   },
 };

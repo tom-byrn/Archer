@@ -22,7 +22,14 @@ const FOOTER_COLUMNS: { title: string; links: [label: string, href: string][] }[
       ["FAQ", "#faq"],
     ],
   },
-  { title: "Docs", links: [["Language reference", "/language"]] },
+  {
+    title: "Docs",
+    links: [
+      ["Language reference", "/language"],
+      ["MCP server", "/docs/mcp"],
+      ["CLI", "/docs/cli"],
+    ],
+  },
   {
     title: "Account",
     links: [

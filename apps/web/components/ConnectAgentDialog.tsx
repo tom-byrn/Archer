@@ -22,6 +22,8 @@ function CopyButton({ text, label }: { text: string; label: string }) {
   );
 }
 
+const docsLink = "text-ink-2 underline decoration-line-2 underline-offset-2 hover:text-ink";
+
 /** `claude mcp add` for the hosted server at this origin. */
 const hostedCommand = (url: string) => `claude mcp add --transport http archer ${url}`;
 
@@ -98,8 +100,15 @@ export function ConnectAgentDialog({
       </div>
 
       <p className="pt-4 text-xs text-ink-3">
-        Tool reference and setup for other agents: <span className="mono">docs/mcp.md</span>{" "}
-        in the repository.
+        More in the docs:{" "}
+        <a href="/docs/mcp" target="_blank" rel="noopener" className={docsLink}>
+          MCP server
+        </a>{" "}
+        (other clients, every tool) and{" "}
+        <a href="/docs/cli" target="_blank" rel="noopener" className={docsLink}>
+          CLI
+        </a>
+        .
       </p>
     </Dialog>
   );

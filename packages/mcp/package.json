@@ -10,6 +10,7 @@
     "./contract": "./src/contract.ts",
     "./examples": "./src/examples.ts",
     "./languageSpec": "./src/languageSpec.ts",
+    "./reference": "./src/reference.ts",
     "./remote": "./src/remote.ts"
   },
   "scripts": {
