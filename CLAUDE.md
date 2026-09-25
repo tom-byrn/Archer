@@ -78,6 +78,18 @@ Router + React Flow + Convex).
   never loads CodeMirror. `/new?example=<slug>`, which copies
   the example into the selected workspace (reusing an untouched earlier copy),
   still works but nothing links to it.
+- MCP and CLI docs: `/docs/mcp` and `/docs/cli` render `docs/mcp.md` and
+  `docs/cli.md` at build time (`lib/docs.ts`), up to their
+  `<!-- site:end -->` marker; what follows it is for contributors. Headings
+  get GitHub's ids and `.md` links map to the pages, so links between the
+  docs work in the repo and on the site (`apps/web/test/docs.test.ts` checks
+  every anchor). The MCP page's tool reference is generated, between the
+  `<!-- tools:start/end -->` markers, from the registered tools
+  (`@archer/mcp/reference`: `describeServer`, plus `TOOL_GROUPS`/`TOOL_DOCS`
+  with an example call per tool). `packages/mcp/test/reference.test.ts`
+  fails until a new tool is documented there, and runs every example against
+  a fake backend; `packages/cli/test/docs.test.ts` checks `docs/cli.md`
+  covers `archer --help`.
 - Editor sessions: `components/Editor.tsx` takes a `session` — a stored
   document (`kind: "document"`: autosave, history/drift, share, export, repo
   link, account menu) or a sandbox (`kind: "sandbox"`: in memory only). The

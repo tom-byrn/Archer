@@ -378,6 +378,29 @@ select:focus-visible,
 .spec table { @apply mb-4 w-full border-collapse text-[13px]; }
 .spec th { @apply border-b border-line-2 px-2 py-1.5 text-left font-semibold; }
 .spec td { @apply border-b border-line px-2 py-1.5 text-ink-2; }
+.spec h4 { @apply pb-1 pt-6 text-lg font-semibold; }
+.spec :is(h1, h2, h3, h4) code { @apply bg-transparent p-0; font-size: 0.95em; }
+.spec [id] { scroll-margin-top: 1.5rem; }
+.spec a { @apply text-ink underline decoration-line-2 underline-offset-2 hover:decoration-ink-3; }
+/* Headings link to themselves (docs anchors) without looking like links. */
+.spec :is(h2, h3, h4) a { @apply no-underline hover:underline; }
+/* A label over the next block: "Result", or the argument a code block holds. */
+.spec .spec-caption { @apply pb-1.5 text-base text-ink-3; }
+/* Wide tables scroll on their own instead of widening the page. */
+.spec .spec-table { @apply mb-4 overflow-x-auto; }
+.spec .spec-table table { @apply mb-0; }
+/* Long values (URLs) in a description cell wrap; names in the first column stay whole. */
+.spec td:not(:first-child) code { overflow-wrap: anywhere; }
+/* The MCP tool reference (components/docs/ToolReference.tsx): a rule over
+   each tool, and parameters as a list, which stays readable on a phone. */
+.spec .spec-tool { @apply mt-8 border-t border-line; }
+.spec .spec-tool h4 { @apply pt-5; }
+.spec .spec-params { @apply mb-4 border-t border-line; }
+.spec .spec-params > div { @apply border-b border-line py-2; }
+.spec .spec-params dt { @apply text-base text-ink; }
+.spec .spec-params dd { @apply text-base text-ink-2; }
+.spec .spec-type { @apply text-[12.5px] text-ink-3; font-family: var(--font-mono); }
+.spec .spec-required { @apply ml-2 text-xs font-semibold uppercase tracking-wide text-ink-3; }
 
 /* Clerk widgets: borders Clerk draws with box-shadows are too faint on our
    surfaces, so these two elements get token-driven borders instead. */

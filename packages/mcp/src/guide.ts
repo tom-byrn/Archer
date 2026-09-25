@@ -179,6 +179,7 @@ The full language specification is at the end of this guide. Key habits:
 | E001 | Syntax error | Follow the message; check fences and quotes |
 | E002 | Duplicate component id in one scope | Rename one of them |
 | E003 | Duplicate payload name on one component or connection | Rename one payload |
+| E004 | More than one \`src\` on a component | Keep one |
 | E101 | Connection endpoint doesn't resolve | Declare the component or fix the path |
 | E201 | json/yaml/table payload doesn't parse | Fix the payload content |
 | W301 | Unknown type tag (warning) | Optional: use a catalog tag or create a custom type |
