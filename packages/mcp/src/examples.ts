@@ -1,11 +1,13 @@
 /**
- * Worked examples for the docs (`/language/examples`). Each source is exactly
- * what the app saves for that document (canonical form, validates clean), so
- * the rendered image, the code block and the editor copy all agree.
+ * Worked examples: the web app's docs page (`/language/examples`) and its
+ * sandboxes, and the `list_examples` / `get_example` tools for agents. Each
+ * source is exactly what the app saves for that document (canonical form,
+ * validates clean; apps/web/test/examples.test.ts), so the rendered image,
+ * the code block, the editor copy and what agents read all agree.
  */
 
 export interface Example {
-  /** URL fragment and `/new?example=` key. */
+  /** URL fragment, `/sandbox/<slug>` and `/new?example=` key, get_example's argument. */
   slug: string;
   /** Matches the `arch "…"` header. */
   title: string;

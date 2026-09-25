@@ -3,7 +3,7 @@
 /**
  * Thin CodeMirror 6 wrapper used by the code pane and the payload editors.
  * Theme + highlight style are driven entirely by the CSS tokens in globals.css
- * so light/dark follow the OS automatically.
+ * so light/dark follow the page's theme automatically.
  */
 
 import { useEffect, useRef } from "react";

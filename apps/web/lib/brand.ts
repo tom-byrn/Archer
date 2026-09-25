@@ -10,7 +10,7 @@ export type Decls = Record<string, string>;
 export interface BrandTokens {
   /** `:root`: the light theme, plus the tokens both themes share. */
   light: Decls;
-  /** The dark theme: `:root` with the `prefers-color-scheme: dark` overrides applied. */
+  /** The dark theme: `:root` with the `[data-theme="dark"]` overrides applied. */
   dark: Decls;
   /** `@theme inline`: what Tailwind exposes (colors, radii, text sizes, fonts). */
   theme: Decls;
@@ -39,7 +39,8 @@ const decls = (body: string): Decls =>
 
 export function parseBrandTokens(css: string): BrandTokens {
   const light = decls(block(css, ":root"));
-  const dark = { ...light, ...decls(block(block(css, "@media (prefers-color-scheme: dark)"), ":root")) };
+  // With the brace, so selectors that only start the same way don't match.
+  const dark = { ...light, ...decls(block(css, ':root[data-theme="dark"] {')) };
   return { light, dark, theme: decls(block(css, "@theme inline")) };
 }
 
@@ -175,6 +176,17 @@ export const COLOR_GROUPS: TokenGroup[] = [
       { token: "tok-fence", role: "Payload fences" },
       { token: "tok-payload", role: "Fenced payloads" },
       { token: "tok-version", role: "Versions: v0.1" },
+    ],
+  },
+  {
+    title: "Landing",
+    note: "The landing page's own background, the dithered fade down its first screen, and the agent prompt's window dots, which don't change with the theme.",
+    tokens: [
+      { token: "landing-bg", role: "Landing page background" },
+      { token: "landing-fade", role: "Top of the backdrop's fade" },
+      { token: "landing-close", role: "Agent prompt's red dot, on hover" },
+      { token: "landing-minimize", role: "Agent prompt's orange dot, on hover" },
+      { token: "landing-zoom", role: "Agent prompt's green dot, on hover" },
     ],
   },
 ];

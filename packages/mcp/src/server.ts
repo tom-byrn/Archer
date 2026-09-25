@@ -38,6 +38,7 @@ import type {
   WorkspaceSwitched,
   WriteRejected,
 } from "./contract";
+import { EXAMPLES, findExample, type Example } from "./examples";
 import { BRIEF, GUIDE } from "./guide";
 
 const text = (value: unknown) => ({
@@ -146,6 +147,16 @@ const revisionView = (r: RevisionRow, previous: ArchDoc | null) => {
   };
 };
 
+/** An example minus its source, with where a human can see it on the site. */
+const exampleInfo = (e: Example) => ({
+  slug: e.slug,
+  title: e.title,
+  summary: e.summary,
+  features: e.features,
+  docs_url: `${APP_URL}/language/examples#${e.slug}`,
+  sandbox_url: `${APP_URL}/sandbox/${e.slug}`,
+});
+
 const requireProject = async (ws: Workspace, projectId: string) => {
   const doc = await db.getProject(ws, projectId);
   if (!doc) throw new Error(`No project with id ${projectId}. Use list_projects.`);
@@ -181,6 +192,46 @@ export function registerArcherTools(server: McpServer): void {
       inputSchema: {},
     },
     wrap(async () => text(GUIDE)),
+  );
+
+  // --- worked examples (the docs' /language/examples) -------------------------
+
+  for (const e of EXAMPLES)
+    server.registerResource(
+      `example-${e.slug}`,
+      `archer://examples/${e.slug}`,
+      { title: `Example: ${e.title}`, description: e.summary, mimeType: "text/plain" },
+      async (uri) => ({ contents: [{ uri: uri.href, mimeType: "text/plain", text: e.source }] }),
+    );
+
+  server.registerTool(
+    "list_examples",
+    {
+      title: "List the worked examples",
+      description:
+        "List the worked examples from Archer's docs (the /language/examples page): complete documents that validate clean, each showing a few language features, from the basics up to a whole product. Returns each one's slug, title, summary and features, with two links to hand the user: docs_url (its section of the docs, diagram included) and sandbox_url (opens it in the editor without an account; nothing is saved). Read one with get_example; each is also the resource archer://examples/<slug>.",
+      inputSchema: {},
+    },
+    wrap(async () => text(EXAMPLES.map(exampleInfo))),
+  );
+
+  server.registerTool(
+    "get_example",
+    {
+      title: "Read a worked example",
+      description:
+        "Return one of the docs' worked examples in full: its list_examples entry plus the complete source, in the canonical form the app saves. Read one to see idiomatic Archer before writing (ids, type tags, desc and src, payloads, nesting, labeled connections), to show the user how something is done, or to give them an editable copy by passing the source to create_project. An example that ends in a layout block was arranged by hand on the canvas: that block is presentation, so leave it out of documents you write.",
+      inputSchema: {
+        slug: z
+          .enum(EXAMPLES.map((e) => e.slug) as [string, ...string[]])
+          .describe("Which example; list_examples describes each"),
+      },
+    },
+    wrap(async ({ slug }) => {
+      const e = findExample(slug);
+      if (!e) throw new Error(`No example '${slug}'. Use list_examples.`);
+      return text({ ...exampleInfo(e), source: e.source });
+    }),
   );
 
   // --- stateless language tools ----------------------------------------------
@@ -267,7 +318,7 @@ export function registerArcherTools(server: McpServer): void {
     {
       title: "List component & connection types",
       description:
-        "List usable type tags: the built-in technology catalog (~75 types across aws/gcp/azure/vercel/databases/infra/saas/generic), this workspace's custom types, the standard connection types (@http, @sql, @queue, ...), and the glyph names available when creating custom types. Optional search filters by tag/name/namespace. Type tags are OPTIONAL on components — untyped components are valid and render as generic boxes; unknown tags are only a warning.",
+        "List usable type tags: the built-in technology catalog (~140 types across generic/ai/ai_platforms/aws/gcp/azure/vercel/databases/infra/saas — `ai` holds the building blocks of AI apps: @llm, @agent, @mcp, @rag, @vector_db, ...), this workspace's custom types, the standard connection types (@http, @sql, @queue, @mcp, ...), and the glyph names available when creating custom types. Optional search filters by tag/name/namespace. Type tags are OPTIONAL on components — untyped components are valid and render as generic boxes; unknown tags are only a warning.",
       inputSchema: {
         search: z.string().optional().describe("Case-insensitive filter on tag, name, or namespace"),
       },

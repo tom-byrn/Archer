@@ -1,11 +1,39 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { CATALOG } from "@archer/catalog";
 import type { UserLibrary } from "@/lib/userLibrary";
 import { Glyph } from "./nodes";
 import { Icon, Kbd, cx } from "./ui";
 import { namespaceLabel, orderedNamespaces } from "./Palette";
+
+/**
+ * What the palette was opened for: `all` (⌘K) runs commands, finds
+ * components and adds new ones; `add` (the + button) only adds; `find` (⌘F)
+ * only jumps to components already in the document.
+ */
+export type PaletteMode = "all" | "add" | "find";
+
+/** An editor action offered in the palette. */
+export interface PaletteCommand {
+  id: string;
+  label: string;
+  hint?: string;
+  shortcut?: string;
+  icon?: ReactNode;
+  /** Extra words to match on. */
+  keywords?: string;
+  run: () => void;
+}
+
+/** A component already in the document, for find / go to. */
+export interface PaletteComponent {
+  path: string;
+  name: string;
+  type?: string;
+  color?: string;
+  glyph?: string;
+}
 
 interface Entry {
   /** `undefined` = plain (untyped) component. */
@@ -15,6 +43,11 @@ interface Entry {
   color?: string;
   glyph?: string;
 }
+
+type Row =
+  | { kind: "command"; key: string; command: PaletteCommand }
+  | { kind: "goto"; key: string; component: PaletteComponent }
+  | { kind: "add"; key: string; entry: Entry };
 
 const PLAIN: Entry = { tag: undefined, name: "Plain component", namespace: "generic" };
 
@@ -32,23 +65,39 @@ const fuzzy = (hay: string, q: string): number => {
   }
   return -1;
 };
-const score = (e: Entry, q: string): number => {
-  const byName = fuzzy(e.name.toLowerCase(), q);
-  const byTag = e.tag ? fuzzy(e.tag, q) : -1;
-  const best = [byName, byTag === -1 ? -1 : byTag + 0.5].filter((s) => s >= 0);
-  return best.length === 0 ? -1 : Math.min(...best);
+
+/** Best score over several fields; later fields rank a little lower. */
+const best = (q: string, ...fields: (string | undefined)[]): number => {
+  const scores = fields
+    .map((f, i) => (f === undefined ? -1 : fuzzy(f.toLowerCase(), q) + (i > 0 ? 0.5 : 0)))
+    .filter((s) => s >= 0);
+  return scores.length === 0 ? -1 : Math.min(...scores);
+};
+
+const PLACEHOLDER: Record<PaletteMode, string> = {
+  all: "Run a command, find a component, or add one…",
+  add: "Add a component…",
+  find: "Find a component in this document…",
 };
 
 export function CommandPalette({
   open,
+  mode = "all",
   onClose,
   onAdd,
   library,
+  commands = [],
+  components = [],
+  onGoTo,
 }: {
   open: boolean;
+  mode?: PaletteMode;
   onClose: () => void;
   onAdd: (tag: string | undefined) => void;
   library: UserLibrary;
+  commands?: PaletteCommand[];
+  components?: PaletteComponent[];
+  onGoTo?: (path: string) => void;
 }) {
   const [query, setQuery] = useState("");
   const [active, setActive] = useState(0);
@@ -59,29 +108,76 @@ export function CommandPalette({
       setQuery("");
       setActive(0);
     }
-  }, [open]);
+  }, [open, mode]);
 
   const q = query.trim().toLowerCase();
 
   const groups = useMemo(() => {
-    const entries: Entry[] = [
-      PLAIN,
-      ...library.items.map((t) => ({ ...t, namespace: "custom" })),
-      ...CATALOG,
-    ];
-    const scored = entries
-      .map((e, order) => ({ e, s: score(e, q), order }))
-      .filter(({ s }) => s >= 0);
-    if (q !== "") scored.sort((a, b) => a.s - b.s || a.order - b.order);
-    const byNs = new Map<string, Entry[]>();
-    for (const { e } of scored) byNs.set(e.namespace, [...(byNs.get(e.namespace) ?? []), e]);
-    const nsOrder = q === "" ? orderedNamespaces(byNs.keys()) : [...byNs.keys()];
-    return nsOrder
-      .filter((ns) => byNs.has(ns))
-      .map((ns) => ({ ns, items: byNs.get(ns)! }));
-  }, [library.items, q]);
+    type Group = { key: string; label: string; rank: number; order: number; rows: Row[] };
+    const out: Group[] = [];
 
-  const flat = useMemo(() => groups.flatMap((g) => g.items), [groups]);
+    if (mode === "all") {
+      const scored = commands
+        .map((c, order) => ({ c, s: best(q, c.label, c.keywords), order }))
+        .filter(({ s }) => s >= 0);
+      if (q !== "") scored.sort((a, b) => a.s - b.s || a.order - b.order);
+      if (scored.length > 0)
+        out.push({
+          key: "commands",
+          label: "Commands",
+          rank: q === "" ? 0 : scored[0]!.s,
+          order: 0,
+          rows: scored.map(({ c }) => ({ kind: "command", key: `cmd:${c.id}`, command: c })),
+        });
+    }
+
+    // Components in the document: always in find mode, once there's a query in all mode.
+    if (mode === "find" || (mode === "all" && q !== "")) {
+      const scored = components
+        .map((c, order) => ({ c, s: best(q, c.name, c.path, c.type), order }))
+        .filter(({ s }) => s >= 0);
+      if (q !== "") scored.sort((a, b) => a.s - b.s || a.order - b.order);
+      if (scored.length > 0)
+        out.push({
+          key: "goto",
+          label: mode === "find" ? "In this document" : "Go to",
+          rank: q === "" ? 1 : scored[0]!.s,
+          order: 1,
+          rows: scored.map(({ c }) => ({ kind: "goto", key: `goto:${c.path}`, component: c })),
+        });
+    }
+
+    if (mode === "all" || mode === "add") {
+      const entries: Entry[] = [
+        PLAIN,
+        ...library.items.map((t) => ({ ...t, namespace: "custom" })),
+        ...CATALOG,
+      ];
+      const scored = entries
+        .map((e, order) => ({ e, s: best(q, e.name, e.tag), order }))
+        .filter(({ s }) => s >= 0);
+      if (q !== "") scored.sort((a, b) => a.s - b.s || a.order - b.order);
+      const byNs = new Map<string, { e: Entry; s: number }[]>();
+      for (const x of scored) byNs.set(x.e.namespace, [...(byNs.get(x.e.namespace) ?? []), x]);
+      const nsOrder = q === "" ? orderedNamespaces(byNs.keys()) : [...byNs.keys()];
+      nsOrder.forEach((ns, i) => {
+        const items = byNs.get(ns);
+        if (!items) return;
+        out.push({
+          key: `add:${ns}`,
+          label: mode === "all" ? `Add · ${namespaceLabel(ns)}` : namespaceLabel(ns),
+          rank: q === "" ? 2 : items[0]!.s,
+          order: 2 + i,
+          rows: items.map(({ e }) => ({ kind: "add", key: `add:${e.tag ?? "__plain"}`, entry: e })),
+        });
+      });
+    }
+
+    // With a query, the best match leads whichever kind it is; ties keep the order above.
+    return out.sort((a, b) => a.rank - b.rank || a.order - b.order);
+  }, [mode, commands, components, library.items, q]);
+
+  const flat = useMemo(() => groups.flatMap((g) => g.rows), [groups]);
 
   useEffect(() => setActive(0), [q]);
 
@@ -92,10 +188,12 @@ export function CommandPalette({
 
   if (!open) return null;
 
-  const choose = (e: Entry | undefined) => {
-    if (!e) return;
-    onAdd(e.tag);
+  const choose = (row: Row | undefined) => {
+    if (!row) return;
     onClose();
+    if (row.kind === "command") row.command.run();
+    else if (row.kind === "goto") onGoTo?.(row.component.path);
+    else onAdd(row.entry.tag);
   };
 
   let index = -1;
@@ -110,7 +208,7 @@ export function CommandPalette({
       <div
         role="dialog"
         aria-modal
-        aria-label="Add a component"
+        aria-label={mode === "add" ? "Add a component" : mode === "find" ? "Find a component" : "Command palette"}
         className="mx-auto mt-[4vh] flex max-h-[calc(100%-4vh)] w-[624px] max-w-full flex-col overflow-hidden rounded-xl border border-line bg-surface shadow-md md:mt-[18vh] md:max-h-[calc(100%-18vh)]"
       >
         <div className="flex items-center gap-2.5 border-b border-line px-4">
@@ -119,7 +217,7 @@ export function CommandPalette({
             autoFocus
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Add a component…"
+            placeholder={PLACEHOLDER[mode]}
             spellCheck={false}
             className="h-12 w-full bg-transparent text-lg text-ink outline-none placeholder:text-ink-3 focus:shadow-none focus-visible:shadow-none"
             onKeyDown={(e) => {
@@ -142,42 +240,32 @@ export function CommandPalette({
 
         <div ref={listRef} className="max-h-[50dvh] overflow-y-auto p-1.5 md:max-h-[492px]" role="listbox">
           {flat.length === 0 && (
-            <p className="px-2.5 py-6 text-center text-sm text-ink-3">No matches</p>
+            <p className="px-2.5 py-6 text-center text-sm text-ink-3">
+              {mode === "find" && components.length === 0 ? "Nothing in this document yet" : "No matches"}
+            </p>
           )}
-          {groups.map(({ ns, items }) => (
-            <div key={ns} className="pb-1">
-              <div className="eyebrow px-2.5 pb-1 pt-1.5">{namespaceLabel(ns)}</div>
-              {items.map((e) => {
+          {groups.map((g) => (
+            <div key={g.key} className="pb-1">
+              <div className="eyebrow px-2.5 pb-1 pt-1.5">{g.label}</div>
+              {g.rows.map((row) => {
                 index++;
                 const i = index;
                 const isActive = i === active;
                 return (
                   <button
-                    key={e.tag ?? "__plain"}
+                    key={row.key}
                     type="button"
                     role="option"
                     aria-selected={isActive}
                     data-index={i}
                     onMouseEnter={() => setActive(i)}
-                    onClick={() => choose(e)}
+                    onClick={() => choose(row)}
                     className={cx(
                       "flex h-8 w-full items-center gap-2.5 rounded-md px-2.5 text-left transition-colors duration-75",
                       isActive ? "bg-surface-2" : "hover:bg-surface-2",
                     )}
                   >
-                    <span
-                      className={cx(
-                        "flex h-5 w-5 shrink-0 items-center justify-center rounded-sm",
-                        !e.color && "bg-surface-2",
-                      )}
-                      style={e.color ? { backgroundColor: `${e.color}24` } : undefined}
-                    >
-                      <Glyph glyph={e.glyph} color={e.color} size={13} />
-                    </span>
-                    <span className="min-w-0 flex-1 truncate text-base text-ink">{e.name}</span>
-                    {e.tag && (
-                      <span className="mono shrink-0 text-xs text-ink-3">@{e.tag}</span>
-                    )}
+                    <RowBody row={row} />
                   </button>
                 );
               })}
@@ -191,7 +279,7 @@ export function CommandPalette({
             <Kbd>↓</Kbd> navigate
           </span>
           <span className="flex items-center gap-1">
-            <Kbd>↵</Kbd> add
+            <Kbd>↵</Kbd> {mode === "add" ? "add" : mode === "find" ? "go to" : "select"}
           </span>
           <span className="flex items-center gap-1">
             <Kbd>esc</Kbd> close
@@ -199,5 +287,49 @@ export function CommandPalette({
         </div>
       </div>
     </div>
+  );
+}
+
+/** A tinted square holding a component glyph. */
+const Swatch = ({ color, glyph, tag }: { color?: string; glyph?: string; tag?: string }) => (
+  <span
+    className={cx("flex h-5 w-5 shrink-0 items-center justify-center rounded-sm", !color && "bg-surface-2")}
+    style={color ? { backgroundColor: `${color}24` } : undefined}
+  >
+    <Glyph tag={tag} glyph={glyph} color={color} size={13} />
+  </span>
+);
+
+function RowBody({ row }: { row: Row }) {
+  if (row.kind === "command") {
+    const c = row.command;
+    return (
+      <>
+        <span className="flex h-5 w-5 shrink-0 items-center justify-center text-ink-2 [&>svg]:h-3.5 [&>svg]:w-3.5">
+          {c.icon ?? <Icon.Command />}
+        </span>
+        <span className="min-w-0 flex-1 truncate text-base text-ink">{c.label}</span>
+        {c.hint && <span className="hidden shrink-0 truncate text-xs text-ink-3 md:inline">{c.hint}</span>}
+        {c.shortcut && <Kbd>{c.shortcut}</Kbd>}
+      </>
+    );
+  }
+  if (row.kind === "goto") {
+    const c = row.component;
+    return (
+      <>
+        <Swatch color={c.color} glyph={c.glyph} tag={c.type} />
+        <span className="min-w-0 flex-1 truncate text-base text-ink">{c.name}</span>
+        <span className="mono shrink-0 truncate text-xs text-ink-3">{c.path}</span>
+      </>
+    );
+  }
+  const e = row.entry;
+  return (
+    <>
+      <Swatch color={e.color} glyph={e.glyph} />
+      <span className="min-w-0 flex-1 truncate text-base text-ink">{e.name}</span>
+      {e.tag && <span className="mono shrink-0 text-xs text-ink-3">@{e.tag}</span>}
+    </>
   );
 }

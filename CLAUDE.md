@@ -45,7 +45,7 @@ Router + React Flow + Convex).
   server-only service credential `svc_<ARCHER_SERVICE_SECRET>.<userId>` passed
   in the functions' `apiKey` argument (legacy name; `convex/access.ts` →
   `effectiveUser`); the same secret must be set on the Convex deployment and
-  in the web env. `registerArcherTools(server)` registers 24 tools. The CLI
+  in the web env. `registerArcherTools(server)` registers 26 tools. The CLI
   (`archer login`) runs the same OAuth flow as any MCP client (DCR + PKCE +
   localhost redirect, client name "Archer CLI"), stores the session in
   `~/.archer/auth.json`, and calls the tools; the JSON shapes it reads are
@@ -66,12 +66,37 @@ Router + React Flow + Convex).
   Flow stays out of the first paint. Absolute URLs come from `lib/site.ts`
   (`NEXT_PUBLIC_SITE_URL`, default `https://archer.tombyrne.dev`).
 - Docs: `/language` (the spec) and `/language/examples` (worked examples from
-  `lib/examples.ts`). Example sources must stay canonical and validate clean —
-  `apps/web/test/examples.test.ts` enforces it, so the code shown, the diagram
-  (`lib/svg.ts`, prerendered at `/language/examples/<slug>/{light,dark}.svg`)
-  and the editor copy always agree. "Open in editor" goes to
-  `/new?example=<slug>`, which copies the example into the selected workspace
-  (reusing an untouched earlier copy) and opens it.
+  `packages/mcp/src/examples.ts`, which agents also read through the MCP
+  tools `list_examples`/`get_example`). Example sources must stay canonical
+  and validate clean — `apps/web/test/examples.test.ts` enforces it, so the
+  code shown, the diagram (`lib/svg.ts`, prerendered at
+  `/language/examples/<slug>/{light,dark}.svg`), the editor copy and what
+  agents read always agree. "Open in sandbox" goes to
+  `/sandbox/<slug>` (see Editor sessions). "View code" opens the source in
+  the editor's code popout (`components/CodeDialog.tsx`, shared with
+  `CodePane`), highlighted on the server by `lib/highlightArch.ts` so the page
+  never loads CodeMirror. `/new?example=<slug>`, which copies
+  the example into the selected workspace (reusing an untouched earlier copy),
+  still works but nothing links to it.
+- Editor sessions: `components/Editor.tsx` takes a `session` — a stored
+  document (`kind: "document"`: autosave, history/drift, share, export, repo
+  link, account menu) or a sandbox (`kind: "sandbox"`: in memory only). The
+  sandbox is `/sandbox/<slug>` (public, prerendered per example;
+  `components/SandboxEditor.tsx`): the same editor, with custom types from
+  `useLocalLibrary`, and leaving the page discards every edit. Anything new
+  that saves, shares or exports goes behind `stored` in the editor so the
+  sandbox never gets it; everything else reaches the sandbox automatically.
+  The editor owns the canvas selection (component paths + connection keys) and
+  `ArchCanvas` mirrors it onto React Flow's `selected` flags; edits that span
+  several components (copy/paste fragments, duplicate, group, partial
+  re-layout, re-pointing an edge) are pure transforms in `packages/lang`
+  (`transform.ts`), run through `useArchDoc`'s `mutate`/`mutateWith`. The
+  clipboard format is plain `.arch` text (`extractFragment`/`insertFragment`).
+- Samples: "From sample" on the dashboard opens `components/SampleDialog.tsx`,
+  a gallery of `lib/samples` (one module per source, listed with its title
+  and blurb in `lib/samples/index.ts`). Choosing one saves the source as a new
+  document verbatim, so like the docs examples, samples stay canonical and
+  validate clean — `apps/web/test/samples.test.ts` enforces it.
 - Brand kit: `/branding` (signed-in only, deliberately linked from nowhere —
   keep it that way) shows the logo, colors, type, radii, icons and ui.tsx
   primitives. Values are parsed from `app/globals.css` at build time
@@ -81,9 +106,25 @@ Router + React Flow + Convex).
   tokens in `app/globals.css` (exposed as Tailwind utilities: `bg-surface`,
   `text-ink-2`, `border-line`, `rounded-md`, `text-sm`…). Never use the raw
   Tailwind palette (`slate-*`) or `dark:` variants — dark mode is handled by
-  the tokens. Build controls from `components/ui.tsx` (Button, IconButton,
-  Input, Menu, Dialog, Section, PropertyRow, Chip, Icon). Code editing goes
-  through `components/CodeMirror.tsx`. React Flow chrome lives in
+  the tokens. The theme is `data-theme="light|dark"` on `<html>`: the
+  viewer's System/Light/Dark choice (localStorage, `lib/theme.ts`; toggle in
+  the site header, setting in the account menu), resolved before first paint
+  by the inline script in `app/layout.tsx`. Theme controls call
+  `switchTheme(choice, button)`, which animates the change: a view
+  transition, the new theme spreading from the button in a circle (CSS in
+  `globals.css`); a plain switch without support or with reduced motion. Key
+  CSS on `:root[data-theme="dark"]` and code on `useIsDark()`, never on
+  `prefers-color-scheme`. Build controls from `components/ui.tsx` (Button,
+  IconButton, Input, Menu, Dialog, Section, PropertyRow, Chip, Icon). An icon
+  that changes on click (copy → check) is a `SwapIcon`, which animates the
+  swap; never a bare ternary between two icons. The button's label stays as
+  it is (no Copy → Copied), so the icon alone confirms and nothing resizes. Icons
+  are Phosphor: UI icons are `@phosphor-icons/react` (bold) behind `Icon` —
+  add a name there, don't import Phosphor elsewhere (`GitHubMark` stays
+  GitHub's own mark on purpose); component glyphs are Phosphor paths
+  generated into `packages/catalog/src/glyphs.ts` by `scripts/glyphs.ts`
+  (strings, so `lib/svg.ts` and the OG image can draw them). Code editing
+  goes through `components/CodeMirror.tsx`. React Flow chrome lives in
   `components/canvas.css`.
 - Language/product specs live in `docs/`; keep `docs/language-spec.md` in
   sync with `packages/*/src/languageSpec.ts` copies when the grammar changes.

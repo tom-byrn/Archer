@@ -3,12 +3,13 @@
 /**
  * Shared UI primitives. Every control in the app is built from these so that
  * borders, radii, sizes and hover/focus states stay identical everywhere.
- * Dependency-free; styled only with the tokens in globals.css.
+ * Styled only with the tokens in globals.css; icons are Phosphor.
  */
 
 import {
   useEffect,
   useId,
+  useLayoutEffect,
   useRef,
   useState,
   type ButtonHTMLAttributes,
@@ -17,6 +18,54 @@ import {
   type ReactNode,
   type TextareaHTMLAttributes,
 } from "react";
+import {
+  ArrowCounterClockwiseIcon,
+  ArrowDownIcon,
+  ArrowElbowDownRightIcon,
+  ArrowRightIcon,
+  ArrowsLeftRightIcon,
+  ArrowSquareOutIcon,
+  ArrowUUpLeftIcon,
+  ArrowUUpRightIcon,
+  BoundingBoxIcon,
+  CaretDownIcon,
+  CaretLeftIcon,
+  CaretRightIcon,
+  CheckCircleIcon,
+  CheckIcon,
+  CircleHalfIcon,
+  ClipboardTextIcon,
+  ClockCounterClockwiseIcon,
+  CodeIcon,
+  CommandIcon,
+  CopyIcon,
+  CopySimpleIcon,
+  DotsThreeIcon,
+  DownloadSimpleIcon,
+  FrameCornersIcon,
+  GitDiffIcon,
+  LinkSimpleIcon,
+  MagnifyingGlassIcon,
+  MinusIcon,
+  MonitorIcon,
+  MoonIcon,
+  NetworkIcon,
+  PaperPlaneTiltIcon,
+  PencilSimpleIcon,
+  PlugIcon,
+  PlusIcon,
+  RobotIcon,
+  ScissorsIcon,
+  SelectionAllIcon,
+  SparkleIcon,
+  SquaresFourIcon,
+  SunIcon,
+  TrashSimpleIcon,
+  UserIcon,
+  WarningCircleIcon,
+  WarningIcon,
+  XIcon,
+} from "@phosphor-icons/react";
 
 export const cx = (...parts: Array<string | false | null | undefined>): string =>
   parts.filter(Boolean).join(" ");
@@ -68,7 +117,7 @@ export function Button({
       {...rest}
       className={cx(buttonCls(variant, size), className)}
     >
-      {icon && <span className="-ml-0.5 flex shrink-0 items-center [&>svg]:h-3.5 [&>svg]:w-3.5">{icon}</span>}
+      {icon && <span className="-ml-0.5 flex shrink-0 items-center [&_svg]:h-3.5 [&_svg]:w-3.5">{icon}</span>}
       {children}
     </button>
   );
@@ -95,7 +144,7 @@ export function IconButton({
       {...rest}
       className={cx(
         "inline-flex shrink-0 items-center justify-center rounded-md text-ink-2 transition-colors duration-100 hover:bg-surface-2 hover:text-ink disabled:cursor-not-allowed disabled:opacity-40",
-        size === "sm" ? "h-6 w-6 [&>svg]:h-3.5 [&>svg]:w-3.5" : "h-8 w-8 [&>svg]:h-[18px] [&>svg]:w-[18px]",
+        size === "sm" ? "h-6 w-6 [&_svg]:h-3.5 [&_svg]:w-3.5" : "h-8 w-8 [&_svg]:h-[18px] [&_svg]:w-[18px]",
         active && "bg-surface-3 text-ink",
         className,
       )}
@@ -185,35 +234,44 @@ export function Section({
   );
 }
 
-/** Segmented control. */
+/**
+ * Segmented control. An option with an `icon` shows just the icon, named by its
+ * label. `onChange` also gets the option's button, for effects that start from it.
+ */
 export function Segmented<T extends string>({
   value,
   options,
   onChange,
   mono,
+  label,
 }: {
   value: T;
-  options: { value: T; label: string; title?: string }[];
-  onChange: (v: T) => void;
+  options: { value: T; label: string; title?: string; icon?: ReactNode }[];
+  onChange: (v: T, button: HTMLButtonElement) => void;
   mono?: boolean;
+  /** Names the control for assistive tech. */
+  label?: string;
 }) {
   return (
-    <div className="inline-flex h-7 rounded-md border border-line bg-surface-2 p-0.5">
+    <div role="group" aria-label={label} className="inline-flex h-7 rounded-md border border-line bg-surface-2 p-0.5">
       {options.map((o) => (
         <button
           key={o.value}
           type="button"
-          title={o.title}
-          onClick={() => onChange(o.value)}
+          aria-pressed={o.value === value}
+          aria-label={o.icon ? o.label : undefined}
+          title={o.title ?? (o.icon ? o.label : undefined)}
+          onClick={(e) => onChange(o.value, e.currentTarget)}
           className={cx(
-            "rounded-[4px] px-2.5 text-sm font-medium transition-colors duration-100",
+            "rounded-[4px] text-sm font-medium transition-colors duration-100",
+            o.icon ? "flex w-6 items-center justify-center [&>svg]:h-3.5 [&>svg]:w-3.5" : "px-2.5",
             mono && "mono",
             o.value === value
               ? "bg-surface text-ink shadow-sm"
               : "text-ink-2 hover:text-ink",
           )}
         >
-          {o.label}
+          {o.icon ?? o.label}
         </button>
       ))}
     </div>
@@ -424,6 +482,20 @@ export interface MenuItem {
   onSelect: () => void;
 }
 
+/** A row with a control of its own (the account menu's theme switcher), used without closing the menu. */
+export interface MenuControl {
+  label: string;
+  icon?: ReactNode;
+  control: ReactNode;
+}
+
+const menuIcon = (icon: ReactNode) =>
+  icon && (
+    <span className="flex w-4 shrink-0 items-center justify-center text-ink-2 [&>svg]:h-3.5 [&>svg]:w-3.5">
+      {icon}
+    </span>
+  );
+
 /**
  * Dropdown menu anchored to its trigger. `trigger` receives the open state and
  * a toggle handler. Closes on outside click, Escape, or selection.
@@ -435,7 +507,7 @@ export function Menu({
   width = 220,
 }: {
   trigger: (props: { open: boolean; toggle: () => void }) => ReactNode;
-  items: (MenuItem | "separator")[];
+  items: (MenuItem | MenuControl | "separator")[];
   align?: "start" | "end";
   width?: number;
 }) {
@@ -469,43 +541,113 @@ export function Menu({
             align === "end" ? "right-0" : "left-0",
           )}
         >
-          {items.map((item, i) =>
-            item === "separator" ? (
-              <div key={i} className="my-1 h-px bg-line" />
-            ) : (
-              <button
-                key={i}
-                type="button"
-                role="menuitem"
-                disabled={item.disabled}
-                onClick={() => {
-                  setOpen(false);
-                  item.onSelect();
-                }}
-                className={cx(
-                  "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors duration-75 disabled:opacity-40",
-                  item.danger
-                    ? "text-danger hover:bg-danger-soft"
-                    : "text-ink hover:bg-surface-2",
-                )}
-              >
-                {item.icon && (
-                  <span className="flex w-4 shrink-0 items-center justify-center text-ink-2 [&>svg]:h-3.5 [&>svg]:w-3.5">
-                    {item.icon}
-                  </span>
-                )}
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate">{item.label}</span>
-                  {item.hint && (
-                    <span className="block truncate text-xs text-ink-3">{item.hint}</span>
-                  )}
-                </span>
-                {item.shortcut && <Kbd>{item.shortcut}</Kbd>}
-              </button>
-            ),
-          )}
+          <MenuRows items={items} onClose={() => setOpen(false)} />
         </div>
       )}
+    </div>
+  );
+}
+
+/** The rows shared by Menu and ContextMenu; choosing one closes the menu first. */
+function MenuRows({
+  items,
+  onClose,
+}: {
+  items: (MenuItem | MenuControl | "separator")[];
+  onClose: () => void;
+}) {
+  return (
+    <>
+      {items.map((item, i) =>
+        item === "separator" ? (
+          <div key={i} className="my-1 h-px bg-line" />
+        ) : "control" in item ? (
+          <div key={i} className="flex items-center gap-2 px-2 py-0.5 text-sm text-ink">
+            {menuIcon(item.icon)}
+            <span className="min-w-0 flex-1 truncate">{item.label}</span>
+            {item.control}
+          </div>
+        ) : (
+          <button
+            key={i}
+            type="button"
+            role="menuitem"
+            disabled={item.disabled}
+            onClick={() => {
+              onClose();
+              item.onSelect();
+            }}
+            className={cx(
+              "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors duration-75 disabled:opacity-40",
+              item.danger ? "text-danger hover:bg-danger-soft" : "text-ink hover:bg-surface-2",
+            )}
+          >
+            {menuIcon(item.icon)}
+            <span className="min-w-0 flex-1">
+              <span className="block truncate">{item.label}</span>
+              {item.hint && <span className="block truncate text-xs text-ink-3">{item.hint}</span>}
+            </span>
+            {item.shortcut && <Kbd>{item.shortcut}</Kbd>}
+          </button>
+        ),
+      )}
+    </>
+  );
+}
+
+/**
+ * A menu opened at a point (right-click), kept inside the viewport. Closes on
+ * a click outside, Escape, resize, the window losing focus, or a choice.
+ */
+export function ContextMenu({
+  at,
+  items,
+  onClose,
+  width = 240,
+}: {
+  /** Viewport coordinates; null = closed. */
+  at: { x: number; y: number } | null;
+  items: (MenuItem | "separator")[];
+  onClose: () => void;
+  width?: number;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!at || !el) return;
+    const r = el.getBoundingClientRect();
+    el.style.left = `${Math.max(4, Math.min(at.x, window.innerWidth - r.width - 4))}px`;
+    el.style.top = `${Math.max(4, Math.min(at.y, window.innerHeight - r.height - 4))}px`;
+  }, [at]);
+  useEffect(() => {
+    if (!at) return;
+    const onDown = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) onClose();
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("mousedown", onDown, true);
+    document.addEventListener("keydown", onKey);
+    window.addEventListener("blur", onClose);
+    window.addEventListener("resize", onClose);
+    return () => {
+      document.removeEventListener("mousedown", onDown, true);
+      document.removeEventListener("keydown", onKey);
+      window.removeEventListener("blur", onClose);
+      window.removeEventListener("resize", onClose);
+    };
+  }, [at, onClose]);
+  if (!at) return null;
+  return (
+    <div
+      ref={ref}
+      role="menu"
+      style={{ position: "fixed", left: at.x, top: at.y, width }}
+      className="z-[90] rounded-lg border border-line bg-surface p-1 shadow-md"
+      onContextMenu={(e) => e.preventDefault()}
+    >
+      <MenuRows items={items} onClose={onClose} />
     </div>
   );
 }
@@ -535,9 +677,11 @@ export function Dialog({
     return () => document.removeEventListener("keydown", onKey);
   }, [open, onClose]);
   if (!open) return null;
+  // The column is the screen's width. An auto column would grow to the
+  // dialog's own width, and then maxWidth could not keep it on a phone.
   return (
     <div
-      className="fixed inset-0 z-[100] grid place-items-center bg-[rgba(10,10,8,0.45)] p-4 backdrop-blur-[2px]"
+      className="fixed inset-0 z-[100] grid grid-cols-[minmax(0,1fr)] place-items-center bg-[rgba(10,10,8,0.45)] p-4 backdrop-blur-[2px]"
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
@@ -564,129 +708,87 @@ export function Dialog({
 }
 
 /* -------------------------------------------------------------------- Icons */
-/* 16px, 1.5px stroke, currentColor. Keep this set small and consistent. */
+/*
+ * Phosphor (phosphoricons.com) at bold weight, which draws a 1.5px stroke at
+ * 16px. No size prop: CSS sizes them (a className, or the parent's
+ * [&>svg]:…), and they take currentColor. Reach Phosphor through this set, not
+ * directly, and keep it small and consistent.
+ */
 
-const I = ({ children, ...rest }: { children: ReactNode; className?: string }) => (
-  <svg
-    viewBox="0 0 16 16"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.5"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    aria-hidden
-    {...rest}
-  >
-    {children}
-  </svg>
-);
+const UI = { weight: "bold", "aria-hidden": true } as const;
+type IconProps = { className?: string };
 
 export const Icon = {
-  Close: (p: { className?: string }) => (
-    <I {...p}><path d="M4 4l8 8M12 4l-8 8" /></I>
-  ),
-  Plus: (p: { className?: string }) => (
-    <I {...p}><path d="M8 3v10M3 8h10" /></I>
-  ),
-  Check: (p: { className?: string }) => (
-    <I {...p}><path d="M3 8.5l3 3 7-7" /></I>
-  ),
-  ChevronDown: (p: { className?: string }) => (
-    <I {...p}><path d="M4 6l4 4 4-4" /></I>
-  ),
-  ChevronRight: (p: { className?: string }) => (
-    <I {...p}><path d="M6 4l4 4-4 4" /></I>
-  ),
-  ChevronLeft: (p: { className?: string }) => (
-    <I {...p}><path d="M10 4L6 8l4 4" /></I>
-  ),
-  ArrowRight: (p: { className?: string }) => (
-    <I {...p}><path d="M3 8h10M9 4l4 4-4 4" /></I>
-  ),
-  ArrowDown: (p: { className?: string }) => (
-    <I {...p}><path d="M8 3v10M4 9l4 4 4-4" /></I>
-  ),
-  Undo: (p: { className?: string }) => (
-    <I {...p}><path d="M6 4L3 7l3 3" /><path d="M3 7h6.5a3.5 3.5 0 010 7H8" /></I>
-  ),
-  Redo: (p: { className?: string }) => (
-    <I {...p}><path d="M10 4l3 3-3 3" /><path d="M13 7H6.5a3.5 3.5 0 000 7H8" /></I>
-  ),
-  Layout: (p: { className?: string }) => (
-    <I {...p}><rect x="2" y="2.5" width="5" height="5" rx="1" /><rect x="9" y="2.5" width="5" height="5" rx="1" /><rect x="2" y="9.5" width="5" height="4" rx="1" /><rect x="9" y="9.5" width="5" height="4" rx="1" /></I>
-  ),
-  Code: (p: { className?: string }) => (
-    <I {...p}><path d="M5.5 4.5L2 8l3.5 3.5M10.5 4.5L14 8l-3.5 3.5" /></I>
-  ),
-  Copy: (p: { className?: string }) => (
-    <I {...p}><rect x="5.5" y="5.5" width="8" height="8" rx="1.5" /><path d="M10.5 5.5v-2a1 1 0 00-1-1h-6a1 1 0 00-1 1v6a1 1 0 001 1h2" /></I>
-  ),
-  Download: (p: { className?: string }) => (
-    <I {...p}><path d="M8 2.5v8M4.5 7L8 10.5 11.5 7" /><path d="M2.5 12.5v1h11v-1" /></I>
-  ),
-  Sparkle: (p: { className?: string }) => (
-    <I {...p}><path d="M8 2l1.4 3.6L13 7l-3.6 1.4L8 12l-1.4-3.6L3 7l3.6-1.4z" /></I>
-  ),
-  Search: (p: { className?: string }) => (
-    <I {...p}><circle cx="7" cy="7" r="4" /><path d="M10 10l3.5 3.5" /></I>
-  ),
-  More: (p: { className?: string }) => (
-    <I {...p}><circle cx="3.5" cy="8" r="0.9" fill="currentColor" stroke="none" /><circle cx="8" cy="8" r="0.9" fill="currentColor" stroke="none" /><circle cx="12.5" cy="8" r="0.9" fill="currentColor" stroke="none" /></I>
-  ),
-  Trash: (p: { className?: string }) => (
-    <I {...p}><path d="M3 4.5h10M6.5 4.5v-1a1 1 0 011-1h1a1 1 0 011 1v1" /><path d="M4.5 4.5l.6 8a1 1 0 001 .9h3.8a1 1 0 001-.9l.6-8" /></I>
-  ),
-  Warning: (p: { className?: string }) => (
-    <I {...p}><path d="M8 2.5l6 11H2z" /><path d="M8 6.5v3M8 11.5v.01" /></I>
-  ),
-  CheckCircle: (p: { className?: string }) => (
-    <I {...p}><circle cx="8" cy="8" r="5.75" /><path d="M5.5 8.2l1.8 1.8 3.4-3.6" /></I>
-  ),
-  External: (p: { className?: string }) => (
-    <I {...p}><path d="M7 3.5H4a1 1 0 00-1 1V12a1 1 0 001 1h7.5a1 1 0 001-1V9" /><path d="M9.5 2.5H13.5V6.5M13.5 2.5L7.5 8.5" /></I>
-  ),
-  Plug: (p: { className?: string }) => (
-    <I {...p}><path d="M5.5 2v3M10.5 2v3M4 5h8v2.5a4 4 0 01-8 0z" /><path d="M8 11.5V14" /></I>
-  ),
-  Duplicate: (p: { className?: string }) => (
-    <I {...p}><rect x="2.5" y="2.5" width="8" height="8" rx="1.5" /><path d="M13.5 6v6a1.5 1.5 0 01-1.5 1.5H6" /></I>
-  ),
-  Pencil: (p: { className?: string }) => (
-    <I {...p}><path d="M10.5 2.5l3 3-8 8H2.5v-3z" /><path d="M9 4l3 3" /></I>
-  ),
-  History: (p: { className?: string }) => (
-    <I {...p}><path d="M2.5 8a5.5 5.5 0 105.5-5.5A5.6 5.6 0 003.6 5.2" /><path d="M2.5 2.5v3h3" /><path d="M8 5.5V8l2 1.5" /></I>
-  ),
-  Bot: (p: { className?: string }) => (
-    <I {...p}><rect x="3" y="5.5" width="10" height="7.5" rx="2" /><path d="M8 3v2.5M6 9v.01M10 9v.01" /><path d="M1.5 9.5v1M14.5 9.5v1" /></I>
-  ),
-  User: (p: { className?: string }) => (
-    <I {...p}><circle cx="8" cy="5.5" r="2.75" /><path d="M2.75 14a5.25 5.25 0 0110.5 0" /></I>
-  ),
-  Link: (p: { className?: string }) => (
-    <I {...p}><path d="M6.5 9.5l3-3" /><path d="M7 4.5l1-1a2.5 2.5 0 013.5 3.5l-1 1" /><path d="M9 11.5l-1 1a2.5 2.5 0 01-3.5-3.5l1-1" /></I>
-  ),
-  Alert: (p: { className?: string }) => (
-    <I {...p}><circle cx="8" cy="8" r="5.75" /><path d="M8 5v3.5M8 11v.01" /></I>
-  ),
-  Restore: (p: { className?: string }) => (
-    <I {...p}><path d="M3 8a5 5 0 109.5-2.2" /><path d="M3 3.5V7h3.5" /></I>
-  ),
-  Reset: (p: { className?: string }) => (
-    <I {...p}><path d="M2.5 8A5.5 5.5 0 108 2.5a6 6 0 00-4.1 1.7L2.5 5.6" /><path d="M2.5 2.5v3.1h3.1" /></I>
-  ),
-  Diff: (p: { className?: string }) => (
-    <I {...p}><path d="M5 2.5v5M2.5 5h5" /><path d="M2.5 11.5h5" /><path d="M11 2.5v11" /></I>
-  ),
-  Send: (p: { className?: string }) => (
-    <I {...p}><path d="M13.5 2.5L2.5 6.75l5 1.75 1.75 5z" /><path d="M13.5 2.5L7.5 8.5" /></I>
-  ),
-  Command: (p: { className?: string }) => (
-    <I {...p}><path d="M6 6H4.5a1.5 1.5 0 110-3A1.5 1.5 0 016 4.5V6zm0 4H4.5a1.5 1.5 0 100 3A1.5 1.5 0 006 11.5V10zm4-4h1.5a1.5 1.5 0 100-3A1.5 1.5 0 0010 4.5V6zm0 4h1.5a1.5 1.5 0 110 3 1.5 1.5 0 01-1.5-1.5V10zM6 6h4v4H6z" /></I>
-  ),
+  Close: (p: IconProps) => <XIcon {...UI} {...p} />,
+  Plus: (p: IconProps) => <PlusIcon {...UI} {...p} />,
+  Minus: (p: IconProps) => <MinusIcon {...UI} {...p} />,
+  Check: (p: IconProps) => <CheckIcon {...UI} {...p} />,
+  ChevronDown: (p: IconProps) => <CaretDownIcon {...UI} {...p} />,
+  ChevronRight: (p: IconProps) => <CaretRightIcon {...UI} {...p} />,
+  ChevronLeft: (p: IconProps) => <CaretLeftIcon {...UI} {...p} />,
+  ArrowRight: (p: IconProps) => <ArrowRightIcon {...UI} {...p} />,
+  ArrowDown: (p: IconProps) => <ArrowDownIcon {...UI} {...p} />,
+  Undo: (p: IconProps) => <ArrowUUpLeftIcon {...UI} {...p} />,
+  Redo: (p: IconProps) => <ArrowUUpRightIcon {...UI} {...p} />,
+  Layout: (p: IconProps) => <SquaresFourIcon {...UI} {...p} />,
+  Diagram: (p: IconProps) => <NetworkIcon {...UI} {...p} />,
+  FitView: (p: IconProps) => <FrameCornersIcon {...UI} {...p} />,
+  Code: (p: IconProps) => <CodeIcon {...UI} {...p} />,
+  Copy: (p: IconProps) => <CopyIcon {...UI} {...p} />,
+  Download: (p: IconProps) => <DownloadSimpleIcon {...UI} {...p} />,
+  Sparkle: (p: IconProps) => <SparkleIcon {...UI} {...p} />,
+  Search: (p: IconProps) => <MagnifyingGlassIcon {...UI} {...p} />,
+  More: (p: IconProps) => <DotsThreeIcon {...UI} {...p} />,
+  Trash: (p: IconProps) => <TrashSimpleIcon {...UI} {...p} />,
+  Warning: (p: IconProps) => <WarningIcon {...UI} {...p} />,
+  CheckCircle: (p: IconProps) => <CheckCircleIcon {...UI} {...p} />,
+  External: (p: IconProps) => <ArrowSquareOutIcon {...UI} {...p} />,
+  Plug: (p: IconProps) => <PlugIcon {...UI} {...p} />,
+  Duplicate: (p: IconProps) => <CopySimpleIcon {...UI} {...p} />,
+  Pencil: (p: IconProps) => <PencilSimpleIcon {...UI} {...p} />,
+  History: (p: IconProps) => <ClockCounterClockwiseIcon {...UI} {...p} />,
+  Bot: (p: IconProps) => <RobotIcon {...UI} {...p} />,
+  User: (p: IconProps) => <UserIcon {...UI} {...p} />,
+  Sun: (p: IconProps) => <SunIcon {...UI} {...p} />,
+  Moon: (p: IconProps) => <MoonIcon {...UI} {...p} />,
+  Monitor: (p: IconProps) => <MonitorIcon {...UI} {...p} />,
+  // Fill weight: a solid half reads better than bold's hatching at 14px.
+  Contrast: (p: IconProps) => <CircleHalfIcon {...UI} weight="fill" {...p} />,
+  Link: (p: IconProps) => <LinkSimpleIcon {...UI} {...p} />,
+  Alert: (p: IconProps) => <WarningCircleIcon {...UI} {...p} />,
+  Restore: (p: IconProps) => <ArrowCounterClockwiseIcon {...UI} {...p} />,
+  Reset: (p: IconProps) => <ArrowCounterClockwiseIcon {...UI} {...p} />,
+  Diff: (p: IconProps) => <GitDiffIcon {...UI} {...p} />,
+  Send: (p: IconProps) => <PaperPlaneTiltIcon {...UI} {...p} />,
+  Command: (p: IconProps) => <CommandIcon {...UI} {...p} />,
+  Group: (p: IconProps) => <BoundingBoxIcon {...UI} {...p} />,
+  AddChild: (p: IconProps) => <ArrowElbowDownRightIcon {...UI} {...p} />,
+  Cut: (p: IconProps) => <ScissorsIcon {...UI} {...p} />,
+  Paste: (p: IconProps) => <ClipboardTextIcon {...UI} {...p} />,
+  SelectAll: (p: IconProps) => <SelectionAllIcon {...UI} {...p} />,
+  Swap: (p: IconProps) => <ArrowsLeftRightIcon {...UI} {...p} />,
 };
 
-/** GitHub's mark (filled, unlike the stroked set above): marks a linked repository. */
+/**
+ * Two icons in one spot that trade places when `swapped` flips, like a copy
+ * button's copy → check. The old one shrinks and blurs away as the new one
+ * grows in (a plain fade with reduced motion; `.icon-swap` in globals.css).
+ * Sized like a lone icon by Button's and IconButton's icon rules, or by a
+ * className on each icon.
+ */
+export function SwapIcon({ swapped, from, to }: { swapped: boolean; from: ReactNode; to: ReactNode }) {
+  return (
+    <span className="icon-swap" data-swapped={swapped || undefined}>
+      {from}
+      {to}
+    </span>
+  );
+}
+
+/**
+ * GitHub's own mark, deliberately not Phosphor's (filled, unlike the set
+ * above): marks a linked repository.
+ */
 export function GitHubMark({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden className={className}>

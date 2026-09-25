@@ -1,7 +1,14 @@
 /* Landing page. Colors come from the tokens in globals.css; this file only
-   holds what utilities can't express: the headline setting, the backdrop
-   fallback, the one load sequence, the agent prompt's cursor and the source
-   pane's changed-line flash. */
+   holds what utilities can't express: the page color, the headline setting,
+   the dither fallback, the one load sequence, the agent prompt's cursor and
+   the source pane's changed-line flash. */
+
+/* The landing sits on its own page color (black in dark mode). Setting --bg
+   carries it to everything filled with the page color: the diamond joints,
+   the feature and FAQ tiles, the text on primary buttons. */
+.landing-page {
+  --bg: var(--landing-bg);
+}
 
 .landing-headline {
   font-family: var(--font-newsreader), Georgia, "Times New Roman", serif;
@@ -11,10 +18,18 @@
   text-wrap: balance;
 }
 
-/* Grey at the top of the viewport fading to black. The dithered version is
-   drawn over it by DitherBackdrop; this smooth one covers first paint. */
+/* --landing-fade at the top of the box fading into the page over
+   --dither-length of it (grey to black in dark mode). The dithered version is
+   drawn over it by Dither; this smooth one covers first paint. The middle stop
+   follows the shader's curve. */
 .landing-dither {
-  background: linear-gradient(180deg, #121212 0%, #050505 45%, #000 85%);
+  background: linear-gradient(
+    180deg,
+    var(--landing-fade) 0%,
+    color-mix(in srgb, var(--landing-fade) 30%, var(--landing-bg))
+      calc(var(--dither-length) * 0.53),
+    var(--landing-bg) var(--dither-length)
+  );
 }
 
 .landing-wordmark {
@@ -104,8 +119,25 @@
   bottom: auto;
 }
 
-/* Connectors read as white on the always-dark landing canvas. */
+/* Connectors read as ink on the landing canvas, and go all the way to black
+   (white in dark mode) under the pointer. */
 .landing-canvas {
   --edge: var(--ink);
+  --edge-strong: #000;
+}
+
+/* A catalog glyph on its tinted tile (Features). The tile carries the type's
+   color for both themes inline; picking one here keeps it right from the
+   first paint. */
+.landing-type-tile {
+  --type: var(--type-light);
+  color: var(--type);
+  background-color: color-mix(in srgb, var(--type) 14%, transparent);
+}
+
+:root[data-theme="dark"] .landing-canvas {
   --edge-strong: #fff;
+}
+:root[data-theme="dark"] .landing-type-tile {
+  --type: var(--type-dark);
 }

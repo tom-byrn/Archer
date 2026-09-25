@@ -1,5 +1,5 @@
-import type { ReactNode } from "react";
-import { CATALOG, GLYPHS, lookupType } from "@archer/catalog";
+import type { CSSProperties, ReactNode } from "react";
+import { CATALOG, GLYPHS, GLYPH_VIEWBOX, lookupType } from "@archer/catalog";
 import { displayColor } from "@/lib/useIsDark";
 import { SITE_URL } from "@/lib/site";
 import { Chip, GitHubMark, Icon, cx } from "../ui";
@@ -12,18 +12,18 @@ const PALETTE = [
   "aws.lambda",
   "aws.sqs",
   "aws.s3",
-  "aws.vpc",
   "kubernetes",
   "postgres",
   "redis",
   "kafka",
   "vercel.nextjs",
-  "supabase.postgres",
   "convex",
   "stripe",
   "clerk",
   "openai",
   "anthropic",
+  "agent",
+  "mcp",
 ];
 
 const SHARE_SLUG = "k3v9x2";
@@ -43,23 +43,30 @@ ${USERS.map(([c, t]) => `  | ${c!.padEnd(10)} | ${t!.padEnd(11)} |`).join("\n")}
   \`\`\`
 }`;
 
-/** A catalog type's glyph on its tinted tile, in the dark-mode color (the landing page is always dark). */
+/**
+ * A catalog type's glyph on its tinted tile, in the type's color for each
+ * scheme (near-black brand colors are lifted for dark mode, as on the canvas).
+ * `.landing-type-tile` in landing.css picks the one for the page's theme.
+ */
 function TypeTile({ tag, size = "md" }: { tag: string; size?: "sm" | "md" }) {
   const entry = lookupType(tag);
-  const color = displayColor(entry?.color, true) ?? "var(--ink-3)";
+  const colors = {
+    "--type-light": entry?.color ?? "var(--ink-3)",
+    "--type-dark": displayColor(entry?.color, true) ?? "var(--ink-3)",
+  } as CSSProperties;
   const px = size === "sm" ? 15 : 17;
   return (
     <span
       className={cx(
-        "flex shrink-0 items-center justify-center rounded-sm",
+        "landing-type-tile flex shrink-0 items-center justify-center rounded-sm",
         size === "sm" ? "size-[26px]" : "size-[30px]",
       )}
-      style={{ color, backgroundColor: `color-mix(in srgb, ${color} 14%, transparent)` }}
+      style={colors}
     >
       <svg
         width={px}
         height={px}
-        viewBox="0 0 24 24"
+        viewBox={GLYPH_VIEWBOX}
         dangerouslySetInnerHTML={{ __html: GLYPHS[entry?.glyph ?? "box"] ?? GLYPHS.box! }}
       />
     </span>
@@ -133,7 +140,7 @@ function Nesting() {
           <svg
             width={16}
             height={16}
-            viewBox="0 0 24 24"
+            viewBox={GLYPH_VIEWBOX}
             className="text-ink-2"
             dangerouslySetInnerHTML={{ __html: GLYPHS.cloud! }}
           />
@@ -177,7 +184,9 @@ function Share() {
         <span className="mono min-w-0 flex-1 truncate text-sm text-ink-2">
           {host}/share/{SHARE_SLUG}
         </span>
-        <span className="bg-ink px-2 py-0.5 text-xs font-medium text-bg">Copy</span>
+        <span className="border border-line bg-surface px-2 py-0.5 text-xs font-medium text-ink shadow-sm">
+          Copy
+        </span>
       </div>
       <div className="mono truncate border border-line bg-[var(--code-bg)] px-2.5 py-2 text-sm text-ink-2">
         ![Architecture](…/{SHARE_SLUG}/<span className="text-[var(--tok-string)]">image.svg</span>)
@@ -288,8 +297,9 @@ export function Features() {
       {/* The 1px gaps over a line-colored background draw the rules between tiles. */}
       <div className="mt-12 grid gap-px border-t border-line bg-line md:grid-cols-2 lg:grid-cols-3">
         <Tile title={`${TYPE_COUNT}+ component types`} visual={<Palette />} className="md:col-span-2">
-          AWS, GCP, Azure, Vercel, databases, queues and SaaS, each with its own glyph. Missing
-          one? Add a custom type and it shows up in everyone&apos;s palette.
+          Agents, LLMs, RAG and MCP servers, AWS, GCP, Azure, Vercel, databases, queues and SaaS,
+          each with its own glyph. Missing one? Add a custom type and it shows up in
+          everyone&apos;s palette.
         </Tile>
         <Tile title="Nest and drill in" visual={<Nesting />}>
           Put services inside a VPC, a cluster or a team boundary. Double-click to drill in;

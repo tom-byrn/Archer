@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { Fragment, type CSSProperties, type ReactNode } from "react";
 import type { Metadata } from "next";
-import { GLYPHS } from "@archer/catalog";
+import { GLYPHS, GLYPH_VIEWBOX } from "@archer/catalog";
 import { ControlSpecimens, CopyValue, UiIconGrid } from "@/components/brand/BrandSpecimens";
 import { SiteFrame } from "@/components/landing/SiteFrame";
 import {
@@ -46,14 +46,10 @@ const SECTIONS = [
   { id: "voice", label: "Voice" },
 ] as const;
 
-/** The landing page's backdrop: literals in components/landing (it is always dark). */
-const LANDING_BLACK = "#000000";
-const LANDING_DITHER = "#121212";
-
 const readTokens = async (): Promise<BrandTokens> =>
   parseBrandTokens(await readFile(join(process.cwd(), "app/globals.css"), "utf8"));
 
-/** Inline custom properties that theme a subtree, whatever the OS scheme. */
+/** Inline custom properties that theme a subtree, whatever the page's theme. */
 const themeVars = (tokens: BrandTokens, theme: Theme): CSSProperties =>
   ({
     ...Object.fromEntries(Object.entries(tokens[theme]).map(([k, v]) => [`--${k}`, v])),
@@ -63,6 +59,10 @@ const themeVars = (tokens: BrandTokens, theme: Theme): CSSProperties =>
 /** A color swatch as it looks on its theme's page background (so tints read true). */
 const onBackground = (value: string, bg: string): string =>
   `linear-gradient(${value}, ${value}), ${bg}`;
+
+/** The landing page's backdrop in one theme, as its CSS fallback draws it (landing.css). */
+const landingFade = (tokens: BrandTokens, theme: Theme): string =>
+  `linear-gradient(180deg, ${tokens[theme]["landing-fade"]}, ${tokens[theme]["landing-bg"]} 85%)`;
 
 export default async function BrandingPage() {
   const tokens = await readTokens();
@@ -218,17 +218,21 @@ function LogoSection({ tokens }: { tokens: BrandTokens }) {
         title="Footer wordmark"
         note="The landing page signs off with the wordmark in Playfair Display Black, tracking −0.04em, at 11% ink, cropped by the page edge."
       >
-        <Panel
-          tokens={tokens}
-          theme="dark"
-          label={false}
-          className="overflow-hidden px-6 pt-6"
-          style={{ "--bg": LANDING_BLACK } as CSSProperties}
-        >
-          <div className="landing-wordmark" style={{ fontSize: "clamp(64px, 17vw, 200px)" }} aria-hidden>
-            Archer
-          </div>
-        </Panel>
+        <div className="grid gap-4">
+          {THEMES.map((theme) => (
+            <Panel
+              key={theme}
+              tokens={tokens}
+              theme={theme}
+              className="overflow-hidden px-6 pt-6"
+              style={{ "--bg": tokens[theme]["landing-bg"] } as CSSProperties}
+            >
+              <div className="landing-wordmark" style={{ fontSize: "clamp(64px, 17vw, 200px)" }} aria-hidden>
+                Archer
+              </div>
+            </Panel>
+          ))}
+        </div>
       </Block>
 
       <Block title="App icon" note="A light capital A on a near-black rounded square, at every size.">
@@ -307,7 +311,7 @@ function ColorSection({ tokens }: { tokens: BrandTokens }) {
     <Section
       id="color"
       title="Color"
-      lede="One warm-neutral gray ramp and one green accent, in a light and a dark theme that follow the system setting. Each swatch shows the light theme on the left and the dark theme on the right."
+      lede="One warm-neutral gray ramp and one green accent, in a light and a dark theme that follow the system setting unless the viewer picks one. Each swatch shows the light theme on the left and the dark theme on the right."
     >
       <Block title="Core">
         <ul className="grid grid-cols-2 gap-4 lg:grid-cols-5">
@@ -324,15 +328,17 @@ function ColorSection({ tokens }: { tokens: BrandTokens }) {
             </li>
           ))}
           <li className="col-span-2 flex flex-col border border-line bg-surface lg:col-span-1">
-            <div
-              className="h-28 border-b border-line"
-              style={{ background: `linear-gradient(180deg, ${LANDING_DITHER}, ${LANDING_BLACK} 85%)` }}
-            />
+            <div className="grid h-28 grid-cols-2 border-b border-line">
+              {THEMES.map((theme) => (
+                <div key={theme} style={{ background: landingFade(tokens, theme) }} />
+              ))}
+            </div>
             <div className="p-3">
               <div className="text-base font-semibold text-ink">Landing</div>
+              {/* Both themes' values are under Landing, below. */}
               <dl className="grid grid-cols-[36px_minmax(0,1fr)] items-baseline gap-x-2 pt-1">
-                <ValueRow label="Base" value={LANDING_BLACK} />
-                <ValueRow label="Fade" value={LANDING_DITHER} />
+                <ValueRow label="Base" value="--landing-bg" />
+                <ValueRow label="Fade" value="--landing-fade" />
               </dl>
             </div>
           </li>
@@ -563,14 +569,14 @@ function IconSection() {
     <Section
       id="icons"
       title="Iconography"
-      lede="Two small line-icon sets drawn in the current text color, both with round caps and joins."
+      lede="Two small sets of Phosphor icons (phosphoricons.com), drawn in the current text color."
     >
-      <Block title="Interface" note="16px grid, 1.5px stroke. Kept small on purpose: add to the set only when nothing fits.">
+      <Block title="Interface" note="Bold weight: a 1.5px stroke at 16px. Kept small on purpose: add to the set only when nothing fits.">
         <UiIconGrid />
       </Block>
       <Block
         title="Component glyphs"
-        note="24px grid, 1.6px stroke. On the canvas each glyph takes its component type's color, on a tile of that color at 14%."
+        note="Regular weight: a 1.5px stroke at 24px. On the canvas each glyph takes its component type's color, on a tile of that color at 14%."
       >
         <ul className="grid grid-cols-3 border-l border-t border-line sm:grid-cols-5 lg:grid-cols-8">
           {Object.entries(GLYPHS).map(([name, markup]) => (
@@ -579,7 +585,7 @@ function IconSection() {
               className="flex flex-col items-center gap-2 border-b border-r border-line px-2 py-4 text-ink"
             >
               <svg
-                viewBox="0 0 24 24"
+                viewBox={GLYPH_VIEWBOX}
                 width={24}
                 height={24}
                 aria-hidden

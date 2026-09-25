@@ -9,7 +9,14 @@ import {
   type PayloadNode,
 } from "./types";
 import { componentPaths, findComponent } from "./validate";
-import { LEAF_SIZE, PLANE_INNER_ORIGIN, layoutMap } from "./layout";
+import {
+  LEAF_SIZE,
+  PLANE_INNER_MARGIN,
+  PLANE_INNER_ORIGIN,
+  autoLayout,
+  effectiveDisplay,
+  layoutMap,
+} from "./layout";
 
 /**
  * Pure AST transforms — the single mutation path for every canvas edit.
@@ -31,23 +38,30 @@ const childrenAt = (doc: ArchDoc, parent: readonly string[]): ComponentNode[] =>
   return node.children;
 };
 
-/** Generate a fresh snake_case id in a scope, seeded from a type tag or name. */
-export function freshId(
-  doc: ArchDoc,
-  parent: readonly string[],
-  seed: string,
-): string {
+/** A snake_case id from `seed` that isn't in `taken` (suffixing _2, _3…). */
+function uniqueId(taken: ReadonlySet<string>, seed: string): string {
   const base =
     seed
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, "_")
       .replace(/^_+|_+$/g, "")
       .replace(/^[0-9]+/, "") || "component";
-  const siblings = new Set(childrenAt(doc, parent).map((c) => c.id));
-  if (!siblings.has(base)) return base;
-  for (let i = 2; ; i++) {
-    if (!siblings.has(`${base}_${i}`)) return `${base}_${i}`;
+  if (!taken.has(base)) return base;
+  // A clash on an id that already ends in a number counts on from it (app_2 → app_3).
+  const numbered = /^(.*[a-z])_(\d+)$/.exec(base);
+  const stem = numbered ? numbered[1]! : base;
+  for (let i = numbered ? Number(numbered[2]) + 1 : 2; ; i++) {
+    if (!taken.has(`${stem}_${i}`)) return `${stem}_${i}`;
   }
+}
+
+/** Generate a fresh snake_case id in a scope, seeded from a type tag or name. */
+export function freshId(
+  doc: ArchDoc,
+  parent: readonly string[],
+  seed: string,
+): string {
+  return uniqueId(new Set(childrenAt(doc, parent).map((c) => c.id)), seed);
 }
 
 export interface AddComponentOptions {
@@ -292,12 +306,11 @@ export function setDisplay(
 ): ArchDoc {
   const next = clone(doc);
   const entry = entryFor(next, path);
-  const wasIcon = entry.display === "icon";
   entry.display = display;
+  // An icon is leaf-sized; an expanded plane drops that size so auto-layout
+  // fits it around its children instead of leaving them spilling out.
   if (display === "icon") entry.size = LEAF_SIZE;
-  // Expanding: drop the icon's footprint so auto-layout sizes the plane to its
-  // children (and moves aside whatever the bigger plane now overlaps).
-  else if (wasIcon) delete entry.size;
+  else delete entry.size;
   return next;
 }
 
@@ -406,4 +419,350 @@ export function reparentComponent(
           return next;
         })();
   return moved;
+}
+
+/** Point the connection at `index` at new endpoints (dragging either end of an edge). */
+export function setConnectionEndpoints(
+  doc: ArchDoc,
+  index: number,
+  source: readonly string[],
+  target: readonly string[],
+): ArchDoc {
+  if (!doc.connections[index]) throw new Error(`No connection at index ${index}.`);
+  const paths = componentPaths(doc);
+  for (const p of [source, target]) {
+    if (!paths.has(pathToString(p)))
+      throw new Error(`Connection endpoint '${pathToString(p)}' does not exist.`);
+  }
+  if (pathToString(source) === pathToString(target))
+    throw new Error("A component cannot connect to itself.");
+  const next = clone(doc);
+  const conn = next.connections[index]!;
+  conn.source = [...source];
+  conn.target = [...target];
+  return next;
+}
+
+/* ------------------------------------------------ Multi-component edits */
+
+type Paths = readonly (readonly string[])[];
+
+/** Existing paths, deduped, minus any nested under another one in the set. */
+function outermost(doc: ArchDoc, paths: Paths): string[][] {
+  const all = componentPaths(doc);
+  const keys = [...new Set(paths.map((p) => pathToString(p)))].filter((k) => all.has(k));
+  return keys
+    .filter((k) => !keys.some((q) => q !== k && k.startsWith(q + ".")))
+    .map((k) => k.split("."));
+}
+
+/** Grid position in the root's frame: plane children are parent-relative, so sum `at` down the path. */
+function absoluteAt(
+  layout: Map<string, LayoutEntry>,
+  path: readonly string[],
+): [number, number] {
+  let x = 0;
+  let y = 0;
+  for (let i = 1; i <= path.length; i++) {
+    const at = layout.get(pathToString(path.slice(0, i)))?.at;
+    if (at) {
+      x += at[0];
+      y += at[1];
+    }
+  }
+  return [x, y];
+}
+
+const commonPrefix = (a: readonly string[], b: readonly string[]): string[] => {
+  const out: string[] = [];
+  for (let i = 0; i < Math.min(a.length, b.length) && a[i] === b[i]; i++) out.push(a[i]!);
+  return out;
+};
+
+const topLeft = (ats: readonly (readonly [number, number])[]): [number, number] => [
+  Math.min(...ats.map((a) => a[0])),
+  Math.min(...ats.map((a) => a[1])),
+];
+
+/** Rewrite `p` if it sits under one of the moved roots (`[from, to]` pairs); null otherwise. */
+const remapUnder = (
+  p: readonly string[],
+  moves: readonly (readonly [readonly string[], readonly string[]])[],
+): string[] | null => {
+  for (const [from, to] of moves) if (isUnder(p, from)) return [...to, ...p.slice(from.length)];
+  return null;
+};
+
+/**
+ * Copy components, with everything inside them, into a standalone document:
+ * the clipboard format. The selected components become its roots (ids
+ * de-duplicated), connections between them come along and connections that
+ * leave the selection don't, and the layout keeps their arrangement with the
+ * top-left one at [0, 0]. Paths nested under another selected path are
+ * ignored (they come with their parent).
+ */
+export function extractFragment(doc: ArchDoc, paths: Paths): ArchDoc {
+  const laid = autoLayout(doc);
+  const layout = layoutMap(laid);
+  const roots = outermost(laid, paths);
+  const out: ArchDoc = {
+    kind: "doc",
+    title: doc.title,
+    version: doc.version,
+    components: [],
+    connections: [],
+    layout: [],
+  };
+  if (roots.length === 0) return out;
+  const abs = roots.map((p) => absoluteAt(layout, p));
+  const [minX, minY] = topLeft(abs);
+  const taken = new Set<string>();
+  const moves: [string[], string[]][] = [];
+  roots.forEach((path, i) => {
+    const node = clone(findComponent(laid, path)!);
+    node.id = uniqueId(taken, node.id);
+    taken.add(node.id);
+    out.components.push(node);
+    moves.push([path, [node.id]]);
+    const own = layout.get(pathToString(path));
+    out.layout.push({
+      kind: "layout-entry",
+      path: [node.id],
+      at: [abs[i]![0] - minX, abs[i]![1] - minY],
+      ...(own?.size ? { size: [own.size[0], own.size[1]] as [number, number] } : {}),
+      ...(own?.display ? { display: own.display } : {}),
+      span: ZERO_SPAN,
+    });
+  });
+  for (const e of laid.layout) {
+    const to = remapUnder(e.path, moves);
+    if (to && to.length > 1) out.layout.push({ ...clone(e), path: to, span: ZERO_SPAN });
+  }
+  for (const c of laid.connections) {
+    const source = remapUnder(c.source, moves);
+    const target = remapUnder(c.target, moves);
+    if (source && target) out.connections.push({ ...clone(c), source, target, span: ZERO_SPAN });
+  }
+  return out;
+}
+
+/**
+ * Paste a fragment (any document; normally one from extractFragment) into
+ * `parent`. Root ids that clash with a sibling get fresh ones, connections
+ * whose ends don't resolve inside the fragment are dropped, and the roots
+ * keep their arrangement with the top-left one at `at` (default: where the
+ * fragment's own layout has it). Returns the pasted roots' paths.
+ */
+export function insertFragment(
+  doc: ArchDoc,
+  fragment: ArchDoc,
+  parent: readonly string[],
+  at?: [number, number],
+): { doc: ArchDoc; paths: string[][] } {
+  const next = clone(doc);
+  const siblings = childrenAt(next, parent);
+  if (fragment.components.length === 0) return { doc: next, paths: [] };
+  const frag = autoLayout(fragment);
+  const fragLayout = layoutMap(frag);
+  const fragPaths = componentPaths(frag);
+  const [minX, minY] = topLeft(frag.components.map((c) => fragLayout.get(c.id)?.at ?? [0, 0]));
+  let origin: [number, number] = at ?? [minX, minY];
+  if (parent.length > 0)
+    origin = [
+      Math.max(origin[0], PLANE_INNER_ORIGIN[0]),
+      Math.max(origin[1], PLANE_INNER_ORIGIN[1]),
+    ];
+
+  const taken = new Set(siblings.map((c) => c.id));
+  const moves: [string[], string[]][] = [];
+  const paths: string[][] = [];
+  for (const c of frag.components) {
+    const node = clone(c);
+    node.id = uniqueId(taken, c.id);
+    taken.add(node.id);
+    siblings.push(node);
+    const path = [...parent, node.id];
+    moves.push([[c.id], path]);
+    paths.push(path);
+  }
+  for (const e of frag.layout) {
+    const to = remapUnder(e.path, moves);
+    if (!to) continue;
+    const entry: LayoutEntry = { ...clone(e), path: to, span: ZERO_SPAN };
+    if (e.path.length === 1 && e.at)
+      entry.at = [origin[0] + e.at[0] - minX, origin[1] + e.at[1] - minY];
+    next.layout.push(entry);
+  }
+  for (const c of frag.connections) {
+    if (!fragPaths.has(pathToString(c.source)) || !fragPaths.has(pathToString(c.target)))
+      continue;
+    next.connections.push({
+      ...clone(c),
+      source: remapUnder(c.source, moves)!,
+      target: remapUnder(c.target, moves)!,
+      span: ZERO_SPAN,
+    });
+  }
+  for (const p of paths) growAncestors(next, p);
+  return { doc: next, paths };
+}
+
+export interface GroupOptions {
+  id?: string;
+  /** Display name; defaults to "Group". */
+  name?: string;
+  type?: string;
+}
+
+/**
+ * Wrap components in a new container, created in their closest common parent
+ * (where the first of them sat) and sized around them. Everything keeps its
+ * place on the canvas and its connections. Returns the container's path.
+ */
+export function groupComponents(
+  doc: ArchDoc,
+  paths: Paths,
+  opts: GroupOptions = {},
+): { doc: ArchDoc; path: string[] } {
+  const laid = autoLayout(doc);
+  const layout = layoutMap(laid);
+  const roots = outermost(laid, paths);
+  if (roots.length === 0) throw new Error("Nothing to group.");
+  const parent = roots.map((p) => p.slice(0, -1)).reduce(commonPrefix);
+  const base = absoluteAt(layout, parent);
+  const rects = roots.map((p) => {
+    const [x, y] = absoluteAt(layout, p);
+    return {
+      path: p,
+      at: [x - base[0], y - base[1]] as [number, number],
+      size: layout.get(pathToString(p))?.size ?? LEAF_SIZE,
+    };
+  });
+  const [minX, minY] = topLeft(rects.map((r) => r.at));
+  const maxX = Math.max(...rects.map((r) => r.at[0] + r.size[0]));
+  const maxY = Math.max(...rects.map((r) => r.at[1] + r.size[1]));
+  let at: [number, number] = [minX - PLANE_INNER_ORIGIN[0], minY - PLANE_INNER_ORIGIN[1]];
+  if (parent.length > 0)
+    at = [Math.max(at[0], PLANE_INNER_ORIGIN[0]), Math.max(at[1], PLANE_INNER_ORIGIN[1])];
+  const size: [number, number] = [
+    maxX - at[0] + PLANE_INNER_MARGIN[0],
+    maxY - at[1] + PLANE_INNER_MARGIN[1],
+  ];
+
+  const name = opts.name ?? "Group";
+  const { doc: withGroup, path } = addComponent(laid, parent, {
+    id: opts.id ?? freshId(laid, parent, name),
+    name,
+    ...(opts.type !== undefined ? { type: opts.type } : {}),
+    at,
+    size,
+  });
+  // Take the place of the first grouped sibling, so document order reads naturally.
+  const siblings = childrenAt(withGroup, parent);
+  const first = siblings.findIndex((c) =>
+    roots.some((r) => r.length === parent.length + 1 && r[parent.length] === c.id),
+  );
+  if (first >= 0) siblings.splice(first, 0, siblings.pop()!);
+
+  let next = withGroup;
+  for (const r of rects)
+    next = reparentComponent(next, r.path, path, [r.at[0] - at[0], r.at[1] - at[1]]);
+  return { doc: next, path };
+}
+
+/**
+ * Re-run auto-layout on components and everything inside them, leaving the
+ * rest of the canvas where it is. Siblings are arranged among themselves and
+ * keep their top-left corner; when they're every child of their parent they
+ * start at its origin instead, and a parent plane is resized to fit them.
+ * Containers keep their icon/plane display.
+ */
+export function relayoutComponents(doc: ArchDoc, paths: Paths): ArchDoc {
+  const laid = autoLayout(doc);
+  const layout = layoutMap(laid);
+  const byParent = new Map<string, Set<string>>();
+  for (const r of outermost(laid, paths)) {
+    const key = pathToString(r.slice(0, -1));
+    byParent.set(key, (byParent.get(key) ?? new Set()).add(r[r.length - 1]!));
+  }
+
+  const next = clone(laid);
+  for (const [key, ids] of byParent) {
+    const parent = key === "" ? [] : key.split(".");
+    const siblings = childrenAt(laid, parent);
+    const chosen = siblings.filter((c) => ids.has(c.id));
+    const all = chosen.length === siblings.length;
+    const chosenPaths = chosen.map((c) => [...parent, c.id]);
+    const under = (p: readonly string[]) => chosenPaths.some((cp) => isUnder(p, cp));
+    const strip = (p: readonly string[]) => p.slice(parent.length);
+
+    const out = autoLayout({
+      ...laid,
+      components: clone(chosen),
+      connections: laid.connections
+        .filter((c) => under(c.source) && under(c.target))
+        .map((c) => ({ ...clone(c), source: strip(c.source), target: strip(c.target) })),
+      layout: laid.layout
+        .filter((e) => e.display !== undefined && under(e.path))
+        .map((e) => ({ kind: "layout-entry", path: strip(e.path), display: e.display, span: ZERO_SPAN })),
+    });
+    const outLayout = layoutMap(out);
+    const before = topLeft(chosenPaths.map((p) => layout.get(pathToString(p))?.at ?? [0, 0]));
+    const after = topLeft(chosen.map((c) => outLayout.get(c.id)?.at ?? [0, 0]));
+    const anchor: readonly [number, number] = all
+      ? parent.length > 0
+        ? PLANE_INNER_ORIGIN
+        : [0, 0]
+      : before;
+
+    next.layout = next.layout.filter((e) => !under(e.path));
+    for (const e of out.layout) {
+      const entry: LayoutEntry = { ...e, path: [...parent, ...e.path], span: ZERO_SPAN };
+      if (e.path.length === 1 && e.at)
+        entry.at = [e.at[0] - after[0] + anchor[0], e.at[1] - after[1] + anchor[1]];
+      next.layout.push(entry);
+    }
+
+    if (all && parent.length > 0) {
+      const entry = entryFor(next, parent);
+      if (effectiveDisplay(findComponent(next, parent)!, entry) === "plane") {
+        const placed = layoutMap(next);
+        let w = 0;
+        let h = 0;
+        for (const p of chosenPaths) {
+          const e = placed.get(pathToString(p))!;
+          w = Math.max(w, e.at![0] + e.size![0]);
+          h = Math.max(h, e.at![1] + e.size![1]);
+        }
+        entry.size = [w + PLANE_INNER_MARGIN[0], h + PLANE_INNER_MARGIN[1]];
+      }
+      growAncestors(next, parent);
+    } else {
+      for (const p of chosenPaths) growAncestors(next, p);
+    }
+  }
+  return next;
+}
+
+/**
+ * Copy components (with everything inside them and the connections between
+ * them) next to the originals: into their closest common parent, shifted by
+ * `offset` grid cells. Returns the copies' paths.
+ */
+export function duplicateComponents(
+  doc: ArchDoc,
+  paths: Paths,
+  offset: [number, number] = [1, 1],
+): { doc: ArchDoc; paths: string[][] } {
+  const laid = autoLayout(doc);
+  const layout = layoutMap(laid);
+  const roots = outermost(laid, paths);
+  if (roots.length === 0) return { doc: laid, paths: [] };
+  const parent = roots.map((p) => p.slice(0, -1)).reduce(commonPrefix);
+  const base = absoluteAt(layout, parent);
+  const [x, y] = topLeft(roots.map((p) => absoluteAt(layout, p)));
+  return insertFragment(laid, extractFragment(laid, roots), parent, [
+    x - base[0] + offset[0],
+    y - base[1] + offset[1],
+  ]);
 }

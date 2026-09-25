@@ -41,6 +41,7 @@ import {
   Icon,
   IconButton,
   Input,
+  Kbd,
   Menu,
   PropertyRow,
   Section,
@@ -48,6 +49,7 @@ import {
   SidePanel,
   TextArea,
   cx,
+  type MenuItem,
 } from "./ui";
 
 export type Selection =
@@ -582,11 +584,99 @@ function ConnectionInspector({
   );
 }
 
+/* ---------------------------------------------------------- Multi-select */
+
+/** Several things selected at once: what they are, and what can be done to all of them. */
+export interface MultiSelection {
+  components: { path: string; name: string; type?: string }[];
+  connections: number;
+  actions: (MenuItem | "separator")[];
+}
+
+function MultiInspector({
+  multi,
+  onSelect,
+  onClose,
+}: {
+  multi: MultiSelection;
+  onSelect: (s: Selection) => void;
+  onClose: () => void;
+}) {
+  const parts = [
+    multi.components.length > 0 &&
+      `${multi.components.length} component${multi.components.length === 1 ? "" : "s"}`,
+    multi.connections > 0 && `${multi.connections} connection${multi.connections === 1 ? "" : "s"}`,
+  ].filter(Boolean);
+  return (
+    <div className="flex h-full flex-col">
+      <div className="flex h-11 shrink-0 items-center gap-2 border-b border-line px-3">
+        <span className="min-w-0 flex-1 truncate text-base font-semibold">
+          {parts.join(", ")} selected
+        </span>
+        <IconButton label="Clear selection" onClick={onClose}>
+          <Icon.Close />
+        </IconButton>
+      </div>
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        <Section title="Actions">
+          <div className="flex flex-col">
+            {multi.actions.map((a, i) =>
+              a === "separator" ? (
+                <div key={i} className="my-1 h-px bg-line" />
+              ) : (
+                <button
+                  key={a.label}
+                  type="button"
+                  disabled={a.disabled}
+                  onClick={a.onSelect}
+                  className={cx(
+                    "flex h-8 w-full items-center gap-2 rounded-md px-2 text-left text-sm transition-colors duration-75 disabled:opacity-40",
+                    a.danger ? "text-danger hover:bg-danger-soft" : "text-ink hover:bg-surface-2",
+                  )}
+                >
+                  <span className="flex w-4 shrink-0 items-center justify-center text-ink-2 [&>svg]:h-3.5 [&>svg]:w-3.5">
+                    {a.icon}
+                  </span>
+                  <span className="min-w-0 flex-1 truncate">{a.label}</span>
+                  {a.shortcut && <Kbd>{a.shortcut}</Kbd>}
+                </button>
+              ),
+            )}
+          </div>
+        </Section>
+        {multi.components.length > 0 && (
+          <Section title="Components">
+            <div className="flex flex-col">
+              {multi.components.map((c) => (
+                <button
+                  key={c.path}
+                  type="button"
+                  title="Select only this one"
+                  onClick={() => onSelect({ kind: "component", path: c.path })}
+                  className="flex h-8 w-full items-center gap-2 rounded-md px-2 text-left transition-colors duration-75 hover:bg-surface-2"
+                >
+                  <Glyph tag={c.type} size={14} />
+                  <span className="min-w-0 flex-1 truncate text-sm text-ink">{c.name}</span>
+                  <span className="mono shrink-0 truncate text-xs text-ink-3">{c.path}</span>
+                </button>
+              ))}
+            </div>
+          </Section>
+        )}
+        <p className="px-3 py-2.5 text-xs text-ink-3">
+          Shift-drag on the canvas to box-select; shift- or ⌘-click to add and remove.
+        </p>
+      </div>
+    </div>
+  );
+}
+
 /* ---------------------------------------------------------------- Panel */
 
 export function DetailPanel({
   doc,
   selection,
+  multi = null,
   mutate,
   onSelect,
   onDrillIn,
@@ -595,6 +685,8 @@ export function DetailPanel({
 }: {
   doc: ArchDoc;
   selection: Selection;
+  /** Several things selected (selection is then null). */
+  multi?: MultiSelection | null;
   mutate: (fn: (d: ArchDoc) => ArchDoc) => void;
   onSelect: (s: Selection) => void;
   /** Focus the canvas on a container's children (the touch stand-in for double-click). */
@@ -603,11 +695,13 @@ export function DetailPanel({
   /** Linked repository: turns relative `src` paths into GitHub links. */
   repo?: RepoLink | null;
 }) {
-  if (selection === null) return null;
+  if (selection === null && multi === null) return null;
   // Desktop: a right-hand column. Phones: a bottom sheet over the canvas.
   return (
     <SidePanel resizable defaultWidth={480}>
-      {selection.kind === "component" ? (
+      {selection === null ? (
+        <MultiInspector multi={multi!} onSelect={onSelect} onClose={() => onSelect(null)} />
+      ) : selection.kind === "component" ? (
         <ComponentInspector
           key={selection.path}
           doc={doc}
