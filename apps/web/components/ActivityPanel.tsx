@@ -84,16 +84,16 @@ function CommitAvatar({ commit }: { commit: GitHubCommit }) {
 }
 
 function Avatar({ author }: { author: Author }) {
-  const agent = author.kind === "agent";
+  const other = author.kind !== "user";
   return (
     <span
       className={cx(
         "flex h-6 w-6 shrink-0 items-center justify-center rounded-full [&>svg]:h-3.5 [&>svg]:w-3.5",
-        agent ? "bg-accent-soft text-accent" : "bg-surface-2 text-ink-2",
+        other ? "bg-accent-soft text-accent" : "bg-surface-2 text-ink-2",
       )}
-      title={authorLabel(author)}
+      title={author.kind === "git" ? `${authorLabel(author)}, via GitHub` : authorLabel(author)}
     >
-      {agent ? <Icon.Bot /> : <Icon.User />}
+      {author.kind === "git" ? <GitHubMark /> : author.kind === "agent" ? <Icon.Bot /> : <Icon.User />}
     </span>
   );
 }
@@ -202,9 +202,12 @@ function HistoryTab({
     const out: TimelineItem[] = [];
     if (filter !== "code")
       for (const rev of revisions) out.push({ kind: "revision", at: rev.createdAt, rev });
+    // A revision imported from a commit already stands for it (and links to it).
+    const imported = new Set(revisions.flatMap((r) => (r.commit ? [r.commit.sha] : [])));
     if (filter !== "architecture" && repo)
       for (const commit of commits.commits)
-        out.push({ kind: "commit", at: new Date(commit.date).getTime(), commit });
+        if (filter === "code" || !imported.has(commit.sha))
+          out.push({ kind: "commit", at: new Date(commit.date).getTime(), commit });
     return out.sort((a, b) => b.at - a.at);
   }, [revisions, commits.commits, filter, repo]);
 
@@ -225,9 +228,18 @@ function HistoryTab({
             {repoKey(repo)}
             <span className="text-ink-3">@{repo.branch}</span>
           </a>
-          <Button size="sm" variant="ghost" className="ml-auto" onClick={onLinkRepo}>
-            Change
-          </Button>
+          {repo.path ? (
+            // Stored in a file: the header's GitHub control moves or stops it.
+            <Chip className="ml-auto shrink-0">
+              <span className="mono max-w-[140px] truncate font-normal" title={`Stored in ${repo.path}`}>
+                {repo.path}
+              </span>
+            </Chip>
+          ) : (
+            <Button size="sm" variant="ghost" className="ml-auto" onClick={onLinkRepo}>
+              Change
+            </Button>
+          )}
         </div>
       ) : (
         <div>
@@ -363,6 +375,19 @@ function HistoryTab({
                     <span className="shrink-0 text-xs text-ink-3">
                       {relativeTime(rev.createdAt, now)}
                     </span>
+                    {rev.commit && (
+                      <a
+                        href={rev.commit.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="mono ml-auto inline-flex shrink-0 items-center gap-0.5 text-xs text-ink-3 hover:text-ink hover:underline"
+                        title="Imported from this commit"
+                      >
+                        {rev.commit.sha.slice(0, 7)}
+                        <Icon.External className="h-2.5 w-2.5" />
+                      </a>
+                    )}
                   </span>
                   {rev.summary && (
                     <span className="line-clamp-2 block text-sm text-ink-2">{rev.summary}</span>
@@ -558,7 +583,8 @@ export function ActivityPanel({
   repo,
   onLinkRepo,
 }: ActivityPanelProps) {
-  const commits = useCommits(repo);
+  // Refresh the timeline when the synced commit moves (an import or a publish).
+  const commits = useCommits(repo, repo?.base?.commit);
   const findings = activity.drift?.findings.length ?? 0;
   return (
     <SidePanel tall resizable defaultWidth={512}>

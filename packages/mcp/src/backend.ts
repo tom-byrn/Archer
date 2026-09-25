@@ -77,8 +77,13 @@ export interface RepoLink {
   owner: string;
   name: string;
   branch: string;
+  /** Set when the project is stored in this .arch file (apps/web/lib/repoSync.ts). */
   path?: string;
   linkedAt: number;
+  /** The file as last synced; the draft is whatever the project changes on top of it. */
+  base?: { commit: string; blob: string; source: string; at: number };
+  pr?: { number: number; url: string; branch: string; openedAt: number };
+  incoming?: { commit: string; conflicts: string[] };
 }
 export interface ProjectDoc extends ProjectSummary {
   source: string;

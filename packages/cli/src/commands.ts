@@ -354,6 +354,8 @@ export async function push(
     }
     saveLink(file, saved.id);
     console.log(`${projectId ? "Updated" : "Created"} "${saved.title}" — ${saved.editor_url}`);
+    // A project stored in a repository file: the push only reached its draft.
+    if ("note" in saved && typeof saved.note === "string") console.error(saved.note);
     return EXIT.ok;
   });
 }
@@ -370,12 +372,17 @@ export async function pull(
       rethrowMissingProject(e, projectId),
     ),
   );
-  if (!opts.force && existsSync(file) && readSource(file) !== project.source) {
+  // A project stored in a repository file keeps its layout in Archer: the file
+  // only holds the architecture, exactly as publishing writes it.
+  const source = project.repository?.path
+    ? format(parse(project.source).doc, { stripLayout: true })
+    : project.source;
+  if (!opts.force && existsSync(file) && readSource(file) !== source) {
     // Canonical form differs from hand-written text even with no real edits, so
     // we can't tell "stale" from "has local work" — make overwriting explicit.
     throw new UsageError(`${file} differs from the project — pass --force to overwrite it.`);
   }
-  writeFileSync(file, project.source);
+  writeFileSync(file, source);
   saveLink(file, projectId);
   console.log(`${file}: pulled "${project.title}"`);
   return EXIT.ok;

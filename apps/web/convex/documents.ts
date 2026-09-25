@@ -20,7 +20,16 @@ export const list = query({
       .collect();
     return docs
       .sort((a, b) => b.updatedAt - a.updatedAt)
-      .map(({ _id, title, updatedAt, source, repo }) => ({ _id, title, updatedAt, source, repo }));
+      .map(({ _id, title, updatedAt, source, repo }) => ({
+        _id,
+        title,
+        updatedAt,
+        source,
+        // Where it's linked or stored; the sync bookkeeping stays with the document.
+        repo: repo
+          ? { owner: repo.owner, name: repo.name, branch: repo.branch, linkedAt: repo.linkedAt, ...(repo.path ? { path: repo.path } : {}) }
+          : undefined,
+      }));
   },
 });
 
@@ -46,7 +55,17 @@ export const getPublic = query({
     if (!doc) return null;
     // Members get an "open in editor" affordance; everyone else just views.
     const role = await roleFor(ctx, doc.workspaceId);
-    return { _id: doc._id, title: doc.title, source: doc.source, updatedAt: doc.updatedAt, repo: doc.repo ?? null, role };
+    // The repository and file are shown; sync bookkeeping (who linked it, drafts, PRs) is not.
+    const repo = doc.repo
+      ? {
+          owner: doc.repo.owner,
+          name: doc.repo.name,
+          branch: doc.repo.branch,
+          linkedAt: doc.repo.linkedAt,
+          ...(doc.repo.path ? { path: doc.repo.path } : {}),
+        }
+      : null;
+    return { _id: doc._id, title: doc.title, source: doc.source, updatedAt: doc.updatedAt, repo, role };
   },
 });
 
@@ -80,6 +99,8 @@ export async function recordRevision(
   title: string,
   who: Author,
   summary?: string,
+  /** The commit a "git" revision was imported from. */
+  commit?: { sha: string; url: string },
 ): Promise<Id<"revisions">> {
   const now = Date.now();
   let latest = await ctx.db
@@ -119,6 +140,7 @@ export async function recordRevision(
     createdAt: now,
     author: who,
     ...(summary ? { summary } : {}),
+    ...(commit ? { commit } : {}),
   });
 }
 
@@ -188,24 +210,37 @@ export const setRepo = mutation({
     id: v.id("documents"),
     workspaceId: v.string(),
     apiKey: v.optional(v.string()),
-    repo: v.union(
-      v.object({ owner: v.string(), name: v.string(), branch: v.string(), path: v.optional(v.string()) }),
-      v.null(),
-    ),
+    repo: v.union(v.object({ owner: v.string(), name: v.string(), branch: v.string() }), v.null()),
   },
   handler: async (ctx, { id, workspaceId, apiKey, repo }) => {
     await requireWorkspace(ctx, workspaceId, apiKey, "editor");
     const doc = await ctx.db.get(id);
     if (!doc || doc.workspaceId !== workspaceId) throw new Error("Document not found");
     if (repo === null) {
-      await ctx.db.patch(id, { repo: undefined });
+      // Unlinking a stored document also stops syncing it (repoSync.unlink keeps the link).
+      await ctx.db.patch(id, { repo: undefined, syncKey: undefined });
       return null;
     }
     const owner = repo.owner.trim();
     const name = repo.name.trim().replace(/\.git$/, "");
     if (!/^[A-Za-z0-9_.-]+$/.test(owner) || !/^[A-Za-z0-9_.-]+$/.test(name))
       throw new Error("Repository must be owner/name.");
-    const link = { owner, name, branch: repo.branch.trim() || "main", ...(repo.path ? { path: repo.path } : {}), linkedAt: Date.now() };
+    const branch = repo.branch.trim() || "main";
+    const stored = doc.repo?.path ? doc.repo : null;
+    if (stored) {
+      // A document stored in a repository file keeps its sync state; moving it
+      // to another repository or branch goes through repoSync.link.
+      const same =
+        stored.owner.toLowerCase() === owner.toLowerCase() &&
+        stored.name.toLowerCase() === name.toLowerCase() &&
+        stored.branch === branch;
+      if (!same)
+        throw new Error(
+          `This document is stored in ${stored.owner}/${stored.name}/${stored.path} on ${stored.branch}. Stop syncing it before linking another repository or branch.`,
+        );
+      return stored;
+    }
+    const link = { owner, name, branch, linkedAt: Date.now() };
     await ctx.db.patch(id, { repo: link });
     return link;
   },

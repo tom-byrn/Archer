@@ -53,7 +53,7 @@ backend.api -> backend.db @sql
 | `packages/cli` | The `archer` command (npm: `archerctl`): `check` / `fmt` for `.arch` files in CI and agent shells, `init`, `login`, `push` / `pull`, and `archer mcp` (stdio bridge to the hosted server). See [docs/cli.md](docs/cli.md). |
 | `apps/web` | Next.js app: React Flow canvas, palette, detail panel, live code pane, drill-down navigation, Convex persistence. |
 
-Docs: [language spec](docs/language-spec.md) · [MCP server](docs/mcp.md) · [CLI](docs/cli.md) · [product spec](docs/product-spec.md) · [roadmap](docs/roadmap.md). The site publishes the first three at [/language](https://archer.tombyrne.dev/language), [/docs/mcp](https://archer.tombyrne.dev/docs/mcp) (with a tool reference generated from the server) and [/docs/cli](https://archer.tombyrne.dev/docs/cli).
+Docs: [language spec](docs/language-spec.md) · [MCP server](docs/mcp.md) · [CLI](docs/cli.md) · [repo sync](docs/repo-sync.md) · [product spec](docs/product-spec.md) · [roadmap](docs/roadmap.md). The site publishes the first three at [/language](https://archer.tombyrne.dev/language), [/docs/mcp](https://archer.tombyrne.dev/docs/mcp) (with a tool reference generated from the server) and [/docs/cli](https://archer.tombyrne.dev/docs/cli).
 
 ## Run it
 
@@ -96,5 +96,9 @@ v1.1 — the full core loop works: design on the canvas (drag, connect,
 nest/drill down, detail panels with validated payloads), watch the `.arch`
 file update live, copy code + PNG for an agent — and agents get the same
 powers over MCP (validated writes, layout-preserving updates, custom types).
+A document can also be stored in a `.arch` file in its GitHub repository:
+agents edit the file alongside the code, the canvas follows the branch, and
+edits made on the canvas are published back as pull requests
+([repo sync](docs/repo-sync.md)).
 Next: real auth, sharing, per-technology payload validation (SQL linting
 etc.), multi-file documents.

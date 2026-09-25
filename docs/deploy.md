@@ -78,7 +78,26 @@ authorization server). There are no API keys. Setup:
                             # if that isn't the domain the CLI was built for
    ```
 
-## 5. Share images
+## 5. Repo sync (documents stored in a repository)
+
+Documents can be stored in a `.arch` file in a GitHub repository
+(`docs/repo-sync.md`). Reading and publishing use each user's Clerk GitHub
+token, so private repositories need the `repo` scope (step 2). For the canvas
+to follow pushes live, set a webhook secret and point GitHub at the app:
+
+1. `openssl rand -hex 32` → `GITHUB_WEBHOOK_SECRET` in the Vercel environment.
+2. Either add a **repository webhook** per repository (Settings → Webhooks:
+   payload URL `https://<your-domain>/api/github/webhook`, content type
+   `application/json`, that secret, events *Pushes* and *Pull requests*), or
+   create a **GitHub App** with the same URL and secret, permissions
+   *Contents* and *Pull requests* read & write (and *Metadata* read),
+   subscribed to *Push* and *Pull request*, and set `GITHUB_APP_ID` and
+   `GITHUB_APP_PRIVATE_KEY` (the PEM) in Vercel. Install the App on the
+   repositories whose documents should sync.
+
+Without a webhook, stored documents still catch up whenever someone opens them.
+
+## 6. Share images
 
 Any document with *Share → Anyone with the link* enabled is viewable at
 `/share/<slug>` and embeddable as an image:

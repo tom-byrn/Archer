@@ -52,13 +52,25 @@ Router + React Flow + Convex).
   typed in `mcp/src/contract.ts` and built with `satisfies` in `server.ts`.
   `packages/cli/test/account.test.ts` runs the CLI end to end against a
   stand-in OAuth server + the real tools over a fake Convex.
-- GitHub: documents can link a repo + branch (`documents.repo`; reserved
-  `path` for the future `.arch`-in-repo sync). ALL GitHub REST calls go
-  through `apps/web/lib/githubApi.ts` (pure client) via
-  `apps/web/lib/server/github.ts` (token = the user's Clerk GitHub OAuth token
-  from `getUserOauthAccessToken(userId, "github")`); routes live under
-  `app/api/github/*`. Clerk's default GitHub scopes read public repos only —
-  private repos need the `repo` scope on the Clerk GitHub connection.
+- GitHub: documents can link a repo + branch (`documents.repo`). With
+  `repo.path` set the document is *stored in* that `.arch` file — repo sync,
+  `docs/repo-sync.md`: the file on the branch is the truth, the document its
+  working copy (the draft is whatever differs from `repo.base`), and the file
+  holds architecture only (no layout block; positions stay in Archer). Rules
+  in `lib/repoSync.ts` (pure), the engine in `lib/server/repoSync.ts` (routes
+  `app/api/github/{files,projects,link,sync,publish,webhook}`), Convex side
+  `convex/repoSync.ts`, three-way merge `packages/lang/src/merge.ts`. Linking
+  and importing are server-only (`requireServiceUser`) because the server
+  first checks the user's own GitHub read access; the push webhook
+  (`GITHUB_WEBHOOK_SECRET`; optional GitHub App `GITHUB_APP_ID` +
+  `GITHUB_APP_PRIVATE_KEY`) finds documents with the bare server credential
+  (`requireServer`, its only use) and then acts as each document's linking
+  user. ALL GitHub REST calls go through `apps/web/lib/githubApi.ts` (pure
+  client) via `apps/web/lib/server/github.ts` (token = the user's Clerk GitHub
+  OAuth token from `getUserOauthAccessToken(userId, "github")`, or the App's
+  installation token); routes live under `app/api/github/*`. Clerk's default
+  GitHub scopes read public repos only — private repos (and publishing) need
+  the `repo` scope on the Clerk GitHub connection.
 - Landing page: `app/welcome` (static) renders `components/landing/*`.
   `middleware.ts` rewrites `/` to `/welcome` for signed-out visitors; signed-in
   users get the dashboard at `/`. The sandbox is the real `ArchCanvas` in

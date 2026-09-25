@@ -219,6 +219,13 @@ update at once. The main things agents do:
 - **Change a design.** The agent reads the project (`get_project`), edits the
   source and saves the whole document (`update_project`). Your arrangement of
   the canvas is kept.
+- **Work in a repository-stored project.** A project can live in a `.arch`
+  file in its GitHub repository (created *From GitHub* in the app, or moved
+  there with *Move to GitHub*). `get_project` then returns the file as
+  `repository.path`, with its sync state, and tells agents working in that
+  repository to edit the file and commit it with the code. `update_project`
+  still works, but only changes the project's unpublished draft (the result
+  says so), which a person publishes back to the repository as a pull request.
 - **Explain what changed.** `get_history` and `diff_project` show who changed
   what, and when. `get_revision` returns any past version, to compare or
   restore.

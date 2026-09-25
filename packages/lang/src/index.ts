@@ -69,3 +69,5 @@ export type {
   DocDiff,
   DiffSummary,
 } from "./diff";
+export { mergeDocs } from "./merge";
+export type { MergeConflict, MergeResult } from "./merge";

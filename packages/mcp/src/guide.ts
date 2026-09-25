@@ -84,6 +84,20 @@ fails, call \`get_workspace_info\` and relay what it reports.
    attributed to your client name — so **always pass a \`summary\`** to
    \`create_project\`/\`update_project\` saying what you changed and why.
 
+### Projects stored in a repository file
+A project can be stored in a \`.arch\` file in a GitHub repository instead of
+in Archer (\`get_project\` then returns \`repository.path\`). That file, on
+that branch, is the source of truth:
+- **Working in that repository? Edit the file, not the project.** Change it
+  in the same commit or pull request as the code it describes and validate
+  it with \`archer check\` (no sign-in needed). When your change reaches the
+  branch, the canvas follows on its own.
+- Write only architecture to the file: canonical form, **no layout block**
+  (canvas positions stay in Archer). \`format_source\` gives canonical form.
+- \`update_project\` on such a project saves to its **unpublished draft**; a
+  human publishes drafts back to the repository as a pull request. Use it
+  only when you have no checkout of the repository.
+
 ### Link components to code
 - The \`src "…"\` field inside a component body records where it lives:
   a repo-relative path (\`src "apps/api/src/billing"\`) or a URL. Set it

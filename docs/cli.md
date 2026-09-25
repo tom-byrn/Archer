@@ -276,6 +276,11 @@ canvas, and new ones are placed automatically. If the file has a `layout`
 block, its positions win over the canvas's: see
 [Round trips with the canvas](#round-trips-with-the-canvas).
 
+A project stored in a repository file is different: the file in the
+repository is the source of truth, and `push` only updates the project's
+unpublished draft (it says so). See
+[Projects stored in a repository](#projects-stored-in-a-repository).
+
 ### `archer pull`
 
 ```
@@ -292,7 +297,9 @@ archer pull shop.arch --project k57bmtyf4pmj3fmrbrz9hq7qwn6ypcp5
 
 If the file already exists and differs from the project, `pull` stops without
 changing it. `--force` overwrites it. The pulled document is canonical and
-ends with the `layout` block from the canvas.
+ends with the `layout` block from the canvas, except for a project stored in a
+repository file: that one is pulled without its `layout` block, exactly as the
+app publishes it, so the result is ready to commit.
 
 ```console
 $ archer pull shop.arch
@@ -486,6 +493,17 @@ block's positions replace the canvas's. A pulled file ends with a `layout`
 block, so pushing it later puts the components back where they were when you
 pulled. To send only the architecture, delete the `layout` block before
 pushing.
+
+### Projects stored in a repository
+
+A project can instead be stored in a `.arch` file in its GitHub repository
+(created *From GitHub* in the app, or moved there with *Move to GitHub*).
+That file, on its branch, is the source of truth: edit it and commit it with
+the code it describes, and gate it with the CI steps above. The canvas
+follows the branch, and edits made on the canvas come back to the repository
+as pull requests. There's nothing to push: `push` to such a project only
+updates its unpublished draft, and `pull` writes the architecture without
+the `layout` block, ready to commit.
 
 ### Agents with a shell but no MCP
 
