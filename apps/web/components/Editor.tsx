@@ -1239,8 +1239,10 @@ export function Editor({
                 width={260}
                 items={exportItems}
                 trigger={({ open, toggle }) => (
+                  // Stored in GitHub, the storage control's Publish is the main
+                  // action, so Export steps back and only one button is dark.
                   <Button
-                    variant="primary"
+                    variant={syncFile ? "secondary" : "primary"}
                     size="sm"
                     onClick={toggle}
                     aria-expanded={open}

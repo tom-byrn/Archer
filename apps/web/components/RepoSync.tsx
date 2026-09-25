@@ -7,7 +7,7 @@
  * Only stored documents get any of it; the sandbox never does.
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
@@ -44,6 +44,7 @@ import {
   Input,
   Menu,
   Segmented,
+  SplitButton,
   cx,
   relativeTime,
   type MenuItem,
@@ -193,8 +194,9 @@ const fileUrl = (f: StoredFile) => githubTreeUrl(f.owner, f.name, f.branch, f.pa
 
 /**
  * Where the document lives. Stored in Archer: a GitHub button offering Move to
- * GitHub. Stored in a file: its name, sync status and actions, plus Publish
- * when there's something to publish.
+ * GitHub. Stored in a file: one button whose label is the sync status (Synced,
+ * Conflict, Sync problem) and which becomes the primary Publish button while
+ * there's something to publish. Its menu names the file, repository and branch.
  */
 export function StorageControl({
   sync,
@@ -229,27 +231,18 @@ export function StorageControl({
     );
   }
 
-  const tone = status.kind === "conflict" ? "danger" : file.problem ? "warn" : status.kind === "draft" ? "warn" : "neutral";
-  const label =
-    status.kind === "conflict"
-      ? "Conflict"
-      : file.problem
-        ? "Sync problem"
-        : status.kind === "draft"
-          ? `${changeCount(status.summary)} unpublished`
-          : status.kind === "new"
-            ? "Not created yet"
-            : sync.syncing
-              ? "Syncing…"
-              : "Synced";
+  const where = `Stored in ${repoKey(file)}/${file.path} on ${file.branch}`;
+  const count = status.kind === "draft" ? changeCount(status.summary) : null;
+  // Publishing is also how a broken file gets fixed, so it outranks a sync
+  // problem here (the canvas banner and the menu still report it).
+  const canPublish = status.kind === "draft" || status.kind === "new";
+  const tone = status.kind === "conflict" ? "text-danger" : file.problem ? "text-warn" : undefined;
+  // While a sync runs the mark pulses and the label stays, so the header doesn't shift.
+  const mark = <GitHubMark className={cx(sync.syncing ? "animate-pulse text-ink-3" : tone)} />;
 
   const items: (MenuItem | "separator")[] = [
-    ...(file.problem
-      ? [{ label: "Sync problem", hint: file.problem.message, icon: <Icon.Warning />, onSelect: () => window.open(fileUrl(file), "_blank") }, "separator" as const]
-      : []),
     {
       label: "Open on GitHub",
-      hint: `${repoKey(file)}/${file.path} · ${file.branch}`,
       icon: <Icon.External />,
       onSelect: () => window.open(fileUrl(file), "_blank"),
     },
@@ -258,7 +251,7 @@ export function StorageControl({
       : []),
     {
       label: sync.syncing ? "Syncing…" : "Sync now",
-      hint: sync.error ?? (file.checkedAt ? `Checked ${relativeTime(file.checkedAt)}` : `Pull the latest ${file.path} from ${file.branch}`),
+      hint: sync.error ?? undefined,
       icon: <Icon.Restore />,
       disabled: sync.syncing,
       onSelect: () => void sync.sync(),
@@ -273,39 +266,100 @@ export function StorageControl({
     },
   ];
 
-  const canPublish = status.kind === "draft" || status.kind === "new";
   return (
-    <div className="flex items-center gap-1">
-      <Menu
-        width={300}
-        items={items}
-        trigger={({ open, toggle }) => (
-          <button
-            type="button"
+    <Menu
+      width={288}
+      header={<FileCard file={file} status={status} syncing={sync.syncing} />}
+      items={items}
+      trigger={({ open, toggle }) =>
+        canPublish ? (
+          <SplitButton
+            icon={mark}
+            onClick={onPublish}
+            title={
+              count !== null
+                ? `Publish ${count} change${count === 1 ? "" : "s"} to ${file.path} on ${file.branch}`
+                : `${file.path} isn't on ${file.branch} yet. Publishing creates it.`
+            }
+            menu={{ open, toggle, label: "More GitHub actions", title: where }}
+          >
+            {count !== null ? "Publish" : "Create file"}
+            {count !== null && (
+              <span className="flex h-4 min-w-4 items-center justify-center rounded-sm bg-bg/20 px-1 text-xs font-semibold">
+                {count}
+              </span>
+            )}
+          </SplitButton>
+        ) : (
+          <Button
+            size="sm"
+            icon={mark}
             onClick={toggle}
             aria-expanded={open}
-            title={`Stored in ${repoKey(file)}/${file.path} on ${file.branch}`}
-            className={cx(
-              "flex h-7 max-w-[340px] items-center gap-1.5 rounded-md border border-line px-2 text-sm transition-colors duration-100 hover:bg-surface-2",
-              open ? "bg-surface-2" : "bg-surface",
-            )}
+            title={where}
+            className="pr-2 aria-expanded:border-line-2 aria-expanded:bg-surface-2"
           >
-            <GitHubMark className={cx("h-3.5 w-3.5 shrink-0", sync.syncing ? "animate-pulse text-ink-3" : "text-ink-2")} />
-            <span className="mono min-w-0 truncate text-xs text-ink">{file.path}</span>
-            <Chip tone={tone} className="shrink-0">
-              {tone === "neutral" && status.kind === "synced" && !sync.syncing && <Icon.Check className="h-3 w-3" />}
-              {label}
-            </Chip>
-            {file.pr && <Chip tone="accent" className="hidden shrink-0 lg:inline-flex">PR #{file.pr.number}</Chip>}
-            <Icon.ChevronDown className="h-3.5 w-3.5 shrink-0 opacity-60" />
-          </button>
-        )}
-      />
-      {canPublish && (
-        <Button size="sm" variant="primary" icon={<Icon.Send />} onClick={onPublish} disabled={status.kind !== "new" && !!file.incoming}>
-          Publish
-        </Button>
-      )}
+            <span className={tone}>
+              {status.kind === "conflict" ? "Conflict" : file.problem ? "Sync problem" : "Synced"}
+            </span>
+            <Icon.ChevronDown className="h-3.5 w-3.5 opacity-60" />
+          </Button>
+        )
+      }
+    />
+  );
+}
+
+/** The top of the storage menu: the file, where it lives, and how the document stands with it. */
+function FileCard({ file, status, syncing }: { file: StoredFile; status: SyncStatus; syncing: boolean }) {
+  const n = status.kind === "draft" ? changeCount(status.summary) : 0;
+  const glyph = "h-3 w-3 shrink-0";
+  const line: { tone: string; icon?: ReactNode; text: string; detail?: string; title?: string } =
+    status.kind === "conflict"
+      ? { tone: "text-danger", icon: <Icon.Alert className={glyph} />, text: `Conflicts with changes on ${file.branch}` }
+      : file.problem
+        ? { tone: "text-warn", icon: <Icon.Warning className={glyph} />, text: file.problem.message }
+        : status.kind === "draft"
+          ? {
+              tone: "text-warn",
+              icon: <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-warn" />,
+              text: `${n} unpublished change${n === 1 ? "" : "s"}`,
+              detail: file.pr ? `PR #${file.pr.number} open` : undefined,
+              title: describeChanges(status.summary),
+            }
+          : status.kind === "new"
+            ? { tone: "text-ink-2", text: `Not on ${file.branch} yet` }
+            : syncing
+              ? { tone: "text-ink-3", text: `Checking ${file.branch}…` }
+              : {
+                  tone: "text-ink-2",
+                  icon: <Icon.Check className={cx(glyph, "text-accent")} />,
+                  text: "Synced",
+                  detail: file.checkedAt ? `checked ${relativeTime(file.checkedAt)}` : undefined,
+                };
+  return (
+    <div className="flex items-start gap-2.5 px-2 pb-1.5 pt-1.5">
+      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-surface-2 text-ink">
+        <GitHubMark className="h-4 w-4" />
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="mono truncate text-sm text-ink" title={`${repoKey(file)}/${file.path}`}>
+          {file.path}
+        </p>
+        <p className="flex items-center gap-1 text-xs text-ink-3">
+          <span className="truncate">{repoKey(file)}</span>
+          <span aria-hidden>·</span>
+          <Icon.Branch className="h-3 w-3 shrink-0" />
+          <span className="truncate">{file.branch}</span>
+        </p>
+        <p className={cx("flex items-center gap-1.5 pt-1.5 text-xs", line.tone)} title={line.title ?? line.text}>
+          {line.icon}
+          <span className="min-w-0 truncate">
+            {line.text}
+            {line.detail && <span className="text-ink-3"> · {line.detail}</span>}
+          </span>
+        </p>
+      </div>
     </div>
   );
 }
