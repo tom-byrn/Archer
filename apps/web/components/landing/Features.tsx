@@ -184,7 +184,7 @@ function Share() {
         <span className="mono min-w-0 flex-1 truncate text-sm text-ink-2">
           {host}/share/{SHARE_SLUG}
         </span>
-        <span className="border border-line bg-surface px-2 py-0.5 text-xs font-medium text-ink shadow-sm">
+        <span className="cursor-default border border-line bg-surface px-2 py-0.5 text-xs font-medium text-ink shadow-sm">
           Copy
         </span>
       </div>
