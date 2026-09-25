@@ -1,33 +1,32 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { Marked, Renderer } from "marked";
+import { DOCS_ORIGIN, DOC_PAGES, docMarkdown, sitePart, type DocPage, type DocSources } from "@archer/mcp/docs";
+import { createSlugger, type Slugger } from "@archer/mcp/markdown";
 import { SITE_URL } from "./site";
 
-// The docs pages under /docs render the repository's own docs/*.md files, so
-// the page and the file can't disagree. Server-only: it reads from disk when
-// the page is rendered (at build time; the pages are static).
+// The docs pages render the repository's own docs/*.md files, so the page and
+// the file can't disagree. Server-only: it reads from disk when the page is
+// rendered (at build time; the pages are static). The same files, as
+// markdown for agents, are each page's `.md` (see pageMarkdown).
 
-export type DocName = "mcp" | "cli";
+export { createSlugger, type Slugger };
 
-/** The site renders a docs file up to this marker; what follows is for contributors. */
-const SITE_END = "<!-- site:end";
-
-/** A file from the repository's docs/ folder, up to the site-end marker. */
-export function readDoc(name: DocName): string {
-  const text = readFileSync(join(process.cwd(), "..", "..", "docs", `${name}.md`), "utf8");
-  const end = text.indexOf(SITE_END);
-  return end === -1 ? text : text.slice(0, end);
+/** A page's file from the repository's docs/ folder, up to the site-end marker. */
+export function readDoc(page: keyof DocSources): string {
+  const file = DOC_PAGES.find((p) => p.page === page)!.file!;
+  return sitePart(readFileSync(join(process.cwd(), "..", "..", "docs", file), "utf8"));
 }
 
-/** The origin the docs files use for links to the site (they're read on GitHub and npm too). */
-const DOCS_ORIGIN = "https://archer.tombyrne.dev";
+/** Every docs file the site publishes. */
+export const readDocs = (): DocSources => ({ language: readDoc("language"), mcp: readDoc("mcp"), cli: readDoc("cli") });
+
+/** A docs page as markdown for agents: what its `.md` address serves. */
+export const pageMarkdown = (page: DocPage): Promise<string> =>
+  docMarkdown(page, { origin: SITE_URL, sources: readDocs() });
 
 /** Links between the docs files, and the pages that render them. */
-const DOC_PAGES: Record<string, string> = {
-  "mcp.md": "/docs/mcp",
-  "cli.md": "/docs/cli",
-  "language-spec.md": "/language",
-};
+const DOC_FILES = new Map(DOC_PAGES.flatMap((p) => (p.file ? [[p.file, p.path] as const] : [])));
 
 /**
  * A link from a docs file as the site serves it: a link to another docs file
@@ -35,37 +34,13 @@ const DOC_PAGES: Record<string, string> = {
  */
 export function siteHref(href: string): string {
   const file = /^([\w-]+\.md)(#.*)?$/.exec(href);
-  if (file && DOC_PAGES[file[1]!]) return DOC_PAGES[file[1]!]! + (file[2] ?? "");
+  const page = file && DOC_FILES.get(file[1]!);
+  if (page) return page + (file[2] ?? "");
   for (const origin of new Set([DOCS_ORIGIN, SITE_URL])) {
     if (href === origin) return "/";
     if (href.startsWith(`${origin}/`) || href.startsWith(`${origin}#`)) return href.slice(origin.length);
   }
   return href;
-}
-
-export type Slugger = (text: string) => string;
-
-/**
- * Heading ids the way GitHub makes them (github-slugger): lowercase, drop
- * punctuation and symbols, spaces to hyphens, and number repeats. So a link
- * like `cli.md#archer-push` works on GitHub and on the site alike.
- */
-export function createSlugger(): Slugger {
-  const seen = new Map<string, number>();
-  return (text) => {
-    const base = text
-      .toLowerCase()
-      .replace(/[^\p{L}\p{M}\p{N}\p{Pc}\- ]/gu, "")
-      .replace(/ /g, "-");
-    let slug = base;
-    while (seen.has(slug)) {
-      const n = seen.get(base)! + 1;
-      seen.set(base, n);
-      slug = `${base}-${n}`;
-    }
-    seen.set(slug, 0);
-    return slug;
-  };
 }
 
 export interface TocEntry {

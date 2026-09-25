@@ -8,14 +8,20 @@
     "./backend": "./src/backend.ts",
     "./analysis": "./src/analysis.ts",
     "./contract": "./src/contract.ts",
+    "./docFiles": "./src/docFiles.ts",
+    "./docPages": "./src/docPages.ts",
+    "./docs": "./src/docs.ts",
     "./examples": "./src/examples.ts",
     "./languageSpec": "./src/languageSpec.ts",
+    "./markdown": "./src/markdown.ts",
     "./reference": "./src/reference.ts",
-    "./remote": "./src/remote.ts"
+    "./remote": "./src/remote.ts",
+    "./toolReference": "./src/toolReference.ts"
   },
   "scripts": {
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "docs": "tsx scripts/docs.ts"
   },
   "dependencies": {
     "@archer/catalog": "workspace:*",

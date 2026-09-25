@@ -13,7 +13,8 @@ export const metadata: Metadata = {
   // The tab just says "Archer"; the longer title is for link previews.
   title: "Archer",
   description,
-  alternates: { canonical: "/" },
+  // For agents, the site in markdown: what Archer is and where its docs are.
+  alternates: { canonical: "/", types: { "text/markdown": "/llms.txt" } },
   openGraph: { title, description, url: "/", siteName: "Archer", type: "website" },
   twitter: { card: "summary_large_image", title, description },
 };

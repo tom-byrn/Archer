@@ -1,13 +1,20 @@
 import { Fragment } from "react";
+import {
+  RESOURCES_INTRO,
+  referenceIntro,
+  type CodeBlock,
+  type Reference,
+  type ToolEntry,
+} from "@archer/mcp/toolReference";
 import { renderInline } from "@/lib/docs";
 import { highlightArch } from "@/lib/highlightArch";
-import type { CodeBlock, Reference, ToolEntry } from "@/lib/toolReference";
 
 // The generated part of /docs/mcp: every tool as the server lists it, with its
 // example. Rendered inside the page's `.spec` article, so it takes its type
-// styles from there (and the `spec-*` classes in globals.css).
+// styles from there (and the `spec-*` classes in globals.css). Agents get the
+// same reference as markdown (referenceMarkdown, in the page's `.md`).
 
-/** Markdown we wrote (group intros, notes). */
+/** Markdown we wrote (intros, notes). */
 const Inline = ({ markdown, as: Tag = "p" }: { markdown: string; as?: "p" | "li" }) => (
   <Tag dangerouslySetInnerHTML={{ __html: renderInline(markdown) }} />
 );
@@ -107,14 +114,7 @@ function Tool({ tool }: { tool: ToolEntry }) {
 export function ToolReference({ reference }: { reference: Reference }) {
   return (
     <>
-      <p>
-        This part of the page is generated from the server itself (version {reference.version},{" "}
-        {reference.toolCount} tools). Each tool&apos;s title, description and
-        parameters are what your agent reads when it lists the tools, so the descriptions speak to the
-        agent. Every tool has an example call and its result, all in one scenario: you have a Personal
-        workspace and are an editor in the team workspace Acme, and <strong>Shop</strong> is a project
-        that Claude Code created and you then edited on the canvas.
-      </p>
+      <Inline markdown={referenceIntro(reference)} />
       <div className="spec-table">
         <table>
           <thead>
@@ -160,10 +160,7 @@ export function ToolReference({ reference }: { reference: Reference }) {
       <h3 id={reference.resourcesId}>
         <a href={`#${reference.resourcesId}`}>Resources</a>
       </h3>
-      <p>
-        Clients that support MCP resources can read the guide and the worked examples directly, without
-        a tool call.
-      </p>
+      <Inline markdown={RESOURCES_INTRO} />
       <dl className="spec-params">
         {reference.resources.map((r) => (
           <div key={r.uri}>

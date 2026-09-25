@@ -1,9 +1,8 @@
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { Resource, Tool } from "@modelcontextprotocol/sdk/types.js";
 import { REMOTE_SERVER_VERSION } from "./remote";
-import { registerArcherTools } from "./server";
+import { createArcherServer } from "./server";
 
 /**
  * The tool reference on the docs site (/docs/mcp). What a tools/list can say
@@ -24,8 +23,7 @@ export interface ServerDescription {
 
 /** The tools and resources exactly as an agent lists them. Needs no backend or sign-in. */
 export async function describeServer(): Promise<ServerDescription> {
-  const server = new McpServer({ name: "archer", version: REMOTE_SERVER_VERSION });
-  registerArcherTools(server);
+  const server = createArcherServer(REMOTE_SERVER_VERSION);
   const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
   await server.connect(serverTransport);
   const client = new Client({ name: "archer-docs", version: REMOTE_SERVER_VERSION });
@@ -192,10 +190,10 @@ const REVISION_CHANGES = {
 
 export const TOOL_GROUPS: readonly ToolGroup[] = [
   {
-    title: "Guide and examples",
+    title: "Guide, docs and examples",
     intro:
-      "Reading for the agent. `get_guide` comes first: everything else on the server assumes the agent knows the language, and the guide ends with the whole specification.",
-    tools: ["get_guide", "list_examples", "get_example"],
+      "Reading for the agent. `get_guide` comes first: everything else on the server assumes the agent knows the language, and the guide ends with the whole specification. `get_docs` returns any page of these docs as markdown, and the examples are complete documents to learn from or copy.",
+    tools: ["get_guide", "get_docs", "list_examples", "get_example"],
   },
   {
     title: "Language",
@@ -248,6 +246,15 @@ export const TOOL_DOCS: Record<string, ToolDoc> = {
     result: "# Archer MCP Server — Agent Guide\n\nArcher is an architecture-design tool: …",
     notes: [
       "Markdown: the mental model, the standard workflows, how validation gates writes, the error codes, advice on writing good documents, then the complete [language specification](https://archer.tombyrne.dev/language). The same text is the resource `archer://guide`.",
+    ],
+  },
+  get_docs: {
+    access: "none",
+    args: { page: "cli" },
+    result: "# Archer CLI\n\n`archer` works with Archer documents from the command line. …",
+    notes: [
+      "The page's markdown, exactly as the site serves it at the page's address plus `.md` (this one is [/docs/cli.md](https://archer.tombyrne.dev/docs/cli.md)). Its links are absolute, and links to other docs pages point at their markdown. `mcp` is this page, tool reference included.",
+      "Each page is also the resource `archer://docs/<page>`. On the web, [/llms.txt](https://archer.tombyrne.dev/llms.txt) lists the pages and [/llms-full.txt](https://archer.tombyrne.dev/llms-full.txt) has them all in one file.",
     ],
   },
   list_examples: {

@@ -2,6 +2,14 @@ import { LANGUAGE_SPEC } from "./languageSpec";
 
 export const BRIEF = `Archer is an architecture-design tool: a drag-and-drop canvas for humans and a strict text language (".arch" documents) for agents, compiling losslessly into each other. Through this MCP server you can do everything a human can do in the app: create/read/update/delete projects, design systems (components, connections, nested containers, validated schema payloads), define custom component types, and control presentation.`;
 
+/**
+ * The server's MCP instructions: clients that support them show the agent
+ * this when it connects, before any tool call.
+ */
+export const INSTRUCTIONS = `${BRIEF}
+
+Call get_guide once before your first write: it has the workflows, the error codes and the complete language specification. get_docs returns any page of Archer's documentation as markdown: language (the .arch reference), examples, mcp (this server and every tool, with examples) and cli (the archer command). The same pages are the resources archer://docs/<page>.`;
+
 export const GUIDE = `# Archer MCP Server — Agent Guide
 
 ${BRIEF}
@@ -63,6 +71,15 @@ fails, call \`get_workspace_info\` and relay what it reports.
 2. \`get_example\` — one example's full, canonical source: a model to follow
    when writing, or pass it to \`create_project\` to give the user an
    editable copy.
+
+### Answer questions about Archer
+\`get_docs\` returns a page of Archer's documentation as markdown, the same
+pages as the website: \`language\` (the specification, also at the end of
+this guide), \`examples\`, \`mcp\` (this server: connecting each kind of
+client, sign-in, workspaces, results and errors, every tool with an example
+call) and \`cli\` (the \`archer\` command, which checks and formats \`.arch\`
+files without an account). Read the relevant page before telling the user
+how to connect a client, sign in, or use the CLI.
 
 ### Add a technology/service that has no type in the catalog
 1. \`list_types\` with a search term to confirm it's missing.
@@ -209,10 +226,11 @@ with full source), manage the custom component library
 (\`create_custom_type\`/\`delete_custom_type\`), arrange the canvas
 (\`auto_layout_project\`, \`set_display\`, or explicit layout entries), review history
 (\`get_history\`/\`get_revision\`/\`diff_project\`), report drift (\`report_drift\`/\`get_drift\`), switch workspaces
-(\`get_workspace_info\`, \`list_workspaces\`/\`use_workspace\`), read the docs' worked
-examples (\`list_examples\`/\`get_example\`), and export the agent spec
-(\`compile_for_agent\`). The only human-app-exclusive feature is PNG export —
-point users at the Export menu in the editor.
+(\`get_workspace_info\`, \`list_workspaces\`/\`use_workspace\`), read the docs
+(\`get_docs\`) and their worked examples (\`list_examples\`/\`get_example\`),
+and export the agent spec (\`compile_for_agent\`). The only
+human-app-exclusive feature is PNG export — point users at the Export menu
+in the editor.
 
 ---
 

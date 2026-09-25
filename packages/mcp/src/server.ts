@@ -40,8 +40,16 @@ import type {
   WorkspaceSwitched,
   WriteRejected,
 } from "./contract";
+import { CLI_DOC, LANGUAGE_DOC, MCP_DOC } from "./docFiles";
+import { DOC_PAGES, docMarkdown, type DocPage, type DocSources } from "./docs";
 import { EXAMPLES, findExample, type Example } from "./examples";
-import { BRIEF, GUIDE } from "./guide";
+import { BRIEF, GUIDE, INSTRUCTIONS } from "./guide";
+
+/** The docs files this server serves, as bundled by scripts/docs.ts. */
+const DOC_SOURCES: DocSources = { language: LANGUAGE_DOC, mcp: MCP_DOC, cli: CLI_DOC };
+
+/** A docs page as get_docs and archer://docs/<page> return it, its links on this deployment. */
+const docsPage = (page: DocPage) => docMarkdown(page, { origin: APP_URL, sources: DOC_SOURCES });
 
 const text = (value: unknown) => ({
   content: [
@@ -193,6 +201,16 @@ const requireProject = async (ws: Workspace, projectId: string) => {
 };
 
 /**
+ * A server with Archer's tools and resources, and the instructions that
+ * clients show the agent when it connects.
+ */
+export function createArcherServer(version: string): McpServer {
+  const server = new McpServer({ name: "archer", version }, { instructions: INSTRUCTIONS });
+  registerArcherTools(server);
+  return server;
+}
+
+/**
  * Register Archer's resources and tools on a server. Nothing is registered at
  * import time: the hosted HTTP route (remote.ts) builds a fresh McpServer per
  * request and calls this. Every call carries an OAuth-verified user id.
@@ -221,6 +239,31 @@ export function registerArcherTools(server: McpServer): void {
       inputSchema: {},
     },
     wrap(async () => text(GUIDE)),
+  );
+
+  // --- the docs site's pages (/language, /language/examples, /docs/*) ---------
+
+  for (const p of DOC_PAGES)
+    server.registerResource(
+      `docs-${p.page}`,
+      `archer://docs/${p.page}`,
+      { title: `Docs: ${p.title}`, description: p.summary, mimeType: "text/markdown" },
+      async (uri) => ({ contents: [{ uri: uri.href, mimeType: "text/markdown", text: await docsPage(p.page) }] }),
+    );
+
+  server.registerTool(
+    "get_docs",
+    {
+      title: "Read Archer's docs",
+      description:
+        "Return one page of Archer's documentation in full, as markdown: the same pages as the docs on the website. `language` is the language reference (get_guide ends with it too); `examples` the worked examples with their sources; `mcp` this server: connecting each kind of client, sign-in, workspaces, results and errors, and every tool with an example call and its result; `cli` the `archer` command (npm: archerctl), which checks and formats .arch files without an account and syncs a file with a project. Read a page to answer the user's questions about Archer, or before telling them how to set something up. Each page is also the resource archer://docs/<page>; on the website, a page's address plus .md is its markdown, and /llms.txt lists them.",
+      inputSchema: {
+        page: z
+          .enum(DOC_PAGES.map((p) => p.page) as [DocPage, ...DocPage[]])
+          .describe("language (the .arch reference), examples, mcp (this server) or cli (the archer command)"),
+      },
+    },
+    wrap(async ({ page }) => text(await docsPage(page))),
   );
 
   // --- worked examples (the docs' /language/examples) -------------------------

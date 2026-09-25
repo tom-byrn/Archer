@@ -22,7 +22,7 @@ const { check, failures } = checks();
 // tools/list
 const tools = await client.listTools();
 const names = tools.tools.map((t) => t.name).sort();
-check("26 tools registered", names.length === 26, names);
+check("27 tools registered", names.length === 27, names);
 
 // guide + resource
 const guide = await call("get_guide");
@@ -36,6 +36,11 @@ check("list_examples lists the docs examples", Array.isArray(examples.json) && e
 const example = await call("get_example", { slug: examples.json?.[0]?.slug });
 check("get_example returns its source", typeof example.json?.source === "string" && example.json.source.startsWith("arch "), example.text);
 check("example resources listed", resources.resources.some((r) => r.uri.startsWith("archer://examples/")));
+
+// the docs site's pages
+const docs = await call("get_docs", { page: "language" });
+check("get_docs returns the language reference", docs.text.startsWith("# Archer — Language Specification"), docs.text.slice(0, 200));
+check("docs resources listed", resources.resources.some((r) => r.uri === "archer://docs/mcp"));
 
 // stateless language tools
 const bad = await call("validate_source", { source: 'arch "T" v0.1\ncomponent a\na -> ghost' });

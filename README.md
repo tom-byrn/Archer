@@ -49,11 +49,11 @@ backend.api -> backend.db @sql
 | --- | --- |
 | `packages/lang` | The language: parser, validator (typed error codes), canonical formatter, layered auto-layout, AST transforms, agent-export compiler. Pure TypeScript, no app dependencies. |
 | `packages/catalog` | Curated component catalog (~350 types: vendor-neutral system-design and AI building blocks — load balancers, rate limiters, queues, LLMs, agents, MCP servers… — plus real technologies) + Phosphor glyphs. |
-| `packages/mcp` | MCP tools giving agents full human-parity access — projects CRUD, validated writes, custom types, layout control, spec compilation, the docs' worked examples — served by the app at `/mcp` with OAuth sign-in. See [docs/mcp.md](docs/mcp.md). |
+| `packages/mcp` | MCP tools giving agents full human-parity access — projects CRUD, validated writes, custom types, layout control, spec compilation, the docs and their worked examples — served by the app at `/mcp` with OAuth sign-in. See [docs/mcp.md](docs/mcp.md). |
 | `packages/cli` | The `archer` command (npm: `archerctl`): `check` / `fmt` for `.arch` files in CI and agent shells, `init`, `login`, `push` / `pull`, and `archer mcp` (stdio bridge to the hosted server). See [docs/cli.md](docs/cli.md). |
 | `apps/web` | Next.js app: React Flow canvas, palette, detail panel, live code pane, drill-down navigation, Convex persistence. |
 
-Docs: [language spec](docs/language-spec.md) · [MCP server](docs/mcp.md) · [CLI](docs/cli.md) · [repo sync](docs/repo-sync.md) · [product spec](docs/product-spec.md) · [roadmap](docs/roadmap.md). The site publishes the first three at [/language](https://archer.tombyrne.dev/language), [/docs/mcp](https://archer.tombyrne.dev/docs/mcp) (with a tool reference generated from the server) and [/docs/cli](https://archer.tombyrne.dev/docs/cli).
+Docs: [language spec](docs/language-spec.md) · [MCP server](docs/mcp.md) · [CLI](docs/cli.md) · [repo sync](docs/repo-sync.md) · [product spec](docs/product-spec.md) · [roadmap](docs/roadmap.md). The site publishes the first three at [/language](https://archer.tombyrne.dev/language), [/docs/mcp](https://archer.tombyrne.dev/docs/mcp) (with a tool reference generated from the server) and [/docs/cli](https://archer.tombyrne.dev/docs/cli). Agents get the same docs as markdown: over MCP (`get_docs`), and on the site at each page's address plus `.md`, in [/llms.txt](https://archer.tombyrne.dev/llms.txt) and [/llms-full.txt](https://archer.tombyrne.dev/llms-full.txt), or from the page itself when they ask for `text/markdown`.
 
 ## Run it
 

@@ -1,15 +1,19 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
+import { markdownTwin, prefersMarkdown } from "@/lib/negotiate";
 
 // Everything is private except the landing page, the sign-in flow, the docs
 // under /language (which users hand to agents as a docs link) and /docs (the
-// MCP server and CLI), the docs examples' sandbox, and shared-link views.
+// MCP server and CLI), their markdown for agents (each page's `.md`, and
+// /llms.txt), the docs examples' sandbox, and shared-link views.
 const isPublic = createRouteMatcher([
   "/welcome(.*)",
   "/sign-in(.*)",
   "/sign-up(.*)",
   "/language(.*)",
   "/docs(.*)",
+  "/llms.txt",
+  "/llms-full.txt",
   "/sandbox(.*)",
   "/share(.*)",
   // Hosted MCP server: it verifies OAuth bearer tokens itself, and its
@@ -34,9 +38,17 @@ const withClerk = clerkMiddleware(async (auth, request) => {
   if (!isPublic(request)) await auth.protect();
 });
 
-// Without Clerk keys, let requests through so the app can render its
-// "not configured" panel instead of the middleware throwing.
 export default function middleware(request: NextRequest, event: Parameters<typeof withClerk>[1]) {
+  // An agent that asks for markdown gets a docs page's markdown at the page's
+  // own address (and the landing page's summary, /llms.txt, at "/").
+  const twin = markdownTwin(request.nextUrl.pathname);
+  if (twin && prefersMarkdown(request.headers.get("accept"))) {
+    const response = NextResponse.rewrite(new URL(twin, request.url));
+    response.headers.set("Vary", "Accept");
+    return response;
+  }
+  // Without Clerk keys, let requests through so the app can render its
+  // "not configured" panel instead of the middleware throwing.
   return configured ? withClerk(request, event) : NextResponse.next();
 }
 

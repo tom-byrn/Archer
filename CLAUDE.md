@@ -45,7 +45,7 @@ Router + React Flow + Convex).
   server-only service credential `svc_<ARCHER_SERVICE_SECRET>.<userId>` passed
   in the functions' `apiKey` argument (legacy name; `convex/access.ts` →
   `effectiveUser`); the same secret must be set on the Convex deployment and
-  in the web env. `registerArcherTools(server)` registers 26 tools. The CLI
+  in the web env. `registerArcherTools(server)` registers 27 tools. The CLI
   (`archer login`) runs the same OAuth flow as any MCP client (DCR + PKCE +
   localhost redirect, client name "Archer CLI"), stores the session in
   `~/.archer/auth.json`, and calls the tools; the JSON shapes it reads are
@@ -77,7 +77,8 @@ Router + React Flow + Convex).
   `embedded` mode on a local `useArchDoc` (no Convex), lazy-loaded so React
   Flow stays out of the first paint. Absolute URLs come from `lib/site.ts`
   (`NEXT_PUBLIC_SITE_URL`, default `https://archer.tombyrne.dev`).
-- Docs: `/language` (the spec) and `/language/examples` (worked examples from
+- Docs: `/language` (the spec, `docs/language-spec.md`) and
+  `/language/examples` (worked examples from
   `packages/mcp/src/examples.ts`, which agents also read through the MCP
   tools `list_examples`/`get_example`). Example sources must stay canonical
   and validate clean — `apps/web/test/examples.test.ts` enforces it, so the
@@ -102,6 +103,26 @@ Router + React Flow + Convex).
   fails until a new tool is documented there, and runs every example against
   a fake backend; `packages/cli/test/docs.test.ts` checks `docs/cli.md`
   covers `archer --help`.
+- Docs for agents: every docs page is also one markdown document, from
+  `docMarkdown` (`@archer/mcp/docs`; the pages are `DOC_PAGES` in
+  `packages/mcp/src/docPages.ts`): the docs file as is, the examples with
+  their sources, and the MCP page's tool reference as markdown
+  (`referenceMarkdown` in `@archer/mcp/toolReference`, which also builds the
+  page's reference data). Links become absolute, and links between docs
+  pages point at their markdown. The site serves it (static) at each page's
+  path plus `.md` (`app/**/<page>.md/route.ts`), lists it in `/llms.txt` and
+  joins it in `/llms-full.txt` (`lib/llms.ts`); `middleware.ts` answers a
+  docs page (and `/`, with `/llms.txt`) with its markdown when the request
+  prefers `text/markdown` (`lib/negotiate.ts`, edge-safe). Over MCP it's
+  `get_docs` and `archer://docs/<page>`, and the server's instructions
+  (`INSTRUCTIONS`, `guide.ts`) point agents at the guide and the docs. The
+  server can't read `docs/` at runtime, so `packages/mcp/scripts/docs.ts`
+  bundles the site part of `docs/language-spec.md`, `docs/mcp.md` and
+  `docs/cli.md` into `packages/mcp/src/docFiles.ts` (generated): after
+  editing one, run `pnpm --filter @archer/mcp docs`
+  (`packages/mcp/test/docs.test.ts` fails until you do). A new docs page
+  needs a `DOC_PAGES` entry, a `.md` route (`apps/web/test/agentDocs.test.ts`
+  checks) and a `DocsNav` tab.
 - Editor sessions: `components/Editor.tsx` takes a `session` — a stored
   document (`kind: "document"`: autosave, history/drift, share, export, repo
   link, account menu) or a sandbox (`kind: "sandbox"`: in memory only). The
@@ -161,8 +182,10 @@ Router + React Flow + Convex).
   (strings, so `lib/svg.ts` and the OG image can draw them). Code editing
   goes through `components/CodeMirror.tsx`. React Flow chrome lives in
   `components/canvas.css`.
-- Language/product specs live in `docs/`; keep `docs/language-spec.md` in
-  sync with `packages/*/src/languageSpec.ts` copies when the grammar changes.
+- Language/product specs live in `docs/`. `docs/language-spec.md` is the
+  spec everywhere: the site renders the file, and `LANGUAGE_SPEC`
+  (`@archer/mcp/languageSpec`: the guide, `archer guide`) is its bundled
+  copy, so run `pnpm --filter @archer/mcp docs` when the grammar changes.
 - Auto-layout: `autoLayout` (`packages/lang/src/layout.ts`) arranges a doc
   with no positions (or `{ reset: true }`) with the layered engine in
   `layered.ts` (solver: `simplex.ts`); otherwise it keeps positions and places

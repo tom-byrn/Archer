@@ -1,6 +1,5 @@
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
-import { registerArcherTools } from "./server";
+import { createArcherServer } from "./server";
 
 /** What the hosting route has verified about the caller (OAuth). */
 export interface RemoteAuth {
@@ -27,8 +26,7 @@ export const REMOTE_SERVER_VERSION = "1.7.0";
  * copies of the SDK (one per zod peer) do not interoperate.
  */
 export async function handleRemoteRequest(req: Request, auth: RemoteAuth): Promise<Response> {
-  const server = new McpServer({ name: "archer", version: REMOTE_SERVER_VERSION });
-  registerArcherTools(server);
+  const server = createArcherServer(REMOTE_SERVER_VERSION);
   const transport = new WebStandardStreamableHTTPServerTransport({
     sessionIdGenerator: undefined,
     enableJsonResponse: true,

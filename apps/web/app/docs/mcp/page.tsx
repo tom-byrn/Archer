@@ -4,7 +4,10 @@ import { ToolReference } from "@/components/docs/ToolReference";
 import { SiteFrame } from "@/components/landing/SiteFrame";
 import { loadMcpDocs } from "@/lib/mcpDocs";
 
-export const metadata = { title: "MCP server · Archer" };
+export const metadata = {
+  title: "MCP server · Archer",
+  alternates: { types: { "text/markdown": "/docs/mcp.md" } },
+};
 
 export default async function McpDocsPage() {
   const { intro, reference, outro, toc } = await loadMcpDocs();

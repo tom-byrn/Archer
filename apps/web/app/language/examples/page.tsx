@@ -6,7 +6,10 @@ import { SiteFrame } from "@/components/landing/SiteFrame";
 import { highlightArch } from "@/lib/highlightArch";
 import { renderArchSvg } from "@/lib/svg";
 
-export const metadata = { title: "Examples · Archer" };
+export const metadata = {
+  title: "Examples · Archer",
+  alternates: { types: { "text/markdown": "/language/examples.md" } },
+};
 
 const inlineCode = "mono rounded-xs bg-surface-2 px-1 py-0.5 text-[12.5px] text-ink";
 

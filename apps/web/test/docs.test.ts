@@ -1,11 +1,11 @@
 import { beforeAll, describe, expect, it } from "vitest";
+import { DOC_PAGES } from "@archer/mcp/docs";
 import { createSlugger, readDoc, renderDocs, renderInline, siteHref } from "../lib/docs";
-import { LANGUAGE_SPEC } from "../lib/languageSpec";
 import { loadMcpDocs, type McpDocs } from "../lib/mcpDocs";
 
-// The docs pages render docs/mcp.md, docs/cli.md and the language spec, with
-// links rewritten for the site and GitHub-style heading ids. These keep every
-// link between and within those pages pointing at a heading that exists.
+// The docs pages render docs/mcp.md, docs/cli.md and docs/language-spec.md,
+// with links rewritten for the site and GitHub-style heading ids. These keep
+// every link between and within those pages pointing at a heading that exists.
 
 const idsIn = (html: string) => [...html.matchAll(/ id="([^"]+)"/g)].map((m) => m[1]!);
 const hrefsIn = (html: string) => [...html.matchAll(/ href="([^"]+)"/g)].map((m) => m[1]!);
@@ -30,7 +30,7 @@ beforeAll(async () => {
     .map(renderInline)
     .join("\n");
   const cli = renderDocs(readDoc("cli")).html;
-  const language = renderDocs(LANGUAGE_SPEC).html;
+  const language = renderDocs(readDoc("language")).html;
   pages = {
     "/docs/mcp": {
       ids: new Set([...idsIn(mcp.intro), ...idsIn(mcp.outro), ...referenceIds]),
@@ -54,9 +54,10 @@ describe("docs pages", () => {
     expect(broken).toEqual([]);
   });
 
-  it("don't link to repository files the site doesn't serve", () => {
+  it("don't link to repository files, only to the markdown the site serves", () => {
+    const served = new Set(DOC_PAGES.map((p) => `${p.path}.md`));
     for (const [path, page] of Object.entries(pages))
-      expect(page.hrefs.filter((h) => /\.md($|#)/.test(h)), path).toEqual([]);
+      expect(page.hrefs.filter((h) => /\.md($|#)/.test(h) && !served.has(h.split("#")[0]!)), path).toEqual([]);
   });
 
   it("leave the development sections out", () => {

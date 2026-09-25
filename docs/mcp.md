@@ -9,7 +9,7 @@ Claude Code, Claude, Cursor, VS Code, Codex and more.
 - **Address:** `https://archer.tombyrne.dev/mcp` (Streamable HTTP)
 - **Sign-in:** in your browser, with GitHub. There are no API keys to create
   or paste.
-- **Tools:** 26, covering projects, the language, component types, the
+- **Tools:** 27, covering projects, the language, component types, the
   canvas, history, drift and workspaces. See the
   [tool reference](#tool-reference).
 
@@ -212,7 +212,9 @@ update at once. The main things agents do:
   before they write anything. It holds the workflows, the error codes and the
   complete [language specification](https://archer.tombyrne.dev/language).
   The [worked examples](https://archer.tombyrne.dev/language/examples) are
-  available too (`list_examples`, `get_example`).
+  available too (`list_examples`, `get_example`), and so is every page of
+  these docs (`get_docs`), so an agent can answer your questions about
+  Archer.
 - **Map a codebase.** The agent reads the repository and saves what it finds
   as a new project (`create_project`), with `src` paths that point back into
   the code.
@@ -256,13 +258,31 @@ Things to ask your agent:
 - **Every save is reviewable.** Each agent save is its own revision, with its
   author, time, summary and a count of what changed.
 
+### The docs, for agents
+
+Every page of these docs is also plain markdown, for agents to read:
+
+- **Over MCP**, `get_docs` returns a page, and each page is the resource
+  `archer://docs/<page>`: `language`, `examples`, `mcp` and `cli`.
+- **On the web**, a page's address plus `.md` is its markdown (this page is
+  [/docs/mcp.md](https://archer.tombyrne.dev/docs/mcp.md)), and the page
+  itself answers with its markdown when a request prefers `text/markdown`.
+  [/llms.txt](https://archer.tombyrne.dev/llms.txt) lists the pages, and
+  [/llms-full.txt](https://archer.tombyrne.dev/llms-full.txt) has all of them
+  in one file.
+
+An agent without the MCP server can learn the language from the web, write
+`.arch` files itself and check them with [`archer check`](cli.md#archer-check).
+
 ## Tool reference
 
 <!-- tools:start -->
 
 The reference for every tool, generated from the server's own code (its
 parameters, an example call and the result), is on the docs site:
-[archer.tombyrne.dev/docs/mcp#tool-reference](https://archer.tombyrne.dev/docs/mcp#tool-reference).
+[archer.tombyrne.dev/docs/mcp#tool-reference](https://archer.tombyrne.dev/docs/mcp#tool-reference),
+and in the page's markdown,
+[archer.tombyrne.dev/docs/mcp.md](https://archer.tombyrne.dev/docs/mcp.md).
 In this repository, `packages/mcp/src/server.ts` registers the tools and
 `packages/mcp/src/reference.ts` holds the examples.
 
@@ -321,8 +341,12 @@ For client developers and the curious:
     `WWW-Authenticate: Bearer error="invalid_token", error_description="…", resource_metadata="https://archer.tombyrne.dev/.well-known/oauth-protected-resource/mcp"`,
     which is where clients discover all of the above.
 - **CORS.** Any origin may call the server from a browser.
+- **Instructions.** The server's `initialize` result carries instructions,
+  which clients that support them show the agent when it connects: what
+  Archer is, to read the guide before writing, and where the docs are.
 - **Resources.** Besides tools, the server offers the agent guide as
-  `archer://guide` (markdown) and each worked example as
+  `archer://guide` (markdown), each page of these docs as
+  `archer://docs/<page>` (markdown) and each worked example as
   `archer://examples/<slug>` (plain text).
 
 ## Troubleshooting
@@ -415,6 +439,26 @@ has the full setup.
 5. Update the tool count in `scripts/smoke.ts`, `scripts/remote-check.ts`,
    `packages/cli/test/account.test.ts`, this file and `CLAUDE.md`.
 
+### The docs agents read
+
+`get_docs` and the `archer://docs/<page>` resources serve the docs site's
+pages as markdown, built by `src/docs.ts`: the site's part of
+`docs/language-spec.md`, this file and `docs/cli.md`, the worked examples
+with their sources, and this page's tool reference written out by
+`referenceMarkdown` (`src/toolReference.ts`). Links become absolute, and
+links between the docs point at the other pages' markdown. The site serves
+the same markdown at each page's `.md`, `/llms.txt` and `/llms-full.txt`
+(`apps/web/lib/llms.ts`). `src/docPages.ts` lists the pages.
+
+The server can't read the repository at runtime, so `scripts/docs.ts` copies
+those docs files into `src/docFiles.ts`. After editing one, run:
+
+```sh
+pnpm --filter @archer/mcp docs
+```
+
+`test/docs.test.ts` fails until you do.
+
 ### Tests
 
 ```sh
@@ -422,9 +466,10 @@ pnpm --filter @archer/mcp test
 ```
 
 These run the tools in-process with no deployment. `test/examples.test.ts`
-covers the worked examples. `test/reference.test.ts` runs every documented
-example over a fake backend seeded with the example scenario, and checks that
-each result has the documented shape.
+covers the worked examples, and `test/docs.test.ts` the docs agents read
+(and that `src/docFiles.ts` is current). `test/reference.test.ts` runs every
+documented example over a fake backend seeded with the example scenario, and
+checks that each result has the documented shape.
 
 Two scripts run the tools in-process against a real deployment, exactly as
 `/mcp` does: as a signed-in user, reaching Convex with the service credential.

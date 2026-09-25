@@ -1,13 +1,15 @@
 import { DocsArticle } from "@/components/docs/DocsArticle";
 import { DocsNav } from "@/components/docs/DocsNav";
 import { SiteFrame } from "@/components/landing/SiteFrame";
-import { renderDocs } from "@/lib/docs";
-import { LANGUAGE_SPEC } from "@/lib/languageSpec";
+import { readDoc, renderDocs } from "@/lib/docs";
 
-export const metadata = { title: "Archer" };
+export const metadata = {
+  title: "Archer",
+  alternates: { types: { "text/markdown": "/language.md" } },
+};
 
 export default function LanguagePage() {
-  const { html, toc } = renderDocs(LANGUAGE_SPEC);
+  const { html, toc } = renderDocs(readDoc("language"));
   return (
     <SiteFrame>
       <DocsNav active="reference" />
