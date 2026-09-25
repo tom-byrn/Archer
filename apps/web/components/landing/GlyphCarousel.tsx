@@ -25,16 +25,17 @@ const TAGS = [
 
 /**
  * A row of catalog glyph tiles, between Features and FAQ, running left to
- * right the whole way across the band and cut off at the column's rules. The
- * row is drawn twice, end to end, and the pair moves one row's length before
- * starting over, so the loop has no seam. CSS only (`.landing-glyph-track` in
- * landing.css); it stands still for reduced motion.
+ * right the whole way across the band and fading out toward the column's
+ * rules. The row is drawn twice, end to end, and the pair moves one row's
+ * length before starting over, so the loop has no seam. CSS only
+ * (`.landing-glyph-strip` and `.landing-glyph-track` in landing.css); it
+ * stands still for reduced motion.
  */
 export function GlyphCarousel() {
   const row = TAGS.map((tag) => <Tile key={tag} tag={tag} />);
   return (
     // Its own box clips the tiles, so the band's joints, which overhang it, stay whole.
-    <div className="absolute inset-0 overflow-hidden" aria-hidden>
+    <div className="landing-glyph-strip absolute inset-0 overflow-hidden" aria-hidden>
       <div className="landing-glyph-track">
         <div className="landing-glyph-row">{row}</div>
         <div className="landing-glyph-row">{row}</div>

@@ -145,10 +145,21 @@
 }
 
 /* The glyph carousel between Features and FAQ (GlyphCarousel): a row of
-   catalog tiles running left to right across the band. The track holds the row
-   twice; each row ends in a gap, so the spacing holds across the join, and is
-   longer than the band is wide, so the band never shows the track's end. The
-   tiles grow with the viewport. */
+   catalog tiles running left to right across the band, fading in from the left
+   rule and out toward the right one. The track holds the row twice; each row
+   ends in a gap, so the spacing holds across the join, and is longer than the
+   band is wide, so the band never shows the track's end. The tiles grow with
+   the viewport. */
+.landing-glyph-strip {
+  --fade: clamp(48px, 15%, 160px);
+  mask-image: linear-gradient(
+    to right,
+    transparent,
+    #000 var(--fade),
+    #000 calc(100% - var(--fade)),
+    transparent
+  );
+}
 .landing-glyph-track {
   --tile: clamp(40px, 4vw, 48px);
   --gap: clamp(28px, 3vw, 40px);
