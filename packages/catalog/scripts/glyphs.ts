@@ -126,6 +126,21 @@ export const GLYPH_ICONS: Record<string, string> = {
   network: "network",
   grid: "grid-four",
   circles: "circles-three",
+  swap: "swap",
+  castle: "castle-turret",
+  pin: "map-pin",
+  ring: "circle-dashed",
+  slice: "chart-pie-slice",
+  copy: "copy",
+  flower: "flower",
+  crown: "crown",
+  sequence: "list-numbers",
+  readwrite: "arrows-down-up",
+  history: "clock-counter-clockwise",
+  outbox: "tray-arrow-up",
+  skull: "skull",
+  notebook: "notebook",
+  sidecar: "square-split-horizontal",
 };
 
 const require = createRequire(import.meta.url);

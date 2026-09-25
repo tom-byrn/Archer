@@ -22,6 +22,7 @@ export const NAMESPACE_LABELS: Record<string, string> = {
   security: "Security",
   platform: "Platform",
   topology: "Topology",
+  patterns: "Patterns",
   ai_platforms: "AI platforms",
   aws: "AWS",
   gcp: "Google Cloud",
@@ -47,6 +48,7 @@ const NEUTRAL_NAMESPACES = [
   "security",
   "platform",
   "topology",
+  "patterns",
 ];
 
 /**
@@ -223,7 +225,10 @@ const GLYPH_CHOICES = [
   "signal", "scroll", "path", "siren", "bug", "wall",
   "funnel", "key", "vault", "fingerprint", "directory", "handshake",
   "sliders", "flag", "infinity", "flow", "map", "dashed",
-  "building", "network", "grid", "circles",
+  "building", "network", "grid", "circles", "swap", "castle",
+  "pin", "ring", "slice", "copy", "flower", "crown",
+  "sequence", "readwrite", "history", "outbox", "skull", "notebook",
+  "sidecar",
 ];
 const COLOR_CHOICES = [
   "#64748b", "#ef4444", "#f97316", "#eab308", "#22c55e", "#14b8a6",
