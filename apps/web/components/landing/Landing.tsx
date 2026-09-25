@@ -10,7 +10,7 @@ import { ClientLogos } from "./ClientLogos";
 import { DitherBackdrop } from "./Dither";
 import { Faq } from "./Faq";
 import { Features } from "./Features";
-import { GlyphBox } from "./GlyphBox";
+import { GlyphCarousel } from "./GlyphCarousel";
 import { SandboxLoader } from "./SandboxLoader";
 import { SiteFrame, siteNavLinkCls } from "./SiteFrame";
 
@@ -153,10 +153,10 @@ export function Landing() {
 
       <Features />
 
-      {/* Features and FAQ are both ruled grids; a band keeps them apart, with a box at its
-          center turning through the catalog's glyphs. */}
+      {/* Features and FAQ are both ruled grids; a band keeps them apart, with a carousel of
+          the catalog's glyph tiles turning at its center. */}
       <div className="landing-joints flex h-24 items-center justify-center border-b border-line sm:h-28">
-        <GlyphBox />
+        <GlyphCarousel />
       </div>
 
       <Faq />
