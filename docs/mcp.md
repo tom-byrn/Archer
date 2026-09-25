@@ -252,7 +252,8 @@ update at once. The main things agents do:
   one click.
 - **Share and draw.** `share_project` makes a read-only link and a live
   image to embed in a README; `get_shared_project` reads a link someone gave
-  you; `render_diagram` draws a project as an SVG file.
+  you; `render_diagram` gives a short-lived link to an SVG image of a
+  project, to download or pass on.
 - **Run a team.** `create_workspace`, `invite_member`, `set_member_role` and
   the rest do what the workspace menu and the Members dialog do.
 
@@ -294,8 +295,9 @@ In this repository, `packages/mcp/src/server.ts` registers the tools and
 
 Tools answer with a single text item. Most results are JSON. `get_guide`,
 `format_source`, `auto_layout_source` and `compile_for_agent` answer with
-plain text: markdown or Archer source. `render_diagram` answers with SVG
-markup.
+plain text: markdown or Archer source. Nothing answers with an image
+itself: `render_diagram` returns a link to one, so a big diagram doesn't
+fill the agent's context.
 
 When a call fails, the result is marked as an error (`isError: true`) and its
 text says why. Rejected writes answer with JSON that lists the problems:
@@ -396,8 +398,9 @@ CLI calls it like any other client.
    (`apps/web/lib/server/mcpHost.ts`, typed by `src/host.ts`): what the
    tools need that lives in the web app, which this package can't import —
    the repo sync engine and GitHub client (acting with the user's GitHub
-   token from Clerk, exactly as the `app/api/github/*` routes do), the SVG
-   renderer behind share images, and the user's email (for invitations).
+   token from Clerk, exactly as the `app/api/github/*` routes do), signed
+   links to diagram images (`lib/server/imageLink.ts`, served by
+   `app/api/render`), and the user's email (for invitations).
    The web app must not import `@modelcontextprotocol/sdk` itself: two copies
    of the SDK, one per zod peer, don't interoperate.
 3. `wrap` (`src/server.ts`) runs each tool inside `requestContext`, an

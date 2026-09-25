@@ -192,7 +192,7 @@ export function registerArcherTools(server: McpServer, host: ArcherHost = NO_HOS
     "get_guide",
     {
       title: "Get the Archer guide",
-      description: `${BRIEF}\n\nReturns the complete agent guide: the mental model (project = one text document; canvas is a live render of it), standard read/modify/create workflows, how validation gates writes, layout rules, an error-code reference, writing advice with examples, and the full language specification. CALL THIS ONCE BEFORE YOUR FIRST WRITE in a session — everything else on this server assumes you know the language. Also available as the resource archer://guide.`,
+      description: `${BRIEF}\n\nReturns the complete agent guide: the mental model, workflows, how validation gates writes, layout rules, error codes, writing advice and the full language specification. CALL THIS ONCE BEFORE YOUR FIRST WRITE in a session: everything else here assumes you know the language. Also the resource archer://guide.`,
       inputSchema: {},
     },
     wrap(async () => text(GUIDE)),
@@ -213,7 +213,7 @@ export function registerArcherTools(server: McpServer, host: ArcherHost = NO_HOS
     {
       title: "List the worked examples",
       description:
-        "List the worked examples from Archer's docs (the /language/examples page): complete documents that validate clean, each showing a few language features, from the basics up to a whole product. Returns each one's slug, title, summary and features, with two links to hand the user: docs_url (its section of the docs, diagram included) and sandbox_url (opens it in the editor without an account; nothing is saved). Read one with get_example; each is also the resource archer://examples/<slug>.",
+        "List the worked examples from Archer's docs: complete, valid documents that each show a few language features. Returns slug, title, summary, features and two links for the user: docs_url (its docs section) and sandbox_url (opens it in the editor with no account; nothing is saved). Read one with get_example or the resource archer://examples/<slug>.",
       inputSchema: {},
     },
     wrap(async () => text(EXAMPLES.map(exampleInfo))),
@@ -224,7 +224,7 @@ export function registerArcherTools(server: McpServer, host: ArcherHost = NO_HOS
     {
       title: "Read a worked example",
       description:
-        "Return one of the docs' worked examples in full: its list_examples entry plus the complete source, in the canonical form the app saves. Read one to see idiomatic Archer before writing (ids, type tags, desc and src, payloads, nesting, labeled connections), to show the user how something is done, or to give them an editable copy by passing the source to create_project. An example that ends in a layout block was arranged by hand on the canvas: that block is presentation, so leave it out of documents you write.",
+        "One of the docs' worked examples in full: its list_examples entry plus the canonical source. Read one to see idiomatic Archer before writing, to show the user how something is done, or pass the source to create_project for an editable copy. A trailing layout block is hand arrangement: leave it out of documents you write.",
       inputSchema: {
         slug: z
           .enum(EXAMPLES.map((e) => e.slug) as [string, ...string[]])
@@ -253,7 +253,7 @@ export function registerArcherTools(server: McpServer, host: ArcherHost = NO_HOS
     {
       title: "List the starter samples",
       description:
-        "List the samples in the app's \"From sample\" gallery: complete, realistic architectures a user can start a project from (the docs' worked examples teach features; samples are starting points). Returns each one's slug, title and description. To start a project from one, read it with get_sample and pass its source to create_project — exactly what choosing it in the gallery does. Each is also the resource archer://samples/<slug>.",
+        "List the app's \"From sample\" gallery: realistic architectures to start a project from (examples teach features; samples are starting points). To start from one, read it with get_sample and pass its source to create_project, as the gallery does. Also the resources archer://samples/<slug>.",
       inputSchema: {},
     },
     wrap(async () => text(SAMPLES.map(sampleInfo))),
@@ -264,7 +264,7 @@ export function registerArcherTools(server: McpServer, host: ArcherHost = NO_HOS
     {
       title: "Read a starter sample",
       description:
-        "Return one of the \"From sample\" gallery's samples in full: its list_samples entry plus the complete source, canonical and valid. Pass the source to create_project to give the user a new project from it, as the gallery does.",
+        "One \"From sample\" sample in full: its list_samples entry plus the canonical source. Pass the source to create_project to start a project from it.",
       inputSchema: {
         slug: z
           .enum(SAMPLES.map((s) => s.slug) as [string, ...string[]])
@@ -285,7 +285,7 @@ export function registerArcherTools(server: McpServer, host: ArcherHost = NO_HOS
     {
       title: "Validate Archer source",
       description:
-        "Parse and validate an Archer document WITHOUT saving anything. Returns { valid, errors, warnings } with codes and line numbers (see the guide's error reference). Use this to check work-in-progress source before create_project/update_project, or to explain why a document is invalid. Errors block writes; warnings never do. Validation knows the built-in catalog AND this workspace's custom types.",
+        "Validate Archer source WITHOUT saving: { valid, errors, warnings } with codes and line numbers. Use it to check work in progress before create_project/update_project, or to explain why a document is invalid. Errors block writes; warnings never do. Knows the catalog and this workspace's custom types.",
       inputSchema: { source: z.string().describe("Full Archer document text") },
     },
     wrap(async ({ source }) => {
@@ -303,7 +303,7 @@ export function registerArcherTools(server: McpServer, host: ArcherHost = NO_HOS
     {
       title: "Format Archer source",
       description:
-        "Return the canonical form of an Archer document (fixed section order, sorted connections, normalized indentation and fences). Does not save anything and does not require validity beyond being parseable. The app always stores canonical form, so diff your changes against this.",
+        "The canonical form of Archer source (fixed section order, sorted connections, normalized whitespace), saving nothing; the source only needs to parse. The app stores canonical form, so diff your changes against this.",
       inputSchema: { source: z.string().describe("Full Archer document text") },
     },
     wrap(async ({ source }) => text(format(parse(source).doc))),
@@ -314,7 +314,7 @@ export function registerArcherTools(server: McpServer, host: ArcherHost = NO_HOS
     {
       title: "Compile an implementation spec",
       description:
-        "Compile an Archer document into the agent-handoff form: canonical text with the layout block stripped and a short reading-guide preamble prepended. This is what you paste to a coding agent (or use yourself) as the implementation spec. Pass either raw source OR a project_id (loads the stored document). Fails if the document has validation errors.",
+        "The implementation spec for a coding agent (the editor's Copy for agent): canonical source without the layout block, after a short reading guide. Pass source OR project_id. Fails if the document has validation errors.",
       inputSchema: {
         source: z.string().optional().describe("Archer source (omit when passing project_id)"),
         project_id: z.string().optional().describe("Stored project to compile (omit when passing source)"),
@@ -337,7 +337,7 @@ export function registerArcherTools(server: McpServer, host: ArcherHost = NO_HOS
     {
       title: "Auto-layout Archer source",
       description:
-        "Complete or rebuild the layout block of a raw Archer document (no saving). A document with no positions is arranged by the layered auto-layout (connections flow left to right with few crossings and straight edges, planes wrap their children); otherwise existing positions are kept and new components are placed next to what they connect to. reset=true discards every position (collapsed/expanded state is kept) and arranges from scratch. You rarely need this — create_project/update_project auto-layout for you — but it's useful to preview canonical output or fully re-arrange.",
+        "Complete or rebuild the layout block of raw source, saving nothing. Existing positions are kept and new components placed next to what they connect to; with no positions (or reset=true) everything is arranged from scratch. Rarely needed, since create_project/update_project lay out for you, but useful to preview or fully re-arrange.",
       inputSchema: {
         source: z.string().describe("Full Archer document text"),
         reset: z.boolean().optional().describe("Discard existing positions and re-place everything (default false)"),
@@ -356,7 +356,7 @@ export function registerArcherTools(server: McpServer, host: ArcherHost = NO_HOS
     {
       title: "List component & connection types",
       description:
-        "List usable type tags: the built-in catalog (~350 types — vendor-neutral building blocks grouped by concern in generic/ai/network/compute/storage/messaging/data/observability/security/platform/topology/patterns, e.g. @load_balancer, @rate_limiter, @cdn, @queue, @database, with `ai` holding the building blocks of AI apps: @llm, @agent, @mcp, @rag, @vector_db, ...; plus real technologies across ai_platforms/aws/gcp/azure/vercel/databases/infra/saas), this workspace's custom types, the standard connection types (@http, @sql, @queue, @mcp, ...), and the glyph names available when creating custom types. Optional search filters by tag/name/namespace. Type tags are OPTIONAL on components — untyped components are valid and render as generic boxes; unknown tags are only a warning.",
+        "List usable type tags: the built-in catalog (~350: vendor-neutral building blocks like @load_balancer, @queue, @database and AI ones like @llm, @agent, @mcp, @rag; plus real technologies like @postgres, @aws.sqs), this workspace's custom types, connection types (@http, @sql, @queue…) and the glyphs for custom types. `search` filters by tag, name or namespace. Tags are optional: untyped components render as generic boxes, and an unknown tag is only a warning.",
       inputSchema: {
         search: z.string().optional().describe("Case-insensitive filter on tag, name, or namespace"),
       },
@@ -387,7 +387,7 @@ export function registerArcherTools(server: McpServer, host: ArcherHost = NO_HOS
     {
       title: "Create/update a custom component type",
       description:
-        "Add a reusable component type to this workspace's library — exactly like a human clicking '+' in the app's palette. Use when the catalog lacks a technology or the user has domain-specific building blocks (e.g. 'Billing Engine'). The type gets a @custom.<slug> tag, appears in the human's palette immediately, renders with the chosen glyph/color, and validates cleanly in every project of the workspace. Calling it again with the same tag updates name/glyph/color.",
+        "Add a component type to the workspace's library (the palette's '+'), when the catalog lacks a technology or the user has domain-specific blocks (e.g. 'Billing Engine'). It gets a @custom.<slug> tag, appears in the palette, renders with its glyph and color, and validates in every project of the workspace. The same tag again updates it.",
       inputSchema: {
         name: z.string().min(1).describe("Display name, e.g. 'Billing Engine'"),
         glyph: z.string().optional().describe("Glyph key from list_types (default 'box')"),
@@ -421,7 +421,7 @@ export function registerArcherTools(server: McpServer, host: ArcherHost = NO_HOS
     {
       title: "Delete a custom component type",
       description:
-        "Remove a custom type from the workspace library. Existing components using the tag stay valid but start showing a W301 unknown-type warning and render generic. Built-in catalog types cannot be deleted.",
+        "Remove a custom type from the workspace library. Components using its tag stay valid but render generic, with a W301 warning. Catalog types can't be deleted.",
       inputSchema: { tag: z.string().describe("The @custom.* tag (without @)") },
     },
     wrap(async ({ tag }) => {
@@ -439,7 +439,7 @@ export function registerArcherTools(server: McpServer, host: ArcherHost = NO_HOS
     {
       title: "List projects",
       description:
-        "List every Archer project in the user's workspace: id, title, last-updated timestamp, editor URL, and the GitHub repository it's linked to (with `path` when the project is stored in a .arch file there). Start here whenever the user refers to an existing architecture.",
+        "Every project in the current workspace: id, title, last update, editor URL, and its GitHub repository (with `path` if stored in a .arch file there). Start here whenever the user refers to an existing architecture.",
       inputSchema: {},
     },
     wrap(async () => {
@@ -468,7 +468,7 @@ export function registerArcherTools(server: McpServer, host: ArcherHost = NO_HOS
     {
       title: "Read a project",
       description:
-        "Fetch a project's full Archer source plus its current diagnostics, a drift summary, its share link (when \"anyone with the link\" is on) and its repository. ALWAYS call this before update_project and base your edit on the exact source returned — updates replace the whole document. Components may carry a `src` path pointing into the codebase — use it to locate implementations. The layout block at the end is machine-managed presentation: keep it out of your mental model, and normally omit it from your edits (the server preserves it for you). If `repository.path` is set, the project is stored in that .arch file in the repository (`repository.sync` has its state: unpublished changes, the open pull request, a conflict): when you are working in that repository, edit the file instead of calling update_project.",
+        "A project's full Archer source, with its diagnostics, drift summary, share link and repository. ALWAYS call this before update_project and edit the exact source returned: updates replace the whole document. `src` paths point into the codebase. The trailing layout block is presentation: leave it out of your edits (the server keeps it). If `repository.path` is set, the project is stored in that .arch file (`repository.sync` has its state): when working in that repository, edit the file instead of calling update_project.",
       inputSchema: { project_id: z.string() },
     },
     wrap(async ({ project_id }) => {
@@ -496,7 +496,7 @@ export function registerArcherTools(server: McpServer, host: ArcherHost = NO_HOS
     {
       title: "Link the project to a GitHub repository",
       description:
-        "Record which GitHub repository (and branch) this architecture describes — the same as the human clicking 'Link repository' in the app's History panel. Once linked, the app shows the repo's commits alongside architecture revisions (list_github_commits), `src` paths deep-link into the repo, and drift checks are understood to be against that branch. Use it when the user tells you which repo a project belongs to. Pass repository: null to unlink (for a project stored in a repository file, that also stops syncing it; stop_syncing keeps the link). To store the project in a .arch file in the repository, use move_to_github instead.",
+        "Record which GitHub repository (and branch) a project describes, like Link repository in the app. The app then shows the repo's commits next to revisions (list_github_commits), `src` paths link into it, and drift checks are against that branch. Use it when the user says which repo a project belongs to. repository: null unlinks (a stored project also stops syncing). To store the project in a file there, use move_to_github.",
       inputSchema: {
         project_id: z.string(),
         repository: z
@@ -538,10 +538,10 @@ export function registerArcherTools(server: McpServer, host: ArcherHost = NO_HOS
     {
       title: "Create a project",
       description:
-        "Create a new Archer project from source. The document is validated first: any ERROR (syntax, unresolved connection endpoint, invalid payload, duplicate id) REJECTS the write and returns the diagnostics — fix and retry. On success the source is auto-laid-out, canonicalized, saved, and the result includes the id and an editor URL to share with the user. Write semantic content only; omit the layout block. Minimum viable document: 'arch \"Title\" v0.1'.",
+        "Create a project from source. Any ERROR (syntax, unresolved endpoint, invalid payload, duplicate id) REJECTS the write with the diagnostics: fix and retry. On success the source is laid out, canonicalized and saved, and the result has the id and an editor URL for the user. Write semantic content only (no layout block). Minimum document: 'arch \"Title\" v0.1'.",
       inputSchema: {
         source: z.string().describe("Full Archer document text (see get_guide for the language)"),
-        summary: z.string().max(200).optional().describe("One line describing what you changed, shown in the human's activity feed next to your name. Always provide it."),
+        summary: z.string().max(200).optional().describe("One line on what you changed, for the user's activity feed. Always give one."),
       },
     },
     wrap(async ({ source, summary }) => {
@@ -568,11 +568,11 @@ export function registerArcherTools(server: McpServer, host: ArcherHost = NO_HOS
     {
       title: "Update a project (full replace)",
       description:
-        "Replace a project's document with new source. Same validation gates as create_project: errors REJECT the write (nothing saved) and are returned for you to fix. Layout preservation is automatic: components that survive your edit keep their on-canvas positions; new components are auto-placed — so simply omit the layout block. The human's open canvas updates live. Always get_project first and edit that source; sending unrelated source will silently discard their content.",
+        "Replace a project's document with new source. Same validation as create_project: errors REJECT the write (nothing saved) and come back for you to fix. Components that survive keep their canvas positions and new ones are placed, so omit the layout block. Open canvases update live. Always get_project first and edit that source: unrelated source silently discards the user's content.",
       inputSchema: {
         project_id: z.string(),
         source: z.string().describe("Complete replacement document text"),
-        summary: z.string().max(200).optional().describe("One line describing what you changed, shown in the human's activity feed next to your name. Always provide it."),
+        summary: z.string().max(200).optional().describe("One line on what you changed, for the user's activity feed. Always give one."),
       },
     },
     wrap(async ({ project_id, source, summary }) => {
@@ -604,7 +604,7 @@ export function registerArcherTools(server: McpServer, host: ArcherHost = NO_HOS
     {
       title: "Rename a project",
       description:
-        "Change a project's title, like Rename on the dashboard or clicking the title in the editor. The title lives in the document's `arch \"…\"` header, so only that line changes: nothing else in the source is touched. Saved as a revision under your name.",
+        "Change a project's title (Rename on the dashboard). Only the `arch \"…\"` header line changes; the rest of the source is untouched. Saved as a revision under your name.",
       inputSchema: {
         project_id: z.string(),
         title: z.string().min(1).max(200).describe("The new title"),
@@ -634,7 +634,7 @@ export function registerArcherTools(server: McpServer, host: ArcherHost = NO_HOS
     {
       title: "Duplicate a project",
       description:
-        "Copy a project into a new one in the same workspace, like Duplicate on the dashboard: the whole document, canvas arrangement included, under a new title (default \"<title> copy\"). The copy starts its own history, and isn't shared, linked to a repository or stored in one.",
+        "Copy a project, canvas arrangement included, into a new one in the same workspace (the dashboard's Duplicate), titled \"<title> copy\" unless you pass a title. The copy has its own history and isn't shared, linked or stored in a repository.",
       inputSchema: {
         project_id: z.string(),
         title: z.string().min(1).max(200).optional().describe("Title of the copy (default: the original's, plus \" copy\")"),
@@ -676,7 +676,7 @@ export function registerArcherTools(server: McpServer, host: ArcherHost = NO_HOS
     {
       title: "Collapse/expand a container",
       description:
-        "Set how a container component renders on the canvas, like a human using the detail panel: 'plane' shows it as an area with its children laid out inside; 'icon' collapses it to a single box (children hidden, their connections re-routed to the container). Semantic content is untouched. Saves immediately.",
+        "Collapse or expand a container on the canvas: 'plane' shows its children inside it; 'icon' shows a single box (children hidden, their connections drawn to it). The architecture is untouched. Saves immediately.",
       inputSchema: {
         project_id: z.string(),
         path: z.string().describe("Dot-path of the container, e.g. 'backend' or 'backend.api'"),
@@ -702,7 +702,7 @@ export function registerArcherTools(server: McpServer, host: ArcherHost = NO_HOS
     {
       title: "Move or resize components on the canvas",
       description:
-        "Place components on the canvas, like a human dragging or resizing them: set each one's `at` (position) and/or `size` in grid cells. Positions are [column, row]; a component inside a container is placed relative to that container, whose area grows to fit. The architecture is untouched and nothing else moves. Use it when the user asks for a specific arrangement; for a tidy-up use auto_layout_project.",
+        "Move or resize components on the canvas, like dragging them: set each one's `at` [column, row] and/or `size` in grid cells. Inside a container, positions are relative to it and it grows to fit. Nothing else moves and the architecture is untouched. For a tidy-up, use auto_layout_project.",
       inputSchema: {
         project_id: z.string(),
         moves: z
@@ -757,7 +757,7 @@ export function registerArcherTools(server: McpServer, host: ArcherHost = NO_HOS
     {
       title: "Re-arrange a project's canvas",
       description:
-        "Run the auto-layout on a stored project and save. With reset=false (default) only components missing positions are placed, next to what they connect to; with reset=true ALL manual positioning is discarded and the whole canvas is re-arranged (collapsed/expanded state is kept) — only do that when the user asks for a tidy-up, since it destroys their hand arrangement. Pass `paths` instead to re-arrange just those components and everything inside them, leaving the rest of the canvas where it is (the editor's Re-layout selection; every child of a container = Re-layout this level).",
+        "Re-arrange a project's canvas and save. By default only components without a position are placed. reset=true discards ALL positions and re-arranges everything (collapsed state is kept): only when the user asks for a tidy-up, since it destroys their arrangement. `paths` re-arranges just those components and what's inside them (the editor's Re-layout selection).",
       inputSchema: {
         project_id: z.string(),
         reset: z.boolean().optional(),
@@ -802,7 +802,7 @@ export function registerArcherTools(server: McpServer, host: ArcherHost = NO_HOS
     {
       title: "Project history",
       description:
-        "List a project's revisions, newest first: who saved (the human, an agent by client name, or a commit to the repository file the project is stored in), when, their one-line summary, a count of components/connections added, removed and changed versus the previous revision, and whether the user has reviewed it (their own saves always count as reviewed; others' stay unreviewed until they review them in the editor or you call mark_reviewed). Humans see this same feed in the app, which is why every write you make should carry a `summary`. Use it to understand what happened since you last looked, to find a revision id for get_revision/diff_project/restore_revision, or to explain a document's evolution to the user.",
+        "A project's revisions, newest first: who saved (the user, an agent by client name, or a commit to the project's repository file), when, their one-line summary, counts of what changed, and whether the user has reviewed it. The user sees the same feed, so always give writes a `summary`. Use it to see what happened since you last looked, or to find revision ids for get_revision, diff_project and restore_revision.",
       inputSchema: {
         project_id: z.string(),
         limit: z.number().int().min(1).max(200).optional().describe("Max revisions to return (default 20)"),
@@ -852,7 +852,7 @@ export function registerArcherTools(server: McpServer, host: ArcherHost = NO_HOS
     {
       title: "Restore a past revision",
       description:
-        "Roll a project back to one of its revisions (ids from get_history), like Restore in the app's History panel: the project becomes exactly that version, canvas arrangement included. Nothing is lost — the current version stays in the history, and the restore is saved as a new revision under your name. Only restore when the user asks for it.",
+        "Roll a project back to a revision from get_history (History's Restore): it becomes exactly that version, canvas arrangement included. Nothing is lost: the current version stays in the history, and the restore is a new revision. Only when the user asks.",
       inputSchema: {
         project_id: z.string(),
         revision_id: z.string(),
@@ -884,7 +884,7 @@ export function registerArcherTools(server: McpServer, host: ArcherHost = NO_HOS
     {
       title: "Diff two versions",
       description:
-        "Structured architecture diff between two versions of a project: components added/removed/changed (with which fields), connections added/removed, title changes. Layout moves never count. Defaults compare the latest change (the current document vs. the revision before it) — the fastest way to answer 'what did you / the human just change?'. Pass revision ids from get_history to compare arbitrary points, or `compare` for the comparisons the editor shows: 'since_review' (everything the user hasn't reviewed yet — the editor's Review banner), 'unpublished' (a project stored in a repository file: the draft's changes that publish_to_github would write) or 'incoming' (the repository's conflicting version of the file, compared with the draft; settle it with sync_with_github).",
+        "Structured diff between two versions of a project: components added/removed/changed (with which fields), connections, title. Layout moves don't count. By default, the latest change (the current document vs. the revision before it). Pass revision ids from get_history for any two points, or `compare`: 'since_review' (what the user hasn't reviewed yet), 'unpublished' (a repository-stored project's draft vs. its file: what publish_to_github would write) or 'incoming' (the file's conflicting version vs. the draft).",
       inputSchema: {
         project_id: z.string(),
         from_revision_id: z.string().optional().describe("Older revision (default: the one just before `to`)"),
@@ -892,7 +892,7 @@ export function registerArcherTools(server: McpServer, host: ArcherHost = NO_HOS
         compare: z
           .enum(["since_review", "unpublished", "incoming"])
           .optional()
-          .describe("Compare what the editor shows instead of revisions: since_review, unpublished or incoming"),
+          .describe("Instead of revision ids: since_review, unpublished or incoming"),
       },
     },
     wrap(async ({ project_id, from_revision_id, to_revision_id, compare }) => {
@@ -966,7 +966,7 @@ export function registerArcherTools(server: McpServer, host: ArcherHost = NO_HOS
     {
       title: "Mark changes as reviewed",
       description:
-        "Record that the user has reviewed every change to a project made by agents or by commits to its repository file — the editor's Mark reviewed (or Dismiss on the banner that announces those changes). Clears the \"changed by an agent\" highlights on the canvas for everyone. Only call it when the user says they've seen the changes or asks you to clear them; to see what they are first, use diff_project with compare: 'since_review'.",
+        "Mark every change to a project by agents or commits as reviewed (the editor's Mark reviewed), clearing the \"changed\" highlights for everyone. Only when the user says they've seen the changes or asks you to clear them; diff_project with compare: 'since_review' shows them.",
       inputSchema: { project_id: z.string() },
     },
     wrap(async ({ project_id }) => {
@@ -986,7 +986,7 @@ export function registerArcherTools(server: McpServer, host: ArcherHost = NO_HOS
     {
       title: "Share a project by link",
       description:
-        "Turn \"anyone with the link can view\" on or off, like the Share dialog. On: returns the public link (a read-only canvas and code view, no sign-in needed), a live SVG image of the diagram and Markdown to embed it in a README (it re-renders on every save). Off: the link stops working; turning it on again makes a new one. Only share when the user asks: anyone who has the link can read the whole architecture.",
+        "Turn \"anyone with the link can view\" on or off (the Share dialog). On returns the public link (read-only canvas and code, no sign-in), a live SVG image and README embed Markdown. Off kills the link; turning it on again makes a new one. Only when the user asks: anyone with the link can read the whole architecture.",
       inputSchema: {
         project_id: z.string(),
         enabled: z.boolean().describe("true: anyone with the link can view; false: turn the link off"),
@@ -1005,7 +1005,7 @@ export function registerArcherTools(server: McpServer, host: ArcherHost = NO_HOS
     {
       title: "Read a shared project",
       description:
-        "Read a project someone shared with a link (https://…/share/<slug>): its title, full source and repository, in any workspace — what the share page shows anyone who opens the link. Use it when the user hands you a share link. Read-only; the link stops working when its owner turns sharing off.",
+        "Read a project from a share link someone gave you (https://…/share/<slug>): its title, full source and repository, in any workspace. Stops working when its owner turns sharing off.",
       inputSchema: {
         link: z.string().min(1).describe("The share link, or just its slug"),
       },
@@ -1035,23 +1035,23 @@ export function registerArcherTools(server: McpServer, host: ArcherHost = NO_HOS
   server.registerTool(
     "render_diagram",
     {
-      title: "Render a diagram image",
+      title: "Get a link to a diagram image",
       description:
-        "Draw a project (project_id) or raw source as an SVG image of its canvas — the editor's Export image, as SVG. Returns the SVG markup: write it to a .svg file, or embed it. Custom types draw with their glyph and color, and the theme is light or dark. For an image that stays current as the project changes, share_project gives a live image URL instead.",
+        "A link to an SVG image of a project's canvas, not the image itself (a big diagram's SVG runs to tens of thousands of tokens). Download it (e.g. `curl -o architecture.svg <url>`) or give it to the user. It works for an hour for anyone who has it, and draws the project as it is when opened. For a permanent image, use share_project.",
       inputSchema: {
-        project_id: z.string().optional().describe("Stored project to draw (omit when passing source)"),
-        source: z.string().optional().describe("Archer source to draw (omit when passing project_id)"),
+        project_id: z.string(),
         theme: z.enum(["light", "dark"]).optional().describe("Default light"),
       },
     },
-    wrap(async ({ project_id, source, theme }) => {
-      const src = await sourceOf({ project_id, source });
-      const syntax = parse(src).diagnostics.filter((d) => d.code === "E001");
+    wrap(async ({ project_id, theme }) => {
+      const ws = await requireWorkspace();
+      const project = await requireProject(ws, project_id);
+      const syntax = parse(project.source).diagnostics.filter((d) => d.code === "E001");
       if (syntax.length > 0)
-        return fail({ message: "The document has syntax errors, so it can't be drawn. Fix them first.", errors: diagnosticsReport(syntax) });
-      const ws = await optionalWorkspace();
-      const customTypes = ws ? await db.listCustomTypes(ws).catch(() => []) : [];
-      return text(host.renderSvg(src, { theme: theme ?? "light", customTypes }));
+        return fail({ message: "The project has syntax errors, so it can't be drawn. Fix them first.", errors: diagnosticsReport(syntax) });
+      const t = theme ?? "light";
+      const link = host.imageLink(caller().userId, { workspaceId: ws.workspaceId, documentId: project_id, theme: t });
+      return text({ project_id, theme: t, url: `${APP_URL}${link.path}`, expires_at: iso(link.expiresAt) });
     }),
   );
 
@@ -1070,7 +1070,7 @@ export function registerArcherTools(server: McpServer, host: ArcherHost = NO_HOS
     {
       title: "Report code ↔ architecture drift",
       description:
-        "Record the result of a drift check: after comparing each component (via its `src` path or by searching the repo) against the actual code, send one finding per discrepancy. The report REPLACES the previous one, and an EMPTY list means 'in sync' — send it too, so the human sees a green state. Findings show as badges on the components in the canvas; 'extra' findings appear in a list the human can add to the document with one click. Do not modify the document during a drift check unless the user asked.",
+        "Record a drift check: after comparing each component with the code (via its `src` or by searching the repo), send one finding per discrepancy. The report REPLACES the previous one, and an EMPTY list means 'in sync': send it too, so the user sees a green state. Findings show as badges on the canvas, and 'extra' ones can be added to the document in one click. Don't modify the document during a drift check unless asked.",
       inputSchema: {
         project_id: z.string(),
         findings: z.array(findingSchema),
@@ -1114,7 +1114,7 @@ export function registerArcherTools(server: McpServer, host: ArcherHost = NO_HOS
     {
       title: "Read the latest drift report",
       description:
-        "The most recent drift report for a project (who ran it, when, and every finding), or report: null if none has been run. Use it to pick up where a previous check left off or to see what the human still has to act on. A finding's position in `findings` is its index for dismiss_drift_finding.",
+        "A project's latest drift report (who ran it, when, every finding), or report: null. Use it to pick up a previous check or see what's left to act on. A finding's position in `findings` is its index for dismiss_drift_finding.",
       inputSchema: { project_id: z.string() },
     },
     wrap(async ({ project_id }) => {
@@ -1138,7 +1138,7 @@ export function registerArcherTools(server: McpServer, host: ArcherHost = NO_HOS
     {
       title: "Dismiss a drift finding",
       description:
-        "Drop one finding from the latest drift report, like its × in the app's Drift panel — typically once the user has acted on it, or decided it doesn't matter. `index` is the finding's position in get_drift's findings; the ones after it move up, so dismiss several from the highest index down. When the last one goes, the report reads as in sync.",
+        "Drop one finding from the latest drift report (its × in the app), e.g. once the user has acted on it. `index` is its position in get_drift's findings; later ones move up, so dismiss several from the highest index down. When the last one goes, the report reads as in sync.",
       inputSchema: {
         project_id: z.string(),
         index: z.number().int().min(0).describe("Position of the finding in get_drift's findings, from 0"),
@@ -1163,7 +1163,7 @@ export function registerArcherTools(server: McpServer, host: ArcherHost = NO_HOS
     {
       title: "Clear the drift report",
       description:
-        "Delete a project's drift report altogether, like Clear in the app's Drift panel: the badges leave the canvas, and the project reads as never checked (not as in sync — report_drift with an empty list records that).",
+        "Delete a project's drift report (Clear in the Drift panel): the badges go, and the project reads as never checked. (report_drift with an empty list records 'in sync' instead.)",
       inputSchema: { project_id: z.string() },
     },
     wrap(async ({ project_id }) => {
@@ -1181,7 +1181,7 @@ export function registerArcherTools(server: McpServer, host: ArcherHost = NO_HOS
     {
       title: "Workspace status",
       description:
-        "Report who you are acting for and where: the signed-in user, the CURRENT workspace (tools operate on it; switch with use_workspace, see list_workspaces), your agent name, whether the backend is reachable, and project/custom-type counts. Call this first if any project tool errors.",
+        "Who you're acting for and where: the user, the CURRENT workspace (see list_workspaces and use_workspace), your agent name, whether the backend is reachable, and project and custom-type counts. Call it first if a project tool errors.",
       inputSchema: {},
     },
     wrap(async () => {
@@ -1240,7 +1240,7 @@ export function registerArcherTools(server: McpServer, host: ArcherHost = NO_HOS
     {
       title: "List the user's workspaces",
       description:
-        "A signed-in user can belong to several workspaces: their own Personal one plus any team workspaces they were invited to, each with a role (owner/editor can write, viewer can only read). Every project tool on this server operates on ONE of them — the current workspace, which defaults to Personal. This lists them all and marks the current one (invitations addressed to the user's email are accepted first, as signing in to the app does). Call it when the user mentions a team or shared project you can't find in list_projects, then switch with use_workspace.",
+        "List the user's workspaces (Personal plus any team workspaces, each with their role: owner/editor write, viewer reads) and mark the current one, which every project tool acts on (default Personal). Invitations to the user's email are accepted first, as signing in to the app does. Call it when the user mentions a team or project you can't find, then switch with use_workspace.",
       inputSchema: {},
     },
     wrap(async () => {
@@ -1265,7 +1265,7 @@ export function registerArcherTools(server: McpServer, host: ArcherHost = NO_HOS
     {
       title: "Switch the current workspace",
       description:
-        "Make another of the user's workspaces the current one, so list_projects, create_project and every other project tool operate there. The choice is remembered for this user across sessions and agents until changed again, so only switch when the user asks for (or clearly means) a different workspace, and say which workspace you are working in. Fails if the user is not a member of the target. Pass the id from list_workspaces; the Personal workspace's id is the user id.",
+        "Make another of the user's workspaces current, so every project tool acts there. The choice is remembered for the user across sessions, agents and the CLI, so only switch when the user asks for (or clearly means) another workspace, and say which one you're in. Pass an id from list_workspaces (Personal's id is the user id).",
       inputSchema: {
         workspace_id: z.string().min(1).describe("Workspace id from list_workspaces"),
       },

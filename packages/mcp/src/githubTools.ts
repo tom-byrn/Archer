@@ -131,12 +131,12 @@ export function registerGitHubTools(server: McpServer, host: ArcherHost): void {
     {
       title: "List the user's GitHub repositories",
       description:
-        "Search the GitHub repositories the user's account can see, most recently pushed first — the repository picker in the app's Link repository, From GitHub and Move to GitHub dialogs. Uses the user's own GitHub access (Archer holds their GitHub token server-side; you never see it). `private_access: false` means private repositories are hidden because GitHub access was granted without the `repo` scope: the user can fix that with Grant access in any of those dialogs in the app. A public repository works by owner/name even when it isn't listed.",
+        "Search the GitHub repositories the user can see, most recently pushed first (the app's repository picker). Acts with the user's own GitHub access; you never see a token. `private_access: false` means private repositories are hidden (no `repo` scope): the user grants it with Grant access in the app. Public repositories work by owner/name even when not listed.",
       inputSchema: {
         search: z
           .string()
           .optional()
-          .describe("Case-insensitive filter on owner/name; an exact owner/name also finds public repositories outside the user's account"),
+          .describe("Filter on owner/name; an exact owner/name also finds public repositories outside the user's account"),
       },
     },
     wrap(async ({ search }) => {
@@ -163,7 +163,7 @@ export function registerGitHubTools(server: McpServer, host: ArcherHost): void {
     {
       title: "List a repository's .arch files",
       description:
-        "List the .arch files on a branch of a GitHub repository, and the repository's branches — what the From GitHub and Move to GitHub dialogs show once a repository is picked. A file already stored as a project in the current workspace carries that project's id. Reads with the user's own GitHub access.",
+        "The .arch files on a branch of a GitHub repository, plus its branches: what From GitHub and Move to GitHub show. A file already stored as a project in this workspace has that project's id. Uses the user's GitHub access.",
       inputSchema: {
         repository: z.string().describe("owner/name (or a github.com URL)"),
         branch: z.string().optional().describe("Default: the repository's default branch"),
@@ -195,7 +195,7 @@ export function registerGitHubTools(server: McpServer, host: ArcherHost): void {
     {
       title: "List the linked repository's commits",
       description:
-        "The commits on the branch of the repository a project is linked to (or stored in), newest first, 50 per page — the Code timeline in the app's History panel, next to the architecture revisions (get_history). Useful to see what changed in the code since a drift check or a revision. Reads with the user's own GitHub access.",
+        "The commits on the branch of the repository a project is linked to (or stored in), newest first, 50 per page: the Code timeline in the app's History. Useful to see what changed in the code since a drift check or a revision. Uses the user's GitHub access.",
       inputSchema: {
         project_id: z.string(),
         page: z.number().int().min(1).max(100).optional().describe("Page of 50, from 1 (default 1)"),
@@ -235,7 +235,7 @@ export function registerGitHubTools(server: McpServer, host: ArcherHost): void {
     {
       title: "New project from a repository file",
       description:
-        "Create a project stored in a .arch file in a GitHub repository — the dashboard's From GitHub. When the file exists it is imported (it must validate; the error lists what doesn't); when it doesn't, the project starts blank and the first publish_to_github creates the file. From then on the file on that branch is the source of truth: the canvas follows it, and edits in Archer are a draft to publish. The project goes in the current workspace; the user must be able to read the repository with their own GitHub access. list_arch_files shows which files exist.",
+        "Create a project stored in a .arch file in a GitHub repository (the dashboard's From GitHub), in the current workspace. An existing file is imported (it must validate; the error lists what doesn't); a missing one starts blank and the first publish_to_github creates it. From then on the file on that branch is the source of truth. Needs the user's own GitHub read access; list_arch_files shows the files.",
       inputSchema: {
         repository: z.string().describe("owner/name (or a github.com URL)"),
         branch: z.string().optional().describe("Default: the repository's default branch"),
@@ -272,14 +272,14 @@ export function registerGitHubTools(server: McpServer, host: ArcherHost): void {
     {
       title: "Store a project in a repository file",
       description:
-        "Store an existing project in a .arch file in a GitHub repository from now on — the editor's Move to GitHub. Nothing is written yet: the project becomes a draft, and publish_to_github creates the file (or, when the file already exists, replaces it — as a pull request by default, so it can be reviewed). After that the file on the branch is the source of truth and the canvas follows it. The user must be able to read the repository with their own GitHub access. Only when the user asks.",
+        "Store an existing project in a .arch file in a GitHub repository from now on (the editor's Move to GitHub). Nothing is written yet: publish_to_github creates the file, or replaces an existing one (as a pull request by default). After that the file on the branch is the source of truth. Needs the user's own GitHub read access. Only when the user asks.",
       inputSchema: {
         project_id: z.string(),
         repository: z.string().optional().describe("owner/name (default: the repository the project is linked to)"),
         branch: z
           .string()
           .optional()
-          .describe("Default: the linked branch when storing in the linked repository, else the repository's default branch"),
+          .describe("Default: the linked branch, else the repository's default branch"),
         path: z.string().describe("Where the file goes in the repository, e.g. architecture.arch or docs/system.arch"),
       },
     },
@@ -313,13 +313,13 @@ export function registerGitHubTools(server: McpServer, host: ArcherHost): void {
     {
       title: "Sync a project with its repository file",
       description:
-        "Bring a project stored in a repository file up to date with the file on its branch — the editor's Sync now (it also syncs on open, and a push webhook syncs on every change). A newer file is imported, or merged with the draft when both changed different things; when they changed the same things the conflict is recorded instead. Settle a conflict with `resolve`: 'draft' keeps the draft's side of each conflicting item (the app's Keep mine), 'repo' keeps the repository's (Keep theirs) — see the conflict first with diff_project (compare: 'incoming'), and let the user choose. Returns what happened and the sync state after.",
+        "Bring a repository-stored project up to date with its file (the editor's Sync now; the app also syncs on open and on every push). A newer file is imported, or merged with the draft when they changed different things; changes to the same things are recorded as a conflict. Settle one with `resolve`: 'draft' keeps the draft's side (Keep mine), 'repo' the repository's (Keep theirs). Show the user diff_project (compare: 'incoming') and let them choose. Returns what happened and the sync state.",
       inputSchema: {
         project_id: z.string(),
         resolve: z
           .enum(["draft", "repo"])
           .optional()
-          .describe("Settle a recorded conflict first: keep the draft's side ('draft') or the repository's ('repo')"),
+          .describe("Settle a conflict first, keeping the draft's side or the repository's"),
       },
     },
     wrap(async ({ project_id, resolve }) => {
@@ -348,7 +348,7 @@ export function registerGitHubTools(server: McpServer, host: ArcherHost): void {
     {
       title: "Publish a project's draft to its repository file",
       description:
-        "Write the unpublished draft of a project stored in a repository file to that file — the editor's Publish. mode 'pr' (default) opens a pull request from a new branch, or adds a commit to the one it already opened; mode 'commit' commits straight to the branch and needs push access — use it only when the user asks. See what will be written with diff_project (compare: 'unpublished'). Refused while the document has errors or a conflict is waiting (sync_with_github resolves it); if the file changed on the branch since the last sync, this syncs first and publishes on top. The file holds the architecture only: canvas positions stay in Archer. Only publish when the user asks.",
+        "Write a repository-stored project's unpublished draft to its file (the editor's Publish). mode 'pr' (default) opens a pull request, or adds a commit to the one already open; 'commit' pushes straight to the branch and needs push access. diff_project with compare: 'unpublished' shows what will be written. Refused while the document has errors or a conflict waits; if the file changed since the last sync, it syncs first. Only publish when the user asks.",
       inputSchema: {
         project_id: z.string(),
         mode: z
@@ -396,7 +396,7 @@ export function registerGitHubTools(server: McpServer, host: ArcherHost): void {
     {
       title: "Stop syncing a project with its file",
       description:
-        "Store a project in Archer again instead of in its repository file — the editor's Stop syncing. The project stays exactly as it is (unpublished changes included), the file in the repository is not changed or deleted, and the repository stays linked for the commit timeline and drift checks. Only when the user asks.",
+        "Keep a project in Archer again instead of in its repository file (the editor's Stop syncing). The project stays as it is, unpublished changes included; the file isn't touched; the repository stays linked. Only when the user asks.",
       inputSchema: { project_id: z.string() },
     },
     wrap(async ({ project_id }) => {

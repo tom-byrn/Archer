@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { parse } from "@archer/lang";
 import { connectInProcess } from "../scripts/inProcess";
-import { db } from "../src/backend";
+import { APP_URL, db } from "../src/backend";
 import { EXAMPLE_STATE } from "../src/reference";
 import { createFakeBackend } from "./fakeBackend";
 import { FakeHostError, createFakeHost } from "./fakeHost";
@@ -205,20 +205,23 @@ describe("sharing and images", () => {
     expect((await call("get_shared_project", { link: "not a link" })).text).toContain("isn't a share link");
   });
 
-  it("render_diagram passes the workspace's custom types and theme to the host", async () => {
-    const { host, call } = await setup();
-    let seen: unknown;
-    host.renderSvg = (_source, opts) => {
-      seen = opts;
-      return "<svg/>";
-    };
-    expect((await call("render_diagram", { source: 'arch "X" v0.1\n' })).text).toBe("<svg/>");
-    expect(seen).toEqual({ theme: "light", customTypes: EXAMPLE_STATE.customTypes });
+  it("render_diagram hands out a link for the user, workspace, project and theme, not the image", async () => {
+    const { call } = await setup();
+    const r = await call("render_diagram", { project_id: SHOP.id, theme: "dark" });
+    expect(r.json).toEqual({
+      project_id: SHOP.id,
+      theme: "dark",
+      url: `${APP_URL}/api/render/${USER}.${USER}.${SHOP.id}.dark.svg`,
+      expires_at: "2026-09-01T11:00:00.000Z",
+    });
+    await call("use_workspace", { workspace_id: ACME.id });
+    expect((await call("render_diagram", { project_id: SHOP.id })).text).toContain("No project with id");
   });
 
   it("render_diagram refuses syntax errors, and says when the server can't draw", async () => {
-    const { call } = await setup();
-    const broken = await call("render_diagram", { source: 'arch "X" v0.1\ncomponent {' });
+    const { fake, call } = await setup();
+    fake.state.projects.get(SHOP.id)!.source = 'arch "Shop" v0.1\ncomponent {';
+    const broken = await call("render_diagram", { project_id: SHOP.id });
     expect(broken.isError).toBe(true);
     expect(broken.json.errors[0]).toMatch(/^E001/);
     const { call: bare } = await setup({ withHost: false });

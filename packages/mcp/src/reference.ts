@@ -375,7 +375,7 @@ export const TOOL_GROUPS: readonly ToolGroup[] = [
   {
     title: "Sharing and images",
     intro:
-      "A shared project can be opened by anyone with its link, read-only, and embedded in a README as a live image. Images can also be drawn on demand.",
+      "A shared project can be opened by anyone with its link, read-only, and embedded in a README as a live image. For an image now, without sharing, `render_diagram` gives a link that works for an hour.",
     tools: ["share_project", "get_shared_project", "render_diagram"],
   },
   {
@@ -918,10 +918,15 @@ api -> db @sql
   render_diagram: {
     access: "read",
     args: { project_id: PROJECT, theme: "dark" },
-    result: '<svg xmlns="http://www.w3.org/2000/svg" width="…" height="…" viewBox="…" role="img" aria-label="Shop"><title>Shop</title>…</svg>',
+    result: {
+      project_id: PROJECT,
+      theme: "dark",
+      url: `${APP}/api/render/eyJ1IjoidXNlcl8yd0t4OVRxTG00UmJWYzdOcFozaEpkOHNGeUEi…svg`,
+      expires_at: "2026-09-01T11:00:00.000Z",
+    },
     notes: [
-      "The same drawing as a share link's image: the canvas arrangement, collapsed containers as single boxes, typed and labeled connections. Pass `source` instead of `project_id` to draw a document that isn't saved.",
-      "A document with syntax errors can't be drawn: the error result is `{ message, errors }`.",
+      "The image is drawn like a share link's: the canvas arrangement, collapsed containers as single boxes, typed and labeled connections, custom types in their colors. It's drawn when the link is opened, as the user who asked for it, so it stops working if they lose access to the project.",
+      "The link is signed and expires after an hour. It's a link rather than the SVG so a big diagram doesn't fill the agent's context. A project with syntax errors can't be drawn: the error result is `{ message, errors }`.",
     ],
   },
 

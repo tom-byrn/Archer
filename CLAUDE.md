@@ -49,7 +49,10 @@ Router + React Flow + Convex).
   `host` (`@archer/mcp/host`, implemented by `lib/server/mcpHost.ts`) lends
   them what lives in the web app: the repo sync engine and GitHub client (the
   same functions the `app/api/github/*` routes call, for the verified user),
-  the SVG renderer, and the user's email from Clerk. Anything a person can do
+  signed, hour-long links to diagram images (`lib/server/imageLink.ts`, served
+  by the public `app/api/render/[token]`: tools never return an image's bytes,
+  which would flood an agent's context), and the user's email from Clerk.
+  Anything a person can do
   in the app must be doable over MCP: `apps/web/test/mcpParity.test.ts` fails
   when a public Convex function or a GitHub route has no tool that reaches it
   (or a stated exemption) — a new app feature ships with its tool, documented

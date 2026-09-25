@@ -6,7 +6,8 @@
  * and the user's email address. The hosted /mcp route passes an
  * implementation to `handleRemoteRequest` (apps/web/lib/server/mcpHost.ts):
  * each GitHub method does what one of the app's `/api/github/*` routes does,
- * for the user the route verified. Without a host (tests, scripts, the docs'
+ * for the user the route verified, and image links are served by the app's
+ * `/api/render` route. Without a host (tests, scripts, the docs'
  * `describeServer`) the tools that need one say so instead.
  *
  * Errors: a host method throws an Error whose message is meant for the user.
@@ -17,15 +18,19 @@
 export interface ArcherHost {
   /** The user's primary email address, or null when they have none. */
   userEmail(userId: string): Promise<string | null>;
-  /** A document as an SVG image, drawn the way share images are (/share/<slug>/image.svg). */
-  renderSvg(source: string, opts: RenderRequest): string;
+  /**
+   * A short-lived link to a project's diagram as SVG, drawn the way share
+   * images are, as the user sees the project when the link is opened.
+   * `path` is relative to the app's origin; `expiresAt` is epoch ms.
+   */
+  imageLink(userId: string, image: ImageRequest): { path: string; expiresAt: number };
   github: GitHubHost;
 }
 
-export interface RenderRequest {
+export interface ImageRequest {
+  workspaceId: string;
+  documentId: string;
   theme: "light" | "dark";
-  /** The workspace's custom types, so their components draw with their glyph and color. */
-  customTypes: { tag: string; color: string; glyph: string }[];
 }
 
 export interface RepoRef {
@@ -115,7 +120,7 @@ const unavailable = (what: string) => (): never => {
 /** The host when there is none: the email is unknown, everything else says it isn't available. */
 export const NO_HOST: ArcherHost = {
   userEmail: async () => null,
-  renderSvg: unavailable("Rendering images"),
+  imageLink: unavailable("Drawing diagrams"),
   github: {
     repos: unavailable("GitHub"),
     repo: unavailable("GitHub"),

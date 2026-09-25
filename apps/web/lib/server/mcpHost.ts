@@ -1,8 +1,8 @@
 import "server-only";
 import { clerkClient } from "@clerk/nextjs/server";
 import type { ArcherHost } from "@archer/mcp/host";
-import { renderArchSvg } from "@/lib/svg";
 import { getRepo, listBranches, listCommits, searchRepos } from "@/lib/server/github";
+import { signImageLink } from "@/lib/server/imageLink";
 import {
   actorFor,
   archFiles,
@@ -19,8 +19,9 @@ import {
  * `app/api/github/*` routes does, for the user the route verified instead of
  * the signed-in browser: same engine, same GitHub access (the user's own
  * token from Clerk, or the Archer GitHub App where the engine falls back to
- * it), same errors. Plus the SVG renderer behind share images, and the user's
- * email from Clerk (for invitations).
+ * it), same errors. Plus signed links to diagrams, which app/api/render draws
+ * with the renderer behind share images, and the user's email from Clerk
+ * (for invitations).
  */
 
 /**
@@ -56,7 +57,12 @@ async function userEmail(userId: string): Promise<string | null> {
 
 export const mcpHost: ArcherHost = {
   userEmail,
-  renderSvg: (source, { theme, customTypes }) => renderArchSvg(source, { theme, customTypes }),
+  imageLink: (userId, { workspaceId, documentId, theme }) => {
+    const secret = process.env.ARCHER_SERVICE_SECRET;
+    if (!secret) throw new Error("Server misconfigured: ARCHER_SERVICE_SECRET is not set");
+    const { token, expiresAt } = signImageLink({ userId, workspaceId, documentId, theme }, { secret });
+    return { path: `/api/render/${token}.svg`, expiresAt };
+  },
   github: {
     repos: async (userId, query) => searchRepos((await actor(userId)).token, query),
     repo: async (userId, { owner, name }) => getRepo((await actor(userId)).token, owner, name),

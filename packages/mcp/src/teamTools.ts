@@ -63,7 +63,7 @@ export function registerTeamTools(server: McpServer, host: ArcherHost): void {
     {
       title: "Create a team workspace",
       description:
-        "Create a team workspace, like New team workspace… in the app's workspace menu. The user becomes its owner and can invite people with invite_member. It does NOT become the current workspace: call use_workspace to work in it.",
+        "Create a team workspace (New team workspace…); the user becomes its owner. It does NOT become current: use_workspace to work in it, invite_member to add people.",
       inputSchema: { name: z.string().min(1).max(100).describe("The workspace's name, e.g. the team's") },
     },
     wrap(async ({ name }) => {
@@ -109,7 +109,7 @@ export function registerTeamTools(server: McpServer, host: ArcherHost): void {
     {
       title: "Delete a team workspace",
       description:
-        "Permanently delete a team workspace with every project, revision, drift report and custom type in it, like Delete workspace… in the app's workspace menu. Members lose access at once. Irreversible — there is no trash. Owners only. Requires confirm=true, and only call it when the user explicitly asked to delete this workspace.",
+        "Permanently delete a team workspace and everything in it: projects, history, drift reports, custom types. Members lose access at once. Irreversible. Owners only; needs confirm=true, and only when the user explicitly asked.",
       inputSchema: {
         workspace_id: z.string().min(1).describe("Team workspace id from list_workspaces"),
         confirm: z.literal(true).describe("Must be true; acknowledges permanent deletion"),
@@ -131,7 +131,7 @@ export function registerTeamTools(server: McpServer, host: ArcherHost): void {
     {
       title: "Leave a team workspace",
       description:
-        "Take the user out of a team workspace, like Leave workspace in the app's workspace menu: they lose access to its projects until an owner invites them back. An owner can only leave once another signed-in owner exists. Requires confirm=true; only when the user asks.",
+        "Take the user out of a team workspace (Leave workspace): they lose access until an owner invites them back. An owner can leave only once another signed-in owner exists. Needs confirm=true; only when the user asks.",
       inputSchema: {
         workspace_id: z.string().min(1).describe("Team workspace id from list_workspaces"),
         confirm: z.literal(true).describe("Must be true; acknowledges losing access"),
@@ -151,7 +151,7 @@ export function registerTeamTools(server: McpServer, host: ArcherHost): void {
     {
       title: "List a team workspace's members",
       description:
-        "List the members of a team workspace and the invitations waiting for someone to sign in (`pending`), each with their role — the app's Members dialog. `you` marks the user. Owners manage members, editors change projects, viewers only read. Any member may look.",
+        "The members of a team workspace and its pending invitations, with their roles (the Members dialog); `you` marks the user. Owners manage members, editors change projects, viewers read. Any member may look.",
       inputSchema: { workspace_id: z.string().min(1).describe("Team workspace id from list_workspaces") },
     },
     wrap(async ({ workspace_id }) => {
@@ -167,11 +167,11 @@ export function registerTeamTools(server: McpServer, host: ArcherHost): void {
     {
       title: "Invite someone to a team workspace",
       description:
-        "Give someone access to a team workspace by email, with a role — the Members dialog's Invite. They get access when they sign in to Archer with GitHub using that address (at once if they already have). Archer sends no email, so tell the user to let them know. Inviting an address that's already a member or invited changes its role instead. Owners only; only invite people the user named.",
+        "Give someone access to a team workspace by email, with a role (the Members dialog's Invite). They get it when they sign in to Archer with GitHub using that address. Archer sends no email: tell the user to let them know. An address already there gets its role changed instead. Owners only; only invite people the user named.",
       inputSchema: {
         workspace_id: z.string().min(1).describe("Team workspace id from list_workspaces"),
         email: z.string().min(3).describe("Their email address"),
-        role: roleSchema.optional().describe("owner: manages members; editor: changes projects (default); viewer: reads only"),
+        role: roleSchema.optional().describe("Default editor"),
       },
     },
     wrap(async ({ workspace_id, email, role }) => {
@@ -202,11 +202,11 @@ export function registerTeamTools(server: McpServer, host: ArcherHost): void {
     {
       title: "Change a member's role",
       description:
-        "Change the role of a member (or a pending invitation) of a team workspace — the role menu in the Members dialog. A workspace keeps at least one signed-in owner, so the last one can't be demoted. Owners only.",
+        "Change the role of a member or pending invitation of a team workspace (the Members dialog's role menu). The last signed-in owner can't be demoted. Owners only.",
       inputSchema: {
         workspace_id: z.string().min(1).describe("Team workspace id from list_workspaces"),
         member_id: z.string().min(1).describe("From list_members"),
-        role: roleSchema.describe("owner: manages members; editor: changes projects; viewer: reads only"),
+        role: roleSchema.describe("The new role"),
       },
     },
     wrap(async ({ workspace_id, member_id, role }) => {
@@ -224,7 +224,7 @@ export function registerTeamTools(server: McpServer, host: ArcherHost): void {
     {
       title: "Remove a member from a team workspace",
       description:
-        "Take someone out of a team workspace, or withdraw their pending invitation — the trash button in the Members dialog. They lose access at once. The last signed-in owner can't be removed. Owners only. Requires confirm=true; only when the user asks. (To remove the user themselves, use leave_workspace.)",
+        "Remove someone from a team workspace, or withdraw their invitation (the Members dialog's trash button). They lose access at once; the last signed-in owner can't be removed. Owners only; needs confirm=true, and only when the user asks. For the user themselves, use leave_workspace.",
       inputSchema: {
         workspace_id: z.string().min(1).describe("Team workspace id from list_workspaces"),
         member_id: z.string().min(1).describe("From list_members"),

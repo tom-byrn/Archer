@@ -18,6 +18,8 @@ const isPublic = createRouteMatcher([
   "/.well-known(.*)",
   // GitHub webhook deliveries: authenticated by their signature.
   "/api/github/webhook",
+  // Diagram links the MCP's render_diagram hands out: signed, short-lived.
+  "/api/render(.*)",
 ]);
 
 const configured =

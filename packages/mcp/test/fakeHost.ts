@@ -5,6 +5,8 @@
  * plus a renderer and the user's email. The engine's own rules are tested in
  * apps/web; this plays them just far enough for the tools' plumbing. Tests
  * override single methods (`Object.assign(host.github, …)`) to script cases.
+ * Image links are `/api/render/<user>.<workspace>.<project>.<theme>.svg`, so
+ * a test can read back what the tool asked for.
  */
 import { CURRENT_VERSION, format, parse } from "@archer/lang";
 import { prepareSource, typeTags } from "../src/analysis";
@@ -74,10 +76,10 @@ export function createFakeHost(fake: FakeBackend, opts: { email: string | null }
 
   const host: ArcherHost = {
     userEmail: async () => opts.email,
-    renderSvg: (source, { theme }) => {
-      const title = parse(source).doc.title;
-      return `<svg xmlns="http://www.w3.org/2000/svg" width="560" height="320" viewBox="0 0 560 320" role="img" aria-label="${title}"><title>${title}</title><rect width="560" height="320" fill="${theme === "dark" ? "#16150f" : "#f7f5f1"}"/></svg>`;
-    },
+    imageLink: (userId, { workspaceId, documentId, theme }) => ({
+      path: `/api/render/${userId}.${workspaceId}.${documentId}.${theme}.svg`,
+      expiresAt: Date.parse("2026-09-01T11:00:00Z"),
+    }),
     github: {
       repos: async (_userId, query) => ({
         repos: [...github.repos.values()]

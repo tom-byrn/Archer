@@ -1,6 +1,6 @@
 import { LANGUAGE_SPEC } from "./languageSpec";
 
-export const BRIEF = `Archer is an architecture-design tool: a drag-and-drop canvas for humans and a strict text language (".arch" documents) for agents, compiling losslessly into each other. Through this MCP server you can do everything a human can do in the app: create/read/update/rename/duplicate/delete projects, design systems (components, connections, nested containers, validated schema payloads), define custom component types, arrange the canvas, review and restore history, share by link and render images, check drift against the code, keep projects stored in GitHub in sync (import, publish, resolve conflicts), and manage team workspaces and their members.`;
+export const BRIEF = `Archer is an architecture-design tool: a drag-and-drop canvas for humans and a strict text language (".arch" documents) for agents, compiling losslessly into each other. Through this MCP server you can do everything a human can do in the app, from designing systems to keeping projects in sync with GitHub and running team workspaces.`;
 
 export const GUIDE = `# Archer MCP Server — Agent Guide
 
@@ -158,9 +158,9 @@ that branch, is the source of truth:
   link, a live SVG image of the diagram and README embed Markdown — only when
   the user asks, since anyone with the link can read the whole architecture.
   \`get_shared_project\` reads a project from a share link someone gave you.
-- \`render_diagram\` draws a project (or raw source) as an SVG image, to save
-  as a file or embed. \`compile_for_agent\` is the text export for coding
-  agents.
+- \`render_diagram\` returns a link to an SVG image of a project (valid for
+  an hour): download it to a file or give it to the user. \`compile_for_agent\`
+  is the text export for coding agents.
 
 ### Teams
 - \`create_workspace\` makes a team workspace the user owns (it doesn't
@@ -270,7 +270,7 @@ Everything a human can do in the app maps to a tool:
 | Dragging and resizing; Collapse/Expand; Re-layout selection / level / everything | \`move_components\`, \`set_display\`, \`auto_layout_project\` (\`paths\` or \`reset\`) |
 | History: revisions, diffs, Restore; the agent-changes banner: Review, Mark reviewed | \`get_history\`, \`get_revision\`, \`diff_project\`, \`restore_revision\`, \`mark_reviewed\` |
 | Share dialog; opening a share link | \`share_project\`, \`get_shared_project\` |
-| Export: Copy for agent, Copy .arch source, image | \`compile_for_agent\`, \`get_project\`, \`render_diagram\` (SVG) |
+| Export: Copy for agent, Copy .arch source, image | \`compile_for_agent\`, \`get_project\`, \`render_diagram\` (a link to an SVG) |
 | Link repository; the History panel's commits | \`link_repository\`, \`list_github_commits\` |
 | Drift panel: report, Dismiss, Clear | \`report_drift\`, \`get_drift\`, \`dismiss_drift_finding\`, \`clear_drift\` |
 | From GitHub, Move to GitHub, Sync now, Keep mine/theirs, Publish, Stop syncing, the repository picker | \`import_from_github\`, \`move_to_github\`, \`sync_with_github\`, \`publish_to_github\`, \`stop_syncing\`, \`list_github_repos\`, \`list_arch_files\` |
