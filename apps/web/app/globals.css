@@ -61,10 +61,15 @@
   --tok-payload: #6b665e;
   --tok-version: #0c6d82;
 
-  /* Landing page only: its page color (black in dark mode, not --bg) and the
-     tone its dithered backdrop fades down from (landing.css). */
+  /* Landing page only: its page color (black in dark mode, not --bg), the
+     tone its dithered backdrop fades down from (landing.css), and the agent
+     prompt's window dots. The dots keep the dark theme's --danger, --warn and
+     --accent in both themes, since the light ones are too deep for them. */
   --landing-bg: #fbfaf8;
   --landing-fade: #edeae4;
+  --landing-close: #f0655a;
+  --landing-minimize: #f2a33a;
+  --landing-zoom: #23c088;
 }
 
 /* The dark theme. <html> carries data-theme="light" or "dark": the viewer's
@@ -235,12 +240,115 @@ select:focus-visible,
   text-transform: uppercase;
 }
 
-/* What differs between the themes by more than a token (the theme toggle's
-   icon, the docs' diagrams) comes in both versions, each shown in its own
-   theme only. Keyed on data-theme, so it's right from the first paint. */
+/* Content that takes over from a loading placeholder (the dashboard's header
+   and documents) fades in rather than popping. It plays when the element
+   mounts or gets the class. */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .fade-in {
+    animation: fade-in 200ms ease-out;
+  }
+}
+
+/* What differs between the themes by more than a token (the docs' diagrams,
+   the theme toggle's icon below) comes in both versions, each shown in its
+   own theme only. Keyed on data-theme, so it's right from the first paint. */
 :root[data-theme="dark"] .theme-light-only,
 :root:not([data-theme="dark"]) .theme-dark-only {
   display: none;
+}
+
+/* The theme toggle's icons (components/ThemeToggle.tsx) share one spot, and
+   fade rather than vanish. With motion, switching turns the old one out and
+   then the new one in, both the same way round, the new one overshooting a
+   little. A change runs on its destination state's `transition`: the base
+   one brings an icon in, the hidden state's takes it out. */
+.theme-toggle-moon,
+.theme-toggle-sun {
+  transition: opacity 150ms ease;
+}
+:root[data-theme="dark"] .theme-toggle-moon,
+:root:not([data-theme="dark"]) .theme-toggle-sun {
+  opacity: 0;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .theme-toggle-moon,
+  .theme-toggle-sun {
+    transition:
+      transform 500ms cubic-bezier(0.34, 1.56, 0.64, 1) 100ms,
+      opacity 250ms ease 100ms;
+  }
+  :root[data-theme="dark"] .theme-toggle-moon,
+  :root:not([data-theme="dark"]) .theme-toggle-sun {
+    transition:
+      transform 300ms ease-in,
+      opacity 200ms ease-in;
+  }
+  :root[data-theme="dark"] .theme-toggle-moon {
+    transform: rotate(90deg) scale(0.5);
+  }
+  :root:not([data-theme="dark"]) .theme-toggle-sun {
+    transform: rotate(-90deg) scale(0.5);
+  }
+}
+
+/* Icons that trade places on a click (SwapIcon in components/ui.tsx: a copy
+   button's copy → check) share one spot. With motion, the old one shrinks and
+   blurs away while the new one grows in, overshooting a little. As above, a
+   change runs on its destination state's `transition`. */
+.icon-swap {
+  display: inline-grid;
+  place-items: center;
+}
+.icon-swap > * {
+  grid-area: 1 / 1;
+  transition: opacity 150ms ease;
+}
+.icon-swap:not([data-swapped]) > :last-child,
+.icon-swap[data-swapped] > :first-child {
+  opacity: 0;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .icon-swap > * {
+    transition:
+      transform 400ms cubic-bezier(0.34, 1.56, 0.64, 1),
+      opacity 200ms ease-out,
+      filter 200ms ease-out;
+  }
+  .icon-swap:not([data-swapped]) > :last-child,
+  .icon-swap[data-swapped] > :first-child {
+    transform: scale(0.25);
+    filter: blur(3px);
+    transition:
+      transform 200ms ease-in,
+      opacity 150ms ease-in,
+      filter 150ms ease-in;
+  }
+}
+
+/* A theme switched with a control (switchTheme in lib/theme.ts) arrives as a
+   view transition: the new page, live, is revealed over a still of the old
+   in a circle growing from the control. The script sets data-theme-switch
+   for its duration, and the circle's center and final radius. */
+:root[data-theme-switch]::view-transition-old(root),
+:root[data-theme-switch]::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+:root[data-theme-switch]::view-transition-new(root) {
+  animation: theme-switch 550ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+@keyframes theme-switch {
+  from {
+    clip-path: circle(0 at var(--theme-switch-x) var(--theme-switch-y));
+  }
+  to {
+    clip-path: circle(var(--theme-switch-r) at var(--theme-switch-x) var(--theme-switch-y));
+  }
 }
 
 .tok-kw { color: var(--tok-kw); font-weight: 600; }
@@ -270,6 +378,29 @@ select:focus-visible,
 .spec table { @apply mb-4 w-full border-collapse text-[13px]; }
 .spec th { @apply border-b border-line-2 px-2 py-1.5 text-left font-semibold; }
 .spec td { @apply border-b border-line px-2 py-1.5 text-ink-2; }
+.spec h4 { @apply pb-1 pt-6 text-lg font-semibold; }
+.spec :is(h1, h2, h3, h4) code { @apply bg-transparent p-0; font-size: 0.95em; }
+.spec [id] { scroll-margin-top: 1.5rem; }
+.spec a { @apply text-ink underline decoration-line-2 underline-offset-2 hover:decoration-ink-3; }
+/* Headings link to themselves (docs anchors) without looking like links. */
+.spec :is(h2, h3, h4) a { @apply no-underline hover:underline; }
+/* A label over the next block: "Result", or the argument a code block holds. */
+.spec .spec-caption { @apply pb-1.5 text-base text-ink-3; }
+/* Wide tables scroll on their own instead of widening the page. */
+.spec .spec-table { @apply mb-4 overflow-x-auto; }
+.spec .spec-table table { @apply mb-0; }
+/* Long values (URLs) in a description cell wrap; names in the first column stay whole. */
+.spec td:not(:first-child) code { overflow-wrap: anywhere; }
+/* The MCP tool reference (components/docs/ToolReference.tsx): a rule over
+   each tool, and parameters as a list, which stays readable on a phone. */
+.spec .spec-tool { @apply mt-8 border-t border-line; }
+.spec .spec-tool h4 { @apply pt-5; }
+.spec .spec-params { @apply mb-4 border-t border-line; }
+.spec .spec-params > div { @apply border-b border-line py-2; }
+.spec .spec-params dt { @apply text-base text-ink; }
+.spec .spec-params dd { @apply text-base text-ink-2; }
+.spec .spec-type { @apply text-[12.5px] text-ink-3; font-family: var(--font-mono); }
+.spec .spec-required { @apply ml-2 text-xs font-semibold uppercase tracking-wide text-ink-3; }
 
 /* Clerk widgets: borders Clerk draws with box-shadows are too faint on our
    surfaces, so these two elements get token-driven borders instead. */

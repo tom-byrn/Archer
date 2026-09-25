@@ -4,8 +4,8 @@ import { Suspense, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useMutation, useQuery } from "convex/react";
+import { findExample } from "@archer/mcp/examples";
 import { api } from "@/convex/_generated/api";
-import { findExample } from "@/lib/examples";
 import { useWorkspace } from "@/lib/workspace";
 
 /**

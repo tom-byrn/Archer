@@ -1,0 +1,170 @@
+arch "Music Streaming" v0.1
+
+component apps "Listener Apps" {
+  desc "Every client talks to one API and streams from one CDN."
+  component web "Web Player" @vercel.nextjs
+  component mobile "iOS & Android" @mobile {
+    desc "Premium listeners can download for offline play. Downloads stay encrypted on the device."
+  }
+}
+
+component auth "Accounts" @auth0 {
+  desc "Email, Apple and Google sign-in. Issues the JWT every API call carries."
+}
+
+component gateway "API Gateway" @aws.api_gateway {
+  desc "The only public API. Checks the JWT, rate-limits per account, routes to services."
+}
+
+component sync "Device Sync" {
+  desc "WebSocket hub: move playback between devices, or use a phone as the remote for a speaker."
+}
+
+component cdn "Audio CDN" @aws.cloudfront {
+  desc "Caches encrypted audio at the edge and serves only URLs that Playback signed."
+}
+
+component services "Services" @aws.eks {
+  desc "Stateless services on Kubernetes, reachable from outside only through the API Gateway."
+  component catalog "Catalog" @service {
+    desc "Artists, albums, tracks, credits, and the markets each track may play in."
+    src "services/catalog"
+  }
+  component search "Search" @service {
+    desc "Typeahead across artists, albums, tracks and playlists."
+  }
+  component library "Library" @service {
+    desc "Saved tracks, followed artists, and playlists, including collaborative ones."
+  }
+  component playback "Playback" @service {
+    desc "Decides what a listener may play right now and returns a signed URL for the right rendition."
+    src "services/playback"
+    endpoints table ```
+    | method | path        | purpose                                |
+    | ------ | ----------- | -------------------------------------- |
+    | POST   | /v1/play    | resolve a track to a signed stream URL |
+    | POST   | /v1/license | DRM license for this device            |
+    ```
+    tiers yaml ```
+    free:
+      bitrate_kbps: 160
+      skips_per_hour: 6
+      offline: false
+    premium:
+      bitrate_kbps: 320
+      skips_per_hour: unlimited
+      offline: true
+    ```
+  }
+  component recs "Recommender" @service {
+    desc "Home feed, radio and a weekly mix, built from the nearest neighbors of what you play."
+  }
+  component subscriptions "Subscriptions" @service {
+    desc "Plans, trials and family seats. Answers what a listener is entitled to."
+    src "services/subscriptions"
+  }
+}
+
+component storage "Storage" {
+  component catalog_db "Catalog DB" @aws.rds {
+    desc "Postgres. The source of truth for metadata."
+    schema json ```
+    {
+      "artists": { "id": "uuid pk", "name": "text" },
+      "albums": { "id": "uuid pk", "artist_id": "uuid fk artists.id", "released_on": "date" },
+      "tracks": { "id": "uuid pk", "album_id": "uuid fk albums.id", "isrc": "text unique", "markets": "text[]" }
+    }
+    ```
+  }
+  component index "Search Index" @elasticsearch
+  component playlists "Playlists" @aws.dynamodb {
+    desc "Libraries and playlists, partitioned by listener."
+  }
+  component sessions "Play Sessions" @redis {
+    desc "Active streams per account, for device limits. Keys expire 30 seconds after the last heartbeat."
+  }
+  component events "Play Events" @kafka
+  component embeddings "Embeddings" @pinecone
+  component accounts_db "Accounts DB" @aws.rds
+}
+
+component content "Content Ingestion" {
+  component inbox "Delivery Inbox" @aws.s3 {
+    desc "Labels drop DDEX packages here: XML metadata, lossless masters and artwork."
+  }
+  component pipeline "Pipeline" @temporal {
+    desc "One durable workflow per release: validate, encode, then publish on release day."
+  }
+  component transcoder "Transcoder" @aws.fargate {
+    desc "FFmpeg workers. Ogg Vorbis at 96, 160 and 320 kbps plus AAC, loudness-normalized to -14 LUFS."
+  }
+  component audio "Audio Files" @aws.s3 {
+    desc "Every encoded rendition, keyed by track and bitrate."
+  }
+}
+
+component analytics "Analytics" {
+  component warehouse "Warehouse" @snowflake
+  component royalties "Royalties" {
+    desc "Monthly job that splits each market's revenue across rights holders by share of streams."
+    rules markdown ```
+    - A stream counts after 30 seconds of play.
+    - Free-tier streams share ad revenue; Premium streams share subscription revenue.
+    - Statements go out by the 15th of the following month.
+    ```
+  }
+  component training "Model Training" @worker {
+    desc "Nightly job: learns track and listener embeddings from the last 90 days of plays."
+  }
+}
+
+component labels "Record Labels" @external
+
+component stripe "Stripe" @stripe
+
+analytics.royalties -> analytics.warehouse @reads
+
+analytics.royalties -> labels : "statements" {
+  statement table ```
+  | column       | type | notes            |
+  | ------------ | ---- | ---------------- |
+  | isrc         | text | recording id     |
+  | market       | text | ISO country code |
+  | streams      | int  | counted plays    |
+  | payout_cents | int  | for the month    |
+  ```
+}
+
+analytics.training -> analytics.warehouse @reads
+analytics.training -> storage.embeddings @writes : "nightly"
+apps -> auth @auth : "sign in"
+apps -> cdn @http : "audio"
+apps -> gateway @http
+apps <-> sync @ws : "remote control"
+cdn -> content.audio @reads : "origin"
+content.inbox -> content.pipeline @event
+content.pipeline -> content.transcoder @queue : "encode"
+content.pipeline -> services.catalog @grpc : "publish"
+content.transcoder -> content.audio @writes
+gateway -> services @http : "routes"
+labels -> content.inbox @writes : "DDEX"
+services.catalog -> storage.catalog_db @sql
+services.catalog -> storage.index @writes : "reindex"
+services.library -> storage.playlists
+services.playback -- cdn : "signed URLs"
+services.playback -> services.catalog @grpc : "availability"
+services.playback -> services.subscriptions @grpc : "entitlements"
+
+services.playback -> storage.events @event : "track played" {
+  message json ```
+  { "listener_id": "uuid", "track_id": "uuid", "ms_played": "int", "market": "text", "played_at": "timestamp" }
+  ```
+}
+
+services.playback -> storage.sessions @writes : "active streams"
+services.recs -> storage.embeddings @reads
+services.search -> storage.index @reads
+services.subscriptions -> storage.accounts_db @sql
+services.subscriptions <-> stripe @http : "billing"
+storage.events -> analytics.warehouse @stream
+

@@ -1,5 +1,5 @@
 import type { CSSProperties, ReactNode } from "react";
-import { CATALOG, GLYPHS, lookupType } from "@archer/catalog";
+import { CATALOG, GLYPHS, GLYPH_VIEWBOX, lookupType } from "@archer/catalog";
 import { displayColor } from "@/lib/useIsDark";
 import { SITE_URL } from "@/lib/site";
 import { Chip, GitHubMark, Icon, cx } from "../ui";
@@ -12,18 +12,18 @@ const PALETTE = [
   "aws.lambda",
   "aws.sqs",
   "aws.s3",
-  "aws.vpc",
   "kubernetes",
   "postgres",
   "redis",
   "kafka",
   "vercel.nextjs",
-  "supabase.postgres",
   "convex",
   "stripe",
   "clerk",
   "openai",
   "anthropic",
+  "agent",
+  "mcp",
 ];
 
 const SHARE_SLUG = "k3v9x2";
@@ -66,7 +66,7 @@ function TypeTile({ tag, size = "md" }: { tag: string; size?: "sm" | "md" }) {
       <svg
         width={px}
         height={px}
-        viewBox="0 0 24 24"
+        viewBox={GLYPH_VIEWBOX}
         dangerouslySetInnerHTML={{ __html: GLYPHS[entry?.glyph ?? "box"] ?? GLYPHS.box! }}
       />
     </span>
@@ -140,7 +140,7 @@ function Nesting() {
           <svg
             width={16}
             height={16}
-            viewBox="0 0 24 24"
+            viewBox={GLYPH_VIEWBOX}
             className="text-ink-2"
             dangerouslySetInnerHTML={{ __html: GLYPHS.cloud! }}
           />
@@ -297,8 +297,9 @@ export function Features() {
       {/* The 1px gaps over a line-colored background draw the rules between tiles. */}
       <div className="mt-12 grid gap-px border-t border-line bg-line md:grid-cols-2 lg:grid-cols-3">
         <Tile title={`${TYPE_COUNT}+ component types`} visual={<Palette />} className="md:col-span-2">
-          AWS, GCP, Azure, Vercel, databases, queues and SaaS, each with its own glyph. Missing
-          one? Add a custom type and it shows up in everyone&apos;s palette.
+          Agents, LLMs, RAG and MCP servers, AWS, GCP, Azure, Vercel, databases, queues and SaaS,
+          each with its own glyph. Missing one? Add a custom type and it shows up in
+          everyone&apos;s palette.
         </Tile>
         <Tile title="Nest and drill in" visual={<Nesting />}>
           Put services inside a VPC, a cluster or a team boundary. Double-click to drill in;

@@ -23,6 +23,7 @@ export {
   PLANE_INNER_ORIGIN,
   PLANE_INNER_MARGIN,
 } from "./layout";
+export type { AutoLayoutOptions } from "./layout";
 export {
   addComponent,
   removeComponent,
@@ -40,12 +41,19 @@ export {
   setConnectionMeta,
   reparentComponent,
   freshId,
+  setConnectionEndpoints,
+  extractFragment,
+  insertFragment,
+  groupComponents,
+  relayoutComponents,
+  duplicateComponents,
 } from "./transform";
 export type {
   AddComponentOptions,
   ComponentMeta,
   ConnectionOptions,
   ConnectionMeta,
+  GroupOptions,
 } from "./transform";
 export {
   diffDocs,

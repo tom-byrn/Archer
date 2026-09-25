@@ -1,18 +1,19 @@
-import { marked } from "marked";
+import { DocsArticle } from "@/components/docs/DocsArticle";
 import { DocsNav } from "@/components/docs/DocsNav";
 import { SiteFrame } from "@/components/landing/SiteFrame";
+import { renderDocs } from "@/lib/docs";
 import { LANGUAGE_SPEC } from "@/lib/languageSpec";
 
 export const metadata = { title: "Archer" };
 
 export default function LanguagePage() {
-  const html = marked.parse(LANGUAGE_SPEC, { async: false });
+  const { html, toc } = renderDocs(LANGUAGE_SPEC);
   return (
     <SiteFrame>
       <DocsNav active="reference" />
-      <div className="px-5 py-12 sm:px-10 sm:py-16">
-        <article className="spec max-w-3xl" dangerouslySetInnerHTML={{ __html: html }} />
-      </div>
+      <DocsArticle toc={toc}>
+        <div dangerouslySetInnerHTML={{ __html: html }} />
+      </DocsArticle>
     </SiteFrame>
   );
 }

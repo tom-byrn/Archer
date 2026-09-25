@@ -12,6 +12,18 @@ export const DND_MIME = "application/archer-type";
 export const NAMESPACE_LABELS: Record<string, string> = {
   custom: "My components",
   generic: "Generic",
+  ai: "AI & agents",
+  network: "Networking",
+  compute: "Compute",
+  storage: "Storage",
+  messaging: "Messaging",
+  data: "Data & analytics",
+  observability: "Observability",
+  security: "Security",
+  platform: "Platform",
+  topology: "Topology",
+  patterns: "Patterns",
+  ai_platforms: "AI platforms",
   aws: "AWS",
   gcp: "Google Cloud",
   azure: "Azure",
@@ -23,12 +35,32 @@ export const NAMESPACE_LABELS: Record<string, string> = {
 export const namespaceLabel = (ns: string): string =>
   NAMESPACE_LABELS[ns] ?? ns.charAt(0).toUpperCase() + ns.slice(1);
 
-/** Namespaces in palette order: custom, generic, then the rest alphabetically. */
+/** The vendor-neutral groups — system-design building blocks — in palette order. */
+const NEUTRAL_NAMESPACES = [
+  "generic",
+  "ai",
+  "network",
+  "compute",
+  "storage",
+  "messaging",
+  "data",
+  "observability",
+  "security",
+  "platform",
+  "topology",
+  "patterns",
+];
+
+/**
+ * Namespaces in palette order: custom (always), the vendor-neutral groups,
+ * then vendors alphabetically.
+ */
 export const orderedNamespaces = (namespaces: Iterable<string>): string[] => {
-  const rest = [...new Set(namespaces)]
-    .filter((ns) => ns !== "custom" && ns !== "generic")
+  const present = new Set(namespaces);
+  const rest = [...present]
+    .filter((ns) => ns !== "custom" && !NEUTRAL_NAMESPACES.includes(ns))
     .sort((a, b) => namespaceLabel(a).localeCompare(namespaceLabel(b)));
-  return ["custom", "generic", ...rest];
+  return ["custom", ...NEUTRAL_NAMESPACES.filter((ns) => present.has(ns)), ...rest];
 };
 
 /** Search rank: 0 = name prefix, 1 = name/tag/namespace substring, -1 = no match. */
@@ -178,6 +210,25 @@ const GLYPH_CHOICES = [
   "doc", "card", "cloud", "spark", "cube", "user",
   "phone", "clock", "mail", "chat", "chart", "gear",
   "search", "flame",
+  // AI & agents
+  "brain", "robot", "plug", "wrench", "puzzle", "memory",
+  "prompt", "assistant", "retrieval", "embedding", "vector", "rank",
+  "books", "graph", "guardrail", "eval", "pulse", "router",
+  "reviewer", "terminal", "cursor", "mic", "speaker", "eye",
+  "image", "gpu", "model", "training", "stack", "sparkle",
+  "link",
+  // System-design building blocks
+  "window", "desktop", "chip", "signpost", "earth", "proxy",
+  "forward", "gauge", "unplug", "mesh", "lock", "hash",
+  "files", "columns", "plot", "folder", "disk", "broadcast",
+  "hub", "waves", "bell", "warehouse", "drop", "merge",
+  "signal", "scroll", "path", "siren", "bug", "wall",
+  "funnel", "key", "vault", "fingerprint", "directory", "handshake",
+  "sliders", "flag", "infinity", "flow", "map", "dashed",
+  "building", "network", "grid", "circles", "swap", "castle",
+  "pin", "ring", "slice", "copy", "flower", "crown",
+  "sequence", "readwrite", "history", "outbox", "skull", "notebook",
+  "sidecar",
 ];
 const COLOR_CHOICES = [
   "#64748b", "#ef4444", "#f97316", "#eab308", "#22c55e", "#14b8a6",
@@ -214,21 +265,26 @@ function NewTypeForm({
       <div className="flex min-h-4 items-center gap-2 px-0.5 pt-1 text-xs text-ink-3">
         {tag !== "" && <span className="mono truncate">@custom.{tag}</span>}
       </div>
-      <div className="grid grid-cols-6 gap-1 pt-1.5">
-        {GLYPH_CHOICES.map((g) => (
-          <button
-            key={g}
-            type="button"
-            onClick={() => setGlyph(g)}
-            title={g}
-            className={cx(
-              "flex h-6 items-center justify-center rounded-sm transition-colors duration-75",
-              glyph === g ? "bg-surface-3 ring-1 ring-line-2" : "hover:bg-surface-3",
-            )}
-          >
-            <Glyph glyph={g} color={color} size={14} />
-          </button>
-        ))}
+      {/* Scrolls from halfway down the sixth row, so the form stays short in the
+          sidebar and the cut-off row shows there's more. The 1px padding keeps the
+          selected glyph's ring inside the scroller. */}
+      <div className="-mx-px mt-[5px] max-h-[153px] overflow-y-auto p-px">
+        <div className="grid grid-cols-6 gap-1">
+          {GLYPH_CHOICES.map((g) => (
+            <button
+              key={g}
+              type="button"
+              onClick={() => setGlyph(g)}
+              title={g}
+              className={cx(
+                "flex h-6 items-center justify-center rounded-sm transition-colors duration-75",
+                glyph === g ? "bg-surface-3 ring-1 ring-line-2" : "hover:bg-surface-3",
+              )}
+            >
+              <Glyph glyph={g} color={color} size={14} />
+            </button>
+          ))}
+        </div>
       </div>
       <div className="flex flex-wrap gap-1.5 pt-2">
         {COLOR_CHOICES.map((c) => (

@@ -1,26 +1,85 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
-import { Button, Icon, buttonCls } from "../ui";
+import { CodeDialog } from "../CodeDialog";
+import { Button, Icon, SwapIcon, buttonCls } from "../ui";
 
-/** Copies an example's `.arch` source. */
-export function CopySourceButton({ source }: { source: string }) {
+/** Copies an example's `.arch` source: the popout's "Copy code", as in the editor. */
+function CopyCodeButton({ source }: { source: string }) {
   const [copied, setCopied] = useState(false);
   return (
     <Button
       size="sm"
-      variant="ghost"
-      icon={copied ? <Icon.Check /> : <Icon.Copy />}
+      icon={<SwapIcon swapped={copied} from={<Icon.Copy />} to={<Icon.Check />} />}
+      title="Copy code"
       onClick={() =>
         void navigator.clipboard.writeText(source).then(() => {
           setCopied(true);
-          setTimeout(() => setCopied(false), 1600);
+          setTimeout(() => setCopied(false), 1500);
         })
       }
     >
-      {copied ? "Copied" : "Copy"}
+      <span className="hidden md:inline">Copy code</span>
     </Button>
+  );
+}
+
+/** The popout's scrolling body. It takes focus, so the keyboard scrolls the code and not the page behind. */
+function CodeScroller({ children }: { children: ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    ref.current?.focus({ preventScroll: true });
+  }, []);
+  return (
+    <div
+      ref={ref}
+      tabIndex={0}
+      className="min-h-0 flex-1 overflow-auto overscroll-contain"
+      // No focus ring, like the editor's code area.
+      style={{ boxShadow: "none" }}
+    >
+      {children}
+    </div>
+  );
+}
+
+/**
+ * "View code": the example's source in the editor's code popout. `children` is
+ * the highlighted source, rendered on the server.
+ */
+export function ViewCodeButton({
+  title,
+  source,
+  children,
+}: {
+  title: string;
+  source: string;
+  children: ReactNode;
+}) {
+  const [open, setOpen] = useState(false);
+  const trigger = useRef<HTMLButtonElement | null>(null);
+  const close = useCallback(() => {
+    setOpen(false);
+    trigger.current?.focus();
+  }, []);
+  return (
+    <>
+      <Button
+        size="sm"
+        icon={<Icon.Code />}
+        aria-haspopup="dialog"
+        onClick={(e) => {
+          trigger.current = e.currentTarget;
+          setOpen(true);
+        }}
+      >
+        View code
+      </Button>
+      <CodeDialog open={open} onClose={close} title={title} actions={<CopyCodeButton source={source} />}>
+        <CodeScroller>{children}</CodeScroller>
+      </CodeDialog>
+    </>
   );
 }
 

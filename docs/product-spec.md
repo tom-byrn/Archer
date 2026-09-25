@@ -76,9 +76,27 @@ agent** (canonical code, layout stripped, spec header prepended) and **Export PN
   mutation path (edit → AST transform → format → save → re-render). No separate
   canvas state that can drift.
 - One editor at a time (v1): last-write-wins on the stored text, no merging.
-- Auto-layout: deterministic grid layered layout (containers sized to content); runs
-  on any component lacking a layout entry, then persists the result. "Re-layout"
-  button re-runs it on the whole document.
+- Auto-layout: deterministic layered layout on the grid — connections flow left to
+  right with few crossings and straight edges, planes wrap their children. A document
+  with no positions is arranged from scratch; otherwise existing positions are kept,
+  new components are placed next to what they connect to, and a plane that has to
+  grow nudges aside what it would overlap. The result is persisted. "Re-layout"
+  re-runs it on the selection, the current level, or the whole document, keeping
+  collapsed containers collapsed.
+- Selection: click, shift/⌘-click to add or remove, shift-drag on empty canvas to
+  box-select, ⌘A for the current level. Dragging any selected component moves them
+  all (one undo step); arrow keys nudge by a grid cell (shift: four).
+- Clipboard: ⌘C/⌘X copy the selected components as `.arch` text (subtrees plus the
+  connections between them), so they paste into another document, the code view or
+  an agent; ⌘V pastes any `.arch` text, header or not, at the pointer (inside the
+  plane under it); ⌘D duplicates next to the originals.
+- Structure: ⌘G groups the selection in a new container sized around it; "Add
+  child" nests a new component in any component; dragging either end of a selected
+  connection re-points it; the selected component resizes from its handles (planes
+  from the right and bottom, so their children stay put).
+- Right-click menus on components, connections and empty canvas; ⌘K runs commands,
+  finds components and adds new ones; ⌘F finds a component anywhere in the document
+  and brings it into view, drilling into collapsed containers as needed.
 
 ## Build order (each stage independently useful)
 

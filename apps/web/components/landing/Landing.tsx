@@ -7,7 +7,7 @@ import { ThemeToggle } from "../ThemeToggle";
 import { Icon, buttonCls, cx } from "../ui";
 import { AgentPrompt, CopyPromptButton } from "./AgentPrompt";
 import { ClientLogos } from "./ClientLogos";
-import { DitherBackdrop } from "./DitherBackdrop";
+import { Dither, DitherBackdrop } from "./Dither";
 import { Faq } from "./Faq";
 import { Features } from "./Features";
 import { SandboxLoader } from "./SandboxLoader";
@@ -22,7 +22,14 @@ const FOOTER_COLUMNS: { title: string; links: [label: string, href: string][] }[
       ["FAQ", "#faq"],
     ],
   },
-  { title: "Docs", links: [["Language reference", "/language"]] },
+  {
+    title: "Docs",
+    links: [
+      ["Language reference", "/language"],
+      ["MCP server", "/docs/mcp"],
+      ["CLI", "/docs/cli"],
+    ],
+  },
   {
     title: "Account",
     links: [
@@ -144,6 +151,13 @@ export function Landing() {
       </section>
 
       <Features />
+
+      {/* Features and FAQ are both ruled grids; a band of the page's dither, arced like the
+          one at the top, keeps them apart. Like that one it sits under the page (-z-10), so
+          its canvas can't cover the rules when it's rounded a pixel over them. */}
+      <div className="landing-joints h-20 border-b border-line sm:h-32">
+        <Dither className="absolute inset-0 -z-10" fadeLength={1.2} curve={0.8} />
+      </div>
 
       <Faq />
 
