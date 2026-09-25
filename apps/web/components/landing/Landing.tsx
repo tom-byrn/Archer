@@ -153,9 +153,9 @@ export function Landing() {
 
       <Features />
 
-      {/* Features and FAQ are both ruled grids; a band keeps them apart, with a carousel of
-          the catalog's glyph tiles turning at its center. */}
-      <div className="landing-joints flex h-24 items-center justify-center border-b border-line sm:h-28">
+      {/* Features and FAQ are both ruled grids; a band keeps them apart, with the catalog's
+          glyph tiles running across it. */}
+      <div className="landing-joints h-24 border-b border-line sm:h-28">
         <GlyphCarousel />
       </div>
 
