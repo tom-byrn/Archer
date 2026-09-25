@@ -1,0 +1,88 @@
+arch "Archer-Codebase" v0.1
+
+component dev "Developer" @user {
+  desc "Designs architecture on the canvas; hands compiled specs to coding agents."
+}
+
+component agent "Coding Agent" @anthropic {
+  desc "Claude Code or any MCP client. Reads and writes projects through the MCP server with the same powers a human has in the app; receives compiled specs as implementation prompts."
+}
+
+component web "Web App" @vercel.nextjs {
+  desc "Next.js (App Router) + React Flow editor. The canvas is a live render of the .arch source: every canvas gesture becomes an AST transform, formats back to canonical text, and autosaves. One mutation path, so canvas and code can never drift."
+  component editor "Editor" {
+    desc "Orchestrator: holds the source + undo/redo history, derives doc/diagnostics/flow-graph per keystroke, routes every mutation through transform -> format -> save."
+  }
+  component canvas "Canvas" {
+    desc "React Flow: typed icon nodes and nested planes, drag/connect/reparent, drill-down focus with breadcrumbs, snap-back for dangling arrows (E101 is unrepresentable from the UI), PNG export."
+  }
+  component palette "Palette" {
+    desc "Searchable curated catalog + this workspace's custom types; drag or click to place."
+  }
+  component detail "Detail Panel" {
+    desc "Per-component name/id/type/description and payload editors with live format validation; per-connection direction/type/label."
+  }
+  component code_view "Code Pane" {
+    desc "The raw .arch text with syntax highlighting, collapsible, editable in both directions, with diagnostics (code + line number)."
+  }
+}
+
+component lang "Language Core" {
+  desc "@archer/lang — the Archer language itself. Pure TypeScript with zero app dependencies, shared verbatim by the web app and the MCP server."
+  component parser "Parser" {
+    desc "Lexer + recursive descent to a typed AST; positioned E001 diagnostics with statement-level error recovery."
+  }
+  component validator "Validator" {
+    desc "Spec rules: E002/E003 identity, E101 connection resolution (nothing is ever auto-created), E201 payload syntax for json/yaml/table, W301-W303 warnings."
+  }
+  component formatter "Formatter" {
+    desc "Canonical form: fixed section order, sorted connections/layout, smart fences. Idempotent; round-trips with zero diagnostics."
+  }
+  component layouter "Auto-layout" {
+    desc "Deterministic grid placement from the connection graph; layers wrap into sub-columns past a height cap; never moves existing entries; planes sized to contain their children."
+  }
+  component exporter "Agent Export" {
+    desc "compileForAgent: canonical text with the layout block stripped and a reading-guide preamble prepended."
+  }
+  component transforms "Transforms" {
+    desc "Pure AST edits behind every canvas gesture: add/move/resize/reparent/rename components, connections, payloads, display modes."
+  }
+}
+
+component catalog "Catalog" {
+  desc "@archer/catalog — ~75 curated technology types (tag, name, namespace, accent color, glyph), the connection-type vocabulary, and the SVG glyph set."
+}
+
+component mcp "MCP Server" @service {
+  desc "@archer/mcp — human-parity agent access over stdio (17 tools + the archer://guide resource). Writes are validation-gated (errors reject, diagnostics returned) and layout-preserving (surviving components keep their canvas positions)."
+  tools table ```
+  | group     | tools                                                                       |
+  | --------- | --------------------------------------------------------------------------- |
+  | docs      | get_guide (+ archer://guide resource)                                       |
+  | language  | validate_source, format_source, compile_for_agent, auto_layout_source       |
+  | catalog   | list_types, create_custom_type, delete_custom_type                          |
+  | projects  | list_projects, get_project, create_project, update_project, delete_project  |
+  | canvas    | set_display, auto_layout_project                                            |
+  | workspace | get_workspace_info, set_workspace                                           |
+  ```
+}
+
+component convex "Convex Backend" @convex {
+  desc "Document + custom-type storage. Anonymous local dev deployment (zero setup) or Convex cloud. Live queries push agent saves onto open canvases instantly. Rows are scoped by workspaceId — a client-generated uuid standing in for real auth (post-v1 swap)."
+  schema table ```
+  | table        | fields                                 |
+  | ------------ | -------------------------------------- |
+  | documents    | workspaceId, title, source, updatedAt  |
+  | libraryTypes | workspaceId, tag, name, color, glyph   |
+  ```
+}
+
+agent -> mcp : "MCP (JSON-RPC over stdio)"
+dev -> agent : "pastes compiled specs / prompts"
+dev -> web @http : "designs on the canvas"
+mcp -> catalog @depends
+mcp -> convex @http : "queries + mutations"
+mcp -> lang @depends : "identical pipeline to the app"
+web -> catalog @depends
+web <-> convex @ws : "live queries + debounced autosave"
+web -> lang @depends : "parse, validate, format on every edit"
