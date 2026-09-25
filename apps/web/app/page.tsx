@@ -11,7 +11,7 @@ import { useWorkspace, type WorkspaceSummary } from "@/lib/workspace";
 import { repoKey, type RepoLink } from "@/lib/github";
 import { AccountMenu } from "@/components/AccountMenu";
 import { MembersDialog } from "@/components/MembersDialog";
-import { ACME_SAAS } from "@/lib/samples/acme-saas";
+import { ACME_SAAS } from "@archer/mcp/samples";
 import { DocPreview } from "@/lib/preview";
 import { ConnectAgentDialog } from "@/components/ConnectAgentDialog";
 import { SampleDialog } from "@/components/SampleDialog";

@@ -5,7 +5,7 @@
  */
 import { writeFileSync } from "node:fs";
 import { renderArchSvg } from "../lib/svg";
-import { ACME_SAAS } from "../lib/samples/acme-saas";
+import { ACME_SAAS } from "@archer/mcp/samples";
 
 const out = process.argv[2] ?? "/tmp/archer-sample.svg";
 const theme = process.argv[3] === "dark" ? "dark" : "light";

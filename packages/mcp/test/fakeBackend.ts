@@ -1,7 +1,8 @@
 /**
  * An in-memory stand-in for the Convex functions behind `db` (src/backend.ts),
  * so the tools can run in tests without a deployment. It keeps the rules the
- * tools rely on: access by workspace role (writes need editor), a revision
+ * tools rely on: access by workspace role (queries need viewer, writes editor,
+ * member management owner, and a team keeps a signed-in owner), a revision
  * appended on every agent save that changes something, drift reports
  * replaced whole. Install it with `Object.assign(db, fake.db)`; seed it
  * through `fake.state`.
@@ -11,7 +12,9 @@ import type {
   CustomTypeRow,
   DriftFinding,
   DriftRow,
+  MemberRow,
   ProjectDoc,
+  PublicDoc,
   RepoLink,
   RevisionRow,
   Workspace,
@@ -20,9 +23,18 @@ import type {
 
 type Role = WorkspaceSummary["role"];
 
+export interface FakeMember {
+  id: string;
+  /** Absent while the invite is pending. */
+  userId?: string;
+  email: string;
+  role: Role;
+  createdAt: number;
+}
+
 export interface FakeState {
-  /** Team workspaces; `members` maps user ids to roles. Personal workspaces are implicit. */
-  teams: { id: string; name: string; members: Record<string, Role> }[];
+  /** Team workspaces. Personal workspaces are implicit. */
+  teams: { id: string; name: string; members: FakeMember[] }[];
   projects: Map<string, ProjectDoc & { workspaceId: string }>;
   /** Newest first, like the Convex query. */
   revisions: RevisionRow[];
@@ -33,6 +45,8 @@ export interface FakeState {
   /** The workspace each user's agents act on (use_workspace). */
   prefs: Map<string, string>;
 }
+
+export type FakeBackend = ReturnType<typeof createFakeBackend>;
 
 export function createFakeBackend() {
   let seq = 0;
@@ -53,14 +67,18 @@ export function createFakeBackend() {
     return m[1]!;
   };
 
-  const roleIn = (userId: string, workspaceId: string): Role | null =>
-    workspaceId === userId ? "owner" : (state.teams.find((t) => t.id === workspaceId)?.members[userId] ?? null);
+  const teamOf = (workspaceId: string) => state.teams.find((t) => t.id === workspaceId);
 
-  const need = (ws: Workspace, role: "viewer" | "editor"): void => {
-    const have = roleIn(userOf(ws.serviceKey), ws.workspaceId);
+  const roleIn = (userId: string, workspaceId: string): Role | null =>
+    workspaceId === userId ? "owner" : (teamOf(workspaceId)?.members.find((m) => m.userId === userId)?.role ?? null);
+
+  const RANK: Record<Role, number> = { viewer: 0, editor: 1, owner: 2 };
+  const needRole = (userId: string, workspaceId: string, role: Role): void => {
+    const have = roleIn(userId, workspaceId);
     if (!have) throw new Error("Not authorized for this workspace.");
-    if (role === "editor" && have === "viewer") throw new Error("This needs editor access; you are a viewer.");
+    if (RANK[have] < RANK[role]) throw new Error(`This needs ${role} access; you are a ${have}.`);
   };
+  const need = (ws: Workspace, role: "viewer" | "editor"): void => needRole(userOf(ws.serviceKey), ws.workspaceId, role);
 
   const projectIn = (ws: Workspace, id: string) => {
     const p = state.projects.get(id);
@@ -81,22 +99,43 @@ export function createFakeBackend() {
     });
   };
 
+  const ensureAnotherOwner = (team: FakeState["teams"][number], m: FakeMember) => {
+    if (!team.members.some((o) => o.role === "owner" && o.userId && o.id !== m.id))
+      throw new Error("A workspace needs at least one other signed-in owner first.");
+  };
+
+  const memberById = (memberId: string) => {
+    for (const team of state.teams) {
+      const m = team.members.find((x) => x.id === memberId);
+      if (m) return { team, m };
+    }
+    return null;
+  };
+
   const db = {
     listProjects: async (ws: Workspace) => {
       need(ws, "viewer");
       return [...state.projects.values()]
         .filter((p) => p.workspaceId === ws.workspaceId)
         .sort((a, b) => b.updatedAt - a.updatedAt)
-        .map(({ _id, title, updatedAt }) => ({ _id, title, updatedAt }));
+        .map(({ _id, title, updatedAt, repo }) => ({
+          _id,
+          title,
+          updatedAt,
+          ...(repo
+            ? { repo: { owner: repo.owner, name: repo.name, branch: repo.branch, linkedAt: repo.linkedAt, ...(repo.path ? { path: repo.path } : {}) } }
+            : {}),
+        }));
     },
     getProject: async (ws: Workspace, id: string) => {
       need(ws, "viewer");
       const p = projectIn(ws, id);
-      return p ? { ...p } : null;
+      return p ? structuredClone(p) : null;
     },
     createProject: async (ws: Workspace, title: string, source: string, summary?: string) => {
       need(ws, "editor");
-      const p = { _id: nextId("proj_"), workspaceId: ws.workspaceId, title, source, updatedAt: Date.now() };
+      const now = Date.now();
+      const p = { _id: nextId("proj_"), workspaceId: ws.workspaceId, title, source, updatedAt: now, seenRevisionAt: now };
       state.projects.set(p._id, p);
       record(p, summary);
       return p._id;
@@ -125,6 +164,36 @@ export function createFakeBackend() {
       need(ws, "editor");
       if (projectIn(ws, id)) state.projects.delete(id);
     },
+    setPublic: async (ws: Workspace, id: string, enabled: boolean) => {
+      need(ws, "editor");
+      const p = projectIn(ws, id);
+      if (!p) throw new Error("Document not found");
+      if (!enabled) {
+        delete p.publicSlug;
+        return null;
+      }
+      p.publicSlug ??= `slug${String(++seq).padStart(12, "0")}`;
+      return p.publicSlug;
+    },
+    getPublic: async (slug: string): Promise<PublicDoc | null> => {
+      const p = [...state.projects.values()].find((x) => x.publicSlug === slug);
+      if (!p) return null;
+      const repo = p.repo
+        ? { owner: p.repo.owner, name: p.repo.name, branch: p.repo.branch, ...(p.repo.path ? { path: p.repo.path } : {}) }
+        : null;
+      return { _id: p._id, title: p.title, source: p.source, updatedAt: p.updatedAt, repo };
+    },
+    markSeen: async (ws: Workspace, id: string) => {
+      need(ws, "editor");
+      const p = projectIn(ws, id);
+      if (p) p.seenRevisionAt = Date.now();
+    },
+    unlinkFile: async (ws: Workspace, id: string) => {
+      need(ws, "editor");
+      const p = projectIn(ws, id);
+      if (!p) throw new Error("Document not found");
+      if (p.repo) p.repo = { owner: p.repo.owner, name: p.repo.name, branch: p.repo.branch, linkedAt: p.repo.linkedAt };
+    },
     listCustomTypes: async (ws: Workspace) => {
       need(ws, "viewer");
       return [...(state.library.get(ws.workspaceId) ?? [])];
@@ -141,22 +210,34 @@ export function createFakeBackend() {
     listRevisions: async (ws: Workspace, documentId: string, limit?: number) => {
       need(ws, "viewer");
       if (!inWorkspace(ws, documentId)) return [];
-      return state.revisions
-        .filter((r) => r.documentId === documentId)
-        .slice(0, Math.min(Math.max(limit ?? 50, 1), 200));
+      return structuredClone(
+        state.revisions.filter((r) => r.documentId === documentId).slice(0, Math.min(Math.max(limit ?? 50, 1), 200)),
+      );
     },
     getRevision: async (ws: Workspace, id: string) => {
       need(ws, "viewer");
       const r = state.revisions.find((x) => x._id === id);
-      return r && inWorkspace(ws, r.documentId) ? r : null;
+      return r && inWorkspace(ws, r.documentId) ? structuredClone(r) : null;
+    },
+    reviewBaseline: async (ws: Workspace, documentId: string) => {
+      need(ws, "viewer");
+      const p = projectIn(ws, documentId);
+      if (!p) return null;
+      const all = state.revisions.filter((r) => r.documentId === documentId);
+      if (p.seenRevisionAt !== undefined) {
+        const seen = all.find((r) => r.createdAt <= p.seenRevisionAt!);
+        if (seen) return seen;
+      }
+      return all.find((r) => r.author.kind === "user") ?? all[all.length - 1] ?? null;
     },
     listWorkspaces: async (serviceKey: string): Promise<WorkspaceSummary[]> => {
       const userId = userOf(serviceKey);
       return [
         { id: userId, name: "Personal", kind: "personal", role: "owner" },
         ...state.teams
-          .filter((t) => t.members[userId])
-          .map((t) => ({ id: t.id, name: t.name, kind: "team" as const, role: t.members[userId]! })),
+          .filter((t) => roleIn(userId, t.id))
+          .map((t) => ({ id: t.id, name: t.name, kind: "team" as const, role: roleIn(userId, t.id)! }))
+          .sort((a, b) => a.name.localeCompare(b.name)),
       ];
     },
     getAgentWorkspace: async (serviceKey: string) => {
@@ -170,9 +251,83 @@ export function createFakeBackend() {
       state.prefs.set(userId, workspaceId);
       return { workspaceId };
     },
+    acceptInvites: async (serviceKey: string, email: string) => {
+      const userId = userOf(serviceKey);
+      let accepted = 0;
+      for (const t of state.teams)
+        for (const m of t.members)
+          if (!m.userId && m.email === email.toLowerCase()) {
+            m.userId = userId;
+            accepted++;
+          }
+      return { accepted };
+    },
+    createWorkspace: async (serviceKey: string, name: string, email: string | null) => {
+      const userId = userOf(serviceKey);
+      const id = nextId("team_");
+      state.teams.push({
+        id,
+        name,
+        members: [{ id: nextId("member_"), userId, email: email ?? "", role: "owner", createdAt: Date.now() }],
+      });
+      return id;
+    },
+    renameWorkspace: async (serviceKey: string, workspaceId: string, name: string) => {
+      needRole(userOf(serviceKey), workspaceId, "owner");
+      teamOf(workspaceId)!.name = name;
+    },
+    deleteWorkspace: async (serviceKey: string, workspaceId: string) => {
+      needRole(userOf(serviceKey), workspaceId, "owner");
+      state.teams = state.teams.filter((t) => t.id !== workspaceId);
+      for (const [id, p] of state.projects) if (p.workspaceId === workspaceId) state.projects.delete(id);
+    },
+    leaveWorkspace: async (serviceKey: string, workspaceId: string) => {
+      const userId = userOf(serviceKey);
+      const team = teamOf(workspaceId);
+      const m = team?.members.find((x) => x.userId === userId);
+      if (!team || !m) return;
+      if (m.role === "owner") ensureAnotherOwner(team, m);
+      team.members = team.members.filter((x) => x !== m);
+    },
+    listMembers: async (serviceKey: string, workspaceId: string): Promise<MemberRow[]> => {
+      const userId = userOf(serviceKey);
+      needRole(userId, workspaceId, "viewer");
+      return (teamOf(workspaceId)?.members ?? [])
+        .slice()
+        .sort((a, b) => a.createdAt - b.createdAt)
+        .map((m) => ({ _id: m.id, email: m.email, role: m.role, createdAt: m.createdAt, pending: !m.userId, you: m.userId === userId }));
+    },
+    inviteMember: async (serviceKey: string, workspaceId: string, email: string, role: Role) => {
+      needRole(userOf(serviceKey), workspaceId, "owner");
+      const team = teamOf(workspaceId)!;
+      const existing = team.members.find((m) => m.email === email);
+      if (existing) {
+        if (existing.role === "owner" && role !== "owner") ensureAnotherOwner(team, existing);
+        existing.role = role;
+        return existing.id;
+      }
+      const m: FakeMember = { id: nextId("member_"), email, role, createdAt: Date.now() };
+      team.members.push(m);
+      return m.id;
+    },
+    setMemberRole: async (serviceKey: string, memberId: string, role: Role) => {
+      const hit = memberById(memberId);
+      if (!hit) throw new Error("Member not found.");
+      needRole(userOf(serviceKey), hit.team.id, "owner");
+      if (hit.m.role === "owner" && role !== "owner") ensureAnotherOwner(hit.team, hit.m);
+      hit.m.role = role;
+    },
+    removeMember: async (serviceKey: string, memberId: string) => {
+      const hit = memberById(memberId);
+      if (!hit) return;
+      needRole(userOf(serviceKey), hit.team.id, "owner");
+      if (hit.m.role === "owner") ensureAnotherOwner(hit.team, hit.m);
+      hit.team.members = hit.team.members.filter((x) => x !== hit.m);
+    },
     getDrift: async (ws: Workspace, documentId: string) => {
       need(ws, "viewer");
-      return inWorkspace(ws, documentId) ? (state.drift.get(documentId) ?? null) : null;
+      const row = inWorkspace(ws, documentId) ? state.drift.get(documentId) : undefined;
+      return row ? structuredClone(row) : null;
     },
     reportDrift: async (ws: Workspace, documentId: string, findings: DriftFinding[]) => {
       need(ws, "editor");
@@ -181,7 +336,16 @@ export function createFakeBackend() {
       state.drift.set(documentId, row);
       return row._id;
     },
+    dismissDrift: async (ws: Workspace, driftId: string, index: number) => {
+      need(ws, "editor");
+      for (const row of state.drift.values())
+        if (row._id === driftId && inWorkspace(ws, row.documentId)) row.findings = row.findings.filter((_, i) => i !== index);
+    },
+    clearDrift: async (ws: Workspace, documentId: string) => {
+      need(ws, "editor");
+      if (inWorkspace(ws, documentId)) state.drift.delete(documentId);
+    },
   };
 
-  return { db, state };
+  return { db, state, nextId };
 }

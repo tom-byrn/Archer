@@ -1,6 +1,7 @@
 import { auth, clerkClient } from "@clerk/nextjs/server";
 import { verifyClerkToken } from "@clerk/mcp-tools/next";
 import { handleRemoteRequest } from "@archer/mcp/remote";
+import { mcpHost } from "@/lib/server/mcpHost";
 
 /**
  * Hosted MCP server: https://<app>/mcp (Streamable HTTP, stateless).
@@ -10,7 +11,9 @@ import { handleRemoteRequest } from "@archer/mcp/remote";
  * themselves (dynamic client registration is enabled on the Clerk instance),
  * send the user through Clerk's consent screen, and call this route with a
  * bearer token. The verified user id is handed to the tools, which reach
- * Convex with a server-only service credential — see convex/access.ts.
+ * Convex with a server-only service credential — see convex/access.ts — and
+ * GitHub, the image renderer and the user's email through `mcpHost`
+ * (lib/server/mcpHost.ts), the same code the app's own routes run.
  *
  * This is the only way agents and the `archer` CLI reach workspaces: the CLI
  * signs in with this same flow (`archer login`, client name "Archer CLI") and
@@ -79,13 +82,17 @@ async function handle(req: Request): Promise<Response> {
   if (!verified) return unauthorized(req, "Invalid or expired access token");
 
   return withCors(
-    await handleRemoteRequest(req, {
-      token,
-      clientId: verified.clientId,
-      scopes: verified.scopes,
-      userId: verified.extra!.userId as string,
-      agentName: await agentNameFor(verified.clientId),
-    }),
+    await handleRemoteRequest(
+      req,
+      {
+        token,
+        clientId: verified.clientId,
+        scopes: verified.scopes,
+        userId: verified.extra!.userId as string,
+        agentName: await agentNameFor(verified.clientId),
+      },
+      mcpHost,
+    ),
   );
 }
 

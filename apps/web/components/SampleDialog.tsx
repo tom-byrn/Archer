@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { DocPreview } from "@/lib/preview";
-import { SAMPLES, type Sample } from "@/lib/samples";
+import { SAMPLES, type Sample } from "@archer/mcp/samples";
 import { Dialog, cx } from "./ui";
 
 /**

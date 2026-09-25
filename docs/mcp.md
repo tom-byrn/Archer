@@ -1,16 +1,19 @@
 # Archer MCP server
 
-Archer's MCP server lets an AI agent do what you do in the app: read and
-write architecture documents, manage your component types, review history,
-and record whether the code still matches the design. It works with any
-client that speaks the [Model Context Protocol](https://modelcontextprotocol.io):
-Claude Code, Claude, Cursor, VS Code, Codex and more.
+Archer's MCP server lets an AI agent do anything you can do in the app:
+read and write architecture documents, arrange the canvas, manage your
+component types, review and restore history, share projects and draw them,
+record whether the code still matches the design, keep projects stored in
+GitHub in sync, and run your team workspaces. It works with any client that
+speaks the [Model Context Protocol](https://modelcontextprotocol.io): Claude
+Code, Claude, Cursor, VS Code, Codex and more.
 
 - **Address:** `https://archer.tombyrne.dev/mcp` (Streamable HTTP)
 - **Sign-in:** in your browser, with GitHub. There are no API keys to create
   or paste.
-- **Tools:** 26, covering projects, the language, component types, the
-  canvas, history, drift and workspaces. See the
+- **Tools:** 54, covering projects, the language, component types, the
+  canvas, history and review, sharing and images, drift, projects stored in
+  GitHub, workspaces and their members. See the
   [tool reference](#tool-reference).
 
 The agent acts as you, in the workspaces you belong to, with your role in
@@ -178,14 +181,22 @@ in your project.
 From then on the agent acts as you:
 
 - It sees every workspace you belong to, and can do what your role allows in
-  each. Owners and editors can use every tool. Viewers can use every tool
-  that doesn't change the workspace; their writes are refused.
+  each. Owners and editors can use every project tool; viewers can use every
+  tool that doesn't change the workspace, and their writes are refused. Only
+  owners manage a team workspace and its members.
 - Everything it saves is recorded in the project's history under the client's
   name, as registered at sign-in ("Claude Code", "Cursor", "Archer CLI"…),
   with the one-line summary the agent gives. The canvas highlights what an
   agent changed until you review it.
-- Sharing links, workspace members and invitations, and image export stay in
-  the app.
+- For projects stored in GitHub it uses your own GitHub access, which Archer
+  holds on its server: the agent never sees a token, and can reach only the
+  repositories you can.
+- Agents are told to do what reaches other people or can't be undone
+  (publishing to GitHub, sharing a link, inviting someone, deleting) only
+  when you ask, and deletions need an explicit confirmation.
+- What stays with you: signing in and connecting agents, granting Archer
+  access to your private GitHub repositories (a consent screen in your
+  browser), your theme, and what's on your screen (zoom, selection, undo).
 
 To disconnect an agent, remove the server from the client or clear its
 sign-in there (in Claude Code, from `/mcp`).
@@ -220,15 +231,18 @@ update at once. The main things agents do:
   source and saves the whole document (`update_project`). Your arrangement of
   the canvas is kept.
 - **Work in a repository-stored project.** A project can live in a `.arch`
-  file in its GitHub repository (created *From GitHub* in the app, or moved
-  there with *Move to GitHub*). `get_project` then returns the file as
-  `repository.path`, with its sync state, and tells agents working in that
-  repository to edit the file and commit it with the code. `update_project`
-  still works, but only changes the project's unpublished draft (the result
-  says so), which a person publishes back to the repository as a pull request.
+  file in its GitHub repository (`import_from_github`, like *From GitHub* in
+  the app, or `move_to_github`, like *Move to GitHub*). `get_project` then
+  returns the file as `repository.path`, with its sync state, and tells
+  agents working in that repository to edit the file and commit it with the
+  code. `update_project` still works, but only changes the project's
+  unpublished draft (the result says so); `publish_to_github` writes the
+  draft back as a pull request when you ask, and `sync_with_github` brings in
+  what changed on the branch, settling a conflict the way you choose.
 - **Explain what changed.** `get_history` and `diff_project` show who changed
-  what, and when. `get_revision` returns any past version, to compare or
-  restore.
+  what, and when, including everything you haven't reviewed yet.
+  `restore_revision` rolls a project back, and `mark_reviewed` clears the
+  highlights once you've seen the changes.
 - **Hand off a spec.** `compile_for_agent` returns the document as an
   implementation spec for a coding agent. It's the same text as **Copy for
   agent** in the editor.
@@ -236,6 +250,11 @@ update at once. The main things agents do:
   reports what's missing, changed or extra (`report_drift`). Findings appear
   as badges on the canvas, and you can add the extra parts to the document in
   one click.
+- **Share and draw.** `share_project` makes a read-only link and a live
+  image to embed in a README; `get_shared_project` reads a link someone gave
+  you; `render_diagram` draws a project as an SVG file.
+- **Run a team.** `create_workspace`, `invite_member`, `set_member_role` and
+  the rest do what the workspace menu and the Members dialog do.
 
 Things to ask your agent:
 
@@ -244,6 +263,9 @@ Things to ask your agent:
 - "What changed in the Shop architecture since yesterday?"
 - "Check the Shop project against this repository and report drift."
 - "Implement the Shop project's API, following its spec."
+- "Publish the Payments draft to GitHub as a pull request."
+- "Share the Shop project and give me Markdown for our README."
+- "Invite dana@acme.dev to the Platform workspace as an editor."
 
 ### What the server guarantees
 
@@ -272,7 +294,8 @@ In this repository, `packages/mcp/src/server.ts` registers the tools and
 
 Tools answer with a single text item. Most results are JSON. `get_guide`,
 `format_source`, `auto_layout_source` and `compile_for_agent` answer with
-plain text: markdown or Archer source.
+plain text: markdown or Archer source. `render_diagram` answers with SVG
+markup.
 
 When a call fails, the result is marked as an error (`isError: true`) and its
 text says why. Rejected writes answer with JSON that lists the problems:
@@ -298,6 +321,10 @@ language reference.
 | `The user is not a member of workspace '…'` | `use_workspace` was given an id that isn't one of yours. The message lists the valid ones. |
 | `Input validation error: …` | The arguments don't match the tool's parameters. |
 | `Invalid findings — nothing recorded: …` | A drift finding has no valid `path`, or an `extra` has no `name`. |
+| `Only owners can …` | Managing a team workspace and its members needs its owner. |
+| `Can't find owner/name, or your GitHub account can't read it. …` | GitHub tools act with your own access: private repositories need the `repo` scope, granted in the app. |
+| `… conflict with the draft …` | The repository file and the draft changed the same things: see them with `diff_project` (`compare: "incoming"`), then settle them with `sync_with_github` (`resolve`). |
+| `… isn't available on this server: it runs in the hosted Archer app.` | GitHub and image tools called outside the hosted app (tests, scripts). |
 
 ## Protocol
 
@@ -322,8 +349,9 @@ For client developers and the curious:
     which is where clients discover all of the above.
 - **CORS.** Any origin may call the server from a browser.
 - **Resources.** Besides tools, the server offers the agent guide as
-  `archer://guide` (markdown) and each worked example as
-  `archer://examples/<slug>` (plain text).
+  `archer://guide` (markdown), each worked example as
+  `archer://examples/<slug>` and each sample as `archer://samples/<slug>`
+  (plain text).
 
 ## Troubleshooting
 
@@ -364,9 +392,14 @@ CLI calls it like any other client.
 2. `handleRemoteRequest` (`src/remote.ts`) builds a fresh `McpServer` and a
    `WebStandardStreamableHTTPServerTransport` for the request (stateless, JSON
    responses), registers the tools, and passes the verified user and client
-   name in `authInfo.extra`. The web app must not import
-   `@modelcontextprotocol/sdk` itself: two copies of the SDK, one per zod
-   peer, don't interoperate.
+   name in `authInfo.extra`. The route also hands it the app's **host**
+   (`apps/web/lib/server/mcpHost.ts`, typed by `src/host.ts`): what the
+   tools need that lives in the web app, which this package can't import —
+   the repo sync engine and GitHub client (acting with the user's GitHub
+   token from Clerk, exactly as the `app/api/github/*` routes do), the SVG
+   renderer behind share images, and the user's email (for invitations).
+   The web app must not import `@modelcontextprotocol/sdk` itself: two copies
+   of the SDK, one per zod peer, don't interoperate.
 3. `wrap` (`src/server.ts`) runs each tool inside `requestContext`, an
    `AsyncLocalStorage` holding the user id, the agent's name and the service
    credential `svc_<ARCHER_SERVICE_SECRET>.<userId>`. It turns thrown errors
@@ -376,7 +409,7 @@ CLI calls it like any other client.
    credential in the functions' `apiKey` argument (a legacy name).
    `apps/web/convex/access.ts` (`effectiveUser`) turns it back into the user, and
    `requireWorkspace` checks their role: viewer for queries, editor for
-   document writes.
+   document writes, owner for managing a team workspace.
 5. `create_project` and `update_project` save through `prepareWrite`
    (`src/backend.ts`). It validates with `src/analysis.ts`, the same code the
    CLI runs, against the catalog plus the workspace's custom types. Then it
@@ -412,8 +445,16 @@ has the full setup.
    build it with `satisfies`.
 4. Tell agents when to use it: the workflows and the capability map in
    `src/guide.ts`.
-5. Update the tool count in `scripts/smoke.ts`, `scripts/remote-check.ts`,
+5. If it needs something that lives in the web app (GitHub, rendering), add
+   it to `ArcherHost` (`src/host.ts`) and implement it in
+   `apps/web/lib/server/mcpHost.ts` with the same code the app's route runs.
+6. Update the tool count in `scripts/smoke.ts`, `scripts/remote-check.ts`,
    `packages/cli/test/account.test.ts`, this file and `CLAUDE.md`.
+
+The app and the server must not drift apart: anything a person can do in the
+app, an agent can do here. `apps/web/test/mcpParity.test.ts` fails when a
+public Convex function or a GitHub route appears that no tool can reach: add
+a tool, or exempt it there with the reason it only makes sense in a browser.
 
 ### Tests
 
@@ -423,8 +464,11 @@ pnpm --filter @archer/mcp test
 
 These run the tools in-process with no deployment. `test/examples.test.ts`
 covers the worked examples. `test/reference.test.ts` runs every documented
-example over a fake backend seeded with the example scenario, and checks that
-each result has the documented shape.
+example over a fake backend (`test/fakeBackend.ts`) and a fake host with an
+in-memory GitHub (`test/fakeHost.ts`), seeded with the example scenario, and
+checks that each result has the documented shape. `test/tools.test.ts` covers
+what the examples don't: refusals, roles, and how the GitHub tools drive the
+host.
 
 Two scripts run the tools in-process against a real deployment, exactly as
 `/mcp` does: as a signed-in user, reaching Convex with the service credential.
@@ -439,8 +483,10 @@ ARCHER_SERVICE_SECRET=<secret> CONVEX_URL=<url> REMOTE_CHECK_USER_ID=user_… \
 ```
 
 `smoke.ts` exercises every tool group, including the rejected write, layout
-preservation, attribution in history and drift reporting. It creates and
-deletes its own project and custom type. `remote-check.ts` is read-only: the
+preservation, attribution in history, drift reporting, sharing, review and a
+team workspace from creation to deletion. It creates and deletes its own
+projects, custom type and team workspace. The GitHub and image tools need the
+web app's host, so there they only report that they aren't available. `remote-check.ts` is read-only: the
 tool list, identity, workspaces, and that calls without a verified user are
 refused.
 

@@ -357,6 +357,20 @@ export async function resolveConflict(
   throw new SyncError("The document kept changing while resolving. Try again.", 409, "busy");
 }
 
+/**
+ * Sync, first settling a recorded conflict when `resolve` says which side to
+ * keep (POST /api/github/sync, and the MCP's sync_with_github).
+ */
+export async function syncWith(
+  actor: Actor,
+  workspaceId: string,
+  documentId: string,
+  resolve?: "draft" | "repo",
+): Promise<SyncOutcome> {
+  if (resolve) await resolveConflict(actor, workspaceId, documentId, resolve);
+  return syncDocument(actor, workspaceId, documentId);
+}
+
 /* ------------------------------------------------------------- Publish */
 
 export type PublishResult =

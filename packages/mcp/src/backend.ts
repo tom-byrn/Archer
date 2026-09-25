@@ -4,7 +4,7 @@ import { anyApi, type FunctionReference } from "convex/server";
 import { analyzeSource, prepareSource, typeTags, type Analysis, type PreparedWrite } from "./analysis";
 
 // Untyped references into apps/web/convex functions (validated server-side).
-type Module = "documents" | "library" | "revisions" | "drift" | "workspaces" | "agentPrefs";
+type Module = "documents" | "library" | "revisions" | "drift" | "workspaces" | "agentPrefs" | "repoSync";
 const fn = (module: Module, name: string): unknown =>
   (anyApi as Record<string, Record<string, unknown>>)[module]![name];
 const qref = (m: Module, n: string) => fn(m, n) as FunctionReference<"query">;
@@ -72,6 +72,8 @@ export interface ProjectSummary {
   _id: string;
   title: string;
   updatedAt: number;
+  /** Where it's linked or stored (no sync bookkeeping). */
+  repo?: Pick<RepoLink, "owner" | "name" | "branch" | "path" | "linkedAt">;
 }
 export interface RepoLink {
   owner: string;
@@ -83,12 +85,37 @@ export interface RepoLink {
   /** The file as last synced; the draft is whatever the project changes on top of it. */
   base?: { commit: string; blob: string; source: string; at: number };
   pr?: { number: number; url: string; branch: string; openedAt: number };
-  incoming?: { commit: string; conflicts: string[] };
+  /** A newer version of the file that conflicts with the draft. */
+  incoming?: {
+    commit: string;
+    blob?: string;
+    source?: string;
+    author?: string;
+    message?: string;
+    url?: string;
+    conflicts: string[];
+    at?: number;
+  };
+  /** Why the last sync failed, until one succeeds. */
+  problem?: { message: string; commit?: string; at: number };
+  checkedAt?: number;
 }
 export interface ProjectDoc extends ProjectSummary {
   source: string;
   /** Linked GitHub repository, if the human (or an agent) set one. */
   repo?: RepoLink;
+  /** Share slug while "anyone with the link can view" is on. */
+  publicSlug?: string;
+  /** Up to when the user has reviewed changes they didn't make. */
+  seenRevisionAt?: number;
+}
+/** A document shared with "anyone with the link" (documents.getPublic). */
+export interface PublicDoc {
+  _id: string;
+  title: string;
+  source: string;
+  updatedAt: number;
+  repo: Pick<RepoLink, "owner" | "name" | "branch" | "path"> | null;
 }
 export interface CustomTypeRow {
   tag: string;
@@ -97,7 +124,7 @@ export interface CustomTypeRow {
   glyph: string;
 }
 export interface Author {
-  kind: "user" | "agent";
+  kind: "user" | "agent" | "git";
   name?: string;
 }
 export interface RevisionRow {
@@ -108,6 +135,8 @@ export interface RevisionRow {
   createdAt: number;
   author: Author;
   summary?: string;
+  /** The commit a revision was imported from (author kind "git"). */
+  commit?: { sha: string; url: string };
 }
 export type DriftStatus = "missing" | "changed" | "extra";
 export interface DriftFinding {
@@ -123,6 +152,17 @@ export interface DriftRow {
   reportedAt: number;
   author: Author;
   findings: DriftFinding[];
+}
+
+export interface MemberRow {
+  _id: string;
+  email: string;
+  role: "owner" | "editor" | "viewer";
+  createdAt: number;
+  /** Invited by email, not signed in yet. */
+  pending: boolean;
+  /** The caller. */
+  you: boolean;
 }
 
 const auth = (ws: Workspace) => ({ workspaceId: ws.workspaceId, apiKey: ws.serviceKey });
@@ -153,6 +193,17 @@ export const db = {
     }) as Promise<void>,
   deleteProject: (ws: Workspace, id: string) =>
     client.mutation(mref("documents", "remove"), { ...auth(ws), id }) as Promise<void>,
+  /** Turn "anyone with the link can view" on (→ the slug) or off (→ null). */
+  setPublic: (ws: Workspace, id: string, enabled: boolean) =>
+    client.mutation(mref("documents", "setPublic"), { ...auth(ws), id, enabled }) as Promise<string | null>,
+  /** A shared document by its link's slug; needs no workspace. */
+  getPublic: (slug: string) => client.query(qref("documents", "getPublic"), { slug }) as Promise<PublicDoc | null>,
+  /** The user has reviewed every change up to now. */
+  markSeen: (ws: Workspace, id: string) =>
+    client.mutation(mref("documents", "markSeen"), { ...auth(ws), id }) as Promise<void>,
+  /** Stop syncing a document stored in a repository file; the repository stays linked. */
+  unlinkFile: (ws: Workspace, id: string) =>
+    client.mutation(mref("repoSync", "unlink"), { ...auth(ws), id }) as Promise<void>,
   listCustomTypes: (ws: Workspace) =>
     client.query(qref("library", "list"), { ...auth(ws) }) as Promise<CustomTypeRow[]>,
   saveCustomType: (ws: Workspace, t: CustomTypeRow) =>
@@ -165,6 +216,9 @@ export const db = {
     client.query(qref("revisions", "listFull"), { ...auth(ws), documentId, limit }) as Promise<RevisionRow[]>,
   getRevision: (ws: Workspace, id: string) =>
     client.query(qref("revisions", "get"), { ...auth(ws), id }) as Promise<RevisionRow | null>,
+  /** The revision the user last reviewed (see documents.markSeen). */
+  reviewBaseline: (ws: Workspace, documentId: string) =>
+    client.query(qref("revisions", "baseline"), { ...auth(ws), documentId }) as Promise<RevisionRow | null>,
 
   // workspaces: the caller is a user who may belong to several
   listWorkspaces: (serviceKey: string) =>
@@ -173,12 +227,41 @@ export const db = {
     client.query(qref("agentPrefs", "get"), { apiKey: serviceKey }) as Promise<{ workspaceId: string } | null>,
   setAgentWorkspace: (serviceKey: string, workspaceId: string) =>
     client.mutation(mref("agentPrefs", "set"), { apiKey: serviceKey, workspaceId }) as Promise<unknown>,
+  /** Bind invites addressed to the user's email to them, as signing in to the app does. */
+  acceptInvites: (serviceKey: string, email: string) =>
+    client.mutation(mref("workspaces", "acceptInvites"), { apiKey: serviceKey, email }) as Promise<{ accepted: number }>,
+  createWorkspace: (serviceKey: string, name: string, email: string | null) =>
+    client.mutation(mref("workspaces", "create"), {
+      apiKey: serviceKey,
+      name,
+      ...(email ? { email } : {}),
+    }) as Promise<string>,
+  renameWorkspace: (serviceKey: string, workspaceId: string, name: string) =>
+    client.mutation(mref("workspaces", "rename"), { apiKey: serviceKey, workspaceId, name }) as Promise<void>,
+  deleteWorkspace: (serviceKey: string, workspaceId: string) =>
+    client.mutation(mref("workspaces", "remove"), { apiKey: serviceKey, workspaceId }) as Promise<void>,
+  leaveWorkspace: (serviceKey: string, workspaceId: string) =>
+    client.mutation(mref("workspaces", "leave"), { apiKey: serviceKey, workspaceId }) as Promise<void>,
+  listMembers: (serviceKey: string, workspaceId: string) =>
+    client.query(qref("workspaces", "members"), { apiKey: serviceKey, workspaceId }) as Promise<MemberRow[]>,
+  inviteMember: (serviceKey: string, workspaceId: string, email: string, role: MemberRow["role"]) =>
+    client.mutation(mref("workspaces", "invite"), { apiKey: serviceKey, workspaceId, email, role }) as Promise<string>,
+  setMemberRole: (serviceKey: string, memberId: string, role: MemberRow["role"]) =>
+    client.mutation(mref("workspaces", "setRole"), { apiKey: serviceKey, memberId, role }) as Promise<void>,
+  removeMember: (serviceKey: string, memberId: string) =>
+    client.mutation(mref("workspaces", "removeMember"), { apiKey: serviceKey, memberId }) as Promise<void>,
 
   // drift
   getDrift: (ws: Workspace, documentId: string) =>
     client.query(qref("drift", "get"), { ...auth(ws), documentId }) as Promise<DriftRow | null>,
   reportDrift: (ws: Workspace, documentId: string, findings: DriftFinding[]) =>
     client.mutation(mref("drift", "report"), { ...auth(ws), documentId, findings, author: agentAuthor() }) as Promise<string>,
+  /** Drop one finding (by its position) from a report. */
+  dismissDrift: (ws: Workspace, driftId: string, index: number) =>
+    client.mutation(mref("drift", "dismiss"), { ...auth(ws), id: driftId, index }) as Promise<void>,
+  /** Remove the document's drift report altogether. */
+  clearDrift: (ws: Workspace, documentId: string) =>
+    client.mutation(mref("drift", "clear"), { ...auth(ws), documentId }) as Promise<void>,
 };
 
 // ---------------------------------------------------------------------------

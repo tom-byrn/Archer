@@ -1,4 +1,4 @@
-import { SyncError, resolveConflict, syncDocument, syncErrorResponse } from "@/lib/server/repoSync";
+import { SyncError, syncErrorResponse, syncWith } from "@/lib/server/repoSync";
 import { jsonBody, signedInActor, stringField } from "@/lib/server/routes";
 
 export const dynamic = "force-dynamic";
@@ -16,12 +16,10 @@ export async function POST(req: Request) {
     const body = await jsonBody(req);
     const workspaceId = stringField(body, "workspaceId");
     const documentId = stringField(body, "documentId");
-    if (body.resolve !== undefined) {
-      if (body.resolve !== "draft" && body.resolve !== "repo")
-        throw new SyncError('resolve must be "draft" or "repo".', 400, "bad_request");
-      await resolveConflict(actor, workspaceId, documentId, body.resolve);
-    }
-    return Response.json(await syncDocument(actor, workspaceId, documentId));
+    const resolve = body.resolve === "draft" || body.resolve === "repo" ? body.resolve : undefined;
+    if (body.resolve !== undefined && resolve === undefined)
+      throw new SyncError('resolve must be "draft" or "repo".', 400, "bad_request");
+    return Response.json(await syncWith(actor, workspaceId, documentId, resolve));
   } catch (e) {
     return syncErrorResponse(e);
   }

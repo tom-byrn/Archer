@@ -35,17 +35,39 @@ export async function requireWorkspace(
 
 /**
  * Who is calling: the signed-in browser user, or the user a trusted server is
- * acting for via a service credential. Null when anonymous.
+ * acting for via a service credential (`service`). Null when anonymous. A
+ * service caller has no email here: the server passes the user's email itself
+ * where it matters (see `claimedEmail`).
  */
 export async function effectiveUser(
   ctx: QueryCtx | MutationCtx,
   serviceKey?: string,
-): Promise<{ userId: string; email: string | null } | null> {
+): Promise<{ userId: string; email: string | null; service: boolean } | null> {
   const identity = await ctx.auth.getUserIdentity();
-  if (identity) return { userId: identity.subject, email: identity.email?.toLowerCase() ?? null };
+  if (identity) return { userId: identity.subject, email: identity.email?.toLowerCase() ?? null, service: false };
   const acting = serviceUser(serviceKey);
-  return acting ? { userId: acting, email: null } : null;
+  return acting ? { userId: acting, email: null, service: true } : null;
 }
+
+/** The caller (see `effectiveUser`), or throw. */
+export async function requireCaller(
+  ctx: QueryCtx | MutationCtx,
+  serviceKey?: string,
+): Promise<{ userId: string; email: string | null; service: boolean }> {
+  const who = await effectiveUser(ctx, serviceKey);
+  if (!who) throw new Error("Not signed in.");
+  return who;
+}
+
+/**
+ * The caller's email: their Clerk identity's, or, for a service caller, the
+ * one the server looked up for that user and passed along (it holds the
+ * secret, so it's trusted like the credential itself). A browser can't claim one.
+ */
+export const claimedEmail = (
+  who: { email: string | null; service: boolean },
+  claimed: string | undefined,
+): string | null => who.email ?? (who.service && claimed?.trim() ? claimed.trim().toLowerCase() : null);
 
 const SERVICE_PREFIX = "svc_";
 

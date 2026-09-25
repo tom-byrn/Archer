@@ -3,6 +3,7 @@ import { connectInProcess } from "../scripts/inProcess";
 import { db } from "../src/backend";
 import { EXAMPLE_STATE, TOOL_DOCS, TOOL_GROUPS, describeServer } from "../src/reference";
 import { createFakeBackend } from "./fakeBackend";
+import { createFakeHost } from "./fakeHost";
 import { seedExample } from "./seedExample";
 
 // The docs site's tool reference (src/reference.ts) promises that every tool
@@ -79,9 +80,10 @@ describe("tool reference", () => {
 
   it.each(documented)("%s: the example runs and returns what the docs show", async (name) => {
     const fake = createFakeBackend();
-    seedExample(fake);
+    const { host, github } = createFakeHost(fake, { email: EXAMPLE_STATE.email });
+    seedExample(fake, github);
     Object.assign(db, fake.db);
-    const mcp = await connectInProcess({ userId: EXAMPLE_STATE.user, agentName: EXAMPLE_STATE.agentName });
+    const mcp = await connectInProcess({ userId: EXAMPLE_STATE.user, agentName: EXAMPLE_STATE.agentName, host });
     close = () => mcp.client.close();
 
     const doc = TOOL_DOCS[name]!;

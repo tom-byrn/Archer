@@ -1,7 +1,14 @@
 import "server-only";
 import { createSign } from "node:crypto";
 import { auth, clerkClient } from "@clerk/nextjs/server";
-import { GitHubError, createInstallationToken, findRepoInstallation } from "@/lib/githubApi";
+import {
+  GitHubError,
+  createInstallationToken,
+  findRepoInstallation,
+  getRepo,
+  listRepos,
+  type GitHubRepo,
+} from "@/lib/githubApi";
 
 export * from "@/lib/githubApi";
 export { verifyWebhookSignature } from "@/lib/githubWebhook";
@@ -38,6 +45,29 @@ export async function githubTokenForCurrentUser(): Promise<{ userId: string; tok
   const { userId } = await auth();
   if (!userId) throw new GitHubError("Sign in required", 401, "unauthenticated");
   return { userId, token: await githubTokenForUser(userId) };
+}
+
+/**
+ * Repositories the user can see, filtered by `query` (GET /api/github/repos
+ * and the MCP's list_github_repos). When `query` looks like `owner/name`, that
+ * exact repo is looked up too, so public repos outside the user's account can
+ * be used. `privateAccess` is false when the token lacks the `repo` scope, so
+ * GitHub hides private repos.
+ */
+export async function searchRepos(
+  token: string | null,
+  query: string,
+): Promise<{ repos: GitHubRepo[]; hasToken: boolean; privateAccess: boolean | null }> {
+  const { repos, privateAccess } = token ? await listRepos(token, query) : { repos: [], privateAccess: null };
+  const m = /^([A-Za-z0-9_.-]+)\/([A-Za-z0-9_.-]+)$/.exec(query.trim());
+  if (m && !repos.some((r) => r.fullName.toLowerCase() === query.trim().toLowerCase())) {
+    try {
+      repos.unshift(await getRepo(token, m[1]!, m[2]!));
+    } catch {
+      // Not found or private — fall through with the list we have.
+    }
+  }
+  return { repos, hasToken: token !== null, privateAccess };
 }
 
 /* ---------------------------------------------------------------- GitHub App */

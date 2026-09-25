@@ -10,6 +10,8 @@ export interface ProjectListItem {
   /** ISO timestamp */
   updated: string;
   editor_url: string;
+  /** The linked GitHub repository, with the .arch file when the project is stored in one. */
+  repository: { full_name: string; branch: string; path?: string } | null;
 }
 
 export interface ProjectRead {
@@ -20,6 +22,8 @@ export interface ProjectRead {
   errors: string[];
   warnings: string[];
   drift: { reported_at: string; findings_count: number } | null;
+  /** The public link while "anyone with the link can view" is on. */
+  share_url: string | null;
   repository: {
     full_name: string;
     branch: string;
@@ -37,6 +41,10 @@ export interface ProjectRead {
       pull_request: string | null;
       /** The file changed on the branch in ways that conflict with the draft. */
       conflict: boolean;
+      /** One line per conflicting item, e.g. "api: changed desc on both sides". */
+      conflicts: string[];
+      /** Why the last sync failed (the file has errors, was deleted…), until one succeeds. */
+      problem: string | null;
     };
   } | null;
   source: string;

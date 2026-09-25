@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { format, parse, validate } from "@archer/lang";
 import { knownConnectionTypes, knownTypes } from "@archer/catalog";
-import { SAMPLES } from "../lib/samples";
+import { SAMPLES } from "@archer/mcp/samples";
 import { renderArchSvg } from "../lib/svg";
 
 // "From sample" saves these verbatim as new documents. A sample must open

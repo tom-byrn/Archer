@@ -1,7 +1,7 @@
 import { mutation, query } from "./_generated/server";
 import type { Doc } from "./_generated/dataModel";
 import { v } from "convex/values";
-import { effectiveUser, requireIdentity, requireUser, requireWorkspace } from "./access";
+import { claimedEmail, effectiveUser, requireCaller, requireUser, requireWorkspace } from "./access";
 import { role } from "./schema";
 
 /** The signed-in user's identity, or null. */
@@ -69,12 +69,16 @@ export const list = query({
   },
 });
 
-/** Bind pending invites addressed to my email to my user id. Call on sign-in. */
+/**
+ * Bind pending invites addressed to my email to my user id. The app calls it
+ * on sign-in; the hosted MCP route (service credential) passes the email it
+ * looked up for the user, since agents may never open the app.
+ */
 export const acceptInvites = mutation({
-  args: {},
-  handler: async (ctx) => {
-    const identity = await requireIdentity(ctx);
-    const email = identity.email?.toLowerCase();
+  args: { apiKey: v.optional(v.string()), email: v.optional(v.string()) },
+  handler: async (ctx, a) => {
+    const who = await requireCaller(ctx, a.apiKey);
+    const email = claimedEmail(who, a.email);
     if (!email) return { accepted: 0 };
     const invites = await ctx.db
       .query("members")
@@ -83,7 +87,7 @@ export const acceptInvites = mutation({
     let accepted = 0;
     for (const inv of invites) {
       if (inv.userId) continue;
-      await ctx.db.patch(inv._id, { userId: identity.subject });
+      await ctx.db.patch(inv._id, { userId: who.userId });
       accepted++;
     }
     return { accepted };
@@ -91,22 +95,22 @@ export const acceptInvites = mutation({
 });
 
 export const create = mutation({
-  args: { name: v.string() },
-  handler: async (ctx, { name }) => {
-    const identity = await requireIdentity(ctx);
+  args: { name: v.string(), apiKey: v.optional(v.string()), email: v.optional(v.string()) },
+  handler: async (ctx, { name, apiKey, email }) => {
+    const who = await requireCaller(ctx, apiKey);
     const trimmed = name.trim();
     if (trimmed === "") throw new Error("Workspace name is required.");
     const id = await ctx.db.insert("workspaces", {
       name: trimmed,
-      ownerId: identity.subject,
+      ownerId: who.userId,
       createdAt: Date.now(),
     });
     await ctx.db.insert("members", {
       workspaceId: id,
-      userId: identity.subject,
-      email: identity.email?.toLowerCase() ?? "",
+      userId: who.userId,
+      email: claimedEmail(who, email) ?? "",
       role: "owner",
-      invitedBy: identity.subject,
+      invitedBy: who.userId,
       createdAt: Date.now(),
     });
     return id;
@@ -114,9 +118,9 @@ export const create = mutation({
 });
 
 export const rename = mutation({
-  args: { workspaceId: v.id("workspaces"), name: v.string() },
-  handler: async (ctx, { workspaceId, name }) => {
-    await requireWorkspace(ctx, workspaceId, undefined, "owner");
+  args: { workspaceId: v.id("workspaces"), apiKey: v.optional(v.string()), name: v.string() },
+  handler: async (ctx, { workspaceId, apiKey, name }) => {
+    await requireWorkspace(ctx, workspaceId, apiKey, "owner");
     const trimmed = name.trim();
     if (trimmed === "") throw new Error("Workspace name is required.");
     await ctx.db.patch(workspaceId, { name: trimmed });
@@ -127,9 +131,9 @@ const DATA_TABLES = ["documents", "libraryTypes", "revisions", "drift"] as const
 
 /** Delete a team workspace and everything in it. */
 export const remove = mutation({
-  args: { workspaceId: v.id("workspaces") },
-  handler: async (ctx, { workspaceId }) => {
-    await requireWorkspace(ctx, workspaceId, undefined, "owner");
+  args: { workspaceId: v.id("workspaces"), apiKey: v.optional(v.string()) },
+  handler: async (ctx, { workspaceId, apiKey }) => {
+    await requireWorkspace(ctx, workspaceId, apiKey, "owner");
     for (const table of DATA_TABLES) {
       const rows = await ctx.db
         .query(table)
@@ -146,11 +150,12 @@ export const remove = mutation({
   },
 });
 
-/** Members of a team workspace (any member may look). */
+/** Members of a team workspace (any member may look). `you` marks the caller. */
 export const members = query({
-  args: { workspaceId: v.string() },
-  handler: async (ctx, { workspaceId }) => {
-    await requireWorkspace(ctx, workspaceId, undefined, "viewer");
+  args: { workspaceId: v.string(), apiKey: v.optional(v.string()) },
+  handler: async (ctx, { workspaceId, apiKey }) => {
+    await requireWorkspace(ctx, workspaceId, apiKey, "viewer");
+    const who = await effectiveUser(ctx, apiKey);
     const rows = await ctx.db
       .query("members")
       .withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId))
@@ -163,15 +168,17 @@ export const members = query({
         role,
         createdAt,
         pending: !userId,
+        you: userId ? userId === who?.userId : email !== "" && email === who?.email,
       }));
   },
 });
 
+/** Invite someone by email, or change the role of the member or invite with that email. */
 export const invite = mutation({
-  args: { workspaceId: v.id("workspaces"), email: v.string(), role },
-  handler: async (ctx, { workspaceId, email, role: r }) => {
-    const identity = await requireIdentity(ctx);
-    await requireWorkspace(ctx, workspaceId, undefined, "owner");
+  args: { workspaceId: v.id("workspaces"), apiKey: v.optional(v.string()), email: v.string(), role },
+  handler: async (ctx, { workspaceId, apiKey, email, role: r }) => {
+    const who = await requireCaller(ctx, apiKey);
+    await requireWorkspace(ctx, workspaceId, apiKey, "owner");
     const addr = email.trim().toLowerCase();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(addr)) throw new Error("Enter a valid email address.");
     const existing = await ctx.db
@@ -179,6 +186,8 @@ export const invite = mutation({
       .withIndex("by_workspace_email", (q) => q.eq("workspaceId", workspaceId).eq("email", addr))
       .first();
     if (existing) {
+      // Same rule as setRole: re-inviting an owner can't leave the workspace without one.
+      if (existing.role === "owner" && r !== "owner") await ensureAnotherOwner(ctx, existing);
       await ctx.db.patch(existing._id, { role: r });
       return existing._id;
     }
@@ -186,29 +195,29 @@ export const invite = mutation({
       workspaceId,
       email: addr,
       role: r,
-      invitedBy: identity.subject,
+      invitedBy: who.userId,
       createdAt: Date.now(),
     });
   },
 });
 
 export const setRole = mutation({
-  args: { memberId: v.id("members"), role },
-  handler: async (ctx, { memberId, role: r }) => {
+  args: { memberId: v.id("members"), apiKey: v.optional(v.string()), role },
+  handler: async (ctx, { memberId, apiKey, role: r }) => {
     const m = await ctx.db.get(memberId);
     if (!m) throw new Error("Member not found.");
-    await requireWorkspace(ctx, m.workspaceId, undefined, "owner");
+    await requireWorkspace(ctx, m.workspaceId, apiKey, "owner");
     if (m.role === "owner" && r !== "owner") await ensureAnotherOwner(ctx, m);
     await ctx.db.patch(memberId, { role: r });
   },
 });
 
 export const removeMember = mutation({
-  args: { memberId: v.id("members") },
-  handler: async (ctx, { memberId }) => {
+  args: { memberId: v.id("members"), apiKey: v.optional(v.string()) },
+  handler: async (ctx, { memberId, apiKey }) => {
     const m = await ctx.db.get(memberId);
     if (!m) return;
-    await requireWorkspace(ctx, m.workspaceId, undefined, "owner");
+    await requireWorkspace(ctx, m.workspaceId, apiKey, "owner");
     if (m.role === "owner") await ensureAnotherOwner(ctx, m);
     await ctx.db.delete(memberId);
   },
@@ -216,9 +225,9 @@ export const removeMember = mutation({
 
 /** Leave a team workspace (owners must hand off first). */
 export const leave = mutation({
-  args: { workspaceId: v.id("workspaces") },
-  handler: async (ctx, { workspaceId }) => {
-    const userId = await requireUser(ctx);
+  args: { workspaceId: v.id("workspaces"), apiKey: v.optional(v.string()) },
+  handler: async (ctx, { workspaceId, apiKey }) => {
+    const { userId } = await requireCaller(ctx, apiKey);
     const m = await ctx.db
       .query("members")
       .withIndex("by_workspace_user", (q) => q.eq("workspaceId", workspaceId).eq("userId", userId))

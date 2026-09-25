@@ -1,8 +1,9 @@
 /**
- * The dashboard's "From sample" gallery (`components/SampleDialog.tsx`).
- * Choosing a sample copies its source into the workspace as a new document,
- * so like the docs examples every source is canonical and validates clean;
- * `test/samples.test.ts` enforces it.
+ * The web dashboard's "From sample" gallery (apps/web/components/SampleDialog.tsx),
+ * and the `list_samples` / `get_sample` tools for agents. Choosing a sample
+ * copies its source into the workspace as a new document, so like the docs
+ * examples every source is canonical and validates clean;
+ * apps/web/test/samples.test.ts enforces it.
  *
  * Adding one: put its source in a module next to this one (named after the
  * slug), then list it below. The gallery shows samples in this order.
@@ -10,6 +11,8 @@
 
 import { ACME_SAAS } from "./acme-saas";
 import { AI_SUPPORT_AGENT } from "./ai-support-agent";
+
+export { ACME_SAAS, AI_SUPPORT_AGENT };
 
 export interface Sample {
   /** Stable, URL-safe id. */
@@ -35,3 +38,6 @@ export const SAMPLES: readonly Sample[] = [
     source: AI_SUPPORT_AGENT,
   },
 ];
+
+export const findSample = (slug: string | null | undefined): Sample | undefined =>
+  SAMPLES.find((s) => s.slug === slug);

@@ -1,6 +1,6 @@
 {
   "name": "@archer/mcp",
-  "version": "1.7.0",
+  "version": "1.8.0",
   "private": true,
   "type": "module",
   "exports": {
@@ -9,6 +9,8 @@
     "./analysis": "./src/analysis.ts",
     "./contract": "./src/contract.ts",
     "./examples": "./src/examples.ts",
+    "./host": "./src/host.ts",
+    "./samples": "./src/samples/index.ts",
     "./languageSpec": "./src/languageSpec.ts",
     "./reference": "./src/reference.ts",
     "./remote": "./src/remote.ts"

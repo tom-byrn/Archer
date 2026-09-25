@@ -71,9 +71,9 @@ export const getPublic = query({
 
 /** Toggle "anyone with the link can view". Returns the slug (or null). */
 export const setPublic = mutation({
-  args: { id: v.id("documents"), workspaceId: v.string(), enabled: v.boolean() },
-  handler: async (ctx, { id, workspaceId, enabled }) => {
-    await requireWorkspace(ctx, workspaceId, undefined, "editor");
+  args: { id: v.id("documents"), workspaceId: v.string(), apiKey: v.optional(v.string()), enabled: v.boolean() },
+  handler: async (ctx, { id, workspaceId, apiKey, enabled }) => {
+    await requireWorkspace(ctx, workspaceId, apiKey, "editor");
     const doc = await ctx.db.get(id);
     if (!doc || doc.workspaceId !== workspaceId) throw new Error("Document not found");
     if (!enabled) {

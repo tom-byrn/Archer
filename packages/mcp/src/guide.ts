@@ -1,6 +1,6 @@
 import { LANGUAGE_SPEC } from "./languageSpec";
 
-export const BRIEF = `Archer is an architecture-design tool: a drag-and-drop canvas for humans and a strict text language (".arch" documents) for agents, compiling losslessly into each other. Through this MCP server you can do everything a human can do in the app: create/read/update/delete projects, design systems (components, connections, nested containers, validated schema payloads), define custom component types, and control presentation.`;
+export const BRIEF = `Archer is an architecture-design tool: a drag-and-drop canvas for humans and a strict text language (".arch" documents) for agents, compiling losslessly into each other. Through this MCP server you can do everything a human can do in the app: create/read/update/rename/duplicate/delete projects, design systems (components, connections, nested containers, validated schema payloads), define custom component types, arrange the canvas, review and restore history, share by link and render images, check drift against the code, keep projects stored in GitHub in sync (import, publish, resolve conflicts), and manage team workspaces and their members.`;
 
 export const GUIDE = `# Archer MCP Server — Agent Guide
 
@@ -56,13 +56,21 @@ fails, call \`get_workspace_info\` and relay what it reports.
 2. \`create_project\` with your source. Same validation gates as update.
 3. The result includes an editor URL — share it with the user.
 
-### Use a worked example
+### Use a worked example or a sample
 1. \`list_examples\` — the worked examples from the docs, each with the
    language features it shows and links for the user (its docs section, and
    a sandbox that opens it in the editor without an account).
 2. \`get_example\` — one example's full, canonical source: a model to follow
    when writing, or pass it to \`create_project\` to give the user an
    editable copy.
+3. \`list_samples\` / \`get_sample\` — the dashboard's "From sample"
+   starting points (whole, realistic systems). Pass a sample's source to
+   \`create_project\` to start a project from it.
+
+### Manage projects
+- \`rename_project\` changes the title (only the \`arch "…"\` header line).
+- \`duplicate_project\` copies a project, canvas arrangement included.
+- \`delete_project\` is permanent (\`confirm: true\`, and only when asked).
 
 ### Add a technology/service that has no type in the catalog
 1. \`list_types\` with a search term to confirm it's missing.
@@ -78,11 +86,16 @@ fails, call \`get_workspace_info\` and relay what it reports.
    changed when only its payloads differ).
 2. \`diff_project\` returns the structured diff — by default the latest change
    (current document vs. the revision before it); pass revision ids for any
-   two points. \`get_revision\` fetches a past source; to roll back, send it to
-   \`update_project\`.
+   two points, or \`compare: "since_review"\` for everything the user hasn't
+   reviewed yet. \`get_revision\` fetches a past source; \`restore_revision\`
+   rolls the project back to it (as a new revision, so nothing is lost).
 3. Humans see the same feed in the app, and every write you make is
    attributed to your client name — so **always pass a \`summary\`** to
    \`create_project\`/\`update_project\` saying what you changed and why.
+4. The app highlights changes by agents (and by commits to a repository
+   file) until the user reviews them; \`get_history\` marks each revision
+   \`reviewed\`. When the user says they've seen them, \`mark_reviewed\`
+   clears the highlights.
 
 ### Projects stored in a repository file
 A project can be stored in a \`.arch\` file in a GitHub repository instead of
@@ -94,9 +107,25 @@ that branch, is the source of truth:
   branch, the canvas follows on its own.
 - Write only architecture to the file: canonical form, **no layout block**
   (canvas positions stay in Archer). \`format_source\` gives canonical form.
-- \`update_project\` on such a project saves to its **unpublished draft**; a
-  human publishes drafts back to the repository as a pull request. Use it
-  only when you have no checkout of the repository.
+- \`update_project\` on such a project saves to its **unpublished draft**. Use
+  it only when you have no checkout of the repository. \`diff_project\` with
+  \`compare: "unpublished"\` shows the draft's changes; \`publish_to_github\`
+  writes them to the file when the user asks — as a pull request by default
+  (\`mode: "commit"\` pushes straight to the branch, only on request).
+- \`sync_with_github\` brings in what changed on the branch (the push
+  webhook usually has already). When the file and the draft changed the same
+  things it records a **conflict** instead (\`get_project\` →
+  \`repository.sync.conflicts\`): show the user \`diff_project\` with
+  \`compare: "incoming"\`, then call \`sync_with_github\` with \`resolve:
+  "draft"\` (keep the draft's side) or \`"repo"\` (keep the repository's) as
+  they choose.
+- To store a project in a file: \`move_to_github\` (an existing project;
+  the first publish writes the file) or \`import_from_github\` (a new
+  project from a file; \`list_arch_files\` shows what's there, and
+  \`list_github_repos\` what the user can reach). \`stop_syncing\` keeps it
+  in Archer again. These act with the user's own GitHub access; if private
+  repositories are hidden (\`private_access: false\`), the user grants access
+  in the app — it needs their browser.
 
 ### Link components to code
 - The \`src "…"\` field inside a component body records where it lives:
@@ -120,7 +149,34 @@ that branch, is the source of truth:
    matches so the human sees a green state.
 4. Never modify the document during a drift check unless the user asked;
    they act on the findings from the canvas (badges + an "add to document"
-   action for extras).
+   action for extras). \`list_github_commits\` shows what changed in the code
+   since the last check (\`since\`). \`dismiss_drift_finding\` drops a finding
+   the user dealt with; \`clear_drift\` removes the report.
+
+### Share and export
+- \`share_project\` turns on "anyone with the link can view" and returns the
+  link, a live SVG image of the diagram and README embed Markdown — only when
+  the user asks, since anyone with the link can read the whole architecture.
+  \`get_shared_project\` reads a project from a share link someone gave you.
+- \`render_diagram\` draws a project (or raw source) as an SVG image, to save
+  as a file or embed. \`compile_for_agent\` is the text export for coding
+  agents.
+
+### Teams
+- \`create_workspace\` makes a team workspace the user owns (it doesn't
+  become current: \`use_workspace\`). \`list_members\`, \`invite_member\`
+  (by email; they get access when they sign in to Archer with it — Archer
+  sends no email), \`set_member_role\` and \`remove_member\` manage who's in
+  it: owners manage, editors change projects, viewers read.
+  \`rename_workspace\`, \`delete_workspace\` and \`leave_workspace\` do what
+  the app's workspace menu does. A team always keeps a signed-in owner.
+
+### Act only when asked
+Some tools reach other people or can't be undone: \`delete_project\`,
+\`delete_workspace\`, \`leave_workspace\` and \`remove_member\` (all need
+\`confirm: true\`), \`publish_to_github\`, \`share_project\`,
+\`invite_member\`, \`set_member_role\`, \`mark_reviewed\`, \`use_workspace\`
+and \`stop_syncing\`. Call them only when the user asked for that action.
 
 ## Writing good Archer documents (agent-specific advice)
 
@@ -183,8 +239,10 @@ The full language specification is at the end of this guide. Key habits:
   asks you to arrange the diagram); entries are \`path: { at: [col, row],
   size: [w, h], display: icon|plane }\` on an integer grid.
 - To collapse or expand a container without touching the source, use the
-  \`set_display\` tool. To re-arrange everything from scratch,
-  \`auto_layout_project\` with \`reset: true\`.
+  \`set_display\` tool. To move or resize particular components,
+  \`move_components\`. To tidy some components (and what's inside them),
+  \`auto_layout_project\` with \`paths\`; to re-arrange everything from
+  scratch, \`auto_layout_project\` with \`reset: true\`.
 
 ## Error reference (what blocks a write)
 
@@ -202,17 +260,29 @@ The full language specification is at the end of this guide. Key habits:
 
 ## Capability map (vs. the human app)
 
-Everything a human can do in the app maps to a tool: browse projects
-(\`list_projects\`/\`get_project\`), create/delete projects, edit anything —
-components, connections, descriptions, payloads, nesting — (\`update_project\`
-with full source), manage the custom component library
-(\`create_custom_type\`/\`delete_custom_type\`), arrange the canvas
-(\`auto_layout_project\`, \`set_display\`, or explicit layout entries), review history
-(\`get_history\`/\`get_revision\`/\`diff_project\`), report drift (\`report_drift\`/\`get_drift\`), switch workspaces
-(\`get_workspace_info\`, \`list_workspaces\`/\`use_workspace\`), read the docs' worked
-examples (\`list_examples\`/\`get_example\`), and export the agent spec
-(\`compile_for_agent\`). The only human-app-exclusive feature is PNG export —
-point users at the Export menu in the editor.
+Everything a human can do in the app maps to a tool:
+
+| In the app | Tool |
+| ---------- | ---- |
+| Dashboard: open, New document, From sample, Rename, Duplicate, Delete | \`list_projects\`, \`get_project\`, \`create_project\`, \`list_samples\`/\`get_sample\`, \`rename_project\`, \`duplicate_project\`, \`delete_project\` |
+| Editing components, connections, descriptions, payloads, nesting (canvas, code pane, detail panel, paste) | \`update_project\` with the full source |
+| Palette: custom types | \`list_types\`, \`create_custom_type\`, \`delete_custom_type\` |
+| Dragging and resizing; Collapse/Expand; Re-layout selection / level / everything | \`move_components\`, \`set_display\`, \`auto_layout_project\` (\`paths\` or \`reset\`) |
+| History: revisions, diffs, Restore; the agent-changes banner: Review, Mark reviewed | \`get_history\`, \`get_revision\`, \`diff_project\`, \`restore_revision\`, \`mark_reviewed\` |
+| Share dialog; opening a share link | \`share_project\`, \`get_shared_project\` |
+| Export: Copy for agent, Copy .arch source, image | \`compile_for_agent\`, \`get_project\`, \`render_diagram\` (SVG) |
+| Link repository; the History panel's commits | \`link_repository\`, \`list_github_commits\` |
+| Drift panel: report, Dismiss, Clear | \`report_drift\`, \`get_drift\`, \`dismiss_drift_finding\`, \`clear_drift\` |
+| From GitHub, Move to GitHub, Sync now, Keep mine/theirs, Publish, Stop syncing, the repository picker | \`import_from_github\`, \`move_to_github\`, \`sync_with_github\`, \`publish_to_github\`, \`stop_syncing\`, \`list_github_repos\`, \`list_arch_files\` |
+| Workspace menu: switch, New team workspace, Rename, Delete, Leave | \`list_workspaces\`, \`use_workspace\`, \`create_workspace\`, \`rename_workspace\`, \`delete_workspace\`, \`leave_workspace\` |
+| Members dialog: members, Invite, roles, Remove | \`list_members\`, \`invite_member\`, \`set_member_role\`, \`remove_member\` |
+| The docs' worked examples | \`list_examples\`, \`get_example\` |
+
+What stays with the person: signing in and connecting agents, granting
+Archer access to private GitHub repositories (a consent screen in their
+browser), the theme, and the canvas's own view state (zoom, selection,
+undo). Images come as SVG; for a PNG, point users at the editor's Export
+menu.
 
 ---
 

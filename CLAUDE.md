@@ -45,7 +45,15 @@ Router + React Flow + Convex).
   server-only service credential `svc_<ARCHER_SERVICE_SECRET>.<userId>` passed
   in the functions' `apiKey` argument (legacy name; `convex/access.ts` →
   `effectiveUser`); the same secret must be set on the Convex deployment and
-  in the web env. `registerArcherTools(server)` registers 26 tools. The CLI
+  in the web env. `registerArcherTools(server, host)` registers 54 tools;
+  `host` (`@archer/mcp/host`, implemented by `lib/server/mcpHost.ts`) lends
+  them what lives in the web app: the repo sync engine and GitHub client (the
+  same functions the `app/api/github/*` routes call, for the verified user),
+  the SVG renderer, and the user's email from Clerk. Anything a person can do
+  in the app must be doable over MCP: `apps/web/test/mcpParity.test.ts` fails
+  when a public Convex function or a GitHub route has no tool that reaches it
+  (or a stated exemption) — a new app feature ships with its tool, documented
+  in `mcp/src/reference.ts` and the guide's capability map. The CLI
   (`archer login`) runs the same OAuth flow as any MCP client (DCR + PKCE +
   localhost redirect, client name "Archer CLI"), stores the session in
   `~/.archer/auth.json`, and calls the tools; the JSON shapes it reads are
@@ -117,10 +125,11 @@ Router + React Flow + Convex).
   (`transform.ts`), run through `useArchDoc`'s `mutate`/`mutateWith`. The
   clipboard format is plain `.arch` text (`extractFragment`/`insertFragment`).
 - Samples: "From sample" on the dashboard opens `components/SampleDialog.tsx`,
-  a gallery of `lib/samples` (one module per source, listed with its title
-  and blurb in `lib/samples/index.ts`). Choosing one saves the source as a new
-  document verbatim, so like the docs examples, samples stay canonical and
-  validate clean — `apps/web/test/samples.test.ts` enforces it.
+  a gallery of `packages/mcp/src/samples` (`@archer/mcp/samples`, one module
+  per source, listed with its title and blurb in `samples/index.ts`; agents
+  read them through `list_samples`/`get_sample`). Choosing one saves the
+  source as a new document verbatim, so like the docs examples, samples stay
+  canonical and validate clean — `apps/web/test/samples.test.ts` enforces it.
 - Catalog (`packages/catalog`): two kinds of type. Vendor-neutral building
   blocks (`@load_balancer`, `@rate_limiter`, `@cache`, `@llm`…) are grouped by
   concern (generic, ai, network, compute, storage, messaging, data,

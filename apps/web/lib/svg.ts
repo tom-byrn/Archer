@@ -37,6 +37,8 @@ export interface RenderOptions {
   showTitle?: boolean;
   /** Paint the ground behind the diagram (default true). Off for in-app thumbnails. */
   background?: boolean;
+  /** A workspace's custom types, drawn with their glyph and color (the catalog covers the rest). */
+  customTypes?: readonly { tag: string; color: string; glyph: string }[];
 }
 
 interface Palette {
@@ -140,6 +142,8 @@ export function renderArchSvg(source: string, opts: RenderOptions = {}): string 
   const P = dark ? DARK : LIGHT;
   const showTitle = opts.showTitle ?? true;
   const background = opts.background ?? true;
+  const custom = new Map((opts.customTypes ?? []).map((t) => [t.tag, t]));
+  const typeOf = (tag: string) => custom.get(tag) ?? lookupType(tag);
 
   let doc: ArchDoc;
   try {
@@ -172,7 +176,7 @@ export function renderArchSvg(source: string, opts: RenderOptions = {}): string 
       const size = entry?.size ?? [4, 3];
       const abs: [number, number] = [origin[0] + at[0] * CELL, origin[1] + at[1] * CELL];
       if (isVisible) {
-        const type = c.type ? lookupType(c.type) : undefined;
+        const type = c.type ? typeOf(c.type) : undefined;
         boxes.push({
           path,
           node: c,

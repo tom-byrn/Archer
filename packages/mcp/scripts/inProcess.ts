@@ -8,6 +8,7 @@
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { ArcherHost } from "../src/host";
 
 /** Exit 2 with the usage line unless every variable is set. */
 export function requireEnv(names: string[], usage: string): void {
@@ -18,11 +19,15 @@ export function requireEnv(names: string[], usage: string): void {
   }
 }
 
-export async function connectInProcess(opts: { userId: string; agentName: string }) {
+/**
+ * `host` stands in for what the web app lends the tools (src/host.ts); without
+ * one, the GitHub and image tools answer that they aren't available.
+ */
+export async function connectInProcess(opts: { userId: string; agentName: string; host?: ArcherHost }) {
   // Imported late: backend.ts reads CONVEX_URL at import time.
   const { registerArcherTools } = await import("../src/server");
   const server = new McpServer({ name: "archer", version: "script" });
-  registerArcherTools(server);
+  registerArcherTools(server, opts.host);
 
   const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
   await server.connect(serverTransport);

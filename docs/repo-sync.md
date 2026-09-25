@@ -107,7 +107,9 @@ Without either, documents still sync whenever someone opens them.
   (`repoSync.create`/`link` require the service credential): the server
   first checks that the user can read the repository **with their own
   GitHub access**, so a workspace can't be pointed at someone else's private
-  repository and fed its contents by the App.
+  repository and fed its contents by the App. Agents get there the same way:
+  the MCP tools reach this engine through the hosted route
+  (`lib/server/mcpHost.ts`), as the user the route verified.
 - The webhook authenticates by signature only, then acts in Convex as the
   user who linked each document (their workspace role still applies). Its
   lookup of the documents stored on a branch (`repoSync.documentsForPush`)
@@ -123,8 +125,14 @@ Without either, documents still sync whenever someone opens them.
   A rule in the repo's `CLAUDE.md`/`AGENTS.md` ("keep `architecture.arch` in
   step with architectural changes") makes it routine.
 - **Over MCP**: `update_project` on a stored document saves to its draft (the
-  result says so); a person publishes it. `archer pull` writes the draft into
-  the file without its layout, ready to commit.
+  result says so). The rest of the app's actions are tools too, acting with
+  the user's GitHub access: `import_from_github` (From GitHub),
+  `move_to_github` (Move to GitHub), `sync_with_github` (Sync now, and Keep
+  mine/theirs with `resolve`), `publish_to_github` (Publish; a pull request
+  by default), `stop_syncing`, and `list_github_repos`/`list_arch_files` for
+  the pickers. `diff_project` shows the draft's unpublished changes and a
+  conflict's incoming version. `archer pull` writes the draft into the file
+  without its layout, ready to commit.
 
 ## Code map
 
@@ -135,5 +143,6 @@ Without either, documents still sync whenever someone opens them.
 | `apps/web/lib/server/repoSync.ts` | the engine: sync, resolve, publish, create, link, webhook |
 | `apps/web/lib/githubApi.ts`, `lib/server/github.ts` | GitHub REST (files, branches, pull requests, App tokens) |
 | `apps/web/app/api/github/{files,projects,link,sync,publish,webhook}` | routes |
+| `apps/web/lib/server/mcpHost.ts`, `packages/mcp/src/githubTools.ts` | the same engine for agents: the MCP host and its tools |
 | `apps/web/convex/repoSync.ts` | Convex side: create, link, unlink, applyImport, setState, documentsForPush |
 | `apps/web/components/RepoSync.tsx`, `GitHubFileDialog.tsx`, `RepoPicker.tsx` | editor UI and dialogs |

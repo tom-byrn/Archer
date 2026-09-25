@@ -1,7 +1,9 @@
 /**
  * End-to-end smoke test: exercises every tool group, in-process, against a
  * real Convex deployment — as a signed-in user, exactly the way the hosted
- * /mcp route runs them. Creates and deletes its own project and custom type.
+ * /mcp route runs them. Creates and deletes its own projects, custom type and
+ * team workspace. The GitHub and image tools need the web app's host
+ * (src/host.ts), so here they only report that they aren't available.
  *
  * Usage:
  *   ARCHER_SERVICE_SECRET=<secret> CONVEX_URL=<url> SMOKE_USER_ID=user_… \
@@ -22,7 +24,7 @@ const { check, failures } = checks();
 // tools/list
 const tools = await client.listTools();
 const names = tools.tools.map((t) => t.name).sort();
-check("26 tools registered", names.length === 26, names);
+check("54 tools registered", names.length === 54, names);
 
 // guide + resource
 const guide = await call("get_guide");
@@ -148,7 +150,89 @@ check("get_project shows drift count", gotD.json?.drift?.findings_count === 2, g
 const synced = await call("report_drift", { project_id: pid, findings: [] });
 check("empty report = in sync", synced.json?.in_sync === true);
 
-// cleanup: delete custom type + project
+// drift: dismiss one finding, then clear the report
+await call("report_drift", {
+  project_id: pid,
+  findings: [
+    { status: "missing", path: "cache" },
+    { status: "extra", name: "Email worker" },
+  ],
+});
+const dismissed = await call("dismiss_drift_finding", { project_id: pid, index: 1 });
+check("dismiss_drift_finding drops one", dismissed.json?.remaining === 1 && dismissed.json?.dismissed?.name === "Email worker", dismissed.text);
+const cleared = await call("clear_drift", { project_id: pid });
+check("clear_drift removes the report", !cleared.isError && (await call("get_drift", { project_id: pid })).json?.report === null, cleared.text);
+
+// projects: rename, duplicate, move, partial re-layout, restore
+const renamed = await call("rename_project", { project_id: pid, title: "Smoke Test Renamed" });
+check("rename_project saves", renamed.json?.saved === true && renamed.json?.previous_title === "Smoke Test", renamed.text);
+const gotRenamed = await call("get_project", { project_id: pid });
+check("rename_project rewrote the header", (gotRenamed.json?.source as string).startsWith('arch "Smoke Test Renamed" v0.1'), gotRenamed.text?.slice(0, 120));
+const dup = await call("duplicate_project", { project_id: pid });
+check("duplicate_project makes a copy", typeof dup.json?.id === "string" && dup.json?.title === "Smoke Test Renamed copy", dup.text);
+const moved = await call("move_components", { project_id: pid, moves: [{ path: "db", at: [30, 0] }] });
+check("move_components places db", moved.json?.placed?.[0]?.at?.[0] === 30, moved.text);
+const relaid = await call("auto_layout_project", { project_id: pid, paths: ["db"] });
+check("auto_layout_project with paths", !relaid.isError && relaid.json?.paths?.[0] === "db", relaid.text);
+const allRevisions = await call("get_history", { project_id: pid, limit: 200 });
+const oldest = (allRevisions.json as { revision_id: string }[]).at(-1)!.revision_id;
+const restored = await call("restore_revision", { project_id: pid, revision_id: oldest });
+check("restore_revision saves the old version", restored.json?.saved === true && restored.json?.restored_from === oldest, restored.text);
+const gotRestored = await call("get_project", { project_id: pid });
+check("restored source has no cache", !(gotRestored.json?.source as string).includes("cache"), gotRestored.text?.slice(0, 200));
+
+// review
+const unreviewed = await call("diff_project", { project_id: pid, compare: "since_review" });
+check("diff_project since_review", !unreviewed.isError && typeof unreviewed.json?.from === "string", unreviewed.text);
+const marked = await call("mark_reviewed", { project_id: pid });
+check("mark_reviewed counts agent revisions", (marked.json?.marked_reviewed ?? 0) >= 1, marked.text);
+const reviewedHistory = await call("get_history", { project_id: pid, limit: 200 });
+check("history all reviewed after mark_reviewed", (reviewedHistory.json as { reviewed: boolean }[]).every((r) => r.reviewed), reviewedHistory.text?.slice(0, 300));
+
+// sharing
+const shared = await call("share_project", { project_id: pid, enabled: true });
+check("share_project turns the link on", shared.json?.shared === true && String(shared.json?.url).includes("/share/"), shared.text);
+const viaLink = await call("get_shared_project", { link: shared.json?.url });
+check("get_shared_project reads it", viaLink.json?.project_id === pid, viaLink.text?.slice(0, 200));
+check("get_project shows share_url", (await call("get_project", { project_id: pid })).json?.share_url === shared.json?.url);
+const unshared = await call("share_project", { project_id: pid, enabled: false });
+check("share_project turns the link off", unshared.json?.shared === false, unshared.text);
+check("link dead after unsharing", (await call("get_shared_project", { link: shared.json?.url })).isError);
+
+// samples
+const samples = await call("list_samples");
+check("list_samples lists the gallery", Array.isArray(samples.json) && samples.json.length > 0, samples.text);
+const sample = await call("get_sample", { slug: samples.json?.[0]?.slug });
+check("get_sample returns its source", typeof sample.json?.source === "string" && sample.json.source.startsWith("arch "), sample.text);
+
+// host-backed tools without a host
+const image = await call("render_diagram", { project_id: pid });
+check("render_diagram needs the web app", image.isError && image.text.includes("isn't available"), image.text);
+const gh = await call("list_github_repos", {});
+check("GitHub tools need the web app", gh.isError && gh.text.includes("isn't available"), gh.text);
+
+// a team workspace, start to finish
+const team = await call("create_workspace", { name: "Smoke Team" });
+check("create_workspace", typeof team.json?.workspace_id === "string" && team.json?.role === "owner", team.text);
+const tid = team.json?.workspace_id as string;
+const members = await call("list_members", { workspace_id: tid });
+check("list_members: the user as owner", members.json?.members?.length === 1 && members.json.members[0].you === true && members.json.members[0].role === "owner", members.text);
+const invited = await call("invite_member", { workspace_id: tid, email: "smoke-invitee@example.com", role: "viewer" });
+check("invite_member: pending viewer", invited.json?.pending === true && invited.json?.role === "viewer", invited.text);
+const promoted = await call("set_member_role", { workspace_id: tid, member_id: invited.json?.member_id, role: "editor" });
+check("set_member_role", promoted.json?.role === "editor" && promoted.json?.previous_role === "viewer", promoted.text);
+const lastOwner = await call("set_member_role", { workspace_id: tid, member_id: members.json?.members?.[0]?.member_id, role: "editor" });
+check("the last owner can't be demoted", lastOwner.isError && lastOwner.text.includes("owner"), lastOwner.text);
+const removed = await call("remove_member", { workspace_id: tid, member_id: invited.json?.member_id, confirm: true });
+check("remove_member", !removed.isError, removed.text);
+const renamedTeam = await call("rename_workspace", { workspace_id: tid, name: "Smoke Team Renamed" });
+check("rename_workspace", renamedTeam.json?.name === "Smoke Team Renamed", renamedTeam.text);
+const deletedTeam = await call("delete_workspace", { workspace_id: tid, confirm: true });
+check("delete_workspace", !deletedTeam.isError && deletedTeam.json?.deleted === tid, deletedTeam.text);
+check("team gone", !(await call("list_workspaces")).json?.workspaces?.some((w: { id: string }) => w.id === tid));
+
+// cleanup: delete custom type + projects
+if (typeof dup.json?.id === "string") await call("delete_project", { project_id: dup.json.id, confirm: true });
 const delType = await call("delete_custom_type", { tag: "custom.smoke_engine" });
 check("delete_custom_type", !delType.isError);
 const delProj = await call("delete_project", { project_id: pid, confirm: true });
