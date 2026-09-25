@@ -21,6 +21,13 @@ describe("catalog", () => {
     expect(GLYPHS).toEqual(buildGlyphs());
   });
 
+  it("gives every free-form block a footprint to show its description in", () => {
+    const bad = CATALOG.filter(
+      (t) => t.block !== undefined && !(t.size?.length === 2 && t.size.every((n) => Number.isInteger(n) && n > 0)),
+    );
+    expect(bad.map((t) => t.tag)).toEqual([]);
+  });
+
   it("uses #rrggbb accent colors", () => {
     const bad = CATALOG.filter((t) => !/^#[0-9a-f]{6}$/i.test(t.color));
     expect(bad.map((t) => `${t.tag}: ${t.color}`)).toEqual([]);

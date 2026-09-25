@@ -6,6 +6,7 @@ import {
   type ArchDoc,
   type ComponentNode,
 } from "@archer/lang";
+import { lookupType } from "@archer/catalog";
 import { CELL } from "./toFlow";
 
 export interface DropTarget {
@@ -28,8 +29,8 @@ export interface ResolveOptions {
 
 /**
  * Resolve a canvas point (flow px, relative to the current view's origin) to a
- * parent plane + relative grid cell. The deepest visible expanded plane
- * containing the point wins; otherwise the view root.
+ * parent plane + relative grid cell. The deepest visible expanded plane (or
+ * empty group block) containing the point wins; otherwise the view root.
  */
 export function resolveDropTarget(
   doc: ArchDoc,
@@ -60,7 +61,12 @@ export function resolveDropTarget(
       if (excluded.some((x) => key === x || key.startsWith(x + "."))) continue;
       const entry = layout.get(key);
       if (!entry?.at || !entry.size) continue;
-      if (effectiveDisplay(c, entry) !== "plane" || c.children.length === 0) continue;
+      // Expanded planes take drops, and so does an empty group block.
+      const open =
+        c.children.length > 0
+          ? effectiveDisplay(c, entry) === "plane"
+          : lookupType(c.type)?.block === "area";
+      if (!open) continue;
       const px: [number, number] = [
         originPx[0] + entry.at[0] * CELL,
         originPx[1] + entry.at[1] * CELL,

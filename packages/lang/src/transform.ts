@@ -102,6 +102,9 @@ export function addComponent(
       span: ZERO_SPAN,
     });
     growAncestors(next, path);
+  } else if (opts.size) {
+    // No position: auto-layout places it, keeping this size.
+    next.layout.push({ kind: "layout-entry", path, size: opts.size, span: ZERO_SPAN });
   }
   return { doc: next, path };
 }

@@ -89,6 +89,46 @@ const fit = (text: string, width: number, pxPerChar: number): string => {
   return text.length <= max ? text : text.slice(0, Math.max(1, max - 1)) + "…";
 };
 
+/**
+ * Word-wrap to lines of `width` px at `pxPerChar`, keeping the text's own line
+ * breaks, clamped to `max` lines with an ellipsis (as the canvas clamps it).
+ */
+const wrap = (text: string, width: number, pxPerChar: number, max: number): string[] => {
+  const cap = Math.max(1, Math.floor(width / pxPerChar));
+  const lines: string[] = [];
+  for (const para of text.trim().split("\n")) {
+    let line = "";
+    for (let word of para.split(/\s+/).filter(Boolean)) {
+      while (word.length > cap) {
+        if (line) lines.push(line);
+        line = "";
+        lines.push(word.slice(0, cap));
+        word = word.slice(cap);
+      }
+      if (line && line.length + 1 + word.length > cap) {
+        lines.push(line);
+        line = word;
+      } else line = line ? `${line} ${word}` : word;
+    }
+    lines.push(line);
+  }
+  if (lines.length <= max) return lines;
+  const out = lines.slice(0, Math.max(0, max));
+  const last = out[out.length - 1];
+  if (last !== undefined) out[out.length - 1] = (last.length < cap ? last : last.slice(0, cap - 1)) + "…";
+  return out;
+};
+
+/** A block's description: text-sm on 18px lines, like the canvas. */
+const DESC_LINE = 18;
+const descLines = (lines: string[], x: number, top: number, color: string): string =>
+  lines
+    .map(
+      (l, i) =>
+        `<text x="${x}" y="${top + 13 + i * DESC_LINE}" font-family='${SANS}' font-size="12" fill="${color}">${esc(l)}</text>`,
+    )
+    .join("");
+
 const luminance = (hex: string): number => {
   const n = parseInt(hex.slice(1), 16);
   return (0.2126 * ((n >> 16) & 255) + 0.7152 * ((n >> 8) & 255) + 0.0722 * (n & 255)) / 255;
@@ -121,6 +161,7 @@ interface Box {
   plane: boolean;
   color: string;
   glyph: string;
+  block?: "card" | "note" | "area";
 }
 
 export function renderArchSvg(source: string, opts: RenderOptions = {}): string {
@@ -168,9 +209,11 @@ export function renderArchSvg(source: string, opts: RenderOptions = {}): string 
           y: abs[1],
           w: size[0] * CELL,
           h: size[1] * CELL,
-          plane: display === "plane" && c.children.length > 0,
+          // An empty group block is still an area (as on the canvas).
+          plane: c.children.length > 0 ? display === "plane" : type?.block === "area",
           color: displayColor(type?.color ?? P.fallback, dark),
           glyph: type?.glyph ?? "box",
+          ...(type?.block ? { block: type.block } : {}),
         });
       }
       const childCollapsed = collapsed ?? (display === "icon" && c.children.length > 0 ? path : null);
@@ -209,9 +252,37 @@ export function renderArchSvg(source: string, opts: RenderOptions = {}): string 
           `<rect x="${x}" y="${y}" width="${b.w}" height="${b.h}" rx="8" fill="${fill}" stroke="${stroke}"/>` +
           `<path d="M${x + 0.5} ${y + 32}h${b.w - 1}" stroke="${alpha(b.color, 0.2)}"/>` +
           glyphSvg(b.glyph, 16, b.color, x + 10, y + 8) +
-          `<text x="${x + 32}" y="${y + 20.5}" font-family='${SANS}' font-size="12" font-weight="600" fill="${P.ink}">${esc(fit(name, b.w - 44 - (b.node.type ? b.node.type.length * 6 + 10 : 0), 6.8))}</text>` +
-          (b.node.type
+          `<text x="${x + 32}" y="${y + 20.5}" font-family='${SANS}' font-size="12" font-weight="600" fill="${P.ink}">${esc(fit(name, b.w - 44 - (b.node.type && !b.block ? b.node.type.length * 6 + 10 : 0), 6.8))}</text>` +
+          (b.node.type && !b.block
             ? `<text x="${x + b.w - 10}" y="${y + 20.5}" text-anchor="end" font-family='${MONO}' font-size="10" fill="${P.ink3}">${esc(b.node.type)}</text>`
+            : "") +
+          (b.block && b.node.desc
+            ? descLines(
+                wrap(
+                  b.node.desc,
+                  b.w - 20,
+                  6.2,
+                  b.node.children.length > 0 ? 2 : Math.floor((b.h - 46) / DESC_LINE),
+                ),
+                x + 10,
+                y + 38,
+                P.ink2,
+              )
+            : "") +
+          `</g>`,
+      );
+    } else if (b.block === "card" || b.block === "note") {
+      const note = b.block === "note";
+      out.push(
+        `<g>` +
+          `<rect x="${x}" y="${y}" width="${b.w}" height="${b.h}" rx="6" ` +
+          (note
+            ? `fill="${alpha(b.color, 0.1)}" stroke="${alpha(b.color, 0.45)}" stroke-dasharray="4 3"/>`
+            : `fill="${P.surface}" stroke="${P.line2}"/>`) +
+          glyphSvg(b.glyph, 14, b.color, x + 12, y + 13) +
+          `<text x="${x + 32}" y="${y + 24.5}" font-family='${SANS}' font-size="13" font-weight="600" fill="${P.ink}">${esc(fit(name, b.w - 44, 6.8))}</text>` +
+          (b.node.desc
+            ? descLines(wrap(b.node.desc, b.w - 24, 6.2, Math.floor((b.h - 44) / DESC_LINE)), x + 12, y + 34, P.ink2)
             : "") +
           `</g>`,
       );

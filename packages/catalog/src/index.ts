@@ -11,9 +11,23 @@ export interface CatalogType {
   color: string;
   /** Key into GLYPHS. */
   glyph: string;
+  /**
+   * A free-form block, not any technology: its name and description are the
+   * content, so the canvas draws the description in it. A `card` is a box, a
+   * `note` a callout for commentary, an `area` a container (even while empty).
+   */
+  block?: "card" | "note" | "area";
+  /** Footprint in grid cells when placed from the palette (default: the layout's). */
+  size?: readonly [number, number];
 }
 
 export const CATALOG: readonly CatalogType[] = [
+  // Blocks: free-form, not any technology — say in your own words what a part
+  // of the architecture is. Notes are amber so commentary stands apart.
+  { tag: "block", name: "Block", namespace: "blocks", color: "#64748b", glyph: "article", block: "card", size: [6, 4] },
+  { tag: "note", name: "Note", namespace: "blocks", color: "#d97706", glyph: "note", block: "note", size: [5, 3] },
+  { tag: "group", name: "Group", namespace: "blocks", color: "#64748b", glyph: "frame", block: "area", size: [10, 6] },
+
   // Generic: your own code, its clients, and third parties
   { tag: "service", name: "Service", namespace: "generic", color: "#64748b", glyph: "box" },
   { tag: "frontend", name: "Frontend", namespace: "generic", color: "#64748b", glyph: "globe" },

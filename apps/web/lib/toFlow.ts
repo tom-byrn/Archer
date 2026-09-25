@@ -1,4 +1,5 @@
 import type { Edge, Node } from "@xyflow/react";
+import { lookupType } from "@archer/catalog";
 import {
   PLANE_INNER_MARGIN,
   effectiveDisplay,
@@ -134,7 +135,9 @@ export function toFlow(
           x: absPx[0] + (size[0] * CELL) / 2,
           y: absPx[1] + (size[1] * CELL) / 2,
         });
-        const isPlane = display === "plane" && c.children.length > 0;
+        // An empty group block is still an area to drop things into.
+        const isPlane =
+          c.children.length > 0 ? display === "plane" : lookupType(c.type)?.block === "area";
         const minSize: [number, number] = [...MIN_LEAF_SIZE];
         if (isPlane) {
           for (const child of c.children) {

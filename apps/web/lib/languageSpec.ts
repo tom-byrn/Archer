@@ -163,6 +163,9 @@ of vendor-neutral building blocks (\`@load_balancer\`, \`@rate_limiter\`, \`@cdn
 - Abstract and concrete components mix freely — \`component auth "Auth Service"\` (your
   own code, untyped or typed with something like \`@service\`) can sit beside
   \`component cognito @aws.cognito\`.
+- Free-form blocks — \`@block\` (a card), \`@note\` (commentary) and \`@group\` (an area
+  to nest components in) — are no technology at all: their name and \`desc\` are the
+  content, and the canvas draws the description inside them.
 - Custom types are defined in the app (component library UI) and referenced from files
   by tag; v0.1 has no in-file type definitions.
 

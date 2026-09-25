@@ -107,7 +107,12 @@ Router + React Flow + Convex).
   neutral groups first, in `NEUTRAL_NAMESPACES` order
   (`components/Palette.tsx`) — a new namespace needs a label in
   `NAMESPACE_LABELS` there. Tags and glyph keys end up in saved documents
-  and custom types: add freely, never rename or remove one.
+  and custom types: add freely, never rename or remove one. The `blocks`
+  group (`@block`, `@note`, `@group`) is free-form: a type's `block` field
+  makes the canvas (`nodes.tsx`) and `lib/svg.ts` draw its description in
+  it, an empty `area` block is still a plane that takes drops (`toFlow`,
+  `dropTarget`), and `size` is its footprint when placed from the palette.
+  Notes are amber so commentary stands apart.
 - Brand kit: `/branding` (signed-in only, deliberately linked from nowhere —
   keep it that way) shows the logo, colors, type, radii, icons and ui.tsx
   primitives. Values are parsed from `app/globals.css` at build time

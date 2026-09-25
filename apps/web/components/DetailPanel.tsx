@@ -78,6 +78,7 @@ function CommitInput({
   validate,
   onCommit,
   className,
+  autoFocus,
 }: {
   defaultValue: string;
   placeholder?: string;
@@ -85,6 +86,7 @@ function CommitInput({
   validate?: (v: string) => string | null;
   onCommit: (v: string) => void;
   className?: string;
+  autoFocus?: boolean;
 }) {
   const [error, setError] = useState<string | null>(null);
   return (
@@ -92,6 +94,7 @@ function CommitInput({
       <Input
         defaultValue={defaultValue}
         placeholder={placeholder}
+        autoFocus={autoFocus}
         mono={mono}
         invalid={error !== null}
         onChange={(e) => setError(validate ? validate(e.target.value) : null)}
@@ -275,6 +278,23 @@ function PayloadsSection({
 
 /* ------------------------------------------------------------- Component */
 
+/**
+ * Put the cursor in a component's name or description: the editor asks after
+ * adding a free-form block (name) and on double-clicking one (description).
+ * A new `nonce` asks again.
+ */
+export interface WriteFocus {
+  path: string;
+  field: "name" | "desc";
+  nonce: number;
+}
+
+const BLOCK_PLACEHOLDER: Record<"card" | "note" | "area", string> = {
+  card: "What is this part of the architecture? It shows on the canvas.",
+  note: "Write the note. It shows on the canvas.",
+  area: "What belongs in this area? It shows under its title on the canvas.",
+};
+
 const isHttpUrl = (v: string): boolean => /^https?:\/\//i.test(v.trim());
 
 function ComponentInspector({
@@ -286,6 +306,7 @@ function ComponentInspector({
   onDrillIn,
   library,
   repo,
+  write,
 }: {
   doc: ArchDoc;
   path: string;
@@ -295,6 +316,7 @@ function ComponentInspector({
   onDrillIn?: (path: string) => void;
   library: UserLibrary;
   repo: RepoLink | null;
+  write: WriteFocus | null;
 }) {
   const isDark = useIsDark();
   const segments = path.split(".");
@@ -305,6 +327,26 @@ function ComponentInspector({
   const isContainer = node.children.length > 0;
   const custom = library.items.find((t) => t.tag === node.type);
   const accent = displayColor(custom?.color ?? lookupType(node.type)?.color, isDark) ?? "#64748b";
+  // A free-form block is its name and description: those come first.
+  const block = lookupType(node.type)?.block;
+  const description = (
+    <PropertyRow label="Description" align="start">
+      <TextArea
+        key={`${path}-desc-${write?.field === "desc" ? write.nonce : 0}`}
+        autoFocus={write?.field === "desc"}
+        defaultValue={node.desc ?? ""}
+        placeholder={block ? BLOCK_PLACEHOLDER[block] : "What is this component for?"}
+        rows={6}
+        // Grows with the viewport so short screens still reach Payloads.
+        style={{ height: "clamp(120px, 22dvh, 280px)" }}
+        onBlur={(e) => {
+          const v = e.target.value;
+          if (v === (node.desc ?? "")) return;
+          mutate((d) => setComponentMeta(d, segments, { desc: v === "" ? null : v }));
+        }}
+      />
+    </PropertyRow>
+  );
 
   return (
     <div className="flex h-full flex-col">
@@ -367,6 +409,8 @@ function ComponentInspector({
         <Section title="Component" className="pb-5">
           <PropertyRow label="Name">
             <CommitInput
+              key={`name-${write?.field === "name" ? write.nonce : 0}`}
+              autoFocus={write?.field === "name"}
               defaultValue={node.name ?? ""}
               placeholder={node.id}
               onCommit={(v) =>
@@ -374,6 +418,7 @@ function ComponentInspector({
               }
             />
           </PropertyRow>
+          {block && description}
           <PropertyRow label="ID" align="start">
             <CommitInput
               mono
@@ -397,21 +442,7 @@ function ComponentInspector({
               }
             />
           </PropertyRow>
-          <PropertyRow label="Description" align="start">
-            <TextArea
-              key={`${path}-desc`}
-              defaultValue={node.desc ?? ""}
-              placeholder="What is this component for?"
-              rows={6}
-              // Grows with the viewport so short screens still reach Payloads.
-              style={{ height: "clamp(120px, 22dvh, 280px)" }}
-              onBlur={(e) => {
-                const v = e.target.value;
-                if (v === (node.desc ?? "")) return;
-                mutate((d) => setComponentMeta(d, segments, { desc: v === "" ? null : v }));
-              }}
-            />
-          </PropertyRow>
+          {!block && description}
           <PropertyRow label="Source">
             <div className="flex items-center gap-1">
               <CommitInput
@@ -682,6 +713,7 @@ export function DetailPanel({
   onDrillIn,
   library,
   repo = null,
+  writeFocus = null,
 }: {
   doc: ArchDoc;
   selection: Selection;
@@ -694,6 +726,7 @@ export function DetailPanel({
   library: UserLibrary;
   /** Linked repository: turns relative `src` paths into GitHub links. */
   repo?: RepoLink | null;
+  writeFocus?: WriteFocus | null;
 }) {
   if (selection === null && multi === null) return null;
   // Desktop: a right-hand column. Phones: a bottom sheet over the canvas.
@@ -712,6 +745,7 @@ export function DetailPanel({
           onDrillIn={onDrillIn}
           library={library}
           repo={repo}
+          write={writeFocus?.path === selection.path ? writeFocus : null}
         />
       ) : (
         <ConnectionInspector
