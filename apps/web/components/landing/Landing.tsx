@@ -7,9 +7,10 @@ import { ThemeToggle } from "../ThemeToggle";
 import { Icon, buttonCls, cx } from "../ui";
 import { AgentPrompt, CopyPromptButton } from "./AgentPrompt";
 import { ClientLogos } from "./ClientLogos";
-import { Dither, DitherBackdrop } from "./Dither";
+import { DitherBackdrop } from "./Dither";
 import { Faq } from "./Faq";
 import { Features } from "./Features";
+import { GlyphBox } from "./GlyphBox";
 import { SandboxLoader } from "./SandboxLoader";
 import { SiteFrame, siteNavLinkCls } from "./SiteFrame";
 
@@ -152,13 +153,10 @@ export function Landing() {
 
       <Features />
 
-      {/* Features and FAQ are both ruled grids; a band of the page's dither, arced like the
-          one at the top, keeps them apart. Like that one it sits under the page (-z-10), so
-          its canvas can't cover the rules when it's rounded a pixel over them. The fade runs
-          the band's whole height, so it thins out before the rule below instead of being cut
-          off by it. */}
-      <div className="landing-joints h-24 border-b border-line sm:h-40">
-        <Dither className="absolute inset-0 -z-10" fadeLength={1} curve={0.67} />
+      {/* Features and FAQ are both ruled grids; a band keeps them apart, with a box at its
+          center turning through the catalog's glyphs. */}
+      <div className="landing-joints flex h-24 items-center justify-center border-b border-line sm:h-28">
+        <GlyphBox />
       </div>
 
       <Faq />

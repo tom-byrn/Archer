@@ -87,6 +87,9 @@
   .landing-caret:not(.is-typing) {
     animation: landing-blink 1.1s steps(1, end) infinite;
   }
+  .landing-glyph-cube {
+    transition: transform 800ms cubic-bezier(0.65, 0, 0.35, 1);
+  }
 }
 
 /* Diamond joints where a horizontal rule meets the column's side rules. The
@@ -135,9 +138,38 @@
   background-color: color-mix(in srgb, var(--type) 14%, transparent);
 }
 
+/* The glyph box between Features and FAQ (GlyphBox): catalog tiles on the four
+   sides of a cube that turns a quarter at a time. The faces are opaque, so it
+   reads as a solid box, and hide their backs, so only the ones facing the
+   viewer draw. */
+.landing-glyph-box {
+  width: 56px;
+  height: 56px;
+  perspective: 420px;
+}
+.landing-glyph-cube {
+  position: relative;
+  height: 100%;
+  transform-style: preserve-3d;
+}
+.landing-glyph-face {
+  --type: var(--type-light);
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid color-mix(in srgb, var(--type) 30%, var(--bg));
+  border-radius: var(--radius-sm);
+  color: var(--type);
+  background-color: color-mix(in srgb, var(--type) 12%, var(--bg));
+  backface-visibility: hidden;
+}
+
 :root[data-theme="dark"] .landing-canvas {
   --edge-strong: #fff;
 }
-:root[data-theme="dark"] .landing-type-tile {
+:root[data-theme="dark"] .landing-type-tile,
+:root[data-theme="dark"] .landing-glyph-face {
   --type: var(--type-dark);
 }
