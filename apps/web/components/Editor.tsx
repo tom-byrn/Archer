@@ -307,6 +307,12 @@ export function Editor({
   );
   const derived = useMemo(() => deriveDoc(source, customTags), [source, customTags]);
   const [sel, setSel] = useState<Sel>(NONE);
+  /**
+   * What the inspector's form is open on: a component path or connection key.
+   * The inspector opens read-only, and selecting anything else goes back to
+   * reading.
+   */
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [focus, setFocus] = useState<string[]>([]);
   const [codeOpen, setCodeOpen] = useState(false);
   // The component palette (left sidebar) starts closed every time the editor
@@ -447,8 +453,10 @@ export function Editor({
           });
           return { doc: next, value: renamed };
         });
-        if (moved && moved.size > 0)
+        if (moved && moved.size > 0) {
           setSel((s) => ({ ...s, nodes: s.nodes.map((p) => remapPath(p, moved)) }));
+          setEditingId((id) => id && remapPath(id, moved));
+        }
       },
       onDrillIn: (path) => {
         const segs = path.split(".");
@@ -545,6 +553,22 @@ export function Editor({
     [],
   );
   const selectedPath = liveSelection?.kind === "component" ? liveSelection.path : null;
+  const selectedId =
+    liveSelection === null
+      ? null
+      : liveSelection.kind === "component"
+        ? liveSelection.path
+        : liveSelection.key;
+  // Once something else is selected the form stays closed, so coming back reads first.
+  useEffect(() => {
+    if (editingId !== null && editingId !== selectedId) setEditingId(null);
+  }, [editingId, selectedId]);
+
+  /** Select a component that was just made, its form open to name it. */
+  const selectNew = useCallback((path: string) => {
+    setSel(only(path));
+    setEditingId(path);
+  }, []);
 
   const addFromPalette = useCallback(
     (tag: string | undefined) => {
@@ -557,9 +581,9 @@ export function Editor({
           : addComponent(d, liveFocus, { type: tag });
         return { doc: r.doc, value: r.path.join(".") };
       });
-      if (path) setSel(only(path));
+      if (path) selectNew(path);
     },
-    [mutateWith, liveFocus],
+    [mutateWith, liveFocus, selectNew],
   );
 
   // The last text known to be stored. Remote saves (an agent over MCP) arrive
@@ -741,6 +765,7 @@ export function Editor({
 
   // Diff mode shows a past or merged doc read-only; nothing edits it.
   const editable = diff === null;
+  const editing = editable && selectedId !== null && editingId === selectedId;
   const selCount = liveSel.nodes.length;
   const selPaths = () => liveSel.nodes.map((p) => p.split("."));
   /** Paths of the components at the current level (the view's roots). */
@@ -819,7 +844,7 @@ export function Editor({
       const r = groupComponents(d, selPaths());
       return { doc: r.doc, value: r.path.join(".") };
     });
-    if (path) setSel(only(path));
+    if (path) selectNew(path);
   };
   const addChild = (path: string) => {
     const child = mutateWith((d) => {
@@ -832,7 +857,7 @@ export function Editor({
       const at = layoutMap(laid).get(added.path.join("."))?.at ?? [1, 2];
       return { doc: moveComponent(laid, added.path, at), value: added.path.join(".") };
     });
-    if (child) setSel(only(child));
+    if (child) selectNew(child);
   };
   const toggleDisplay = (path: string) => {
     const node = findComponent(derived.doc, path.split("."));
@@ -905,6 +930,7 @@ export function Editor({
   const escape = () => {
     if (menu) setMenu(null);
     else if (diffView) setDiffView(null);
+    else if (editing) setEditingId(null);
     else if (liveSel.nodes.length > 0 || liveSel.edges.length > 0) setSel(NONE);
     else setFocus((f) => f.slice(0, -1));
   };
@@ -1517,8 +1543,16 @@ export function Editor({
             doc={derived.laidOut}
             selection={liveSelection}
             multi={multi}
+            editing={editing}
+            onEditingChange={(on) => setEditingId(on ? selectedId : null)}
+            readOnly={!editable}
             mutate={mutate}
-            onSelect={setSelection}
+            onSelect={(s) => {
+              // From the form, a new selection is the same thing re-keyed (a
+              // rename, a connection's new label): keep editing it.
+              if (editing && s) setEditingId(s.kind === "component" ? s.path : s.key);
+              setSelection(s);
+            }}
             onDrillIn={callbacks.onDrillIn}
             library={library}
             repo={repo}
