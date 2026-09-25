@@ -11,6 +11,7 @@ export const DND_MIME = "application/archer-type";
 /** Friendly group names for catalog namespaces. */
 export const NAMESPACE_LABELS: Record<string, string> = {
   custom: "My components",
+  blocks: "Blocks",
   generic: "Generic",
   ai: "AI & agents",
   network: "Networking",
@@ -35,8 +36,9 @@ export const NAMESPACE_LABELS: Record<string, string> = {
 export const namespaceLabel = (ns: string): string =>
   NAMESPACE_LABELS[ns] ?? ns.charAt(0).toUpperCase() + ns.slice(1);
 
-/** The vendor-neutral groups — system-design building blocks — in palette order. */
+/** The vendor-neutral groups — free-form blocks, then building blocks — in palette order. */
 const NEUTRAL_NAMESPACES = [
+  "blocks",
   "generic",
   "ai",
   "network",
@@ -73,7 +75,7 @@ export const matchRank = (t: { name: string; tag: string; namespace: string }, q
 };
 
 const OPEN_KEY = "archer.palette.open";
-const DEFAULT_OPEN: Record<string, boolean> = { custom: true, generic: true };
+const DEFAULT_OPEN: Record<string, boolean> = { custom: true, blocks: true, generic: true };
 
 function PaletteItem({
   entry,
@@ -228,7 +230,7 @@ const GLYPH_CHOICES = [
   "building", "network", "grid", "circles", "swap", "castle",
   "pin", "ring", "slice", "copy", "flower", "crown",
   "sequence", "readwrite", "history", "outbox", "skull", "notebook",
-  "sidecar",
+  "sidecar", "article", "note", "frame",
 ];
 const COLOR_CHOICES = [
   "#64748b", "#ef4444", "#f97316", "#eab308", "#22c55e", "#14b8a6",

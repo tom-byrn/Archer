@@ -66,6 +66,7 @@ import {
   connectionKey,
   type MultiSelection,
   type Selection,
+  type WriteFocus,
 } from "./DetailPanel";
 import { Palette } from "./Palette";
 import {
@@ -150,6 +151,12 @@ const outermostOnly = (paths: readonly string[]): string[] =>
 type Sel = { nodes: string[]; edges: string[] };
 const NONE: Sel = { nodes: [], edges: [] };
 const only = (path: string): Sel => ({ nodes: [path], edges: [] });
+
+/** A type's footprint when placed from the palette (free-form blocks need room to write in). */
+const placeSize = (tag: string | undefined): [number, number] | undefined => {
+  const size = lookupType(tag)?.size;
+  return size ? [size[0], size[1]] : undefined;
+};
 
 /** Toggle `item` in a list (shift/⌘-click). */
 const toggle = (list: string[], item: string): string[] =>
@@ -301,6 +308,12 @@ export function Editor({
     null,
   );
   const [reveal, setReveal] = useState<{ path: string; nonce: number } | null>(null);
+  const [writeFocus, setWriteFocus] = useState<WriteFocus | null>(null);
+  /** Select a free-form block and put the cursor in its name or description. */
+  const writeInto = useCallback((path: string, field: WriteFocus["field"]) => {
+    setSel(only(path));
+    setWriteFocus((w) => ({ path, field, nonce: (w?.nonce ?? 0) + 1 }));
+  }, []);
   const exportRef = useRef<(() => void) | null>(null);
   const canvasApi = useRef<CanvasApi | null>(null);
   /** Where "Add component…" from the canvas menu should put the new one. */
@@ -430,6 +443,8 @@ export function Editor({
         if (node && node.children.length > 0) {
           setFocus(segs);
           setSel(NONE);
+        } else if (node && lookupType(node.type)?.block) {
+          writeInto(path, "desc");
         }
       },
       onSelectNode: (path, additive) =>
@@ -456,11 +471,15 @@ export function Editor({
         });
         setSel(NONE);
       },
-      onDropType: (tag, pos) =>
-        mutate((d) => {
-          const target = resolveDropTarget(d, pos, { base: liveFocus });
-          return addComponent(d, target.parent, { type: tag, at: target.at }).doc;
-        }),
+      onDropType: (tag, pos) => {
+        const size = placeSize(tag);
+        const path = mutateWith((d) => {
+          const target = resolveDropTarget(d, pos, { base: liveFocus, sizeGrid: size });
+          const r = addComponent(d, target.parent, { type: tag, at: target.at, size });
+          return { doc: r.doc, value: r.path.join(".") };
+        });
+        if (path && lookupType(tag)?.block) writeInto(path, "name");
+      },
       onReconnect: (index, end, path) => {
         const key = mutateWith((d) => {
           const c = d.connections[index];
@@ -493,7 +512,7 @@ export function Editor({
         setMenu({ target, at });
       },
     }),
-    [mutate, mutateWith, derived, liveFocus],
+    [mutate, mutateWith, derived, liveFocus, writeInto],
   );
 
   // What's selected, minus anything that no longer resolves (deleted, renamed,
@@ -519,21 +538,31 @@ export function Editor({
     [],
   );
   const selectedPath = liveSelection?.kind === "component" ? liveSelection.path : null;
+  // A write request is for this visit to the inspector: once the selection
+  // moves on, drop it, so coming back later doesn't grab the cursor again.
+  useEffect(() => {
+    if (writeFocus && writeFocus.path !== selectedPath) setWriteFocus(null);
+  }, [writeFocus, selectedPath]);
 
   const addFromPalette = useCallback(
     (tag: string | undefined) => {
       const point = addAt.current;
       addAt.current = null;
+      const size = placeSize(tag);
       const path = mutateWith((d) => {
-        const target = point ? resolveDropTarget(d, point, { base: liveFocus }) : null;
+        const target = point
+          ? resolveDropTarget(d, point, { base: liveFocus, sizeGrid: size })
+          : null;
         const r = target
-          ? addComponent(d, target.parent, { type: tag, at: target.at })
-          : addComponent(d, liveFocus, { type: tag });
+          ? addComponent(d, target.parent, { type: tag, at: target.at, size })
+          : addComponent(d, liveFocus, { type: tag, size });
         return { doc: r.doc, value: r.path.join(".") };
       });
-      if (path) setSel(only(path));
+      if (!path) return;
+      if (lookupType(tag)?.block) writeInto(path, "name");
+      else setSel(only(path));
     },
-    [mutateWith, liveFocus],
+    [mutateWith, liveFocus, writeInto],
   );
 
   // The last text known to be stored. Remote saves (an agent over MCP) arrive
@@ -1385,6 +1414,7 @@ export function Editor({
             onDrillIn={callbacks.onDrillIn}
             library={library}
             repo={repo}
+            writeFocus={writeFocus}
           />
         )}
       </div>

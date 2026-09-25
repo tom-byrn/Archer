@@ -153,7 +153,87 @@ function Badges({ marks }: { marks: NodeMarks | undefined }) {
 const SrcHint = ({ src }: { src: string | undefined }) =>
   src ? <Icon.Link className="ml-1 inline h-[10px] w-[10px] align-[-1px] text-ink-3" /> : null;
 
-export function ArchComponentNode({ id, data, width, height }: NodeProps<ArchNode>) {
+/** A block's description is text-sm: 18px a line. */
+const DESC_LINE = 18;
+/** A card's padding, title row and gap around its description, in px. */
+const CARD_CHROME = 44;
+/** A group's title row and the padding around its description, in px. */
+const AREA_CHROME = 46;
+
+/** Resizing is only on in the editor, so its context doubles as "editable". */
+const useEditable = () => useContext(ResizeContext) !== null;
+
+/** Text clamped to the whole lines that fit in `px`; line breaks are kept. */
+function Clamped({ text, px, className }: { text: string; px: number; className?: string }) {
+  const lines = Math.floor(px / DESC_LINE);
+  if (lines < 1) return null;
+  return (
+    <p
+      className={cx("overflow-hidden whitespace-pre-line break-words text-sm", className)}
+      style={{ display: "-webkit-box", WebkitBoxOrient: "vertical", WebkitLineClamp: lines }}
+    >
+      {text}
+    </p>
+  );
+}
+
+/**
+ * A free-form block (catalog `block: "card" | "note"`): the name is its title
+ * and the description, the point of it, fills the rest. A note is a dashed
+ * callout in its own color, so commentary stands apart from the architecture.
+ */
+function BlockNode({
+  id,
+  data,
+  width,
+  height,
+  note,
+}: Pick<NodeProps<ArchNode>, "id" | "data" | "width" | "height"> & { note: boolean }) {
+  const isDark = useIsDark();
+  const editable = useEditable();
+  const color = displayColor(data.accent ?? lookupType(data.typeTag)?.color, isDark) ?? NEUTRAL;
+  const marks = data.marks;
+  return (
+    <div
+      style={{
+        width,
+        height,
+        ...(note ? { borderColor: alpha(color, 0.45), backgroundColor: alpha(color, 0.1) } : {}),
+      }}
+      className={cx(
+        "arch-node relative flex flex-col gap-1 rounded-md border px-3 py-2.5",
+        note ? "border-dashed" : "arch-node-component bg-surface",
+        diffClass(marks),
+      )}
+    >
+      <Resizer id={id} data={data} />
+      <EdgeHandles />
+      <Badges marks={marks} />
+      <div className="flex min-w-0 items-center gap-1.5">
+        <Glyph tag={data.typeTag} color={color} glyph={data.glyphKey} size={14} className="shrink-0" />
+        <span className="arch-node-label truncate text-base font-semibold text-ink">{data.label}</span>
+        <SrcHint src={marks?.src} />
+      </div>
+      {data.desc ? (
+        <Clamped text={data.desc} px={(height ?? 0) - CARD_CHROME} className="text-ink-2" />
+      ) : editable ? (
+        <p className="truncate text-sm text-ink-3">Double-click to describe it</p>
+      ) : null}
+    </div>
+  );
+}
+
+/** Blocks draw their own node; everything else is an icon tile with a title. */
+export function ArchComponentNode(props: NodeProps<ArchNode>) {
+  const block = lookupType(props.data.typeTag)?.block;
+  return block === "card" || block === "note" ? (
+    <BlockNode {...props} note={block === "note"} />
+  ) : (
+    <ComponentNode {...props} />
+  );
+}
+
+function ComponentNode({ id, data, width, height }: NodeProps<ArchNode>) {
   const isDark = useIsDark();
   const entry = lookupType(data.typeTag);
   const accent = displayColor(data.accent ?? entry?.color, isDark);
@@ -195,11 +275,16 @@ export function ArchComponentNode({ id, data, width, height }: NodeProps<ArchNod
 
 export function ArchPlaneNode({ id, data, width, height }: NodeProps<ArchNode>) {
   const isDark = useIsDark();
+  const editable = useEditable();
   const entry = lookupType(data.typeTag);
   const accent = displayColor(data.accent ?? entry?.color, isDark);
   const typed = accent !== undefined;
   const color = accent ?? NEUTRAL;
   const marks = data.marks;
+  // A block's description goes under its title: two lines above the children
+  // (they start at the plane's inner origin), or all the room while it's empty.
+  const block = entry?.block !== undefined;
+  const empty = data.childCount === 0;
   return (
     <div
       style={{
@@ -223,11 +308,21 @@ export function ArchPlaneNode({ id, data, width, height }: NodeProps<ArchNode>) 
       >
         <Glyph tag={data.typeTag} color={accent} glyph={data.glyphKey} size={16} />
         <span className="arch-node-label truncate text-sm font-semibold text-ink">{data.label}</span>
-        {data.typeTag && (
+        {data.typeTag && !block && (
           <span className="mono truncate text-xs text-ink-3">{data.typeTag}</span>
         )}
         <SrcHint src={marks?.src} />
       </div>
+      {block &&
+        (data.desc ? (
+          <Clamped
+            text={data.desc}
+            px={empty ? (height ?? 0) - AREA_CHROME : 2 * DESC_LINE}
+            className="px-2.5 pt-1.5 text-ink-2"
+          />
+        ) : editable && empty ? (
+          <p className="truncate px-2.5 pt-1.5 text-sm text-ink-3">Drop components here</p>
+        ) : null)}
     </div>
   );
 }

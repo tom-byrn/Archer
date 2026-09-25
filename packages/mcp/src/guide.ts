@@ -149,6 +149,10 @@ The full language specification is at the end of this guide. Key habits:
   communication. Both are allowed across any depth.
 - **Type tags are optional.** An unknown tag is only a warning (renders as a
   generic box); prefer catalog/custom tags when a good one exists.
+- **Say it in words with free-form blocks** when a part isn't any technology:
+  \`@block\` (a card), \`@note\` (commentary, e.g. a decision or a caveat)
+  and \`@group\` (an area to nest components in). Their \`desc\` is drawn on
+  the canvas, so write a few plain sentences.
 - **AI systems have their own building blocks:** \`@llm\`, \`@agent\`, \`@mcp\`
   (an MCP server), \`@tool\`, \`@rag\`, \`@embeddings\`, \`@vector_db\`,
   \`@memory\`, \`@guardrails\`, \`@evals\` and more (\`list_types\` with search

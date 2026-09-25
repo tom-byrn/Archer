@@ -37,6 +37,18 @@ describe("transforms", () => {
     expect(d0.components).toHaveLength(1);
   });
 
+  it("addComponent with a size but no position lets auto-layout place it at that size", () => {
+    const d0 = doc(HEADER + "component a\nlayout { a: { at: [0, 0] } }");
+    const { doc: d1 } = addComponent(d0, [], { type: "block", size: [6, 4] });
+    expect(layoutMap(d1).get("block")).toMatchObject({ size: [6, 4] });
+    expect(layoutMap(d1).get("block")!.at).toBeUndefined();
+    // Survives the canonical round trip, then gets a place and keeps its size.
+    const laid = autoLayout(parse(format(d1)).doc);
+    expect(layoutMap(laid).get("block")).toMatchObject({ size: [6, 4] });
+    expect(layoutMap(laid).get("block")!.at).toBeDefined();
+    expect(layoutMap(laid).get("a")!.at).toEqual([0, 0]);
+  });
+
   it("addComponent into a parent grows the parent plane", () => {
     const d0 = doc(
       HEADER + "component p { component x }\nlayout { p: { at: [0,0], size: [6,5] } }",

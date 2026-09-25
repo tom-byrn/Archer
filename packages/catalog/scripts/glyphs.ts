@@ -141,6 +141,11 @@ export const GLYPH_ICONS: Record<string, string> = {
   skull: "skull",
   notebook: "notebook",
   sidecar: "square-split-horizontal",
+
+  // Blocks
+  article: "article",
+  note: "note",
+  frame: "frame-corners",
 };
 
 const require = createRequire(import.meta.url);
