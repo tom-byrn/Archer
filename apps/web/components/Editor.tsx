@@ -309,6 +309,9 @@ export function Editor({
   const [sel, setSel] = useState<Sel>(NONE);
   const [focus, setFocus] = useState<string[]>([]);
   const [codeOpen, setCodeOpen] = useState(false);
+  // The component palette (left sidebar) starts closed every time the editor
+  // opens, so the canvas gets the whole width until it's asked for.
+  const [componentsOpen, setComponentsOpen] = useState(false);
   const [palette, setPalette] = useState<PaletteMode | null>(null);
   const [menu, setMenu] = useState<{ target: ContextTarget; at: { x: number; y: number } } | null>(
     null,
@@ -333,6 +336,7 @@ export function Editor({
   const [diffView, setDiffView] = useState<DiffView>(null);
 
   const toggleCode = useCallback(() => setCodeOpen((open) => !open), []);
+  const toggleComponents = useCallback(() => setComponentsOpen((open) => !open), []);
 
   // A focus that stopped resolving (component deleted/renamed) falls back to root.
   const liveFocus = useMemo(
@@ -1069,6 +1073,7 @@ export function Editor({
     { id: "find", label: "Find a component", keywords: "search go to jump", icon: <Icon.Search />, shortcut: `${MOD}F`, run: () => openPalette("find") },
     { id: "fit", label: "Zoom to fit", keywords: "fit view", icon: <Icon.FitView />, run: () => canvasApi.current?.fitView() },
     { id: "code", label: codeOpen ? "Hide code" : "Show code (.arch)", icon: <Icon.Code />, run: toggleCode },
+    { id: "components", label: componentsOpen ? "Hide components sidebar" : "Show components sidebar", keywords: "palette catalog types library", icon: <Icon.Sidebar />, run: toggleComponents },
     ...(liveFocus.length > 0
       ? [
           { id: "up", label: "Go up a level", icon: <Icon.ChevronLeft />, shortcut: "esc", run: () => setFocus(liveFocus.slice(0, -1)) },
@@ -1137,6 +1142,17 @@ export function Editor({
   return (
     <div className="flex h-dvh flex-col overscroll-none bg-bg">
       <header className="flex h-10 shrink-0 items-center gap-1 border-b border-line bg-surface px-2">
+        {/* The component palette is desktop only; phones add with the + button. */}
+        <span className="hidden md:contents">
+          <IconButton
+            label="Components"
+            onClick={toggleComponents}
+            active={componentsOpen}
+            aria-expanded={componentsOpen}
+          >
+            <Icon.Sidebar />
+          </IconButton>
+        </span>
         <Link
           href={back.href}
           className="flex h-7 shrink-0 items-center gap-2 rounded-md px-1.5 transition-colors hover:bg-surface-2"
@@ -1300,7 +1316,7 @@ export function Editor({
       </header>
 
       <div className="flex min-h-0 flex-1">
-        <Palette onAdd={addFromPalette} library={library} />
+        <Palette open={componentsOpen} onAdd={addFromPalette} library={library} />
         <CodePane
           source={source}
           onChange={setSource}
