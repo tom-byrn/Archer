@@ -13,6 +13,16 @@ export const NAMESPACE_LABELS: Record<string, string> = {
   custom: "My components",
   generic: "Generic",
   ai: "AI & agents",
+  network: "Networking",
+  compute: "Compute",
+  storage: "Storage",
+  messaging: "Messaging",
+  data: "Data & analytics",
+  observability: "Observability",
+  security: "Security",
+  platform: "Platform",
+  topology: "Topology",
+  patterns: "Patterns",
   ai_platforms: "AI platforms",
   aws: "AWS",
   gcp: "Google Cloud",
@@ -25,12 +35,32 @@ export const NAMESPACE_LABELS: Record<string, string> = {
 export const namespaceLabel = (ns: string): string =>
   NAMESPACE_LABELS[ns] ?? ns.charAt(0).toUpperCase() + ns.slice(1);
 
-/** Namespaces in palette order: custom, generic, then the rest alphabetically. */
+/** The vendor-neutral groups — system-design building blocks — in palette order. */
+const NEUTRAL_NAMESPACES = [
+  "generic",
+  "ai",
+  "network",
+  "compute",
+  "storage",
+  "messaging",
+  "data",
+  "observability",
+  "security",
+  "platform",
+  "topology",
+  "patterns",
+];
+
+/**
+ * Namespaces in palette order: custom (always), the vendor-neutral groups,
+ * then vendors alphabetically.
+ */
 export const orderedNamespaces = (namespaces: Iterable<string>): string[] => {
-  const rest = [...new Set(namespaces)]
-    .filter((ns) => ns !== "custom" && ns !== "generic")
+  const present = new Set(namespaces);
+  const rest = [...present]
+    .filter((ns) => ns !== "custom" && !NEUTRAL_NAMESPACES.includes(ns))
     .sort((a, b) => namespaceLabel(a).localeCompare(namespaceLabel(b)));
-  return ["custom", "generic", ...rest];
+  return ["custom", ...NEUTRAL_NAMESPACES.filter((ns) => present.has(ns)), ...rest];
 };
 
 /** Search rank: 0 = name prefix, 1 = name/tag/namespace substring, -1 = no match. */
@@ -187,6 +217,18 @@ const GLYPH_CHOICES = [
   "reviewer", "terminal", "cursor", "mic", "speaker", "eye",
   "image", "gpu", "model", "training", "stack", "sparkle",
   "link",
+  // System-design building blocks
+  "window", "desktop", "chip", "signpost", "earth", "proxy",
+  "forward", "gauge", "unplug", "mesh", "lock", "hash",
+  "files", "columns", "plot", "folder", "disk", "broadcast",
+  "hub", "waves", "bell", "warehouse", "drop", "merge",
+  "signal", "scroll", "path", "siren", "bug", "wall",
+  "funnel", "key", "vault", "fingerprint", "directory", "handshake",
+  "sliders", "flag", "infinity", "flow", "map", "dashed",
+  "building", "network", "grid", "circles", "swap", "castle",
+  "pin", "ring", "slice", "copy", "flower", "crown",
+  "sequence", "readwrite", "history", "outbox", "skull", "notebook",
+  "sidecar",
 ];
 const COLOR_CHOICES = [
   "#64748b", "#ef4444", "#f97316", "#eab308", "#22c55e", "#14b8a6",
