@@ -52,6 +52,8 @@ export function parse(source: string): ParseResult {
     if (t.type !== type) fail(`Expected ${what}, got ${describe(t)}.`, t.span);
     return next();
   };
+  /** Where the last consumed token ends. */
+  const lastEnd = () => tokens[Math.max(i - 1, 0)]!.span.end;
 
   const doc: ArchDoc = {
     kind: "doc",
@@ -125,6 +127,8 @@ export function parse(source: string): ParseResult {
     };
     if (at("string")) node.name = next().value;
     if (at("at")) node.type = parseType();
+    // A declaration without a body spans its name and type too.
+    node.span = { start: kw.span.start, end: lastEnd() };
     if (at("lbrace")) {
       next();
       const inside: Target = { components: node.children, planes: node.planes };
@@ -230,6 +234,7 @@ export function parse(source: string): ParseResult {
     into.planes.push(node);
     if (at("string")) node.name = next().value;
     if (at("at")) node.type = parseType();
+    node.span = { start: kw.span.start, end: lastEnd() };
     if (!at("lbrace")) return;
     next();
     const on: Target = { components: into.components, planes: into.planes, plane: node.id };
