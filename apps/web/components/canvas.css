@@ -165,7 +165,7 @@
 /* ---- Hover dimming ---- */
 .react-flow__node.dim,
 .react-flow__edge.dim,
-.react-flow__edge.dim .arch-edge-chip {
+.arch-edge-chip.dim {
   opacity: 0.6;
 }
 .react-flow__node,
