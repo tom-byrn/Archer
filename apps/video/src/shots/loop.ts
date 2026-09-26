@@ -451,10 +451,11 @@ export function loopShot(film: Film): void {
   // Bar 4: low and close on api and cache.
   master.to(rig, { ...cam(9.5, 4.2, 12, 3.4, 2.0, -0.5), ty: 2.0, fov: 38, duration: 0.55, ease: "power3.inOut" }, bar(1) - 0.2);
   master.to(rig, { x: c.x + 7.5, y: 3.9, z: c.z + 11, duration: bar(2) - bar(1) - 0.3, ease: "none" }, bar(1) + 0.35);
-  // Bar 5: along the file as the agent types (the lines run away to the
-  // right), then back with the pour.
+  // Bar 5: along the file as the agent types, then back with the pour.
   const eye = onWall(0, 7, 5.6).addScaledVector(ACROSS, -4.6);
-  const look = onWall(12, 8.5);
+  // Turned left of the lines, so they run in from the right of the frame,
+  // clear of the caption.
+  const look = eye.clone().add(new THREE.Vector3(8, -1.5, -4.95));
   master.to(
     rig,
     { x: c.x + eye.x, y: eye.y + 0.6, z: c.z + eye.z, tx: c.x + look.x, ty: look.y, tz: c.z + look.z, fov: 44, duration: 0.5, ease: "power3.inOut" },

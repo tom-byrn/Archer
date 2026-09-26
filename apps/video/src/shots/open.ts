@@ -78,7 +78,7 @@ export function openShot(film: Film): void {
   const center = CORE;
   const widthCols = 38;
   // A little below the core, so the top line clears the caption.
-  const frame = new THREE.Matrix4().makeTranslation(center.x - (widthCols * 0.6 * em) / 2, center.y - 0.45 + (8 * 1.55 * em) / 2, center.z);
+  const frame = new THREE.Matrix4().makeTranslation(center.x - (widthCols * 0.6 * em) / 2, center.y - 0.8 + (8 * 1.55 * em) / 2, center.z);
   const list = codeChars(OPEN_SOURCE);
   // Where each line comes from: its component's face, or its connection's tube.
   const source: Record<number, (i: number) => THREE.Vector3> = {};
