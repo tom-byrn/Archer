@@ -128,21 +128,13 @@ export function parse(source: string): ParseResult {
               fail(`Expected a string after 'desc', got ${describe(t)}.`, t.span);
             }
           } else if (at("ident", "src")) {
-            const kwTok = next();
+            next();
             const t = peek();
             if (t.type !== "string") {
               fail(`Expected a string after 'src', got ${describe(t)}.`, t.span);
             }
-            const value = next().value;
-            if (node.src !== undefined) {
-              diagnostics.push({
-                code: "E004",
-                severity: "error",
-                message: `Component '${node.id}' has more than one 'src'.`,
-                span: { start: kwTok.span.start, end: t.span.end },
-              });
-            }
-            node.src = value;
+            // One line per place the component lives; they add up in order.
+            (node.src ??= []).push(next().value);
           } else if (at("ident", "shape") && !startsPayload()) {
             const kwTok = next();
             const t = peek();

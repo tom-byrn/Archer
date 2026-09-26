@@ -81,7 +81,7 @@ function DocumentView({
         focus: liveFocus,
         resolveType,
         isDark,
-        marks: (_p, c) => (c.src ? { src: c.src } : undefined),
+        marks: (_p, c) => (c.src?.length ? { src: c.src } : undefined),
       }),
     [derived, liveFocus, isDark],
   );

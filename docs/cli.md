@@ -112,7 +112,7 @@ comments unless you pass `--drop-comments`. A `#` inside a string or a payload
 isn't a comment.
 
 `fmt` also refuses a file the parser rejects, with a syntax error (`E001`) or
-a second `src` or `shape` in one component (`E004`), because formatting it
+a second `shape` in one component (`E004`), because formatting it
 would lose part of the file. Other errors, like an unresolved connection, don't stop it.
 Either refusal is printed on stderr and makes `fmt` exit `1`.
 

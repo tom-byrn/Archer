@@ -18,11 +18,19 @@ component web "Web App" @vercel.nextjs {
     shape phone
     desc "Orchestrator: holds the source + undo/redo history, derives doc/diagnostics/flow-graph per keystroke, routes every mutation through transform -> format -> save. Multi-select, clipboard as .arch text, ⌘K commands and ⌘F find, history and drift, and the GitHub storage button (Synced, or Publish with the number of changes)."
     src "apps/web/components/Editor.tsx"
+    src "apps/web/lib/useArchDoc.ts"
+    src "apps/web/components/CommandPalette.tsx"
+    src "apps/web/components/ActivityPanel.tsx"
+    src "apps/web/components/RepoSync.tsx"
   }
   component canvas "Canvas" {
     shape document
     desc "React Flow: components drawn as their shape with their product logo or glyph, nested planes, drag/connect/reparent, drill-down focus with breadcrumbs, snap-back for dangling arrows (E101 is unrepresentable from the UI), connection labels on hover or selection, PNG export."
     src "apps/web/components/ArchCanvas.tsx"
+    src "apps/web/components/nodes.tsx"
+    src "apps/web/lib/toFlow.ts"
+    src "apps/web/lib/shapes.ts"
+    src "apps/web/lib/edgeRoute.ts"
   }
   component palette "Palette" {
     shape document
@@ -31,13 +39,18 @@ component web "Web App" @vercel.nextjs {
   }
   component detail "Detail Panel" {
     shape phone
-    desc "Opens read-only on the selection: a component's type, shape, description, source and payloads (markdown and tables rendered), or a connection's ends, direction, type and label. Edit switches to the form: per-component name/id/type/shape/description and payload editors with live format validation; per-connection direction/type/label."
+    desc "Opens read-only on the selection: a component's type, shape, description, sources (each a link: files, folders or URLs) and payloads (markdown and tables rendered), or a connection's ends, direction, type and label. Edit switches to the form: per-component name/id/type/shape/description, a list of sources to add to or remove from, and payload editors with live format validation; per-connection direction/type/label."
     src "apps/web/components/DetailPanel.tsx"
+    src "apps/web/components/Markdown.tsx"
+    src "apps/web/components/ShapePicker.tsx"
+    src "apps/web/components/TypeCombobox.tsx"
   }
   component code_view "Code Pane" {
     shape browser
     desc "The raw .arch text with syntax highlighting, collapsible, editable in both directions, with diagnostics (code + line number)."
     src "apps/web/components/CodePane.tsx"
+    src "apps/web/components/CodeMirror.tsx"
+    src "apps/web/lib/archLanguage.ts"
   }
 }
 
@@ -47,12 +60,14 @@ component lang "Language Core" {
   component parser "Parser" {
     shape hexagon
     desc "Lexer + recursive descent to a typed AST; positioned E001 diagnostics with statement-level error recovery."
+    src "packages/lang/src/lexer.ts"
     src "packages/lang/src/parser.ts"
   }
   component validator "Validator" {
     shape hexagon
     desc "Spec rules: E002/E003 identity, E004 one src and shape per component, E101 connection resolution (nothing is ever auto-created), E201 payload syntax for json/yaml/table, W301-W304 warnings (W304: an unknown shape draws as a box)."
     src "packages/lang/src/validate.ts"
+    src "packages/lang/src/shapes.ts"
   }
   component formatter "Formatter" {
     shape hexagon
@@ -63,6 +78,8 @@ component lang "Language Core" {
     shape hexagon
     desc "Layered engine (network simplex): connections flow left to right with few crossings, long edges get lanes of their own, planes wrap their children. Existing positions are kept and new components land next to what they connect to; Re-layout starts over."
     src "packages/lang/src/layout.ts"
+    src "packages/lang/src/layered.ts"
+    src "packages/lang/src/simplex.ts"
   }
   component exporter "Agent Export" {
     shape document
@@ -77,6 +94,7 @@ component lang "Language Core" {
   component merge "Diff & Merge" {
     shape hexagon
     desc "Semantic diff (layout never counts) for history and review, and the three-way merge repo sync uses to combine edits in Archer with commits to the file."
+    src "packages/lang/src/diff.ts"
     src "packages/lang/src/merge.ts"
   }
 }
@@ -90,6 +108,7 @@ component mcp "MCP Server" @mcp {
   shape hexagon
   desc "@archer/mcp — human-parity agent access, served by the web app at /mcp (Streamable HTTP, OAuth sign-in, no API keys): 26 tools plus the archer://guide and worked-example resources. Writes are validation-gated (errors reject, diagnostics returned) and layout-preserving (surviving components keep their canvas positions); every save is a revision attributed to the agent."
   src "packages/mcp"
+  src "apps/web/app/mcp/route.ts"
   tools table ```
   | group      | tools                                                                       |
   | ---------- | --------------------------------------------------------------------------- |
@@ -129,11 +148,17 @@ component cli "Archer CLI" @cli {
 component github "GitHub" @github {
   shape cloud
   desc "Sign-in (through Clerk) and repo sync: a document can be stored in a .arch file on a branch, and then that file is the truth. Archer imports pushes through a webhook, merges them with drafts, and publishes drafts back as pull requests. This file is one."
+  src "apps/web/lib/githubApi.ts"
+  src "apps/web/lib/server/repoSync.ts"
+  src "apps/web/app/api/github"
 }
 
 component clerk "Clerk" @clerk {
   shape cloud
   desc "Auth: GitHub sign-in for the app, the JWTs Convex trusts, and the OAuth server agents and the CLI sign in with."
+  src "apps/web/middleware.ts"
+  src "apps/web/components/Providers.tsx"
+  src "apps/web/convex/auth.config.ts"
 }
 
 agent -> github @writes : "edits the .arch file with the code"

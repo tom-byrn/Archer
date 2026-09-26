@@ -197,8 +197,11 @@ function Badges({ marks }: { marks: NodeMarks | undefined }) {
   );
 }
 
-const SrcHint = ({ src }: { src: string | undefined }) =>
-  src ? <Icon.Link className="ml-1 inline h-[10px] w-[10px] align-[-1px] text-ink-3" /> : null;
+const SrcHint = ({ src }: { src: readonly string[] | undefined }) =>
+  src?.length ? <Icon.Link className="ml-1 inline h-[10px] w-[10px] align-[-1px] text-ink-3" /> : null;
+
+/** Hover text for a node's sources: one per line. */
+const srcTitle = (src: readonly string[] | undefined): string | undefined => src?.join("\n");
 
 /**
  * A component with a shape: the outline fills the box, and the label sits
@@ -256,7 +259,7 @@ function ArchShapeNode({ id, data, width, height, shape }: NodeProps<ArchNode> &
           {!layout.sub && <SrcHint src={marks?.src} />}
         </div>
         {layout.sub && (
-          <div className="mt-0.5 max-w-full truncate text-xs leading-tight text-ink-3" title={marks?.src}>
+          <div className="mt-0.5 max-w-full truncate text-xs leading-tight text-ink-3" title={srcTitle(marks?.src)}>
             <span className={typed ? "mono" : undefined}>{sub}</span>
             <SrcHint src={marks?.src} />
           </div>
@@ -312,7 +315,7 @@ function ArchCardNode({ id, data, width, height }: NodeProps<ArchNode>) {
         <div className="arch-node-label truncate text-base font-semibold leading-tight text-ink">
           {data.label}
         </div>
-        <div className="truncate text-xs leading-tight text-ink-3" title={marks?.src}>
+        <div className="truncate text-xs leading-tight text-ink-3" title={srcTitle(marks?.src)}>
           <span className={data.typeTag ? "mono" : undefined}>
             {data.typeTag ?? "component"}
           </span>

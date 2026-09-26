@@ -76,10 +76,11 @@ component <id> ["Display Name"] [@<type>] [{ <body> }]
     Without one, a component is a box.
   - `desc "..."` — human-readable description (shown in the detail view). One per
     component. Multiline via triple quotes: `desc """ ... """`.
-  - `src "..."` — where the component lives in code: a repo-relative path
-    (`apps/api/src/billing`) or a URL. Single-line string only, at most one per
-    component (a second one is error `E004`). Agents start here when implementing
-    or verifying the component; the app renders it as a link.
+  - `src "..."` — where the component lives in code: a repo-relative path to a
+    file or a folder (`apps/api/src/billing`, `apps/api/src/billing/invoices.ts`)
+    or a URL. Single-line string only. A component that lives in several places
+    has one `src` line for each, kept in the order written. Agents start here when
+    implementing or verifying the component; the app renders each one as a link.
   - Child `component` declarations — components nest arbitrarily deep, with JSON-object
     nesting semantics.
   - Payload blocks (§4).
@@ -311,7 +312,7 @@ A document is **valid** when:
 | `E001` | file parses (header, declarations, fences)                      | error    |
 | `E002` | component ids unique within their scope                         | error    |
 | `E003` | payload names unique per component / per connection             | error    |
-| `E004` | at most one `src` and one `shape` per component                 | error    |
+| `E004` | at most one `shape` per component                               | error    |
 | `E101` | every connection endpoint resolves to a declared component      | error    |
 | `E201` | `json` / `yaml` / `table` payloads parse in their format        | error    |
 | `W301` | type tag resolves in the catalog                                | warning  |
@@ -343,6 +344,7 @@ arch "Acme SaaS" v0.1
 component web "Next.js App" @vercel.nextjs {
   desc "App shell + marketing. RSC, deployed on Vercel."
   src "apps/web"
+  src "packages/ui"
 }
 
 component backend "Backend" @vercel {

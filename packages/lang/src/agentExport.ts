@@ -11,7 +11,8 @@ const PREAMBLE = `# This is an Archer architecture document — a complete, mach
 #   Components nest; a child lives inside its parent. \`@type\` tags a real
 #   technology (e.g. @aws.s3, @postgres); untyped components are logical parts.
 # - \`desc\` is the author's human-readable intent for that component.
-# - \`src\` points at where the component lives in code (a repo path or URL).
+# - \`src\` points at where the component lives in code: a repo path (a file or
+#   a folder) or a URL, one \`src\` line per place when it spans several.
 #   Start there when implementing or verifying that component.
 # - \`shape\` (cylinder, cloud, person, robot, …) is how the canvas draws a
 #   component: a hint at what it is (a store, an outside service, a user, an

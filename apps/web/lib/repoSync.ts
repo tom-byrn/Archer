@@ -153,7 +153,7 @@ export function describeChanges(s: DiffSummary): string {
 export const changeCount = (s: DiffSummary): number =>
   s.added + s.removed + s.changed + s.connectionsAdded + s.connectionsRemoved + s.connectionsChanged;
 
-const FIELD_WORDS: Record<string, string> = { desc: "description", src: "source path", payloads: "payloads", name: "name", type: "type" };
+const FIELD_WORDS: Record<string, string> = { desc: "description", src: "sources", payloads: "payloads", name: "name", type: "type" };
 
 /** Default commit message / pull request title for publishing `diff`. */
 export function publishTitle(diff: DocDiff, path: string): string {
