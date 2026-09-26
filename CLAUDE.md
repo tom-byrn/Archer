@@ -150,6 +150,16 @@ Router + React Flow + Convex).
   sandbox and the OG image keep glyphs (`test/logos.test.ts`), custom types
   never get logos, and the logo chunk (~190 KB gzipped, mostly AWS's PNGs)
   loads after first paint.
+- Shapes: a component's `shape` (spec §3.3; `shape cylinder` in its body) is
+  the one visual field outside `layout`, so agents and repo files carry it.
+  The names live in `packages/lang/src/shapes.ts` (`SHAPES`, `SHAPE_INFO`;
+  add freely, never rename or remove one — documents store them; an unknown
+  one is `W304` and draws as a box). How each looks is
+  `apps/web/lib/shapes.ts`: pure geometry for any box size (outline paths,
+  label area, edge-anchor insets), shared by the canvas (`ArchShapeNode` in
+  `components/nodes.tsx`), `lib/svg.ts` and the pickers
+  (`components/ShapePicker.tsx`), so all of them draw the same thing. A plane
+  stays a plane; its shape shows once it's collapsed to an icon.
 - Brand kit: `/branding` (signed-in only, deliberately linked from nowhere —
   keep it that way) shows the logo, colors, type, radii, icons and ui.tsx
   primitives. Values are parsed from `app/globals.css` at build time

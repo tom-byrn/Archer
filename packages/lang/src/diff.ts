@@ -20,7 +20,7 @@ export interface ComponentChange {
   /** Dotted path. */
   path: string;
   kind: ChangeKind;
-  /** For "changed": which own fields differ — any of "name" | "type" | "desc" | "src" | "payloads". */
+  /** For "changed": which own fields differ — any of "name" | "type" | "shape" | "desc" | "src" | "payloads". */
   fields?: string[];
 }
 
@@ -90,6 +90,7 @@ const changedFields = (a: ComponentNode, b: ComponentNode): string[] => {
   const fields: string[] = [];
   if (a.name !== b.name) fields.push("name");
   if (a.type !== b.type) fields.push("type");
+  if (a.shape !== b.shape) fields.push("shape");
   if (a.desc !== b.desc) fields.push("desc");
   if (a.src !== b.src) fields.push("src");
   if (!payloadsEqual(a, b)) fields.push("payloads");

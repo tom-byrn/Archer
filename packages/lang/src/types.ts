@@ -39,6 +39,11 @@ export interface ComponentNode {
   name?: string;
   /** Type tag without the leading `@`, e.g. "aws.s3". */
   type?: string;
+  /**
+   * How the canvas draws it, e.g. "cylinder" (see SHAPES). Kept as written:
+   * a name the language doesn't know is a warning, drawn as a box.
+   */
+  shape?: string;
   desc?: string;
   /**
    * Where this component lives in code: a repo-relative path (e.g.

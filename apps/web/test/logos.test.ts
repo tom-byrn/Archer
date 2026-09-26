@@ -26,6 +26,18 @@ describe("logos", () => {
     expect(svg.match(/viewBox="0 0 256 256"/g)).toHaveLength(2);
   });
 
+  it("draws a shaped component's logo too, as the canvas does", () => {
+    const shaped = `arch "Shapes" v0.1
+
+component store "Store" @redis {
+  shape cylinder
+}
+`;
+    const svg = renderArchSvg(shaped, { logos: LOGOS });
+    expect(svg).toContain(LOGOS.redis!.body);
+    expect(svg).not.toContain('viewBox="0 0 256 256"');
+  });
+
   it("draws glyphs only, without them", () => {
     const svg = renderArchSvg(SOURCE);
     expect(svg.match(/viewBox="0 0 256 256"/g)).toHaveLength(4);

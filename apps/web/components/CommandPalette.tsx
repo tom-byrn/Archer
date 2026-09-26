@@ -2,10 +2,12 @@
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { CATALOG } from "@archer/catalog";
+import { SHAPE_INFO, type Shape } from "@archer/lang";
 import type { UserLibrary } from "@/lib/userLibrary";
 import { GlyphSwatch } from "./nodes";
+import { ShapeIcon } from "./ShapePicker";
 import { Icon, Kbd, cx } from "./ui";
-import { namespaceLabel, orderedNamespaces } from "./Palette";
+import { PALETTE_SHAPES, namespaceLabel, orderedNamespaces } from "./Palette";
 
 /**
  * What the palette was opened for: `all` (⌘K) runs commands, finds
@@ -42,7 +44,19 @@ interface Entry {
   namespace: string;
   color?: string;
   glyph?: string;
+  /** An untyped component drawn as this shape, and what the shape is for (also searched). */
+  shape?: Shape;
+  use?: string;
 }
+
+/** Shapes to put down, first in the add list (the palette's Shapes group). */
+const SHAPE_ENTRIES: Entry[] = PALETTE_SHAPES.map((s) => ({
+  tag: undefined,
+  name: SHAPE_INFO[s].name,
+  namespace: "shapes",
+  shape: s,
+  use: SHAPE_INFO[s].use,
+}));
 
 type Row =
   | { kind: "command"; key: string; command: PaletteCommand }
@@ -93,7 +107,7 @@ export function CommandPalette({
   open: boolean;
   mode?: PaletteMode;
   onClose: () => void;
-  onAdd: (tag: string | undefined) => void;
+  onAdd: (tag: string | undefined, shape?: Shape) => void;
   library: UserLibrary;
   commands?: PaletteCommand[];
   components?: PaletteComponent[];
@@ -149,17 +163,21 @@ export function CommandPalette({
 
     if (mode === "all" || mode === "add") {
       const entries: Entry[] = [
+        ...SHAPE_ENTRIES,
         PLAIN,
         ...library.items.map((t) => ({ ...t, namespace: "custom" })),
         ...CATALOG,
       ];
       const scored = entries
-        .map((e, order) => ({ e, s: best(q, e.name, e.tag), order }))
+        .map((e, order) => ({ e, s: best(q, e.name, e.tag ?? e.use), order }))
         .filter(({ s }) => s >= 0);
       if (q !== "") scored.sort((a, b) => a.s - b.s || a.order - b.order);
       const byNs = new Map<string, { e: Entry; s: number }[]>();
       for (const x of scored) byNs.set(x.e.namespace, [...(byNs.get(x.e.namespace) ?? []), x]);
-      const nsOrder = q === "" ? orderedNamespaces(byNs.keys()) : [...byNs.keys()];
+      const nsOrder =
+        q === ""
+          ? ["shapes", ...orderedNamespaces(byNs.keys()).filter((ns) => ns !== "shapes")]
+          : [...byNs.keys()];
       nsOrder.forEach((ns, i) => {
         const items = byNs.get(ns);
         if (!items) return;
@@ -168,7 +186,11 @@ export function CommandPalette({
           label: mode === "all" ? `Add · ${namespaceLabel(ns)}` : namespaceLabel(ns),
           rank: q === "" ? 2 : items[0]!.s,
           order: 2 + i,
-          rows: items.map(({ e }) => ({ kind: "add", key: `add:${e.tag ?? "__plain"}`, entry: e })),
+          rows: items.map(({ e }) => ({
+            kind: "add",
+            key: e.shape ? `add:shape:${e.shape}` : `add:${e.tag ?? "__plain"}`,
+            entry: e,
+          })),
         });
       });
     }
@@ -193,7 +215,7 @@ export function CommandPalette({
     onClose();
     if (row.kind === "command") row.command.run();
     else if (row.kind === "goto") onGoTo?.(row.component.path);
-    else onAdd(row.entry.tag);
+    else onAdd(row.entry.tag, row.entry.shape);
   };
 
   let index = -1;
@@ -328,6 +350,16 @@ function RowBody({ row }: { row: Row }) {
     );
   }
   const e = row.entry;
+  if (e.shape)
+    return (
+      <>
+        <span className="flex h-5 w-5 shrink-0 items-center justify-center text-ink-2">
+          <ShapeIcon shape={e.shape} width={20} />
+        </span>
+        <span className="min-w-0 flex-1 truncate text-base text-ink">{e.name}</span>
+        <span className="hidden min-w-0 shrink truncate text-xs text-ink-3 md:inline">{e.use}</span>
+      </>
+    );
   return (
     <>
       <Swatch color={e.color} glyph={e.glyph} tag={e.tag} />

@@ -87,6 +87,15 @@
   .landing-caret:not(.is-typing) {
     animation: landing-blink 1.1s steps(1, end) infinite;
   }
+  .landing-glyph-track {
+    animation: landing-glyph-run 40s linear infinite;
+  }
+}
+/* One row's length (half the track) to the right, then from the top again. */
+@keyframes landing-glyph-run {
+  from {
+    transform: translateX(-50%);
+  }
 }
 
 /* Diamond joints where a horizontal rule meets the column's side rules. The
@@ -135,9 +144,57 @@
   background-color: color-mix(in srgb, var(--type) 14%, transparent);
 }
 
+/* The glyph carousel between Features and FAQ (GlyphCarousel): a row of
+   catalog tiles running left to right across the band, fading in from the left
+   rule and out toward the right one. The track holds the row twice; each row
+   ends in a gap, so the spacing holds across the join, and is longer than the
+   band is wide, so the band never shows the track's end. The tiles grow with
+   the viewport. */
+.landing-glyph-strip {
+  --fade: clamp(48px, 15%, 160px);
+  mask-image: linear-gradient(
+    to right,
+    transparent,
+    #000 var(--fade),
+    #000 calc(100% - var(--fade)),
+    transparent
+  );
+}
+.landing-glyph-track {
+  --tile: clamp(40px, 4vw, 48px);
+  --gap: clamp(28px, 3vw, 40px);
+  display: flex;
+  width: max-content;
+  height: 100%;
+}
+.landing-glyph-row {
+  display: flex;
+  align-items: center;
+  gap: var(--gap);
+  padding-right: var(--gap);
+}
+.landing-glyph-tile {
+  --type: var(--type-light);
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: var(--tile);
+  height: var(--tile);
+  border: 1px solid color-mix(in srgb, var(--type) 30%, var(--bg));
+  border-radius: var(--radius-sm);
+  color: var(--type);
+  background-color: color-mix(in srgb, var(--type) 12%, var(--bg));
+}
+.landing-glyph-tile svg {
+  width: 46%;
+  height: 46%;
+}
+
 :root[data-theme="dark"] .landing-canvas {
   --edge-strong: #fff;
 }
-:root[data-theme="dark"] .landing-type-tile {
+:root[data-theme="dark"] .landing-type-tile,
+:root[data-theme="dark"] .landing-glyph-tile {
   --type: var(--type-dark);
 }

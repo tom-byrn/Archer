@@ -28,6 +28,7 @@ import {
   setConnectionEndpoints,
   setDisplay,
   type ArchDoc,
+  type Shape,
 } from "@archer/lang";
 import Link from "next/link";
 import { useAuth } from "@clerk/nextjs";
@@ -498,10 +499,10 @@ function EditorView({ initialSource, library, session }: EditorProps) {
         });
         setSel(NONE);
       },
-      onDropType: (tag, pos) =>
+      onDropType: (tag, pos, shape) =>
         mutate((d) => {
           const target = resolveDropTarget(d, pos, { base: liveFocus });
-          return addComponent(d, target.parent, { type: tag, at: target.at }).doc;
+          return addComponent(d, target.parent, { type: tag, shape, at: target.at }).doc;
         }),
       onReconnect: (index, end, path) => {
         const key = mutateWith((d) => {
@@ -579,14 +580,14 @@ function EditorView({ initialSource, library, session }: EditorProps) {
   }, []);
 
   const addFromPalette = useCallback(
-    (tag: string | undefined) => {
+    (tag: string | undefined, shape?: Shape) => {
       const point = addAt.current;
       addAt.current = null;
       const path = mutateWith((d) => {
         const target = point ? resolveDropTarget(d, point, { base: liveFocus }) : null;
         const r = target
-          ? addComponent(d, target.parent, { type: tag, at: target.at })
-          : addComponent(d, liveFocus, { type: tag });
+          ? addComponent(d, target.parent, { type: tag, shape, at: target.at })
+          : addComponent(d, liveFocus, { type: tag, shape });
         return { doc: r.doc, value: r.path.join(".") };
       });
       if (path) selectNew(path);
@@ -1036,6 +1037,19 @@ function EditorView({ initialSource, library, session }: EditorProps) {
               },
             ]
           : []),
+        // A plane is drawn as a plane; its shape shows once it's collapsed.
+        ...(isContainer && display === "plane"
+          ? []
+          : [
+              {
+                label: "Change shape…",
+                icon: <Icon.Shapes />,
+                onSelect: () => {
+                  setSel(only(t.path));
+                  setEditingId(t.path);
+                },
+              },
+            ]),
         "separator",
         ...selectionActions(isContainer),
       ];
