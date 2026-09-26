@@ -406,10 +406,17 @@ layout {
       ],
       custom_types: [],
       connection_types: ["http", "grpc", "ws", "sql", "queue", "event", "…"],
+      shapes: [
+        { shape: "box", name: "Box", use: "anything (the default)" },
+        { shape: "cylinder", name: "Cylinder", use: "databases and other stores" },
+        { shape: "cloud", name: "Cloud", use: "cloud providers, external services, the internet" },
+        "…",
+      ],
       glyphs_for_custom_types: ["box", "circle", "database", "table", "…"],
     },
     notes: [
-      "`search` filters the catalog and custom types only; connection types and glyphs are always listed in full. Custom types come from the current workspace; if they can't be read, `note` says so.",
+      "`search` filters the catalog and custom types only; connection types, shapes and glyphs are always listed in full. Custom types come from the current workspace; if they can't be read, `note` says so.",
+      "A shape goes in a component's body, `shape cylinder`, and draws the component as that outline; the type still picks the icon and color inside it.",
     ],
   },
   create_custom_type: {
@@ -605,7 +612,7 @@ api -> db @sql
     },
     notes: [
       "`from` and `to` are revision ids, `current` (the project as it is now) or `empty` (before the first revision). Only the newest 200 revisions can be named.",
-      "A changed component lists its changed `fields`: `name`, `type`, `desc`, `src` or `payloads`. A connection is `changed` when only its payloads differ, and `title` appears when the document was renamed.",
+      "A changed component lists its changed `fields`: `name`, `type`, `shape`, `desc`, `src` or `payloads`. A connection is `changed` when only its payloads differ, and `title` appears when the document was renamed.",
     ],
   },
 

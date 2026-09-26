@@ -58,6 +58,7 @@ import {
   RobotIcon,
   ScissorsIcon,
   SelectionAllIcon,
+  ShapesIcon,
   SidebarSimpleIcon,
   SparkleIcon,
   SquaresFourIcon,
@@ -825,6 +826,7 @@ export const Icon = {
   SelectAll: (p: IconProps) => <SelectionAllIcon {...UI} {...p} />,
   Swap: (p: IconProps) => <ArrowsLeftRightIcon {...UI} {...p} />,
   Sidebar: (p: IconProps) => <SidebarSimpleIcon {...UI} {...p} />,
+  Shapes: (p: IconProps) => <ShapesIcon {...UI} {...p} />,
 };
 
 /**

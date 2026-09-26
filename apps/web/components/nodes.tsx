@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext } from "react";
+import { createContext, useContext, useEffect, useMemo, useRef, type CSSProperties } from "react";
 import {
   BaseEdge,
   EdgeLabelRenderer,
@@ -10,11 +10,14 @@ import {
   Position,
   ResizeControlVariant,
   getSmoothStepPath,
+  useUpdateNodeInternals,
   type EdgeProps,
   type NodeProps,
   type ResizeParams,
 } from "@xyflow/react";
 import { GLYPHS, GLYPH_VIEWBOX, lookupType } from "@archer/catalog";
+import type { Shape } from "@archer/lang";
+import { LABEL, labelLayout, shapeGeometry, type ShapeGeometry } from "@/lib/shapes";
 import { CELL, type ArchEdge, type ArchNode, type NodeMarks } from "@/lib/toFlow";
 import { displayColor, useIsDark } from "@/lib/useIsDark";
 import { Icon, cx } from "./ui";
@@ -66,16 +69,24 @@ const SIDES = [
   ["l", Position.Left],
 ] as const;
 
-const EdgeHandles = () => (
-  <>
-    {SIDES.map(([id, position]) => (
-      <Handle key={`t${id}`} id={`t${id}`} type="target" position={position} className="arch-handle" />
-    ))}
-    {SIDES.map(([id, position]) => (
-      <Handle key={`s${id}`} id={`s${id}`} type="source" position={position} className="arch-handle" />
-    ))}
-  </>
-);
+// A shape pulls each side's handles in to its outline (`anchors`), so edges
+// end on the outline rather than on the box around it.
+const SIDE_STYLE = { t: "top", r: "right", b: "bottom", l: "left" } as const;
+
+function EdgeHandles({ anchors }: { anchors?: ShapeGeometry["anchors"] }) {
+  const style = (id: keyof typeof SIDE_STYLE): CSSProperties | undefined =>
+    anchors ? { [SIDE_STYLE[id]]: anchors[id] } : undefined;
+  return (
+    <>
+      {SIDES.map(([id, position]) => (
+        <Handle key={`t${id}`} id={`t${id}`} type="target" position={position} className="arch-handle" style={style(id)} />
+      ))}
+      {SIDES.map(([id, position]) => (
+        <Handle key={`s${id}`} id={`s${id}`} type="source" position={position} className="arch-handle" style={style(id)} />
+      ))}
+    </>
+  );
+}
 
 /** How a node reports a finished resize to the canvas (unset: resizing is off). */
 export const ResizeContext = createContext<
@@ -153,7 +164,88 @@ function Badges({ marks }: { marks: NodeMarks | undefined }) {
 const SrcHint = ({ src }: { src: string | undefined }) =>
   src ? <Icon.Link className="ml-1 inline h-[10px] w-[10px] align-[-1px] text-ink-3" /> : null;
 
-export function ArchComponentNode({ id, data, width, height }: NodeProps<ArchNode>) {
+/**
+ * A component with a shape: the outline fills the box, and the label sits
+ * centered in the shape's roomy middle. What the label shows depends on the
+ * room (lib/shapes.ts `labelLayout`, which lib/svg.ts follows too).
+ */
+function ArchShapeNode({ id, data, width, height, shape }: NodeProps<ArchNode> & { shape: Shape }) {
+  const isDark = useIsDark();
+  const entry = lookupType(data.typeTag);
+  const accent = displayColor(data.accent ?? entry?.color, isDark);
+  const w = width ?? CELL * 4;
+  const h = height ?? CELL * 3;
+  const geo = useMemo(() => shapeGeometry(shape, w, h), [shape, w, h]);
+  const typed = data.typeTag !== undefined;
+  const collapsed = data.display === "icon" && data.childCount > 0;
+  const sub = [data.typeTag, collapsed ? `${data.childCount} inside` : undefined]
+    .filter(Boolean)
+    .join(" · ");
+  const layout = labelLayout(geo.content, typed, sub !== "");
+  const marks = data.marks;
+  const c = geo.content;
+  const glyph = (size: number) => (
+    <Glyph tag={data.typeTag} color={accent} glyph={data.glyphKey} size={size} className="shrink-0" />
+  );
+  return (
+    <div
+      style={{ width: w, height: h, ...(accent ? { "--shape-accent": accent } : {}) } as CSSProperties}
+      className={cx("arch-node arch-node-shape relative", accent && "arch-shape-typed", diffClass(marks))}
+    >
+      <Resizer id={id} data={data} />
+      <EdgeHandles anchors={geo.anchors} />
+      <Badges marks={marks} />
+      <svg className="arch-shape" width={w} height={h} aria-hidden>
+        {geo.parts.map((d, i) => (
+          <path key={i} className="arch-shape-part" d={d} />
+        ))}
+        {geo.details && <path className="arch-shape-detail" d={geo.details} />}
+        {geo.dots && <path className="arch-shape-dot" d={geo.dots} />}
+      </svg>
+      <div
+        className="absolute flex flex-col items-center justify-center text-center"
+        style={{ left: c.x, top: c.y, width: c.w, height: c.h }}
+      >
+        {layout.glyph === "above" && <span className="mb-1 flex">{glyph(LABEL.glyph)}</span>}
+        <div className="flex max-w-full min-w-0 items-center justify-center gap-1.5">
+          {layout.glyph === "inline" && glyph(14)}
+          <span
+            className={cx(
+              "arch-node-label min-w-0 break-words text-base font-semibold leading-tight text-ink",
+              layout.lines === 2 ? "line-clamp-2" : "truncate",
+            )}
+          >
+            {data.label}
+          </span>
+          {!layout.sub && <SrcHint src={marks?.src} />}
+        </div>
+        {layout.sub && (
+          <div className="mt-0.5 max-w-full truncate text-xs leading-tight text-ink-3" title={marks?.src}>
+            <span className={typed ? "mono" : undefined}>{sub}</span>
+            <SrcHint src={marks?.src} />
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+export function ArchComponentNode(props: NodeProps<ArchNode>) {
+  const { id, data } = props;
+  const shape = data.shape;
+  // React Flow measures a node's handles when it mounts, resizes or changes
+  // type. A new shape moves them without any of those, so measure again.
+  const updateInternals = useUpdateNodeInternals();
+  const drawn = useRef(shape);
+  useEffect(() => {
+    if (drawn.current === shape) return;
+    drawn.current = shape;
+    updateInternals(id);
+  }, [id, shape, updateInternals]);
+  return shape ? <ArchShapeNode {...props} shape={shape} /> : <ArchCardNode {...props} />;
+}
+
+function ArchCardNode({ id, data, width, height }: NodeProps<ArchNode>) {
   const isDark = useIsDark();
   const entry = lookupType(data.typeTag);
   const accent = displayColor(data.accent ?? entry?.color, isDark);

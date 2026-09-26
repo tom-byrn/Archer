@@ -67,9 +67,11 @@ const samePayloads = (a: PayloadNode[], b: PayloadNode[]): boolean => {
   return b.every((p) => samePayload(byName.get(p.name), p));
 };
 
+const OWN_FIELDS = ["name", "type", "shape", "desc", "src"] as const;
+
 /** Same component, own fields and whole subtree, ignoring child order. */
 function sameTree(a: ComponentNode, b: ComponentNode): boolean {
-  if (a.name !== b.name || a.type !== b.type || a.desc !== b.desc || a.src !== b.src) return false;
+  for (const field of OWN_FIELDS) if (a[field] !== b[field]) return false;
   if (!samePayloads(a.payloads, b.payloads)) return false;
   if (a.children.length !== b.children.length) return false;
   const other = new Map(b.children.map((c) => [c.id, c]));
@@ -118,8 +120,6 @@ function mergePayloads(
   }
   return out;
 }
-
-const OWN_FIELDS = ["name", "type", "desc", "src"] as const;
 
 function mergeComponent(
   b: ComponentNode | undefined,

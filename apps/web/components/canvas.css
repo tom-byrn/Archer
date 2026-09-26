@@ -26,6 +26,64 @@
   box-shadow: var(--shadow-md);
 }
 
+/* ---- Shapes (nodes.tsx ArchShapeNode) ---- */
+/* The outline is the node: states restyle it instead of ringing the box. A
+   typed shape takes a tint of its type's color (--shape-accent). */
+.arch-node-shape {
+  --shape-stroke: var(--line-2);
+  --shape-fill: var(--surface);
+}
+.arch-node-shape.arch-shape-typed {
+  --shape-stroke: color-mix(in srgb, var(--shape-accent) 45%, var(--line-2));
+  --shape-fill: color-mix(in srgb, var(--shape-accent) 5%, var(--surface));
+}
+.arch-shape {
+  position: absolute;
+  inset: 0;
+  overflow: visible;
+  pointer-events: none;
+  transition: filter 120ms ease;
+}
+.arch-shape-part {
+  fill: var(--shape-fill);
+  stroke: var(--shape-stroke);
+  stroke-width: 1;
+  stroke-linejoin: round;
+  transition:
+    stroke 120ms ease,
+    fill 120ms ease;
+}
+.arch-shape-detail {
+  fill: none;
+  stroke: var(--shape-stroke);
+  stroke-width: 1;
+  transition: stroke 120ms ease;
+}
+.arch-shape-dot {
+  fill: var(--shape-stroke);
+  transition: fill 120ms ease;
+}
+/* Precedence: hover < diff status (below) < selection. */
+.react-flow__node:hover .arch-node-shape {
+  --shape-stroke: color-mix(in srgb, var(--edge-strong) 40%, var(--line-2));
+}
+.react-flow__node.selected .arch-node.arch-node-shape,
+.react-flow__node.arch-selected .arch-node.arch-node-shape,
+.react-flow__node.dragging .arch-node.arch-node-shape {
+  box-shadow: none;
+}
+.react-flow__node.selected .arch-node.arch-node-shape,
+.react-flow__node.arch-selected .arch-node.arch-node-shape {
+  --shape-stroke: var(--accent);
+}
+.react-flow__node.selected .arch-shape-part,
+.react-flow__node.arch-selected .arch-shape-part {
+  stroke-width: 2;
+}
+.react-flow__node.dragging .arch-shape {
+  filter: drop-shadow(0 4px 8px rgba(26, 25, 22, 0.12));
+}
+
 /* ---- Diff view ---- */
 .arch-node.arch-diff-added {
   box-shadow: 0 0 0 2px var(--accent);
@@ -50,6 +108,38 @@
   box-shadow:
     0 0 0 2px var(--ground),
     0 0 0 4px var(--accent);
+}
+/* A shape shows its diff on the outline, not as a ring round its box. */
+.arch-node.arch-node-shape.arch-diff-added,
+.arch-node.arch-node-shape.arch-diff-changed,
+.arch-node.arch-node-shape.arch-diff-removed,
+.react-flow__node.selected .arch-node.arch-node-shape.arch-diff-added,
+.react-flow__node.arch-selected .arch-node.arch-node-shape.arch-diff-added,
+.react-flow__node.selected .arch-node.arch-node-shape.arch-diff-changed,
+.react-flow__node.arch-selected .arch-node.arch-node-shape.arch-diff-changed {
+  border: none;
+  box-shadow: none;
+  background-color: transparent;
+}
+.arch-node.arch-node-shape.arch-diff-added {
+  --shape-stroke: var(--accent);
+  --shape-fill: color-mix(in srgb, var(--accent) 12%, var(--surface));
+}
+.arch-node.arch-node-shape.arch-diff-changed {
+  --shape-stroke: var(--warn);
+  --shape-fill: color-mix(in srgb, var(--warn) 12%, var(--surface));
+}
+.arch-node.arch-node-shape.arch-diff-removed {
+  --shape-stroke: var(--danger);
+  --shape-fill: color-mix(in srgb, var(--danger) 10%, var(--surface));
+}
+.arch-node-shape.arch-diff-added .arch-shape-part,
+.arch-node-shape.arch-diff-changed .arch-shape-part {
+  stroke-width: 2;
+}
+.arch-node-shape.arch-diff-removed .arch-shape-part {
+  stroke-width: 1.5;
+  stroke-dasharray: 5 3;
 }
 
 /* ---- Badges (agent-touched, drift) ---- */

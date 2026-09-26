@@ -90,6 +90,56 @@ dashboard -> api @http
 `,
   },
   {
+    slug: "shapes",
+    title: "Support Desk",
+    summary:
+      "A `shape` in a component's body draws it as what it is: a person for the customer, a robot for the agent, a cloud for the model provider, a cylinder for the database. The type still picks the icon and color inside the outline, and anything without a shape stays a box. Shapes are for readers; an agent implementing the document can ignore them.",
+    features: ["shapes"],
+    source: `arch "Support Desk" v0.1
+
+component customer "Customer" @user {
+  shape person
+}
+
+component widget "Chat Widget" @chat_ui {
+  shape browser
+}
+
+component agent "Support Agent" @agent {
+  shape robot
+  desc "Answers from the help center and the customer's orders. Hands the chat to a person when it isn't sure."
+}
+
+component claude "Claude" @anthropic {
+  shape cloud
+}
+
+component articles "Help Articles" @knowledge_base {
+  shape document
+}
+
+component orders "Orders" @postgres {
+  shape cylinder
+}
+
+component handoffs "Handoffs" @queue {
+  shape queue
+}
+
+component team "Support Team" @user {
+  shape person
+}
+
+agent -> articles @reads : "search"
+agent -> claude @http : "messages"
+agent -> handoffs @event : "escalate"
+agent -> orders @sql : "look up"
+customer -> widget
+handoffs -> team
+widget -> agent @ws : "chat"
+`,
+  },
+  {
     slug: "music-streaming",
     title: "Music Streaming",
     summary:

@@ -2,11 +2,26 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { CATALOG, type CatalogType } from "@archer/catalog";
+import { SHAPES, SHAPE_INFO, type Shape } from "@archer/lang";
 import type { CustomType, UserLibrary } from "@/lib/userLibrary";
 import { Glyph } from "./nodes";
+import { ShapeIcon, shapeTitle } from "./ShapePicker";
 import { Button, IconButton, Icon, Input, Kbd, cx } from "./ui";
 
 export const DND_MIME = "application/archer-type";
+/** Dragging a shape from the palette: the shape's name (an untyped component drawn that way). */
+export const DND_SHAPE_MIME = "application/archer-shape";
+
+/** The shapes the palette puts down; the box is "Plain component". */
+export const PALETTE_SHAPES = SHAPES.filter((s): s is Exclude<Shape, "box"> => s !== "box");
+
+/** Search rank of a shape, by its name or what it's for (see matchRank). */
+export const shapeRank = (shape: Shape, q: string): number => {
+  if (q === "") return 1;
+  const { name, use } = SHAPE_INFO[shape];
+  if (name.toLowerCase().startsWith(q)) return 0;
+  return name.toLowerCase().includes(q) || use.toLowerCase().includes(q) ? 1 : -1;
+};
 
 /** Friendly group names for catalog namespaces. */
 export const NAMESPACE_LABELS: Record<string, string> = {
@@ -73,7 +88,7 @@ export const matchRank = (t: { name: string; tag: string; namespace: string }, q
 };
 
 const OPEN_KEY = "archer.palette.open";
-const DEFAULT_OPEN: Record<string, boolean> = { custom: true, generic: true };
+const DEFAULT_OPEN: Record<string, boolean> = { shapes: true, custom: true, generic: true };
 
 function PaletteItem({
   entry,
@@ -111,6 +126,43 @@ function PaletteItem({
         </span>
       )}
     </div>
+  );
+}
+
+/**
+ * A shape to put down: an untyped component drawn that way, which a type can
+ * be given later. A grid of outlines while browsing; named rows in a search.
+ */
+function ShapeItem({
+  shape,
+  row,
+  onAdd,
+}: {
+  shape: Exclude<Shape, "box">;
+  row: boolean;
+  onAdd: (shape: Shape) => void;
+}) {
+  return (
+    <button
+      type="button"
+      draggable
+      onDragStart={(e) => {
+        e.dataTransfer.setData(DND_SHAPE_MIME, shape);
+        e.dataTransfer.effectAllowed = "copy";
+      }}
+      onClick={() => onAdd(shape)}
+      title={`${shapeTitle(shape)}. Drag onto the canvas or click to add`}
+      aria-label={`Add a ${SHAPE_INFO[shape].name.toLowerCase()}`}
+      className={cx(
+        "cursor-grab rounded-md text-ink-2 transition-colors duration-75 hover:bg-surface-2 hover:text-ink active:cursor-grabbing",
+        row
+          ? "flex h-7 w-full items-center gap-2 px-1.5 text-left"
+          : "flex h-9 items-center justify-center",
+      )}
+    >
+      <ShapeIcon shape={shape} width={row ? 20 : 26} />
+      {row && <span className="min-w-0 flex-1 truncate text-sm text-ink">{SHAPE_INFO[shape].name}</span>}
+    </button>
   );
 }
 
@@ -326,7 +378,8 @@ export function Palette({
 }: {
   /** Closed, the sidebar is hidden but keeps its search and new-type form. */
   open: boolean;
-  onAdd: (tag: string | undefined) => void;
+  /** Add a component of this type (undefined: untyped), drawn as `shape` when given. */
+  onAdd: (tag: string | undefined, shape?: Shape) => void;
   library: UserLibrary;
 }) {
   const [query, setQuery] = useState("");
@@ -369,7 +422,17 @@ export function Palette({
     });
   }, [library.items, q, searching]);
 
-  const anyVisible = groups.some((g) => g.visible.length > 0);
+  const shapes = useMemo(
+    () =>
+      PALETTE_SHAPES.map((s) => ({ s, r: shapeRank(s, q) }))
+        .filter(({ r }) => r >= 0)
+        .sort((a, b) => a.r - b.r)
+        .map(({ s }) => s),
+    [q],
+  );
+  const shapesOpen = searching || (openState.shapes ?? false);
+
+  const anyVisible = groups.some((g) => g.visible.length > 0) || shapes.length > 0;
   const plainVisible = !searching || matchRank({ name: "Plain component", tag: "", namespace: "generic" }, q) >= 0;
 
   return (
@@ -398,6 +461,24 @@ export function Palette({
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-3">
+        {shapes.length > 0 && (
+          <div className="mt-1">
+            <GroupHeader
+              label="Shapes"
+              count={shapes.length}
+              open={shapesOpen}
+              onToggle={() => toggle("shapes")}
+            />
+            {shapesOpen && (
+              <div className={cx("pb-1", !searching && "grid grid-cols-5 gap-0.5 px-0.5")}>
+                {shapes.map((s) => (
+                  <ShapeItem key={s} shape={s} row={searching} onAdd={(shape) => onAdd(undefined, shape)} />
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         {groups.map(({ ns, items, visible }) => {
           const isCustom = ns === "custom";
           const showPlain = isCustom && plainVisible;

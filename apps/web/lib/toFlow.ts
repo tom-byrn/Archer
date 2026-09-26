@@ -5,10 +5,12 @@ import {
   findComponent,
   layoutMap,
   pathToString,
+  shapeOf,
   type ArchDoc,
   type Arrow,
   type ComponentNode,
   type DisplayMode,
+  type Shape,
 } from "@archer/lang";
 import {
   BOX_COST,
@@ -52,6 +54,8 @@ export interface ArchNodeData extends Record<string, unknown> {
   typeTag?: string;
   desc?: string;
   display: DisplayMode;
+  /** Drawn as this shape (lib/shapes.ts) instead of the card; never set on a plane. */
+  shape?: Exclude<Shape, "box">;
   childCount: number;
   payloadCount: number;
   accent?: string;
@@ -164,6 +168,7 @@ export function toFlow(
             minSize[1] = Math.max(minSize[1], e.at[1] + e.size[1] + PLANE_INNER_MARGIN[1]);
           }
         }
+        const shape = shapeOf(c);
         nodes.push({
           id: path,
           type: isPlane ? "archPlane" : "archComponent",
@@ -177,6 +182,7 @@ export function toFlow(
             typeTag: c.type,
             desc: c.desc,
             display,
+            ...(!isPlane && shape !== "box" ? { shape } : {}),
             childCount: c.children.length,
             payloadCount: c.payloads.length,
             minSize,

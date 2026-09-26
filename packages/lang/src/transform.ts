@@ -68,17 +68,26 @@ export interface AddComponentOptions {
   id?: string;
   name?: string;
   type?: string;
+  shape?: string;
   at?: [number, number];
   size?: [number, number];
 }
+
+const NAME_RE = /^[a-z][a-z0-9_]*$/;
+
+const checkShape = (shape: string): void => {
+  if (!NAME_RE.test(shape)) throw new Error(`Invalid shape '${shape}' (need snake_case).`);
+};
 
 export function addComponent(
   doc: ArchDoc,
   parent: readonly string[],
   opts: AddComponentOptions = {},
 ): { doc: ArchDoc; path: string[] } {
+  if (opts.shape !== undefined) checkShape(opts.shape);
   const next = clone(doc);
-  const seed = opts.id ?? opts.name ?? opts.type?.split(".").pop() ?? "component";
+  const seed =
+    opts.id ?? opts.name ?? opts.type?.split(".").pop() ?? opts.shape ?? "component";
   const id = opts.id ?? freshId(next, parent, seed);
   const siblings = childrenAt(next, parent);
   if (siblings.some((c) => c.id === id))
@@ -88,6 +97,7 @@ export function addComponent(
     id,
     ...(opts.name !== undefined ? { name: opts.name } : {}),
     ...(opts.type !== undefined ? { type: opts.type } : {}),
+    ...(opts.shape !== undefined ? { shape: opts.shape } : {}),
     payloads: [],
     children: [],
     span: ZERO_SPAN,
@@ -152,6 +162,8 @@ export interface ComponentMeta {
   /** undefined = leave alone; null = clear. */
   name?: string | null;
   type?: string | null;
+  /** Clearing it (or setting "box") draws the default box. */
+  shape?: string | null;
   desc?: string | null;
   src?: string | null;
 }
@@ -161,10 +173,11 @@ export function setComponentMeta(
   path: readonly string[],
   meta: ComponentMeta,
 ): ArchDoc {
+  if (typeof meta.shape === "string") checkShape(meta.shape);
   const next = clone(doc);
   const node = findComponent(next, path);
   if (!node) throw new Error(`No component at '${path.join(".")}'`);
-  for (const key of ["name", "type", "desc", "src"] as const) {
+  for (const key of ["name", "type", "shape", "desc", "src"] as const) {
     const v = meta[key];
     if (v === undefined) continue;
     if (v === null) delete node[key];
