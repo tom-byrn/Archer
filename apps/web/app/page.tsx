@@ -536,7 +536,9 @@ function Dashboard() {
     <SiteFrame
       header={
         <>
-          <span className="font-display text-[19px] leading-none text-ink">Archer</span>
+          <span className="cursor-default select-none font-display text-[19px] leading-none text-ink">
+            Archer
+          </span>
           <span className="h-4 w-px bg-line" />
           {settled ? (
             <div className="fade-in flex flex-1 items-center gap-5">
