@@ -165,7 +165,12 @@ export interface ComponentMeta {
   /** Clearing it (or setting "box") draws the default box. */
   shape?: string | null;
   desc?: string | null;
-  src?: string | null;
+  /**
+   * Every place the component lives, in order: repo paths (files or folders)
+   * or URLs. Entries are trimmed, and blanks and repeats dropped; null or a
+   * list with nothing left clears them.
+   */
+  src?: readonly string[] | null;
 }
 
 export function setComponentMeta(
@@ -177,11 +182,16 @@ export function setComponentMeta(
   const next = clone(doc);
   const node = findComponent(next, path);
   if (!node) throw new Error(`No component at '${path.join(".")}'`);
-  for (const key of ["name", "type", "shape", "desc", "src"] as const) {
+  for (const key of ["name", "type", "shape", "desc"] as const) {
     const v = meta[key];
     if (v === undefined) continue;
     if (v === null) delete node[key];
     else node[key] = v;
+  }
+  if (meta.src !== undefined) {
+    const src = [...new Set((meta.src ?? []).map((s) => s.trim()).filter((s) => s !== ""))];
+    if (src.length === 0) delete node.src;
+    else node.src = src;
   }
   return next;
 }

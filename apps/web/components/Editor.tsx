@@ -25,6 +25,7 @@ import {
   removeConnection,
   reparentComponent,
   resizeComponent,
+  setComponentMeta,
   setConnectionEndpoints,
   setDisplay,
   type ArchDoc,
@@ -140,22 +141,6 @@ const EMPTY_DOC = (like: ArchDoc): ArchDoc => ({
   connections: [],
   layout: [],
 });
-
-/** Return a component tree with `src` set on the node at `path`. */
-function setSrc(
-  items: ArchDoc["components"],
-  path: readonly string[],
-  src: string,
-): ArchDoc["components"] {
-  const [head, ...rest] = path;
-  return items.map((c) =>
-    c.id !== head
-      ? c
-      : rest.length === 0
-        ? { ...c, src }
-        : { ...c, children: setSrc(c.children, rest, src) },
-  );
-}
 
 /** Drop paths that sit inside another path in the same set (delete parent deletes them). */
 const outermostOnly = (paths: readonly string[]): string[] =>
@@ -404,14 +389,14 @@ function EditorView({ initialSource, library, session }: EditorProps) {
   }, [activity.unseenRevisions.length, activity.baseline, derived.doc]);
 
   const marks = useCallback(
-    (path: string, c: { src?: string }): NodeMarks | undefined => {
+    (path: string, c: { src?: readonly string[] }): NodeMarks | undefined => {
       const m: NodeMarks = {};
       const d = diff?.components.get(path);
       if (d) m.diff = d;
       if (!diff && touched.has(path)) m.touched = true;
       const f = activity.driftByPath.get(path);
       if (f && (f.status === "missing" || f.status === "changed")) m.drift = f.status;
-      if (c.src) m.src = c.src;
+      if (c.src?.length) m.src = c.src;
       return Object.keys(m).length > 0 ? m : undefined;
     },
     [diff, touched, activity.driftByPath],
@@ -765,9 +750,7 @@ function EditorView({ initialSource, library, session }: EditorProps) {
   const addFromDrift = (name: string, src?: string) =>
     mutate((d) => {
       const { doc: next, path } = addComponent(d, liveFocus, { name });
-      return src
-        ? { ...next, components: setSrc(next.components, path, src) }
-        : next;
+      return src ? setComponentMeta(next, path, { src: [src] }) : next;
     });
   const openPanel = (tab: ActivityTab) => {
     setPanel(tab);

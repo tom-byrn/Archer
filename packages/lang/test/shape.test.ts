@@ -40,7 +40,7 @@ describe("shape field", () => {
     const db = doc.components[0]!;
     expect(db.shape).toBe("cylinder");
     expect(db.desc).toBe("Every order.");
-    expect(db.src).toBe("services/orders");
+    expect(db.src).toEqual(["services/orders"]);
     expect(db.payloads.map((p) => p.name)).toEqual(["schema"]);
     expect(db.children[0]!.shape).toBe("bucket");
   });
