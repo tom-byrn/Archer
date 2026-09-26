@@ -94,6 +94,8 @@ export interface ArchEdgeData extends Record<string, unknown> {
    * over something else (the edge fades), unset otherwise.
    */
   lit?: boolean;
+  /** Set by the canvas while a component it connects is selected: its label chip shows. */
+  endSelected?: boolean;
 }
 
 export type ArchEdge = Edge<ArchEdgeData>;

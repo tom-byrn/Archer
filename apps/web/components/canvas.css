@@ -199,8 +199,9 @@
 .react-flow__edge.selected .arch-edge-arrow {
   fill: var(--accent);
 }
-/* Label chips show only while their edge is hovered or selected. Hidden ones
-   take no pointer events; visibility waits out the fade before switching off.
+/* Label chips show only while their edge, or a component it connects, is
+   hovered or selected. Hidden ones take no pointer events; visibility waits
+   out the fade before switching off.
    React Flow paints nodes, and edges that touch nested nodes, over its label
    layer (selected nodes 1000 higher still), so chips go on top of it all. */
 .arch-edge-chip {
