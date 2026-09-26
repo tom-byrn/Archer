@@ -15,7 +15,7 @@ const options: esbuild.BuildOptions = {
   target: "chrome120",
   sourcemap: true,
   // Fonts ship as files next to the bundle; Phosphor icons come in as SVG text.
-  loader: { ".woff2": "file", ".woff": "file", ".svg": "text" },
+  loader: { ".woff2": "file", ".woff": "file", ".ttf": "file", ".svg": "text" },
   assetNames: "assets/[name]-[hash]",
   logLevel: "warning",
 };

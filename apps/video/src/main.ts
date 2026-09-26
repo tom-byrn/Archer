@@ -15,7 +15,7 @@ gsap.registerPlugin(DrawSVGPlugin, MotionPathPlugin, CustomEase);
 async function main() {
   await loadFonts();
   const stage = document.getElementById("stage")!;
-  buildFilm(stage);
+  await buildFilm(stage);
   seek(0);
   const render = new URLSearchParams(location.search).has("render");
   window.__video = {
