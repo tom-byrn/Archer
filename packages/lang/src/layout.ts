@@ -35,19 +35,29 @@ export const layoutMap = (doc: ArchDoc): Map<string, LayoutEntry> =>
   new Map(doc.layout.map((e) => [pathToString(e.path), e]));
 
 /**
- * The plane a component or plane sits on, as a path (its scope's path plus
- * the plane's id); undefined when it sits on none.
+ * The planes a component or plane sits on, innermost first, as paths (its
+ * scope's path plus each plane's id). It follows the plane tree rather than
+ * looking paths up again, so it ends even when a plane and a component share
+ * an id (an E002 document, which the canvas still draws).
  */
-export function planePathOf(doc: ArchDoc, path: readonly string[]): string[] | undefined {
+export function planeChainOf(doc: ArchDoc, path: readonly string[]): string[][] {
   const scopePath = path.slice(0, -1);
   const scope = scopeAt(doc, scopePath);
   const id = path[path.length - 1];
   const item: ItemNode | undefined =
     scope?.components.find((c) => c.id === id) ?? scope?.planes.find((p) => p.id === id);
-  if (!scope || !item) return undefined;
-  const plane = planeTree(scope).planeOf(item);
-  return plane ? [...scopePath, plane.id] : undefined;
+  if (!scope || !item) return [];
+  return planeTree(scope)
+    .chainOf(item)
+    .map((p) => [...scopePath, p.id]);
 }
+
+/**
+ * The plane a component or plane sits on, as a path (its scope's path plus
+ * the plane's id); undefined when it sits on none.
+ */
+export const planePathOf = (doc: ArchDoc, path: readonly string[]): string[] | undefined =>
+  planeChainOf(doc, path)[0];
 
 /**
  * Where an item sits on its canvas: its own `at` plus those of the planes it
@@ -60,7 +70,7 @@ export function canvasAt(
 ): [number, number] {
   let x = 0;
   let y = 0;
-  for (let p: readonly string[] | undefined = path; p; p = planePathOf(doc, p)) {
+  for (const p of [path, ...planeChainOf(doc, path)]) {
     const at = layout.get(pathToString(p))?.at;
     if (at) {
       x += at[0];

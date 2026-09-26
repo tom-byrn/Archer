@@ -28,6 +28,7 @@ import {
   autoLayout,
   canvasAt,
   layoutMap,
+  planeChainOf,
   planePathOf,
 } from "./layout";
 
@@ -461,8 +462,10 @@ const clampOnPlane = (
 
 /** Expand the planes under `path` so its rect fits inside them, innermost first. */
 function growPlanes(doc: ArchDoc, path: readonly string[]): void {
-  let item: readonly string[] = path;
-  for (let plane = planePathOf(doc, item); plane; item = plane, plane = planePathOf(doc, plane)) {
+  const chain = [path, ...planeChainOf(doc, path)];
+  for (let i = 1; i < chain.length; i++) {
+    const item = chain[i - 1]!;
+    const plane = chain[i]!;
     const inner = entryFor(doc, item);
     if (!inner.at) continue;
     const innerSize = inner.size ?? LEAF_SIZE;
@@ -691,8 +694,7 @@ type Paths = readonly (readonly string[])[];
 function containers(doc: ArchDoc, path: readonly string[]): string[] {
   const out: string[] = [];
   for (let p: readonly string[] = path; p.length > 0; ) {
-    for (let plane = planePathOf(doc, p); plane; plane = planePathOf(doc, plane))
-      out.push(pathToString(plane));
+    for (const plane of planeChainOf(doc, p)) out.push(pathToString(plane));
     p = p.slice(0, -1);
     if (p.length > 0) out.push(pathToString(p));
   }

@@ -218,3 +218,46 @@ web -> api`);
     expect([api.children[0]!.plane, api.children[0]!.name]).toEqual(["jobs", "X"]);
   });
 });
+
+describe("mergeDocs: plane moves", () => {
+  it("reports planes each side put on the other, and keeps ours's", () => {
+    const base = doc("plane a\n\nplane b\n\ncomponent x");
+    const ours = doc("plane b {\n  plane a\n}\n\ncomponent x");
+    const theirs = doc("plane a {\n  plane b\n}\n\ncomponent x");
+    const r = mergeDocs(base, ours, theirs);
+    expect(r.conflicts.map((c) => [c.kind, c.path])).toEqual([
+      ["plane", "a"],
+      ["plane", "b"],
+    ]);
+    expect(r.doc.planes.map((p) => [p.id, p.plane])).toEqual([
+      ["a", "b"],
+      ["b", undefined],
+    ]);
+  });
+
+  it("keeps what the other side took off a removed plane where it was on the canvas", () => {
+    const base = doc("plane back {\n  component api\n  component db\n}\n\ncomponent web");
+    const ours = doc(`plane back {
+  component api
+  component db
+}
+
+component web
+
+layout {
+  api: { at: [1, 2], size: [4, 3] }
+  back: { at: [20, 0], size: [14, 12] }
+  db: { at: [1, 7], size: [4, 3] }
+  web: { at: [0, 4], size: [4, 3] }
+}`);
+    // The repository file (no layout): the plane is gone, and web is on a new one.
+    const theirs = doc("component api\n\ncomponent db\n\nplane edge {\n  component web\n}");
+    const r = mergeDocs(base, ours, theirs);
+    expect(r.conflicts).toEqual([]);
+    const at = new Map(r.doc.layout.map((e) => [e.path.join("."), e.at]));
+    expect(at.get("api")).toEqual([21, 2]);
+    expect(at.get("db")).toEqual([21, 7]);
+    // Its spot was relative to the canvas, and the new plane has none yet: auto-layout places it.
+    expect(at.get("web")).toBeUndefined();
+  });
+});

@@ -1,10 +1,12 @@
 import { connectionKey } from "./diff";
+import { PLANE_INNER_ORIGIN, canvasAt, layoutMap, planeChainOf } from "./layout";
 import { componentPaths, planePaths, scopeOf, type Scope } from "./scope";
 import {
   pathToString,
   type ArchDoc,
   type ComponentNode,
   type ConnectionNode,
+  type LayoutEntry,
   type PayloadNode,
   type PlaneNode,
 } from "./types";
@@ -20,14 +22,17 @@ import {
  * sits on is a field), a component, plane or connection one side removed
  * while the other changed it, the same one added twice with different
  * content, a component and a plane added with one id, a connection left
- * pointing at a component the other side removed, and something left on a
- * plane the other side removed. The returned document still resolves every
- * conflict (in favor of `ours`) and is always well-formed, but callers should
- * only apply it automatically when `conflicts` is empty.
+ * pointing at a component the other side removed, something left on a
+ * plane the other side removed, and planes each side put on the other. The
+ * returned document still resolves every conflict (in favor of `ours`) and is
+ * always well-formed, but callers should only apply it automatically when
+ * `conflicts` is empty.
  *
  * Layout is presentation, never merged: the result keeps `ours`'s entries for
  * what survives, and anything new from `theirs` is left for auto-layout to
- * place.
+ * place. An `at` is relative to the plane something sits on, so what the
+ * merge moves onto another plane (or off one) keeps its place on the canvas
+ * when it can, and is otherwise left for auto-layout too.
  */
 
 export interface MergeConflict {
@@ -252,7 +257,62 @@ function mergeScope(
     delete copy.plane;
     return copy;
   };
-  return { components: kept.map(unplace), planes: planes.map(unplace) };
+  const placed = planes.map(unplace);
+
+  // Each side put a plane on one the other side put on it: the links can't
+  // all hold, so the planes go back where `ours` has them.
+  const byId = new Map(placed.map((p) => [p.id, p]));
+  const inLoop = (p: PlaneNode): boolean => {
+    const seen = new Set<string>();
+    let up = p.plane;
+    while (up !== undefined && up !== p.id && !seen.has(up)) {
+      seen.add(up);
+      up = byId.get(up)?.plane;
+    }
+    return up === p.id;
+  };
+  const loop = new Set(placed.filter(inLoop));
+  const untangled = placed.map((p) => {
+    if (!loop.has(p)) return p;
+    conflicts.add("plane", at(p.id), "each side put it on a plane the other side put on it");
+    const mine = op.get(p.id)?.plane;
+    if (p.plane === mine) return p;
+    const copy = { ...p };
+    if (mine !== undefined && byId.has(mine)) copy.plane = mine;
+    else delete copy.plane;
+    return copy;
+  });
+  return { components: kept.map(unplace), planes: untangled };
+}
+
+/**
+ * `ours`'s layout entries for what survives in `merged`. Something now on
+ * another plane keeps its canvas position, rebased on that plane, when the
+ * plane stayed where `ours` had it and the spot is inside it; otherwise it
+ * loses its `at` and auto-layout places it.
+ */
+function carryLayout(ours: ArchDoc, merged: ArchDoc): LayoutEntry[] {
+  const paths = componentPaths(merged);
+  const planes = planePaths(merged);
+  const layout = layoutMap(ours);
+  const chain = (doc: ArchDoc, path: readonly string[]) =>
+    planeChainOf(doc, path).map(pathToString).join(" ");
+  return ours.layout.flatMap((e): LayoutEntry[] => {
+    const key = pathToString(e.path);
+    if (!paths.has(key) && !planes.has(key)) return [];
+    if (!e.at || chain(ours, e.path) === chain(merged, e.path)) return [e];
+    const { at: _old, ...rest } = e;
+    const onPlanes = planeChainOf(merged, e.path);
+    const placed = onPlanes.every(
+      (p) => layout.get(pathToString(p))?.at && chain(ours, p) === chain(merged, p),
+    );
+    if (!placed) return [rest];
+    const [x, y] = canvasAt(ours, e.path, layout);
+    if (onPlanes.length === 0) return [{ ...rest, at: [x, y] }];
+    const [px, py] = canvasAt(ours, onPlanes[0]!, layout);
+    const at: [number, number] = [x - px, y - py];
+    return at[0] >= PLANE_INNER_ORIGIN[0] && at[1] >= PLANE_INNER_ORIGIN[1] ? [{ ...rest, at }] : [rest];
+  });
 }
 
 function mergeConnections(
@@ -314,7 +374,6 @@ export function mergeDocs(base: ArchDoc, ours: ArchDoc, theirs: ArchDoc): MergeR
     layout: [],
   };
   const paths = componentPaths(merged);
-  const planes = planePaths(merged);
 
   // A connection is only as good as its endpoints: one side may have removed
   // a component the other side's new connection points at.
@@ -325,10 +384,7 @@ export function mergeDocs(base: ArchDoc, ours: ArchDoc, theirs: ArchDoc): MergeR
       return ok;
     },
   );
-  merged.layout = ours.layout.filter((e) => {
-    const key = pathToString(e.path);
-    return paths.has(key) || planes.has(key);
-  });
+  merged.layout = carryLayout(ours, merged);
 
   return { doc: merged, conflicts: conflicts.list() };
 }

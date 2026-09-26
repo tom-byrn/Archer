@@ -300,3 +300,26 @@ layout {
     expect(() => addConnection(doc(HEADER + SHOP), ["web"], ["back"])).toThrow(/is a plane/);
   });
 });
+
+// The canvas draws documents with errors too, so a plane and a component
+// sharing an id (E002) must not send anything into a loop.
+describe("a plane and a component with one id", () => {
+  const CLASH = doc(`${HEADER}
+plane x "X" {
+  component x "Also X"
+  component y
+}
+
+layout {
+  x: { at: [5, 5], size: [8, 6] }
+}
+`);
+
+  it("still resolves positions and edits", () => {
+    expect(validate(CLASH).map((d) => d.code)).toContain("E002");
+    expect(canvasAt(CLASH, ["x"])).toHaveLength(2);
+    expect(layoutMap(moveComponent(CLASH, ["y"], [2, 3])).get("y")?.at).toEqual([2, 3]);
+    expect(resizeComponent(CLASH, ["x"], [9, 9])).toBeTruthy();
+  });
+});
+
