@@ -128,7 +128,7 @@ const wrap = (text: string, width: number, pxPerChar: number, lines: number): st
 };
 
 /** Mix two #rrggbb colors: `t` of `a`, the rest `b` (CSS color-mix in srgb). */
-const mix = (a: string, b: string, t: number): string => {
+export const mix = (a: string, b: string, t: number): string => {
   const pa = parseInt(a.slice(1), 16);
   const pb = parseInt(b.slice(1), 16);
   const ch = (shift: number) =>
