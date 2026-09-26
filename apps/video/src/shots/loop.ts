@@ -55,7 +55,7 @@ function onWall(col: number, row: number, out = 0): THREE.Vector3 {
   return WALL.clone().addScaledVector(ACROSS, col * COL).addScaledVector(OUT, out).setY(WALL.y - row * ROW);
 }
 
-export function loopScene(film: Film): void {
+export function loopShot(film: Film): void {
   const { scene, rig, live } = stage();
   const t0 = at(SECTION.loop);
   const tEnd = at(SECTION.features);
@@ -453,8 +453,8 @@ export function loopScene(film: Film): void {
   master.to(rig, { x: c.x + 7.5, y: 3.9, z: c.z + 11, duration: bar(2) - bar(1) - 0.3, ease: "none" }, bar(1) + 0.35);
   // Bar 5: along the file as the agent types (the lines run away to the
   // right), then back with the pour.
-  const eye = onWall(0, 7.5, 5.2).addScaledVector(ACROSS, -3.6);
-  const look = onWall(13, 8);
+  const eye = onWall(0, 7, 5.6).addScaledVector(ACROSS, -4.6);
+  const look = onWall(12, 8.5);
   master.to(
     rig,
     { x: c.x + eye.x, y: eye.y + 0.6, z: c.z + eye.z, tx: c.x + look.x, ty: look.y, tz: c.z + look.z, fov: 44, duration: 0.5, ease: "power3.inOut" },

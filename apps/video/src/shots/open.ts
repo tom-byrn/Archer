@@ -24,7 +24,7 @@ const CELL = 40;
 /** Where the file collapses at the end of bar 1, and the title explodes from. */
 export const CORE = new THREE.Vector3(1.4, 3.3, -0.5);
 
-export function openScene(film: Film): void {
+export function openShot(film: Film): void {
   const { scene, rig } = stage();
   const t0 = at(SECTION.draw);
   const d = layoutDiagram(OPEN_SOURCE + OPEN_LAYOUT);
@@ -77,7 +77,8 @@ export function openScene(film: Film): void {
   const em = 0.44;
   const center = CORE;
   const widthCols = 38;
-  const frame = new THREE.Matrix4().makeTranslation(center.x - (widthCols * 0.6 * em) / 2, center.y + (8 * 1.55 * em) / 2, center.z);
+  // A little below the core, so the top line clears the caption.
+  const frame = new THREE.Matrix4().makeTranslation(center.x - (widthCols * 0.6 * em) / 2, center.y - 0.45 + (8 * 1.55 * em) / 2, center.z);
   const list = codeChars(OPEN_SOURCE);
   // Where each line comes from: its component's face, or its connection's tube.
   const source: Record<number, (i: number) => THREE.Vector3> = {};

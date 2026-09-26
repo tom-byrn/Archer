@@ -71,6 +71,8 @@ export interface Flare {
   dur: number;
   color?: THREE.ColorRepresentation;
   glow?: number;
+  /** Width over height: 1 is a round glow, 8+ an anamorphic lens streak. */
+  stretch?: number;
 }
 
 const hash = (i: number, k: number, seed: number) => {
@@ -270,7 +272,10 @@ function createFx(): Fx {
       const s = flareSprites[f++]!;
       s.visible = true;
       s.position.set(fl.x, fl.y, fl.z);
-      s.scale.setScalar(fl.size * (0.6 + 0.4 * Math.sin(Math.min(1, p * 3) * Math.PI * 0.5)));
+      const grow = fl.size * (0.6 + 0.4 * Math.sin(Math.min(1, p * 3) * Math.PI * 0.5));
+      // A streak keeps widening as it fades.
+      const wide = fl.stretch ?? 1;
+      s.scale.set(grow * wide * (wide > 1 ? 1 + p * 0.6 : 1), grow, 1);
       const k = p < 0.12 ? p / 0.12 : Math.pow(1 - (p - 0.12) / 0.88, 2);
       (s.material as THREE.SpriteMaterial).color.set(fl.color ?? 0xffffff).multiplyScalar((fl.glow ?? 2) * k);
     }

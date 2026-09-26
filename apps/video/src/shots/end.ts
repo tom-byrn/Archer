@@ -62,6 +62,7 @@ export function endShot(film: Film): void {
   master.fromTo(rig, { shake: 0.14 }, { shake: 0, duration: 0.6, ease: "power2.out", immediateRender: false }, t0);
   const c = root.position;
   fx().ring({ t0, x: c.x, y: c.y, z: c.z, radius: 14, dur: 0.8, width: 0.8, glow: 2, color: ACCENT, upright: true });
+  fx().flare({ t0, x: c.x, y: c.y, z: c.z + 0.8, size: 1.5, stretch: 14, dur: 0.8, glow: 2.4, color: 0x9ff7d8 });
   fx().burst({ t0, x: c.x, y: c.y, z: c.z, count: 360, speed: 14, up: 0, drag: 2.2, gravity: -1, life: 1.5, size: 0.06, glow: 3, color: 0xffffff });
   fx().ring({ t0, x: c.x, z: c.z, radius: 16, dur: 1, width: 0.9, glow: 2, color: ACCENT });
   film.floor.wave({ t0, x: c.x, z: c.z, speed: 22, strength: 2.6, decay: 0.9 });

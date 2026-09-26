@@ -20,7 +20,7 @@ import { CORE } from "./open";
 
 export const HEADLINE = "Software architecture for your agents.";
 
-export function titleScene(film: Film): void {
+export function titleShot(film: Film): void {
   const { scene, rig, grade, live } = stage();
   const t0 = at(SECTION.title);
   const t1 = at(SECTION.loop);
@@ -68,6 +68,7 @@ export function titleScene(film: Film): void {
   const f = fx();
   const { x, y, z } = CORE;
   f.flare({ t0, x, y, z, size: 9, dur: 0.35, glow: 2 });
+  f.flare({ t0, x, y, z: z + 0.5, size: 1.6, stretch: 14, dur: 0.75, glow: 2.6, color: 0x9ff7d8 });
   f.burst({ t0, x, y, z, count: 480, speed: 18, up: 0, drag: 2.4, gravity: -1.2, life: 1.4, size: 0.06, glow: 3.2, color: 0xffffff });
   f.burst({ t0, x, y, z, count: 300, speed: 11, up: 0, drag: 2, gravity: -2, life: 1.6, size: 0.08, glow: 3.5, color: 0x23c088, seed: 3 });
   f.ring({ t0, x, y, z, radius: 10, dur: 0.6, width: 0.6, glow: 2.4, color: 0xffffff, upright: true });

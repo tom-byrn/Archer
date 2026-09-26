@@ -28,9 +28,9 @@ pnpm --filter @archer/video test
 
 `render` bundles the page, reads the sound cues the shots registered, mixes
 the soundtrack, renders PNG frames in headless pages (kept in `out/frames/`,
-so `--from 12 --to 14` re-renders one stretch and `--skip-frames` only
-re-encodes), then encodes H.264 + AAC with BT.709 tags. Other flags:
-`--workers <n>`, `--no-audio`, `--crf <n>`.
+so `--from 12 --to 14` re-renders one stretch, `--no-encode` stops there
+and `--skip-frames` only re-encodes), then encodes H.264 + AAC with BT.709
+tags. Other flags: `--workers <n>`, `--no-audio`, `--crf <n>`.
 
 It needs Chromium with WebGL2 and ffmpeg: set `CHROMIUM_PATH` (the
 `chromium-headless-shell` build renders through SwiftShader when there is no

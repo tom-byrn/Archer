@@ -10,7 +10,7 @@
  * 4. Encode with ffmpeg ($FFMPEG, or ffmpeg on the PATH).
  *
  * Flags: --from <s> --to <s> (frames to render), --workers <n>, --no-audio,
- * --skip-frames (just re-encode), --crf <n>.
+ * --skip-frames (just re-encode), --no-encode (just frames), --crf <n>.
  */
 import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
@@ -77,7 +77,9 @@ try {
 
 // Encode.
 const missing = Array.from({ length: FRAMES }, (_, f) => f).filter((f) => !existsSync(frameFile(f)));
-if (missing.length > 0) {
+if (flag("no-encode")) {
+  console.log("frames only (--no-encode)");
+} else if (missing.length > 0) {
   console.log(`${missing.length} frames not rendered yet (first: ${missing[0]}); skipping the encode.`);
 } else {
   const wav = join(OUT, "soundtrack.wav");

@@ -1,13 +1,13 @@
 /**
- * The film: one 3D world on the Archer canvas, built scene by scene onto the
+ * The film: one 3D world on the Archer canvas, built shot by shot onto the
  * master timeline, with captions on an overlay above the WebGL canvas.
  */
 import { onFrame, peek } from "./engine";
 import { kick } from "./shots/beat";
 import type { Film } from "./shots/context";
-import { openScene } from "./shots/open";
-import { titleScene } from "./shots/title";
-import { loopScene } from "./shots/loop";
+import { openShot } from "./shots/open";
+import { titleShot } from "./shots/title";
+import { loopShot } from "./shots/loop";
 import { catalogShot } from "./shots/catalog";
 import { nestShot } from "./shots/nest";
 import { mcpShot } from "./shots/mcp";
@@ -35,9 +35,9 @@ export async function buildFilm(host: HTMLElement): Promise<void> {
     floor.pulse.value = kick(t) * 0.8;
   });
 
-  openScene(film);
-  titleScene(film);
-  loopScene(film);
+  openShot(film);
+  titleShot(film);
+  loopShot(film);
   catalogShot(film);
   nestShot(film);
   mcpShot(film);

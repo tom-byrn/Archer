@@ -40,6 +40,7 @@ export function dropShot(film: Film): void {
   master.set(grade, { zoom: 0 }, t0);
   cue(t0, "impact");
   film.floor.wave({ t0, x: D.x, z: D.z, speed: 26, strength: 3, decay: 0.9 });
+  fx().flare({ t0, x: D.x - 1, y: 1.6, z: D.z - 1.5, size: 0.9, stretch: 16, dur: 0.7, glow: 2.4, color: 0x9ff7d8 });
 
   const order = [
     "knowledge",
