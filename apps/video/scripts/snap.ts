@@ -22,8 +22,15 @@ try {
     const [from = 0, to = 1, step = 0.5, cols = 6] = args.slice(1).map(Number);
     const times: number[] = [];
     for (let t = from; t <= to + 1e-9; t += step) times.push(Math.round(t * 1000) / 1000);
+    // Frames go to disk and the sheet loads them from the local server:
+    // inlined as base64, a long sheet runs the browser out of memory.
     const frames: string[] = [];
-    for (const t of times) frames.push((await frameAt(page, t)).toString("base64"));
+    await mkdir(join(dir, "frames"), { recursive: true });
+    for (const t of times) {
+      const name = `f${t.toFixed(3)}.png`;
+      await writeFile(join(dir, "frames", name), await frameAt(page, t));
+      frames.push(`${url}/snaps/frames/${name}`);
+    }
     const sheet = await browser.newPage({ viewport: { width: 1920, height: 400 } });
     const w = Math.floor(1920 / cols);
     const h = Math.round((w * 9) / 16);
@@ -31,9 +38,9 @@ try {
       `<body style="margin:0;background:#222;display:flex;flex-wrap:wrap;width:1920px;font:12px monospace;color:#fff">` +
         frames
           .map(
-            (b64, i) =>
+            (src, i) =>
               `<div style="position:relative;width:${w}px;height:${h}px;box-sizing:border-box;border:1px solid #444">` +
-              `<img src="data:image/png;base64,${b64}" style="width:100%;height:100%;display:block">` +
+              `<img src="${src}" style="width:100%;height:100%;display:block">` +
               `<span style="position:absolute;left:4px;top:2px;background:#000a;padding:0 4px">${times[i]!.toFixed(2)}s</span></div>`,
           )
           .join("") +

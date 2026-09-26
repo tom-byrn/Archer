@@ -192,14 +192,15 @@ Router + React Flow + Convex).
   marked's tokens straight to React, never an HTML string. React Flow chrome
   lives in `components/canvas.css`.
 - Launch film: `apps/video` renders the launch video from code
-  (`pnpm --filter @archer/video render` → `out/archer-launch.mp4`): one GSAP
-  timeline seeked frame by frame in headless Chromium, with a soundtrack
-  synthesized on the same 128 BPM grid (`src/time.ts` holds both clocks). It
-  draws with the app's own modules — `@archer/lang` layout, `lib/edgeRoute.ts`,
-  `lib/highlightArch.ts`, catalog glyphs (never vendor logos, like the landing
-  page) — and `test/sources.test.ts` validates every document it shows. Keep
-  it deterministic (seeded random, absolute timeline positions); see
-  `apps/video/README.md`.
+  (`pnpm --filter @archer/video render` → `out/archer-launch.mp4`): a 3D
+  world in Three.js driven by one GSAP timeline, seeked frame by frame in
+  headless Chromium, with a soundtrack synthesized on the same 128 BPM grid
+  (`src/time.ts` holds both clocks). It draws with the app's own modules —
+  `@archer/lang` layout, `lib/edgeRoute.ts`, `lib/highlightArch.ts`, catalog
+  glyphs (never vendor logos, like the landing page) — and
+  `test/sources.test.ts` validates every document it shows. Keep it
+  deterministic (absolute timeline positions, per-frame state a pure function
+  of film time); see `apps/video/README.md`.
 - Language/product specs live in `docs/`; keep `docs/language-spec.md` in
   sync with `packages/*/src/languageSpec.ts` copies when the grammar changes.
 - Auto-layout: `autoLayout` (`packages/lang/src/layout.ts`) arranges a doc

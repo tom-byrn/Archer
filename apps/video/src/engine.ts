@@ -1,13 +1,12 @@
 /**
- * The film's single clock: one paused GSAP timeline that every scene adds
- * to, plus per-frame hooks for state GSAP tweens on plain objects (cameras,
- * pointers) that has to be projected onto the DOM. `seek(t)` is all the
- * renderer ever calls, frame by frame, in any order.
+ * The film's single clock: one paused GSAP timeline that every shot adds to
+ * (the camera rig, the grade, meshes, caption words), plus per-frame hooks
+ * (the 3D stage renders in one). `seek(t)` is all the renderer ever calls,
+ * frame by frame, in any order.
  */
 import { gsap } from "gsap";
 
-// 2D transforms only: layers stay un-promoted, so zoomed text is rasterized
-// at its final size instead of scaled up from a small texture.
+// 2D transforms only: caption words stay un-promoted, rasterized at size.
 gsap.config({ force3D: false, nullTargetWarn: false });
 gsap.ticker.lagSmoothing(0);
 
@@ -43,10 +42,15 @@ export function seek(t: number): void {
   for (const fn of hooks) fn(t);
 }
 
-/** Show `el` (a hidden `.layer`) from `from` until `to` seconds. */
-export function showBetween(el: Element, from: number, to: number): void {
-  master.set(el, { visibility: "visible" }, from);
-  master.set(el, { visibility: "hidden" }, to);
+/**
+ * Read state as it stands at film time `t` (e.g. the camera a frame ago, for
+ * motion blur), then put the timeline back at `back`.
+ */
+export function peek<T>(t: number, back: number, fn: () => T): T {
+  timeline.seek(t + PREROLL, true);
+  const value = fn();
+  timeline.seek(back + PREROLL, false);
+  return value;
 }
 
 export { gsap };

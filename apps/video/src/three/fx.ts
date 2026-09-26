@@ -42,6 +42,24 @@ export interface Ring {
   width?: number;
   color?: THREE.ColorRepresentation;
   glow?: number;
+  /** Stand up facing +z (a shockwave toward the camera) instead of lying on the floor. */
+  upright?: boolean;
+}
+
+/** Motes drifting through a box for a while: depth and air in a shot. */
+export interface Dust {
+  t0: number;
+  t1: number;
+  center: THREE.Vector3;
+  size: THREE.Vector3;
+  count: number;
+  color?: THREE.ColorRepresentation;
+  glow?: number;
+  /** Point size in world units. */
+  dot?: number;
+  /** Drift, world units per second. */
+  drift?: THREE.Vector3;
+  seed?: number;
 }
 
 export interface Flare {
@@ -64,6 +82,7 @@ export interface Fx {
   burst(b: Burst): void;
   ring(r: Ring): void;
   flare(f: Flare): void;
+  dust(d: Dust): void;
 }
 
 let fxSingleton: Fx | null = null;
@@ -77,6 +96,7 @@ function createFx(): Fx {
   const bursts: Burst[] = [];
   const rings: Ring[] = [];
   const flares: Flare[] = [];
+  const dusts: Dust[] = [];
 
   /* Sparks */
   const pos = new Float32Array(MAX_SPARKS * 3);
@@ -96,8 +116,10 @@ function createFx(): Fx {
       void main() {
         vec4 mv = modelViewMatrix * vec4(position, 1.0);
         gl_Position = projectionMatrix * mv;
-        gl_PointSize = aSize * uScale / max(0.1, -mv.z);
-        vColor = aColor;
+        // Capped, and faded right in front of the lens: a spark that flies
+        // into the camera must not become a screen-filling blob.
+        gl_PointSize = min(aSize * uScale / max(0.1, -mv.z), 42.0);
+        vColor = aColor * smoothstep(0.4, 2.0, -mv.z);
       }
     `,
     fragmentShader: /* glsl */ `
@@ -197,6 +219,26 @@ function createFx(): Fx {
         n++;
       }
     }
+    for (const d of dusts) {
+      if (t < d.t0 || t > d.t1) continue;
+      c.set(d.color ?? 0xecebe7);
+      const seed = d.seed ?? d.t0 * 7.7;
+      const env = Math.min(1, (t - d.t0) / 0.4, (d.t1 - t) / 0.4);
+      const age = t - d.t0;
+      for (let i = 0; i < d.count && n < MAX_SPARKS; i++) {
+        const wob = age * (0.6 + hash(i, 6, seed));
+        pos[n * 3] = d.center.x + (hash(i, 1, seed) - 0.5) * d.size.x + (d.drift?.x ?? 0) * age + Math.sin(wob + i) * 0.15;
+        pos[n * 3 + 1] = d.center.y + (hash(i, 2, seed) - 0.5) * d.size.y + (d.drift?.y ?? 0.15) * age + Math.cos(wob * 1.3 + i) * 0.12;
+        pos[n * 3 + 2] = d.center.z + (hash(i, 3, seed) - 0.5) * d.size.z + (d.drift?.z ?? 0) * age;
+        const twinkle = 0.55 + 0.45 * Math.sin(age * (2 + hash(i, 4, seed) * 3) + i);
+        const f = (d.glow ?? 1.4) * env * twinkle;
+        col[n * 3] = c.r * f;
+        col[n * 3 + 1] = c.g * f;
+        col[n * 3 + 2] = c.b * f;
+        size[n] = (d.dot ?? 0.05) * (0.4 + hash(i, 5, seed));
+        n++;
+      }
+    }
     for (let i = n; i < MAX_SPARKS; i++) size[i] = 0;
     geo.attributes.position!.needsUpdate = true;
     (geo.attributes.aColor as THREE.BufferAttribute).needsUpdate = true;
@@ -211,7 +253,8 @@ function createFx(): Fx {
       const e = 1 - Math.pow(1 - p, 3);
       const rad = Math.max(0.01, ring.radius * e);
       m.visible = true;
-      m.position.set(ring.x, (ring.y ?? 0) + 0.02, ring.z);
+      m.position.set(ring.x, (ring.y ?? 0) + (ring.upright ? 0 : 0.02), ring.z);
+      m.rotation.x = ring.upright ? 0 : -Math.PI / 2;
       m.scale.setScalar(rad);
       const u = (m.material as THREE.ShaderMaterial).uniforms;
       u.uColor!.value.set(ring.color ?? 0x3dd39c).multiplyScalar(ring.glow ?? 2.2);
@@ -238,5 +281,6 @@ function createFx(): Fx {
     burst: (b) => bursts.push(b),
     ring: (r) => rings.push(r),
     flare: (fl) => flares.push(fl),
+    dust: (d) => dusts.push(d),
   };
 }

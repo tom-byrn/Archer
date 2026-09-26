@@ -1,4 +1,7 @@
-/** Load every face the film sets before anything measures text. */
+/**
+ * Load every face the captions and the canvas-painted textures use before
+ * anything measures text. (The 3D wordmark reads its font file directly.)
+ */
 const FACES = [
   '500 100px "Newsreader Variable"',
   '400 100px "Newsreader Variable"',
@@ -8,8 +11,6 @@ const FACES = [
   '700 100px "Inter Variable"',
   '400 100px "Geist Mono Variable"',
   '500 100px "Geist Mono Variable"',
-  '700 100px "Playfair Display"',
-  '900 100px "Playfair Display"',
 ];
 
 export async function loadFonts(): Promise<void> {

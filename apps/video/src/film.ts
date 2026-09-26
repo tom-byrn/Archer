@@ -2,14 +2,26 @@
  * The film: one 3D world on the Archer canvas, built scene by scene onto the
  * master timeline, with captions on an overlay above the WebGL canvas.
  */
-import { onFrame } from "./engine";
+import { onFrame, peek } from "./engine";
 import { kick } from "./shots/beat";
 import type { Film } from "./shots/context";
 import { openScene } from "./shots/open";
+import { titleScene } from "./shots/title";
+import { loopScene } from "./shots/loop";
+import { catalogShot } from "./shots/catalog";
+import { nestShot } from "./shots/nest";
+import { mcpShot } from "./shots/mcp";
+import { agentsShot } from "./shots/agents";
+import { repoShot } from "./shots/repo";
+import { embedShot } from "./shots/embed";
+import { buildShot } from "./shots/build";
+import { dropShot } from "./shots/drop";
+import { endShot } from "./shots/end";
 import { createFloor } from "./three/floor";
 import { createStage } from "./three/stage";
 import { loadOutlineFonts } from "./three/text3d";
 import { h } from "./dom";
+import { FPS } from "./time";
 
 export async function buildFilm(host: HTMLElement): Promise<void> {
   await loadOutlineFonts();
@@ -24,7 +36,22 @@ export async function buildFilm(host: HTMLElement): Promise<void> {
   });
 
   openScene(film);
+  titleScene(film);
+  loopScene(film);
+  catalogShot(film);
+  nestShot(film);
+  mcpShot(film);
+  agentsShot(film);
+  repoShot(film);
+  embedShot(film);
+  buildShot(film);
+  dropShot(film);
+  endShot(film);
 
-  // Last: every other hook has run, so the frame reflects this time.
-  onFrame((t) => stage.render(t));
+  // Last: every other hook has run, so the frame reflects this time. The rig a
+  // frame earlier gives the camera's motion blur.
+  onFrame((t) => {
+    const prev = peek(t - 1 / FPS, t, () => ({ ...stage.rig }));
+    stage.render(t, prev);
+  });
 }

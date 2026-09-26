@@ -1,4 +1,4 @@
-/** Tiny element builders: the film is plain DOM, built once, animated by GSAP. */
+/** A tiny element builder, for the captions over the 3D stage. */
 
 type Child = Node | string | null | undefined | false;
 
@@ -32,31 +32,5 @@ export function h<K extends keyof HTMLElementTagNameMap>(
 ): HTMLElementTagNameMap[K] {
   const el = document.createElement(tag);
   apply(el, props, children);
-  return el;
-}
-
-const NS = "http://www.w3.org/2000/svg";
-
-export function s<K extends keyof SVGElementTagNameMap>(
-  tag: K,
-  attrs?: Record<string, string | number>,
-  ...children: Child[]
-): SVGElementTagNameMap[K] {
-  const el = document.createElementNS(NS, tag);
-  apply(el, { attrs }, children);
-  return el;
-}
-
-/** Parse an SVG string (an icon, a glyph) into an element. */
-export function svgFrom(markup: string): SVGSVGElement {
-  const tpl = document.createElement("template");
-  tpl.innerHTML = markup.trim();
-  return tpl.content.firstElementChild as SVGSVGElement;
-}
-
-/** An absolutely positioned full-stage layer, hidden until its scene shows it. */
-export function layer(parent: HTMLElement, cls = ""): HTMLDivElement {
-  const el = h("div", { class: `layer ${cls}`.trim() });
-  parent.append(el);
   return el;
 }

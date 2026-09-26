@@ -21,6 +21,9 @@ import type { Film } from "./context";
 
 const CELL = 40;
 
+/** Where the file collapses at the end of bar 1, and the title explodes from. */
+export const CORE = new THREE.Vector3(1.4, 3.3, -0.5);
+
 export function openScene(film: Film): void {
   const { scene, rig } = stage();
   const t0 = at(SECTION.draw);
@@ -72,7 +75,7 @@ export function openScene(film: Film): void {
 
   // The wall the file assembles into, facing the camera's end mark.
   const em = 0.44;
-  const center = new THREE.Vector3(1.4, 3.3, -0.5);
+  const center = CORE;
   const widthCols = 38;
   const frame = new THREE.Matrix4().makeTranslation(center.x - (widthCols * 0.6 * em) / 2, center.y + (8 * 1.55 * em) / 2, center.z);
   const list = codeChars(OPEN_SOURCE);

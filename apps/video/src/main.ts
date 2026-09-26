@@ -1,16 +1,11 @@
 import "./random";
 import "./styles.css";
-import { CustomEase } from "gsap/CustomEase";
-import { DrawSVGPlugin } from "gsap/DrawSVGPlugin";
-import { MotionPathPlugin } from "gsap/MotionPathPlugin";
 import { cues } from "./cues";
-import { gsap, seek } from "./engine";
+import { seek } from "./engine";
 import { loadFonts } from "./fonts";
 import { mountPreview } from "./preview";
 import { buildFilm } from "./film";
 import { DURATION, FPS, HEIGHT, WIDTH } from "./time";
-
-gsap.registerPlugin(DrawSVGPlugin, MotionPathPlugin, CustomEase);
 
 async function main() {
   await loadFonts();

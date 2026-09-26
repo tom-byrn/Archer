@@ -121,6 +121,19 @@ export function badgeTexture(): THREE.Texture {
   return badgeTex;
 }
 
+/** Position in the world, for objects under plain (unrotated, unscaled) groups. */
+export function placed(o: THREE.Object3D, out = new THREE.Vector3()): THREE.Vector3 {
+  out.set(0, 0, 0);
+  for (let p: THREE.Object3D | null = o; p; p = p.parent) out.add(p.position);
+  return out;
+}
+
+/** Visible, and so are all its parents. */
+export function shown(o: THREE.Object3D): boolean {
+  for (let p: THREE.Object3D | null = o; p; p = p.parent) if (!p.visible) return false;
+  return true;
+}
+
 export class Slab {
   readonly group = new THREE.Group();
   readonly h: number;
@@ -171,16 +184,17 @@ export class Slab {
     if (floor) {
       const g = this.group;
       const self = this;
+      const at = new THREE.Vector3();
       floor.pool({
         get x() {
-          return g.position.x;
+          return placed(g, at).x;
         },
         get z() {
-          return g.position.z;
+          return placed(g, at).z;
         },
         radius: Math.max(spec.w, spec.d) * 0.95,
         color: this.color,
-        intensity: () => (g.visible ? self.glow.value * Math.max(0, Math.min(1, 1 + g.position.y)) : 0),
+        intensity: () => (shown(g) ? self.glow.value * Math.max(0, Math.min(1, 1 + g.position.y)) * g.scale.x : 0),
       });
     }
   }
@@ -240,7 +254,7 @@ export class Slab {
 
   /** The light of an arrival: rim flare, floor pool, ring, sparks, a wave. */
   flash(t: number, big = false): void {
-    const { x, z } = this.group.position;
+    const { x, z } = placed(this.group);
     const f = fx();
     master.fromTo(this.glow, { value: 4.5 }, { value: 0.55, duration: 1.1, ease: "power2.out", immediateRender: false }, t);
     f.ring({ t0: t, x, z, radius: Math.max(this.spec.w, this.spec.d) * (big ? 1.5 : 1.1), dur: 0.7, color: this.spec.color, width: 0.35 });

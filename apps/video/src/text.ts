@@ -111,3 +111,23 @@ export function riseOut(
     t,
   );
 }
+
+/**
+ * A soft dark pool behind the top-left captions, for shots whose picture is
+ * busy there. Fades in at `from`, out at `to`.
+ */
+export function shade(parent: HTMLElement, from: number, to: number): HTMLDivElement {
+  const el = h("div", {
+    class: "abs",
+    style: {
+      width: 1920,
+      height: 1080,
+      background: "radial-gradient(ellipse 1300px 520px at 18% 12%, rgba(0,0,0,.78), rgba(0,0,0,.45) 45%, rgba(0,0,0,0) 75%)",
+      opacity: 0,
+    },
+  });
+  parent.prepend(el);
+  master.fromTo(el, { opacity: 0 }, { opacity: 1, duration: 0.25, ease: "power2.out", immediateRender: false }, from);
+  master.to(el, { opacity: 0, duration: 0.2, ease: "power2.in" }, to - 0.2);
+  return el;
+}

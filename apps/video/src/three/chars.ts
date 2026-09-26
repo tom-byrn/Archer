@@ -9,8 +9,9 @@ import { highlightArch } from "../../../web/lib/highlightArch";
 import { MONO, canvas } from "./paint";
 import { stage } from "./stage";
 
-const FIRST = 32;
-const LAST = 126;
+/** The atlas: printable ASCII, and the few other characters the film types. */
+const GLYPH_SET = [...Array.from({ length: 95 }, (_, i) => String.fromCharCode(32 + i)), "·", "✓", "→", "…"];
+const INDEX = new Map(GLYPH_SET.map((ch, i) => [ch, i]));
 const COLS = 16;
 const CW = 64;
 const CH = 128;
@@ -36,16 +37,13 @@ const PLAIN = "#d3d1cc";
 let atlas: THREE.Texture | null = null;
 function atlasTexture(): THREE.Texture {
   if (atlas) return atlas;
-  const rows = Math.ceil((LAST - FIRST + 1) / COLS);
+  const rows = Math.ceil(GLYPH_SET.length / COLS);
   const { c, ctx } = canvas(COLS * CW, rows * CH);
   ctx.fillStyle = "#fff";
   ctx.font = `500 ${FONT_PX}px ${MONO}`;
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  for (let code = FIRST; code <= LAST; code++) {
-    const i = code - FIRST;
-    ctx.fillText(String.fromCharCode(code), (i % COLS) * CW + CW / 2, Math.floor(i / COLS) * CH + CH / 2 + 4);
-  }
+  GLYPH_SET.forEach((ch, i) => ctx.fillText(ch, (i % COLS) * CW + CW / 2, Math.floor(i / COLS) * CH + CH / 2 + 4));
   atlas = new THREE.CanvasTexture(c);
   atlas.generateMipmaps = true;
   atlas.minFilter = THREE.LinearMipmapLinearFilter;
@@ -54,8 +52,8 @@ function atlasTexture(): THREE.Texture {
 }
 
 function uvOf(ch: string): [number, number, number, number] {
-  const rows = Math.ceil((LAST - FIRST + 1) / COLS);
-  const i = Math.min(LAST, Math.max(FIRST, ch.charCodeAt(0))) - FIRST;
+  const rows = Math.ceil(GLYPH_SET.length / COLS);
+  const i = INDEX.get(ch) ?? INDEX.get("?")!;
   const u0 = (i % COLS) / COLS;
   const v1 = 1 - Math.floor(i / COLS) / rows;
   return [u0, v1 - 1 / rows, u0 + 1 / COLS, v1];
@@ -83,6 +81,12 @@ export function codeChars(source: string): Char[] {
     }
   });
   return out;
+}
+
+/** Plain text as characters of one colour (spaces dropped), on `line`. */
+export function textChars(text: string, color: THREE.ColorRepresentation, line = 0): Char[] {
+  const c = new THREE.Color(color);
+  return [...text].flatMap((ch, col) => (ch === " " ? [] : [{ ch, color: c, line, col }]));
 }
 
 /** Where a character sits in a text block: `frame` places the block, em = world units per em. */
