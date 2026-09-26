@@ -9,7 +9,7 @@ const FAQ: { q: string; a: string }[] = [
   },
   {
     q: "What does my agent actually get?",
-    a: "The document without its layout block, plus a short reading guide: every component, what it does, where it lives in the code and how it connects.",
+    a: "The whole document, layout block included, plus a short reading guide: every component, what it does, where it lives in the code, how it connects and where it sits on your canvas.",
   },
   {
     q: "Can I start from an existing codebase?",

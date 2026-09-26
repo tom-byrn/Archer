@@ -53,7 +53,7 @@ dropping a component onto a plane, or toggle any container between icon and plan
 double-click an icon container to drill into it. Every edit rewrites the `.arch` file
 (debounced), and the code view updates live; edits in the code view re-render the
 canvas (auto-layouting anything without a layout entry). When ready: **Copy for
-agent** (canonical code, layout stripped, spec header prepended) and **Export PNG**
+agent** (canonical code with its layout, spec header prepended) and **Export PNG**
 (current view), paste both into Claude Code / Cursor.
 
 ## Key screens & components

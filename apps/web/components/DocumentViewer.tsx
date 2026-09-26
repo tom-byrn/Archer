@@ -158,7 +158,7 @@ function DocumentView({
             items={[
               {
                 label: "Copy for agent",
-                hint: derived.valid ? "Layout stripped, guide prepended" : "Document has validation errors",
+                hint: derived.valid ? "Layout included, guide prepended" : "Document has validation errors",
                 icon: <Icon.Sparkle />,
                 disabled: !derived.valid,
                 onSelect: () => copy("agent"),

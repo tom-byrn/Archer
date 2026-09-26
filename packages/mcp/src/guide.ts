@@ -38,7 +38,7 @@ fails, call \`get_workspace_info\` and relay what it reports.
 1. \`list_projects\` → pick the project id.
 2. \`get_project\` → the full source plus current diagnostics.
 3. To hand the architecture to another model or use it as an implementation
-   spec: \`compile_for_agent\` (strips layout, prepends a reading guide).
+   spec: \`compile_for_agent\` (keeps the layout for context, prepends a reading guide).
 
 ### Modify an existing architecture
 1. **Always \`get_project\` first** and base your edit on the returned source —

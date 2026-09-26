@@ -339,8 +339,9 @@ api -> db @sql
 #
 # How to read it:
 …
-# - If you write Archer back, follow the grammar above and NEVER emit a
-#   \`layout\` block — layout is machine-managed presentation, not architecture.
+# - If you write Archer back, follow the grammar above and leave the \`layout\`
+#   block out: Archer keeps every surviving component where it was and places
+#   new ones itself. Only write layout when asked to arrange the diagram.
 
 arch "Shop" v0.1
 
@@ -358,9 +359,18 @@ component stripe "Stripe" @stripe
 backend.api -> backend.db @sql
 backend.api -> stripe @http : "charges"
 web -> backend.api @http
+
+layout {
+  backend: { at: [7, 0], size: [13, 7] }
+  backend.api: { at: [1, 2], size: [4, 3] }
+  backend.db: { at: [8, 2], size: [4, 3] }
+  stripe: { at: [0, 9], size: [4, 3] }
+  web: { at: [0, 2], size: [4, 3] }
+}
 `,
     notes: [
       "Pass `source` or `project_id`. The output is what the editor's **Copy for agent** puts on the clipboard.",
+      "The layout block is always complete: every component has the position and size the canvas draws it at, so the agent sees the diagram as the author laid it out.",
       "A document with errors is refused: the error result is `{ message, errors }`, with the diagnostics.",
     ],
   },

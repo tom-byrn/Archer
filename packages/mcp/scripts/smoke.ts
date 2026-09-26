@@ -100,7 +100,7 @@ check("custom tag validates clean (no W301)", !useCustom.isError && got3.json.wa
 const disp = await call("set_display", { project_id: pid, path: "api", display: "icon" });
 check("set_display saves", !disp.isError && disp.json?.saved === true);
 const compiled = await call("compile_for_agent", { project_id: pid });
-check("compile_for_agent: preamble, no layout", compiled.text.includes("Archer architecture document") && !compiled.text.includes("layout {"));
+check("compile_for_agent: preamble and layout", compiled.text.includes("Archer architecture document") && compiled.text.includes("layout {"));
 
 // history & attribution
 const history = await call("get_history", { project_id: pid });

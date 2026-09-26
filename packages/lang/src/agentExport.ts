@@ -1,5 +1,5 @@
 import { format } from "./format";
-import { normalizeLayout } from "./validate";
+import { autoLayout } from "./layout";
 import type { ArchDoc } from "./types";
 
 const PREAMBLE = `# This is an Archer architecture document — a complete, machine-readable
@@ -25,16 +25,25 @@ const PREAMBLE = `# This is an Archer architecture document — a complete, mach
 #   A connection may carry its own payload blocks in a \`{ ... }\` body — the
 #   message schema on a queue, the request shape on an API call. Implement the
 #   edge exactly as those payloads describe it.
+# - The closing \`layout { ... }\` block is where each component sits on the
+#   author's canvas: \`path: { at: [col, row], size: [w, h] }\` on an integer
+#   grid, nested components relative to their parent, and \`display: plane\`
+#   (drawn open, children visible) or \`display: icon\` (collapsed) for
+#   containers. It is presentation, not architecture — nothing to implement —
+#   but it shows how the author sees the system: what sits side by side, what
+#   flows left to right, what they kept open or tucked away.
 # - When implementing, honor every component, connection, and payload. Ask about
 #   gaps rather than inventing architecture that contradicts this document.
-# - If you write Archer back, follow the grammar above and NEVER emit a
-#   \`layout\` block — layout is machine-managed presentation, not architecture.
+# - If you write Archer back, follow the grammar above and leave the \`layout\`
+#   block out: Archer keeps every surviving component where it was and places
+#   new ones itself. Only write layout when asked to arrange the diagram.
 `;
 
 /**
- * "Copy for agent": canonical text, layout stripped, preamble prepended.
+ * "Copy for agent": canonical text with a complete layout block (every
+ * component placed, as the canvas draws it), preamble prepended.
  * Callers should refuse to export documents with validation errors.
  */
 export function compileForAgent(doc: ArchDoc): string {
-  return `${PREAMBLE}\n${format(normalizeLayout(doc), { stripLayout: true })}`;
+  return `${PREAMBLE}\n${format(autoLayout(doc))}`;
 }

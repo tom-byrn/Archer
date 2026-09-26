@@ -83,7 +83,7 @@ component lang "Language Core" {
   }
   component exporter "Agent Export" {
     shape document
-    desc "compileForAgent: canonical text with the layout block stripped and a reading-guide preamble prepended."
+    desc "compileForAgent: canonical text with a complete layout block and a reading-guide preamble prepended."
     src "packages/lang/src/agentExport.ts"
   }
   component transforms "Transforms" {
