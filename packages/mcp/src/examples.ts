@@ -477,12 +477,12 @@ layout {
   playlists: { at: [1, 12], size: [4, 3] }
   royalties: { at: [8, 2], size: [4, 3] }
   services: { at: [20, 10], size: [4, 3] }
-  services.catalog: { at: [9, 0], size: [4, 3] }
-  services.library: { at: [0, 10], size: [4, 3] }
-  services.playback: { at: [0, 0], size: [4, 3] }
-  services.recs: { at: [9, 10], size: [4, 3] }
-  services.search: { at: [0, 5], size: [4, 3] }
-  services.subscriptions: { at: [9, 5], size: [4, 3] }
+  services.catalog: { at: [0, 5], size: [4, 3] }
+  services.library: { at: [0, 20], size: [4, 3] }
+  services.playback: { at: [0, 10], size: [4, 3] }
+  services.recs: { at: [0, 25], size: [4, 3] }
+  services.search: { at: [0, 0], size: [4, 3] }
+  services.subscriptions: { at: [0, 15], size: [4, 3] }
   sessions: { at: [7, 4], size: [4, 3] }
   storage: { at: [30, 0], size: [12, 21] }
   stripe: { at: [20, 3], size: [4, 3] }

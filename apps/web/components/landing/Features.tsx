@@ -152,7 +152,7 @@ function Nesting() {
           <span className="mono text-xs text-ink-3">aws.vpc</span>
         </div>
         <div className="grid grid-cols-2 gap-2.5 p-3">
-          <MiniNode tag="kubernetes" label="Services" nested={6} />
+          <MiniNode tag="kubernetes" label="Jobs" nested={3} />
           <MiniNode tag="aws.rds" label="Orders DB" />
         </div>
       </div>
