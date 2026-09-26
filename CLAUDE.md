@@ -166,9 +166,18 @@ Router + React Flow + Convex).
 - Auto-layout: `autoLayout` (`packages/lang/src/layout.ts`) arranges a doc
   with no positions (or `{ reset: true }`) with the layered engine in
   `layered.ts` (solver: `simplex.ts`); otherwise it keeps positions and places
-  new components next to their neighbours. Edges are drawn by
-  `apps/web/lib/edgeRoute.ts` for both the canvas (`toFlow`) and `lib/svg.ts`
-  — route through it so the two stay identical.
+  new components next to their neighbours. It also decides open/collapsed for
+  containers that have neither a position nor a display (`planDisplays`,
+  `VIEW_BUDGET` boxes per view), so big documents open as an overview; pass
+  `{ collapse: false }` where displays must stay as they are (re-layout).
+  Edges are drawn by `apps/web/lib/edgeRoute.ts` for both the canvas
+  (`toFlow`) and `lib/svg.ts` — route through it so the two stay identical:
+  `groupEdges` (one edge per pair of drawn boxes once a collapsed container is
+  involved), `routeEdge`, `placeChips` (labels off shared trunks). In a
+  drilled-into view `toFlow` adds dashed context boxes (`CONTEXT` id prefix)
+  for what's outside and connects in. Agents get non-blocking readability
+  advice from `readabilityAdvice` (`packages/mcp/src/analysis.ts`) on
+  validate/create/update and `archer check`.
 
 ## Context.dev
 

@@ -16,6 +16,13 @@ const COL_GAP = 3;
 const ROW_GAP = 2;
 /** How far (cells) from its ideal spot a new component may land. */
 const SEARCH_RADIUS = 30;
+/**
+ * Most boxes a view opens with: the top level, or a collapsed container's
+ * interior once drilled into. Past this a diagram stops reading as a picture,
+ * so containers laid out for the first time open only while their view stays
+ * within it (see `planDisplays`).
+ */
+export const VIEW_BUDGET = 16;
 
 const ZERO_SPAN: Span = {
   start: { line: 0, col: 0, offset: 0 },
@@ -38,6 +45,89 @@ export interface AutoLayoutOptions {
    * whole document from scratch — the canvas's "Auto-layout" button.
    */
   reset?: boolean;
+  /**
+   * Decide whether each container laid out for the first time starts open or
+   * collapsed (default true; see `planDisplays`). Off: every container with
+   * no display of its own opens as a plane.
+   */
+  collapse?: boolean;
+}
+
+/**
+ * Open or collapsed, for every container whose display hasn't been settled —
+ * no layout entry yet, or one with neither a position nor a display. A
+ * container with a position was already drawn open, so it stays that way.
+ *
+ * Each view gets `budget` boxes. A view is the top level, or the interior of a
+ * collapsed container (what drilling in shows); an open plane's children are
+ * part of its parent's view. New containers start collapsed, then open
+ * smallest first while the view stays within budget, their own new containers
+ * joining the queue. A document that fits shows everything, as it always did;
+ * a big one opens as an overview of its parts, small groups (clients, data
+ * stores) already open, each big subsystem a box with its count inside. A
+ * view of a single container always opens it, so no view is one lone box.
+ */
+export function planDisplays(
+  components: readonly ComponentNode[],
+  layout: ReadonlyMap<string, LayoutEntry>,
+  budget = VIEW_BUDGET,
+): Map<string, DisplayMode> {
+  const plan = new Map<string, DisplayMode>();
+  const settled = (path: string): DisplayMode | undefined => {
+    const e = layout.get(path);
+    return e?.display ?? (e?.at ? "plane" : undefined);
+  };
+  const open = (path: string, c: ComponentNode) =>
+    c.children.length > 0 && (settled(path) ?? plan.get(path)) === "plane";
+  const join = (pre: string, c: ComponentNode) => (pre === "" ? c.id : `${pre}.${c.id}`);
+
+  /** Boxes a view draws: each item, or an open plane's own boxes in its place. */
+  const boxes = (items: readonly ComponentNode[], pre: string): number =>
+    items.reduce((n, c) => {
+      const path = join(pre, c);
+      return n + (open(path, c) ? boxes(c.children, path) : 1);
+    }, 0);
+  /** Collapsed containers drawn in a view, in document order. */
+  const closed = (items: readonly ComponentNode[], pre: string, out: [string, ComponentNode][] = []) => {
+    for (const c of items) {
+      const path = join(pre, c);
+      if (open(path, c)) closed(c.children, path, out);
+      else if (c.children.length > 0) out.push([path, c]);
+    }
+    return out;
+  };
+  const seed = (items: readonly ComponentNode[], pre: string) => {
+    for (const c of items) {
+      const path = join(pre, c);
+      if (c.children.length > 0 && settled(path) === undefined && !plan.has(path)) plan.set(path, "icon");
+      if (open(path, c)) seed(c.children, path);
+    }
+  };
+
+  const planView = (items: readonly ComponentNode[], pre: string) => {
+    seed(items, pre);
+    let total = boxes(items, pre);
+    for (;;) {
+      const fresh = closed(items, pre).filter(([path]) => settled(path) === undefined);
+      if (fresh.length === 0) break;
+      const lone = total === 1;
+      const costs = fresh.map(([path, c]) => {
+        seed(c.children, path);
+        return { path, cost: boxes(c.children, path) - 1 };
+      });
+      const pick = costs
+        .map((x, i) => ({ ...x, i }))
+        .sort((a, b) => a.cost - b.cost || a.i - b.i)
+        .find((x) => lone || total + x.cost <= budget);
+      if (!pick) break;
+      plan.set(pick.path, "plane");
+      total += pick.cost;
+    }
+    // Each container left collapsed is a view of its own.
+    for (const [path, c] of closed(items, pre)) planView(c.children, path);
+  };
+  planView(components, "");
+  return plan;
 }
 
 interface Rect {
@@ -55,8 +145,9 @@ const isUnder = (path: string, prefix: string) =>
   prefix === "" || path === prefix || path.startsWith(prefix + ".");
 
 /**
- * Complete the layout block: every component gets an `at` and `size`.
- * Deterministic; never mutates the input.
+ * Complete the layout block: every component gets an `at` and `size`, and a
+ * container laid out for the first time gets collapsed when its view is
+ * already full (`planDisplays`). Deterministic; never mutates the input.
  *
  * - A document with no positions at all (or `reset`) is arranged from scratch
  *   by the layered engine (`layered.ts`): connections flow left → right with
@@ -77,6 +168,18 @@ export function autoLayout(doc: ArchDoc, opts: AutoLayoutOptions = {}): ArchDoc 
         ? { kind: "layout-entry", path: e.path, display: e.display, span: e.span }
         : e,
     );
+  }
+  // New containers in a crowded view start collapsed (decided on the entries
+  // as they were: a reset keeps what was open open).
+  if (opts.collapse !== false) {
+    for (const [path, display] of planDisplays(base.components, layoutMap(base))) {
+      if (display !== "icon") continue;
+      const e = given.get(path);
+      given.set(
+        path,
+        e ? { ...e, display } : { kind: "layout-entry", path: path.split("."), display, span: ZERO_SPAN },
+      );
+    }
   }
 
   const comps = new Map<string, ComponentNode>();

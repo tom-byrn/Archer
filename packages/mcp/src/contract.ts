@@ -47,6 +47,8 @@ export interface ProjectCreated {
   title: string;
   editor_url: string;
   warnings: string[];
+  /** How the diagram will read (`readabilityAdvice`): never blocks, worth acting on. */
+  advice: string[];
 }
 
 export interface ProjectUpdated extends ProjectCreated {

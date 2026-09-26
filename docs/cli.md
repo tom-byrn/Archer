@@ -78,6 +78,12 @@ on stderr. Only errors fail the check: it exits `1` when any file has one, and
 `0` when there are only warnings. The codes are listed in the
 [language reference](language-spec.md#8-validation).
 
+A valid document can still draw badly, so `check` also gives advice, one
+`<file>: advice: <message>` line each: a level with more than a dozen
+components directly in it, a code library drawn as a hub that everything
+connects to, labels that are sentences. Advice never fails the check. The
+MCP tools that validate and save return the same advice.
+
 | Option | Description |
 | --- | --- |
 | `--json` | Print a machine-readable report instead (see [Output formats](#output-formats)). |
@@ -410,7 +416,8 @@ read from stdin are named `<stdin>`.
           "col": 1
         }
       ],
-      "warnings": []
+      "warnings": [],
+      "advice": []
     }
   ]
 }

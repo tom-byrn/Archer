@@ -923,7 +923,8 @@ function ConnectionForm({
 /** Several things selected at once: what they are, and what can be done to all of them. */
 export interface MultiSelection {
   components: { path: string; name: string; type?: string }[];
-  connections: number;
+  /** Selected connections (all of a summary edge's, when one was clicked). */
+  connections: { key: string; from: string; to: string; arrow: Arrow; type?: string; label?: string }[];
   actions: (MenuItem | "separator")[];
 }
 
@@ -939,7 +940,8 @@ function MultiInspector({
   const parts = [
     multi.components.length > 0 &&
       `${multi.components.length} component${multi.components.length === 1 ? "" : "s"}`,
-    multi.connections > 0 && `${multi.connections} connection${multi.connections === 1 ? "" : "s"}`,
+    multi.connections.length > 0 &&
+      `${multi.connections.length} connection${multi.connections.length === 1 ? "" : "s"}`,
   ].filter(Boolean);
   return (
     <div className="flex h-full flex-col">
@@ -992,6 +994,32 @@ function MultiInspector({
                   <Glyph tag={c.type} size={14} />
                   <span className="min-w-0 flex-1 truncate text-sm text-ink">{c.name}</span>
                   <span className="mono shrink-0 truncate text-xs text-ink-3">{c.path}</span>
+                </button>
+              ))}
+            </div>
+          </Section>
+        )}
+        {multi.connections.length > 0 && (
+          <Section title="Connections">
+            <div className="flex flex-col">
+              {multi.connections.map((c) => (
+                <button
+                  key={c.key}
+                  type="button"
+                  title="Select only this one"
+                  onClick={() => onSelect({ kind: "connection", key: c.key })}
+                  className="flex min-h-8 w-full flex-col justify-center rounded-md px-2 py-1 text-left transition-colors duration-75 hover:bg-surface-2"
+                >
+                  <span className="truncate text-sm text-ink">
+                    {c.from} {c.arrow === "->" ? "→" : c.arrow === "<->" ? "↔" : "—"} {c.to}
+                  </span>
+                  {(c.type !== undefined || c.label !== undefined) && (
+                    <span className="truncate text-xs text-ink-3">
+                      {c.type !== undefined && <span className="mono">{c.type}</span>}
+                      {c.type !== undefined && c.label !== undefined && " · "}
+                      {c.label}
+                    </span>
+                  )}
                 </button>
               ))}
             </div>

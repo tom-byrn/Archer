@@ -2,6 +2,10 @@
  * Orthogonal edge routing shared by the canvas (`toFlow` → `ArchEdgeComponent`)
  * and the SVG renderer (`svg.ts`), so both draw an edge the same way.
  *
+ * Which edges there are comes first (`groupEdges`): a connection into a
+ * collapsed container is drawn to the container, and every connection
+ * between the same two boxes that way becomes one edge.
+ *
  * Every edge is three straight pieces: out of one side of the source, one
  * bend segment, into the facing side of the target. Boxes side by side
  * connect left/right, stacked boxes top/bottom. The bend goes where the whole
@@ -9,6 +13,128 @@
  * free lanes for long edges, and this is what uses them — preferring the
  * middle of the span.
  */
+
+import { pathToString, type Arrow, type ConnectionNode } from "@archer/lang";
+
+/** One drawn edge: a connection, or several summed up between the same two boxes. */
+export interface EdgeGroup {
+  /** The boxes it joins (a connection's end, or the collapsed container drawn for it). */
+  source: string;
+  target: string;
+  /** The connections it draws, as indices into `doc.connections`, in document order. */
+  indices: number[];
+  /** Heads as drawn: `->` at the target, `<->` both ends, `--` none. */
+  arrow: Arrow;
+  /** Chip: a lone connection's type and label; a summary's type when all share one. */
+  type?: string;
+  label?: string;
+  /** Payload blocks on a lone connection (a summary shows none). */
+  payloads: number;
+  /** An end was drawn as a collapsed ancestor rather than the component itself. */
+  summary: boolean;
+}
+
+/**
+ * The edges to draw between visible boxes. `drawnAs` maps a connection's end
+ * (given the path at its other end) to the box drawn for it: itself, its
+ * collapsed ancestor, or a stand-in outside a drilled-into view — undefined
+ * when that end isn't drawn at all.
+ *
+ * Connections between two boxes that are each drawn as themselves keep an
+ * edge apiece, exactly as written. Once an end is folded into a collapsed
+ * container, everything between the same two boxes (either direction) is one
+ * edge: its heads point wherever any of them do, and its chip gives the count
+ * — eleven parallel lines out of a collapsed worker say nothing that one line
+ * marked ×11 doesn't. A connection inside a single collapsed box isn't drawn.
+ */
+export function groupEdges(
+  connections: readonly ConnectionNode[],
+  drawnAs: (path: string, other: string) => string | undefined,
+): EdgeGroup[] {
+  interface Member {
+    i: number;
+    s: string;
+    t: string;
+    direct: boolean;
+  }
+  const buckets = new Map<string, Member[]>();
+  connections.forEach((c, i) => {
+    const sp = pathToString(c.source);
+    const tp = pathToString(c.target);
+    const s = drawnAs(sp, tp);
+    const t = drawnAs(tp, sp);
+    if (s === undefined || t === undefined || s === t) return;
+    const key = s < t ? `${s}\n${t}` : `${t}\n${s}`;
+    const list = buckets.get(key) ?? [];
+    buckets.set(key, list);
+    list.push({ i, s, t, direct: s === sp && t === tp });
+  });
+
+  const out: EdgeGroup[] = [];
+  for (const members of buckets.values()) {
+    if (members.every((m) => m.direct)) {
+      for (const m of members) {
+        const c = connections[m.i]!;
+        out.push({
+          source: m.s,
+          target: m.t,
+          indices: [m.i],
+          arrow: c.arrow,
+          ...(c.type !== undefined ? { type: c.type } : {}),
+          ...(c.label !== undefined ? { label: c.label } : {}),
+          payloads: c.payloads.length,
+          summary: false,
+        });
+      }
+      continue;
+    }
+    const first = members[0]!;
+    if (members.length === 1) {
+      const c = connections[first.i]!;
+      out.push({
+        source: first.s,
+        target: first.t,
+        indices: [first.i],
+        arrow: c.arrow,
+        ...(c.type !== undefined ? { type: c.type } : {}),
+        ...(c.label !== undefined ? { label: c.label } : {}),
+        payloads: c.payloads.length,
+        summary: true,
+      });
+      continue;
+    }
+    // Heads: where any member points, seen from the first member's direction.
+    let forward = false;
+    let backward = false;
+    for (const m of members) {
+      const arrow = connections[m.i]!.arrow;
+      if (arrow === "<->") forward = backward = true;
+      else if (arrow === "->") {
+        if (m.s === first.s) forward = true;
+        else backward = true;
+      }
+    }
+    const types = new Set(members.map((m) => connections[m.i]!.type));
+    const type = types.size === 1 ? [...types][0] : undefined;
+    const [source, target] = backward && !forward ? [first.t, first.s] : [first.s, first.t];
+    out.push({
+      source,
+      target,
+      indices: members.map((m) => m.i),
+      arrow: forward && backward ? "<->" : forward || backward ? "->" : "--",
+      ...(type !== undefined ? { type } : {}),
+      payloads: 0,
+      summary: true,
+    });
+  }
+  return out.sort((a, b) => a.indices[0]! - b.indices[0]!);
+}
+
+/** The text on an edge's chip: type, then a lone connection's label or a summary's count. */
+export const chipText = (g: Pick<EdgeGroup, "type" | "label" | "indices">): string =>
+  g.indices.length > 1
+    ? [g.type, `×${g.indices.length}`].filter((p) => p !== undefined).join(" ")
+    : [g.type, g.label].filter((p) => p !== undefined).join(" · ");
 
 export interface Rect {
   x: number;
@@ -46,9 +172,10 @@ const CLEAR = 20;
 export const BOX_COST = 1000;
 export const CHIP_H = 18;
 
-/** Approximate rendered width (px) of a label chip. */
-export const chipWidth = (protocol?: string, label?: string, payloads = 0): number => {
-  const text = [protocol, label].filter((p) => p !== undefined).join(" · ");
+/** Approximate rendered width (px) of an edge's label chip (0: no chip). */
+export const chipWidth = (g: Pick<EdgeGroup, "type" | "label" | "indices" | "payloads">): number => {
+  const text = chipText(g);
+  const payloads = g.indices.length > 1 ? 0 : g.payloads;
   if (text === "" && payloads === 0) return 0;
   return Math.round(text.length * 6.2 + 14 + (payloads > 0 ? 18 : 0));
 };
@@ -386,4 +513,174 @@ function* permutations<T>(items: T[]): Generator<T[]> {
     const rest = [...items.slice(0, i), ...items.slice(i + 1)];
     for (const p of permutations(rest)) yield [items[i]!, ...p];
   }
+}
+
+/* ---------------------------------------------------------------- chips */
+
+/** One straight piece of a drawn edge (absolute px). */
+export interface Piece {
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+}
+
+/**
+ * The pieces of an edge from handle (sx, sy) to handle (tx, ty), source
+ * first: three for a left/right or top/bottom route (the middle one is the
+ * bend, at `mid`, or halfway when that's unset), two for an L. The canvas
+ * redraws these live from its handles; `routePieces` is the same from boxes.
+ */
+export function piecesBetween(
+  sx: number,
+  sy: number,
+  tx: number,
+  ty: number,
+  shape: { horizontal: boolean; mid?: number; corner?: boolean },
+): Piece[] {
+  if (shape.corner)
+    return [
+      { x1: sx, y1: sy, x2: tx, y2: sy },
+      { x1: tx, y1: sy, x2: tx, y2: ty },
+    ];
+  if (shape.horizontal) {
+    const m = shape.mid ?? (sx + tx) / 2;
+    return [
+      { x1: sx, y1: sy, x2: m, y2: sy },
+      { x1: m, y1: sy, x2: m, y2: ty },
+      { x1: m, y1: ty, x2: tx, y2: ty },
+    ];
+  }
+  const m = shape.mid ?? (sy + ty) / 2;
+  return [
+    { x1: sx, y1: sy, x2: sx, y2: m },
+    { x1: sx, y1: m, x2: tx, y2: m },
+    { x1: tx, y1: m, x2: tx, y2: ty },
+  ];
+}
+
+/** Where a side's handle sits: the middle of that side. */
+const handleAt = (r: Rect, side: Side): [number, number] =>
+  side === "l"
+    ? [r.x, r.y + r.h / 2]
+    : side === "r"
+      ? [r.x + r.w, r.y + r.h / 2]
+      : side === "t"
+        ? [r.x + r.w / 2, r.y]
+        : [r.x + r.w / 2, r.y + r.h];
+
+/** The pieces of a routed edge between two boxes. */
+export function routePieces(route: EdgeRoute, s: Rect, t: Rect): Piece[] {
+  const [sx, sy] = handleAt(s, route.from);
+  const [tx, ty] = handleAt(t, route.to);
+  return piecesBetween(sx, sy, tx, ty, route);
+}
+
+/** Where an edge's chip sits: `t` of the way along one of its pieces. */
+export interface ChipSpot {
+  piece: number;
+  t: number;
+}
+
+/** The centre of a chip at `spot` (undefined when the pieces don't have that one). */
+export function chipPoint(pieces: readonly Piece[], spot: ChipSpot): { x: number; y: number } | undefined {
+  const p = pieces[spot.piece];
+  if (!p) return undefined;
+  return { x: p.x1 + (p.x2 - p.x1) * spot.t, y: p.y1 + (p.y2 - p.y1) * spot.t };
+}
+
+const hits = (a: Rect, b: Rect) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+
+/** Does a piece run through the rect? */
+function crosses(p: Piece, r: Rect): boolean {
+  if (p.y1 === p.y2) {
+    const lo = Math.min(p.x1, p.x2);
+    const hi = Math.max(p.x1, p.x2);
+    return p.y1 > r.y && p.y1 < r.y + r.h && hi > r.x && lo < r.x + r.w;
+  }
+  const lo = Math.min(p.y1, p.y2);
+  const hi = Math.max(p.y1, p.y2);
+  return p.x1 > r.x && p.x1 < r.x + r.w && hi > r.y && lo < r.y + r.h;
+}
+
+/** Where along a run of pieces a chip may sit, middle first. */
+const CHIP_TS = [0.5, 0.35, 0.65, 0.2, 0.8, 0.1, 0.9];
+
+/**
+ * Where each edge's label chip goes (null: it has none). Candidates are points
+ * along its runs of straight line (collinear pieces count as one, so a straight
+ * edge is one run however its bend was placed). A chip mustn't cover a box,
+ * another chip or a plane's title bar, and shouldn't cover another edge's
+ * line: on a trunk several edges share, each chip moves out onto a stretch of
+ * its own. Among what's clear, the middle of the bend wins, then the middle of
+ * a run. The widest chips go first, while there's the most room.
+ */
+export function placeChips(
+  edges: readonly { pieces: readonly Piece[]; width: number }[],
+  boxes: readonly Rect[],
+  bars: readonly Rect[] = [],
+): (ChipSpot | null)[] {
+  const spots: (ChipSpot | null)[] = edges.map(() => null);
+  const placed: Rect[] = [];
+  const order = edges
+    .map((e, i) => i)
+    .filter((i) => edges[i]!.width > 0)
+    .sort((a, b) => edges[b]!.width - edges[a]!.width || a - b);
+  const len = (p: Piece) => Math.abs(p.x2 - p.x1) + Math.abs(p.y2 - p.y1);
+  for (const i of order) {
+    const { pieces, width } = edges[i]!;
+    const bent = pieces.length === 3 && len(pieces[1]!) >= 1;
+    // Runs: consecutive pieces on one line (zero-length ones join either side).
+    const runs: number[][] = [];
+    pieces.forEach((p, k) => {
+      if (len(p) < 1) return;
+      const last = runs[runs.length - 1];
+      const prev = last && pieces[last[last.length - 1]!]!;
+      const along = p.y1 === p.y2;
+      const same = prev && (prev.y1 === prev.y2) === along && (along ? prev.y1 === p.y1 : prev.x1 === p.x1);
+      if (same) last.push(k);
+      else runs.push([k]);
+    });
+    let best = null as ChipSpot | null;
+    let bestCost = Infinity;
+    for (const run of runs) {
+      const total = run.reduce((n, k) => n + len(pieces[k]!), 0);
+      const first = pieces[run[0]!]!;
+      const along = first.y1 === first.y2;
+      const extent = along ? width : CHIP_H;
+      for (const t of CHIP_TS) {
+        // Keep the chip on the run, except at its middle (a short run).
+        if (t !== 0.5 && Math.min(t, 1 - t) * total < extent / 2 + 4) continue;
+        // The point t of the way along the run, as a piece and a fraction of it.
+        let d = t * total;
+        let k = run[0]!;
+        for (const j of run) {
+          k = j;
+          if (d <= len(pieces[j]!)) break;
+          d -= len(pieces[j]!);
+        }
+        const spot = { piece: k, t: Math.min(1, d / len(pieces[k]!)) };
+        const { x, y } = chipPoint(pieces, spot)!;
+        const r = { x: x - width / 2, y: y - CHIP_H / 2, w: width, h: CHIP_H };
+        const pad = { x: r.x - 3, y: r.y - 3, w: r.w + 6, h: r.h + 6 };
+        let cost = (bent && !run.includes(1) ? 6 : 0) + Math.abs(t - 0.5) * 8;
+        cost += Math.max(0, extent - total) / 2;
+        for (const b of boxes) if (hits(r, b)) cost += BOX_COST;
+        for (const c of placed) if (hits(pad, c)) cost += 800;
+        for (const b of bars) if (hits(r, b)) cost += 150;
+        edges.forEach((other, j) => {
+          if (j === i) return;
+          for (const q of other.pieces) if (crosses(q, r)) cost += 40;
+        });
+        if (cost < bestCost) {
+          bestCost = cost;
+          best = spot;
+        }
+      }
+    }
+    spots[i] = best;
+    const at = best ? chipPoint(pieces, best) : undefined;
+    if (at) placed.push({ x: at.x - width / 2, y: at.y - CHIP_H / 2, w: width, h: CHIP_H });
+  }
+  return spots;
 }

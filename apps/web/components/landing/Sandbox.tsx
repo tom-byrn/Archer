@@ -59,7 +59,7 @@ export default function Sandbox() {
     const f = toFlow(derived.laidOut, { resolveType, isDark });
     // Keep the clicked arrow highlighted across edits (edges are re-derived each time).
     const edges = f.edges.map((e) =>
-      (e.data as { index?: number } | undefined)?.index === selectedEdge
+      selectedEdge !== null && e.data?.indices.includes(selectedEdge)
         ? { ...e, selected: true }
         : e,
     );
@@ -109,8 +109,8 @@ export default function Sandbox() {
         setSelectedEdge(null);
       },
       onDrillIn: () => {},
-      onSelectEdge: (index) => {
-        setSelectedEdge(index);
+      onSelectEdge: (indices) => {
+        setSelectedEdge(indices[0] ?? null);
         setSelected(null);
       },
       onDelete: () => {},

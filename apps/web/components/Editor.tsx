@@ -161,6 +161,13 @@ const outermostOnly = (paths: readonly string[]): string[] =>
 
 /** What's selected on the canvas: component paths and connection keys. */
 type Sel = { nodes: string[]; edges: string[] };
+
+/** Selection keys of connections, by index (skipping any that no longer exist). */
+const keysOf = (doc: ArchDoc, indices: readonly number[]): string[] =>
+  indices.flatMap((i) => {
+    const c = doc.connections[i];
+    return c ? [connectionKey(c)] : [];
+  });
 const NONE: Sel = { nodes: [], edges: [] };
 const only = (path: string): Sel => ({ nodes: [path], edges: [] });
 
@@ -466,13 +473,21 @@ export function Editor({
           setSel(NONE);
         }
       },
+      onGoTo: (path) => goTo(path),
       onSelectNode: (path, additive) =>
         setSel((s) => (additive ? { ...s, nodes: toggle(s.nodes, path) } : only(path))),
-      onSelectEdge: (index, additive) => {
-        const conn = derived.doc.connections[index];
-        if (!conn) return;
-        const key = connectionKey(conn);
-        setSel((s) => (additive ? { ...s, edges: toggle(s.edges, key) } : { nodes: [], edges: [key] }));
+      onSelectEdge: (indices, additive) => {
+        const keys = keysOf(derived.doc, indices);
+        if (keys.length === 0) return;
+        setSel((s) => {
+          if (!additive) return { nodes: [], edges: keys };
+          // A summary edge toggles as one: all its connections in, or all out.
+          const all = keys.every((k) => s.edges.includes(k));
+          return {
+            ...s,
+            edges: all ? s.edges.filter((k) => !keys.includes(k)) : [...new Set([...s.edges, ...keys])],
+          };
+        });
       },
       onSelectMany: (paths) => setSel({ nodes: paths, edges: [] }),
       onClearSelection: () => setSel(NONE),
@@ -520,9 +535,9 @@ export function Editor({
         if (target.kind === "node")
           setSel((s) => (s.nodes.includes(target.path) ? s : only(target.path)));
         if (target.kind === "edge") {
-          const conn = derived.doc.connections[target.index];
-          const key = conn && connectionKey(conn);
-          if (key) setSel((s) => (s.edges.includes(key) ? s : { nodes: [], edges: [key] }));
+          const keys = keysOf(derived.doc, target.indices);
+          if (keys.length > 0)
+            setSel((s) => (keys.every((k) => s.edges.includes(k)) ? s : { nodes: [], edges: keys }));
         }
         setMenu({ target, at });
       },
@@ -896,8 +911,8 @@ export function Editor({
     });
     if (key) setSel({ nodes: [], edges: [key] });
   };
-  const deleteEdge = (index: number) => {
-    mutate((d) => removeConnection(d, index));
+  const deleteEdges = (indices: readonly number[]) => {
+    mutate((d) => [...indices].sort((a, b) => b - a).reduce((acc, i) => removeConnection(acc, i), d));
     setSel(NONE);
   };
 
@@ -1032,11 +1047,17 @@ export function Editor({
         ...selectionActions(isContainer),
       ];
     }
-    if (t.kind === "edge") {
+    if (t.kind === "edge" && t.indices.length > 1) {
       return [
-        { label: "Reverse direction", icon: <Icon.Swap />, onSelect: () => reverseEdge(t.index) },
+        { label: `Delete ${plural(t.indices.length, "connection")}`, icon: <Icon.Trash />, shortcut: "⌫", danger: true, onSelect: () => deleteEdges(t.indices) },
+      ];
+    }
+    if (t.kind === "edge") {
+      const index = t.indices[0]!;
+      return [
+        { label: "Reverse direction", icon: <Icon.Swap />, onSelect: () => reverseEdge(index) },
         "separator",
-        { label: "Delete connection", icon: <Icon.Trash />, shortcut: "⌫", danger: true, onSelect: () => deleteEdge(t.index) },
+        { label: "Delete connection", icon: <Icon.Trash />, shortcut: "⌫", danger: true, onSelect: () => deleteEdges([index]) },
       ];
     }
     return [
@@ -1149,7 +1170,21 @@ export function Editor({
             const c = findComponent(derived.doc, path.split("."));
             return { path, name: c?.name ?? c?.id ?? path, type: c?.type };
           }),
-          connections: liveSel.edges.length,
+          connections: liveSel.edges.flatMap((key) => {
+            const c = derived.doc.connections.find((x) => connectionKey(x) === key);
+            if (!c) return [];
+            const name = (p: string[]) => findComponent(derived.doc, p)?.name ?? p.join(".");
+            return [
+              {
+                key,
+                from: name(c.source),
+                to: name(c.target),
+                arrow: c.arrow,
+                ...(c.type !== undefined ? { type: c.type } : {}),
+                ...(c.label !== undefined ? { label: c.label } : {}),
+              },
+            ];
+          }),
           actions:
             selCount > 0
               ? editable

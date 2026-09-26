@@ -56,6 +56,22 @@ fails, call \`get_workspace_info\` and relay what it reports.
 2. \`create_project\` with your source. Same validation gates as update.
 3. The result includes an editor URL — share it with the user.
 
+### Map a codebase
+1. Find what runs first: each app, service, worker, job and function that
+   runs on its own, the databases, queues and buckets they use, and the
+   people and outside systems that talk to them. That is the top level —
+   usually 5–10 components.
+2. Put each one's important parts inside it as children (its API, its
+   consumers, its modules): as many as help a newcomer find their way, in
+   sub-containers when there are more than about nine.
+3. Connect the component that actually makes each call
+   (\`worker.ingestion -> clickhouse\`), not its container.
+4. Leave out what doesn't run — build and CI tooling, API definition files,
+   generated clients, seed scripts, test helpers — unless the user asks.
+5. Give every component a \`desc\`, and a \`src\` wherever you know it.
+6. \`create_project\`, then read the result's \`advice\` and fix what it
+   names with \`update_project\`. See "Keep it readable" below.
+
 ### Use a worked example
 1. \`list_examples\` — the worked examples from the docs, each with the
    language features it shows and links for the user (its docs section, and
@@ -172,6 +188,36 @@ The full language specification is at the end of this guide. Key habits:
 - Match the user's requested granularity: one \`@postgres\` node with a schema
   payload, or individual \`@postgres.table\` children — both are idiomatic.
 
+## Keep it readable
+
+The canvas shows one level at a time. A big document opens as an overview:
+a container laid out for the first time starts collapsed when its level
+would otherwise show more than 16 boxes, and a collapsed container draws
+everything between it and another box as ONE edge marked with a count
+("×8"). Humans double-click a container to open it, and see what's outside
+it drawn along the edges of that view. Write for that:
+
+- **5–9 things per level.** The top level tells the whole story on its own;
+  each container tells its own part. A level with more than a dozen things
+  directly in it can't be made readable by any layout — group them.
+- **Model what runs, not how the code is organized.** Top-level components
+  are things that run or hold data (apps, services, workers, databases,
+  queues) plus the people and systems outside. A shared package or library
+  is NOT a component everything connects to: it runs inside the components
+  that import it. Connect those to what the library talks to (the database,
+  the queue), and name the library in their \`desc\` or \`src\`.
+- **Connect the specific component** (\`web.api -> postgres\`) and don't add
+  a container-level copy (\`web -> postgres\`): collapsed, the canvas sums
+  up the children's connections itself.
+- **One connection per real dependency.** Nothing for logging, config or
+  other things every component uses.
+- **Labels are a few words** ("ingestion jobs", "trace reads"). Schemas,
+  endpoints and message shapes go in payloads.
+- **Act on \`advice\`.** \`validate_source\`, \`create_project\` and
+  \`update_project\` return advice on how the diagram will read — a crowded
+  level, a library drawn as a hub, labels that are sentences. It never
+  blocks a write, but fix what it names.
+
 ## Layout rules (presentation)
 
 - The machine-managed \`layout\` block holds grid positions/sizes and whether a
@@ -182,9 +228,11 @@ The full language specification is at the end of this guide. Key habits:
 - You MAY include a layout block if you have an explicit reason (e.g. the user
   asks you to arrange the diagram); entries are \`path: { at: [col, row],
   size: [w, h], display: icon|plane }\` on an integer grid.
-- To collapse or expand a container without touching the source, use the
-  \`set_display\` tool. To re-arrange everything from scratch,
-  \`auto_layout_project\` with \`reset: true\`.
+- A new container starts open or collapsed by itself (see "Keep it
+  readable"); the human's choice sticks once made. To collapse or expand a
+  container without touching the source, use the \`set_display\` tool. To
+  re-arrange everything from scratch, \`auto_layout_project\` with
+  \`reset: true\`.
 
 ## Error reference (what blocks a write)
 

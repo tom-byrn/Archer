@@ -31,7 +31,7 @@ import {
   type ResizeParams,
 } from "@xyflow/react";
 import { toPng } from "html-to-image";
-import { CELL, type ArchEdge, type ArchNode } from "@/lib/toFlow";
+import { CELL, CONTEXT, type ArchEdge, type ArchEdgeData, type ArchNode } from "@/lib/toFlow";
 import { DND_MIME } from "./Palette";
 import { ResizeContext, edgeTypes, nodeTypes } from "./nodes";
 import { Icon } from "./ui";
@@ -46,7 +46,8 @@ export interface DragEndInfo {
 /** What a right-click landed on. */
 export type ContextTarget =
   | { kind: "node"; path: string }
-  | { kind: "edge"; index: number }
+  /** An edge: the connections it draws (several when it sums up a collapsed container's). */
+  | { kind: "edge"; indices: number[] }
   /** Empty canvas, at this point in flow px. */
   | { kind: "pane"; at: { x: number; y: number } };
 
@@ -54,9 +55,12 @@ export interface CanvasCallbacks {
   /** One or more nodes dropped after a drag (outermost only: children ride along). */
   onNodesDragEnd: (moves: { path: string; info: DragEndInfo }[]) => void;
   onDrillIn: (path: string) => void;
+  /** Double-click on a context box (drilled in: something outside the view): go to it. */
+  onGoTo?: (path: string) => void;
   /** `additive`: shift/⌘/ctrl was held, so toggle it in the selection. */
   onSelectNode: (path: string, additive?: boolean) => void;
-  onSelectEdge: (index: number, additive?: boolean) => void;
+  /** An edge was clicked: every connection it draws. */
+  onSelectEdge: (indices: number[], additive?: boolean) => void;
   onClearSelection: () => void;
   onConnect: (source: string, target: string) => void;
   /** Delete key: selected nodes plus selected and attached edges, as one edit. */
@@ -121,6 +125,9 @@ const joinCls = (...parts: Array<string | undefined | false>) =>
   parts.filter(Boolean).join(" ") || undefined;
 
 const EMPTY: readonly string[] = [];
+
+/** Below this zoom, edge chips are too small to read. */
+const CHIP_MIN_ZOOM = 0.5;
 
 /** Shift, ⌘ or ctrl held: add to / remove from the selection instead of replacing it. */
 const isAdditive = (e: { shiftKey: boolean; metaKey: boolean; ctrlKey: boolean }) =>
@@ -201,7 +208,8 @@ function CanvasInner({
   const flagNodes = useCallback(
     (list: ArchNode[]) =>
       list.map((n) => {
-        const on = selRef.current.nodes.has(n.id);
+        // A context box shows its component's selection.
+        const on = selRef.current.nodes.has(n.data.path);
         return !!n.selected === on ? n : { ...n, selected: on };
       }),
     [],
@@ -209,7 +217,7 @@ function CanvasInner({
   const flagEdges = useCallback(
     (list: ArchEdge[]) =>
       list.map((e) => {
-        const on = e.data !== undefined && selRef.current.edges.has(e.data.key);
+        const on = e.data !== undefined && e.data.keys.some((k) => selRef.current.edges.has(k));
         return !!e.selected === on ? e : { ...e, selected: on };
       }),
     [],
@@ -248,6 +256,9 @@ function CanvasInner({
       const viewport = getViewportForBounds(bounds, width, height, 0.2, 2, 0.08);
       const el = document.querySelector<HTMLElement>(".react-flow__viewport");
       if (!el) return;
+      // Every chip, however far out the view is zoomed (canvas.css).
+      const root = el.closest(".react-flow");
+      root?.classList.add("arch-exporting");
       const ground =
         getComputedStyle(document.documentElement).getPropertyValue("--ground").trim() ||
         "#f7f5f1";
@@ -260,12 +271,14 @@ function CanvasInner({
           height: `${height}px`,
           transform: `translate(${viewport.x}px, ${viewport.y}px) scale(${viewport.zoom})`,
         },
-      }).then((dataUrl) => {
-        const a = document.createElement("a");
-        a.download = `${title.replace(/[^a-z0-9-_]+/gi, "_").toLowerCase() || "archer"}.png`;
-        a.href = dataUrl;
-        a.click();
-      });
+      })
+        .then((dataUrl) => {
+          const a = document.createElement("a");
+          a.download = `${title.replace(/[^a-z0-9-_]+/gi, "_").toLowerCase() || "archer"}.png`;
+          a.href = dataUrl;
+          a.click();
+        })
+        .finally(() => root?.classList.remove("arch-exporting"));
     };
     return () => {
       exportRef.current = null;
@@ -355,14 +368,21 @@ function CanvasInner({
       }),
     [nodes, lit, selectedPath, soleSelected],
   );
+  // Chips live in their own layer, so they learn about hovering through data.
   const styledEdges = useMemo(
     () =>
-      edges.map((e) => ({
-        ...e,
-        className: joinCls(lit !== null && !lit.edges.has(e.id) && "dim"),
-      })),
+      edges.map((e) => {
+        const emphasis: ArchEdgeData["emphasis"] =
+          lit === null ? undefined : lit.edges.has(e.id) ? "lit" : "dim";
+        const data: ArchEdgeData | undefined =
+          e.data && e.data.emphasis !== emphasis ? { ...e.data, emphasis } : e.data;
+        return { ...e, data, className: joinCls(emphasis === "dim" && "dim") };
+      }),
     [edges, lit],
   );
+  // Zoomed far out a chip is a speck of text: canvas.css hides all but the
+  // hovered and selected ones.
+  const far = useStore((s) => s.transform[2] < CHIP_MIN_ZOOM);
 
   /** Report where dragged nodes landed: absolute position in this view, center, and grid size. */
   const commitDrag = useCallback(
@@ -400,19 +420,21 @@ function CanvasInner({
 
   const onConnect: OnConnect = useCallback(
     (conn) => {
-      if (conn.source && conn.target) callbacks.onConnect(conn.source, conn.target);
+      if (conn.source && conn.target)
+        callbacks.onConnect(componentOf(conn.source), componentOf(conn.target));
     },
     [callbacks],
   );
 
   const onReconnect: OnReconnect<ArchEdge> = useCallback(
     (old, conn) => {
-      const index = old.data?.index;
+      // Only a lone connection re-points; a summary's ends stand for several.
+      const index = old.data?.indices.length === 1 ? old.data.indices[0] : undefined;
       if (index === undefined || !callbacks.onReconnect) return;
       if (conn.source && conn.source !== old.source)
-        callbacks.onReconnect(index, "source", conn.source);
+        callbacks.onReconnect(index, "source", componentOf(conn.source));
       else if (conn.target && conn.target !== old.target)
-        callbacks.onReconnect(index, "target", conn.target);
+        callbacks.onReconnect(index, "target", componentOf(conn.target));
     },
     [callbacks],
   );
@@ -421,9 +443,7 @@ function CanvasInner({
     ({ nodes: deleted, edges: deletedEdges }: { nodes: Node[]; edges: Edge[] }) =>
       callbacks.onDelete(
         deleted.map((n) => n.id),
-        deletedEdges
-          .map((e) => (e.data as { index?: number } | undefined)?.index)
-          .filter((i): i is number => i !== undefined),
+        deletedEdges.flatMap((e) => (e.data as ArchEdge["data"])?.indices ?? []),
       ),
     [callbacks],
   );
@@ -492,20 +512,31 @@ function CanvasInner({
         onNodeMouseLeave={() => setHover(null)}
         onEdgeMouseEnter={(_e, edge) => setHover({ kind: "edge", id: edge.id })}
         onEdgeMouseLeave={() => setHover(null)}
-        onNodeClick={(e, n) => callbacks.onSelectNode(n.id, isAdditive(e))}
-        onNodeDoubleClick={(_e, n) => callbacks.onDrillIn(n.id)}
+        onNodeClick={(e, n) => callbacks.onSelectNode(n.data.path, isAdditive(e))}
+        onNodeDoubleClick={(_e, n) =>
+          n.type === "archContext" && callbacks.onGoTo
+            ? callbacks.onGoTo(n.data.path)
+            : callbacks.onDrillIn(n.data.path)
+        }
         onEdgeClick={(e, edge) => {
-          const i = (edge.data as { index?: number } | undefined)?.index;
-          if (i !== undefined) callbacks.onSelectEdge(i, isAdditive(e));
+          const indices = (edge.data as ArchEdge["data"])?.indices;
+          if (indices) callbacks.onSelectEdge(indices, isAdditive(e));
         }}
         onPaneClick={() => callbacks.onClearSelection()}
         onSelectionEnd={() =>
-          callbacks.onSelectMany?.(getNodes().filter((n) => n.selected).map((n) => n.id))
+          callbacks.onSelectMany?.(
+            getNodes()
+              .filter((n) => n.selected && n.type !== "archContext")
+              .map((n) => n.id),
+          )
         }
-        onNodeContextMenu={(e, n) => openMenu(e, { kind: "node", path: n.id })}
+        onNodeContextMenu={(e, n) => {
+          if (n.type !== "archContext") openMenu(e, { kind: "node", path: n.id });
+          else e.preventDefault();
+        }}
         onEdgeContextMenu={(e, edge) => {
-          const i = (edge.data as { index?: number } | undefined)?.index;
-          if (i !== undefined) openMenu(e, { kind: "edge", index: i });
+          const indices = (edge.data as ArchEdge["data"])?.indices;
+          if (indices) openMenu(e, { kind: "edge", indices });
         }}
         onPaneContextMenu={(e) =>
           openMenu(e, {
@@ -537,6 +568,7 @@ function CanvasInner({
         zoomOnDoubleClick={!embedded}
         panOnDrag={!embedded}
         proOptions={{ hideAttribution: true }}
+        className={far ? "arch-far" : undefined}
       >
         <Background variant={BackgroundVariant.Dots} gap={CELL} size={1.5} color="var(--dot)" />
         {!embedded && <CanvasControls />}
@@ -544,6 +576,9 @@ function CanvasInner({
     </ResizeContext.Provider>
   );
 }
+
+/** The component a node stands for (a context box's id carries a prefix). */
+const componentOf = (id: string) => (id.startsWith(CONTEXT) ? id.slice(CONTEXT.length) : id);
 
 /** Is `id` (or any of its ancestors) one of `ids`? */
 function isAncestorIn(id: string, ids: ReadonlySet<string>, byId: Map<string, Node>): boolean {

@@ -17,10 +17,16 @@ import { GLYPHS, GLYPH_VIEWBOX, lookupType } from "@archer/catalog";
 import {
   BOX_COST,
   bendOf,
+  chipPoint,
+  chipText,
   chipWidth,
+  groupEdges,
+  placeChips,
   routeEdge,
+  routePieces,
   separateBends,
   untangle,
+  type EdgeGroup,
   type Obstacle,
   type RoutedEdge,
 } from "./edgeRoute";
@@ -206,10 +212,11 @@ export function renderArchSvg(source: string, opts: RenderOptions = {}): string 
 
   const byPath = new Map(boxes.map((b) => [b.path, b]));
   const out: string[] = [];
+  const leafOut: string[] = [];
 
-  // Planes first (behind), then leaves, so nested leaves paint over their parent.
-  const ordered = [...boxes].sort((a, b) => Number(b.plane) - Number(a.plane));
-  for (const b of ordered) {
+  // Planes behind everything; edges over planes; boxes over edges (a line the
+  // router can't keep clear of a box passes behind it); chips on top.
+  for (const b of boxes) {
     const x = b.x + dx;
     const y = b.y + dy;
     const name = b.node.name ?? b.node.id;
@@ -235,7 +242,7 @@ export function renderArchSvg(source: string, opts: RenderOptions = {}): string 
       const textX = x + 12 + 32 + 10;
       const textW = b.w - (textX - x) - 10;
       const midY = y + b.h / 2;
-      out.push(
+      leafOut.push(
         `<g>` +
           `<rect x="${x}" y="${y}" width="${b.w}" height="${b.h}" rx="6" fill="${P.surface}" stroke="${P.line2}"/>` +
           `<rect x="${tileX}" y="${tileY}" width="32" height="32" rx="6" fill="${alpha(b.color, 0.14)}"/>` +
@@ -252,7 +259,9 @@ export function renderArchSvg(source: string, opts: RenderOptions = {}): string 
   const leafRects = boxes
     .filter((b) => !b.plane)
     .map((b) => ({ x: b.x + dx, y: b.y + dy, w: b.w, h: b.h }));
-  const chipRects: { x: number; y: number; w: number; h: number }[] = [];
+  const titleBars = boxes
+    .filter((b) => b.plane)
+    .map((b) => ({ x: b.x + dx, y: b.y + dy, w: b.w, h: PLANE_TITLE }));
   let needEnd = false;
   let needStart = false;
   // Routed like the canvas (lib/edgeRoute.ts): bends go where the path clears
@@ -272,117 +281,61 @@ export function renderArchSvg(source: string, opts: RenderOptions = {}): string 
     }
     return list;
   };
-  const routed: (RoutedEdge & { c: ArchDoc["connections"][number] })[] = [];
-  for (const c of doc.connections) {
-    const s = byPath.get(visibleAncestor.get(pathToString(c.source)) ?? "");
-    const t = byPath.get(visibleAncestor.get(pathToString(c.target)) ?? "");
-    if (!s || !t || s === t) continue;
+  const routed: (RoutedEdge & { g: EdgeGroup })[] = [];
+  for (const g of groupEdges(doc.connections, (p) => visibleAncestor.get(p))) {
+    const s = byPath.get(g.source);
+    const t = byPath.get(g.target);
+    if (!s || !t) continue;
     const sr = { x: s.x + dx, y: s.y + dy, w: s.w, h: s.h };
     const tr = { x: t.x + dx, y: t.y + dy, w: t.w, h: t.h };
-    const route = routeEdge(
-      sr,
-      tr,
-      obstaclesFor(s.path, t.path),
-      chipWidth(c.type, c.label, c.payloads.length),
-    );
-    const headAtTarget = c.arrow !== "--";
-    routed.push({ c, source: s.path, target: t.path, s: sr, t: tr, route, headAtTarget });
+    const route = routeEdge(sr, tr, obstaclesFor(s.path, t.path), chipWidth(g));
+    const headAtTarget = g.arrow !== "--";
+    routed.push({ g, source: s.path, target: t.path, s: sr, t: tr, route, headAtTarget });
   }
   // Untangle shared handles, then keep parallel bends from merging.
   untangle(routed, obstaclesFor);
   separateBends(routed.map((e) => bendOf(e.route, e.s, e.t, e.source, e.target)));
-  for (const { c, s: sr, t: tr, route } of routed) {
-    let p1: { x: number; y: number };
-    let p2: { x: number; y: number };
-    let d: string;
-    // Candidate positions for the label chip: the bend first, then the
-    // near-source and near-target segments. The first one that overlaps no
-    // leaf node and no earlier chip wins.
-    const candidates: { x: number; y: number }[] = [];
-    if (route.corner) {
-      const right = route.from === "r";
-      const down = route.to === "t";
-      p1 = { x: right ? sr.x + sr.w : sr.x, y: sr.y + sr.h / 2 };
-      p2 = { x: tr.x + tr.w / 2, y: down ? tr.y : tr.y + tr.h };
-      d = `M${p1.x} ${p1.y}H${p2.x}V${p2.y}`;
-      candidates.push(
-        { x: (p1.x + p2.x) / 2, y: p1.y },
-        { x: p2.x, y: (p1.y + p2.y) / 2 },
-      );
-    } else if (route.horizontal) {
-      const right = route.from === "r";
-      const sign = right ? 1 : -1;
-      p1 = { x: right ? sr.x + sr.w : sr.x, y: sr.y + sr.h / 2 };
-      p2 = { x: right ? tr.x : tr.x + tr.w, y: tr.y + tr.h / 2 };
-      const mx = route.mid;
-      d = `M${p1.x} ${p1.y}H${mx}V${p2.y}H${p2.x}`;
-      candidates.push(
-        { x: mx, y: (p1.y + p2.y) / 2 },
-        { x: (p1.x + mx) / 2, y: p1.y },
-        { x: (mx + p2.x) / 2, y: p2.y },
-        { x: p1.x + sign * 60, y: p1.y },
-      );
-    } else {
-      const down = route.from === "b";
-      p1 = { x: sr.x + sr.w / 2, y: down ? sr.y + sr.h : sr.y };
-      p2 = { x: tr.x + tr.w / 2, y: down ? tr.y : tr.y + tr.h };
-      const my = route.mid;
-      d = `M${p1.x} ${p1.y}V${my}H${p2.x}V${p2.y}`;
-      candidates.push(
-        { x: (p1.x + p2.x) / 2, y: my },
-        { x: p1.x, y: (p1.y + my) / 2 },
-        { x: p2.x, y: (my + p2.y) / 2 },
-      );
-    }
-    const markerEnd = c.arrow !== "--" ? ` marker-end="url(#arrow-end)"` : "";
-    const markerStart = c.arrow === "<->" ? ` marker-start="url(#arrow-start)"` : "";
-    if (c.arrow !== "--") needEnd = true;
-    if (c.arrow === "<->") needStart = true;
+  // Chips: the type in mono, then a lone connection's label or a summary's count.
+  const drawn = routed.map((e) => {
+    const label = chipText(e.g);
+    return {
+      ...e,
+      label,
+      pieces: routePieces(e.route, e.s, e.t),
+      width: label === "" ? 0 : Math.round(label.length * 6 + 12),
+    };
+  });
+  const spots = placeChips(drawn, leafRects, titleBars);
+  // Every line first, then the chips over them.
+  const chipOut: string[] = [];
+  drawn.forEach(({ g, pieces, label, width: lw }, i) => {
+    const d = `M${pieces[0]!.x1} ${pieces[0]!.y1}` + pieces.map((p) => `L${p.x2} ${p.y2}`).join("");
+    const markerEnd = g.arrow !== "--" ? ` marker-end="url(#arrow-end)"` : "";
+    const markerStart = g.arrow === "<->" ? ` marker-start="url(#arrow-start)"` : "";
+    if (g.arrow !== "--") needEnd = true;
+    if (g.arrow === "<->") needStart = true;
     edgeOut.push(
       `<path d="${d}" fill="none" stroke="${P.edge}" stroke-width="1.5"${markerEnd}${markerStart}/>`,
     );
-    const parts: string[] = [];
-    if (c.type) parts.push(c.type);
-    if (c.label) parts.push(c.label);
-    if (parts.length > 0) {
-      const label = parts.join(" · ");
-      const lw = Math.round(label.length * 6 + 12);
-      const clear = (cx: number, cy: number): boolean => {
-        const r = { x: cx - lw / 2, y: cy - 9, w: lw, h: 18 };
-        const hits = (b: { x: number; y: number; w: number; h: number }) =>
-          r.x < b.x + b.w && b.x < r.x + r.w && r.y < b.y + b.h && b.y < r.y + r.h;
-        return !leafRects.some(hits) && !chipRects.some(hits);
-      };
-      let spot = candidates.find((c) => clear(c.x, c.y));
-      if (!spot) {
-        // Nothing on the path is free: drop the chip just below whatever it
-        // overlaps (a node it passes behind, or an earlier chip).
-        spot = { ...candidates[0]! };
-        for (let i = 0; i < 4 && !clear(spot.x, spot.y); i++) {
-          const r = { x: spot.x - lw / 2, y: spot.y - 9, w: lw, h: 18 };
-          const blockers = [...leafRects, ...chipRects].filter(
-            (b) => r.x < b.x + b.w && b.x < r.x + r.w && r.y < b.y + b.h && b.y < r.y + r.h,
-          );
-          if (blockers.length === 0) break;
-          spot.y = Math.max(...blockers.map((b) => b.y + b.h)) + 9 + 6;
-        }
-      }
-      const lx = spot.x;
-      const ly = spot.y;
-      chipRects.push({ x: lx - lw / 2, y: ly - 9, w: lw, h: 18 });
-      edgeOut.push(
-        `<g>` +
-          `<rect x="${lx - lw / 2}" y="${ly - 9}" width="${lw}" height="18" rx="4" fill="${P.surface}" stroke="${P.line}"/>` +
-          (c.type
-            ? `<text x="${lx - lw / 2 + 6}" y="${ly + 3.5}" font-family='${MONO}' font-size="10" fill="${P.ink2}">${esc(c.type)}</text>` +
-              (c.label
-                ? `<text x="${lx - lw / 2 + 6 + c.type.length * 6 + 4}" y="${ly + 3.5}" font-family='${SANS}' font-size="10" fill="${P.ink}">· ${esc(c.label)}</text>`
-                : "")
-            : `<text x="${lx - lw / 2 + 6}" y="${ly + 3.5}" font-family='${SANS}' font-size="10" fill="${P.ink}">${esc(c.label ?? "")}</text>`) +
-          `</g>`,
-      );
-    }
-  }
+    const spot = spots[i];
+    const at = spot ? chipPoint(pieces, spot) : undefined;
+    if (label === "" || !at) return;
+    const count = g.indices.length;
+    const tail = count > 1 ? `×${count}` : g.label;
+    const lx = at.x;
+    const ly = at.y;
+    chipOut.push(
+      `<g>` +
+        `<rect x="${lx - lw / 2}" y="${ly - 9}" width="${lw}" height="18" rx="4" fill="${P.surface}" stroke="${P.line}"/>` +
+        (g.type
+          ? `<text x="${lx - lw / 2 + 6}" y="${ly + 3.5}" font-family='${MONO}' font-size="10" fill="${P.ink2}">${esc(g.type)}</text>` +
+            (tail !== undefined
+              ? `<text x="${lx - lw / 2 + 6 + g.type.length * 6 + 4}" y="${ly + 3.5}" font-family='${SANS}' font-size="10" fill="${P.ink}">${count > 1 ? "" : "· "}${esc(tail)}</text>`
+              : "")
+          : `<text x="${lx - lw / 2 + 6}" y="${ly + 3.5}" font-family='${SANS}' font-size="10" fill="${P.ink}">${esc(tail ?? "")}</text>`) +
+        `</g>`,
+    );
+  });
 
   const defs =
     `<defs>` +
@@ -407,6 +360,8 @@ export function renderArchSvg(source: string, opts: RenderOptions = {}): string 
     title +
     out.join("") +
     edgeOut.join("") +
+    leafOut.join("") +
+    chipOut.join("") +
     `</svg>`
   );
 }

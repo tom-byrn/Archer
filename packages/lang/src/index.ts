@@ -17,6 +17,8 @@ export type { FormatOptions } from "./format";
 export { compileForAgent } from "./agentExport";
 export {
   autoLayout,
+  planDisplays,
+  VIEW_BUDGET,
   layoutMap,
   effectiveDisplay,
   LEAF_SIZE,

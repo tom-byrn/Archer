@@ -114,6 +114,11 @@
     border-color 120ms ease,
     opacity 120ms ease;
 }
+/* React Flow lifts the edges of components inside planes above the plane
+   (z-index 1 and up); the chips must still cover their lines. */
+.react-flow__edgelabel-renderer {
+  z-index: 10;
+}
 .react-flow__edge .arch-edge-path.arch-edge-diff-added {
   stroke: var(--accent);
   stroke-width: 2;
@@ -152,8 +157,18 @@
 /* ---- Hover dimming ---- */
 .react-flow__node.dim,
 .react-flow__edge.dim,
-.react-flow__edge.dim .arch-edge-chip {
+.arch-edge-chip.dim {
   opacity: 0.3;
+}
+/* Zoomed far out: only the chips of hovered and selected edges. */
+.arch-far .arch-edge-chip:not(.arch-edge-chip-keep) {
+  opacity: 0;
+  pointer-events: none;
+}
+/* PNG export: all of them, at whatever zoom. */
+.arch-exporting .arch-edge-chip {
+  opacity: 1 !important;
+  transition: none !important;
 }
 .react-flow__node,
 .react-flow__edge {

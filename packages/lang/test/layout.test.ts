@@ -2,11 +2,14 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import {
+  VIEW_BUDGET,
   autoLayout,
   componentPaths,
   format,
   layoutMap,
   parse,
+  planDisplays,
+  relayoutComponents,
   setDisplay,
   validate,
 } from "../src/index";
@@ -342,5 +345,101 @@ describe("autoLayout (existing positions)", () => {
     expect(map.get("p")!.at![0]).toBeGreaterThan(4);
     expect(map.get("p.x")!.at![0]).toBeLessThan(map.get("p.y")!.at![0]);
     expectTidy(out);
+  });
+});
+
+describe("autoLayout (which containers start open)", () => {
+  /** A container `id` holding `n` leaves. */
+  const group = (id: string, n: number) =>
+    `component ${id} {\n${Array.from({ length: n }, (_, i) => `  component c${i}\n`).join("")}}\n`;
+  const displays = (src: string) => {
+    const map = layoutMap(laidOut(src));
+    return (path: string) => map.get(path)?.display ?? "plane";
+  };
+  /** Boxes drawn at the top level of a laid-out doc. */
+  const topBoxes = (doc: ArchDoc): number => {
+    const map = layoutMap(doc);
+    const count = (items: ComponentNode[], pre: string): number =>
+      items.reduce((n, c) => {
+        const path = pre === "" ? c.id : `${pre}.${c.id}`;
+        const open = c.children.length > 0 && map.get(path)?.display !== "icon";
+        return n + (open ? count(c.children, path) : 1);
+      }, 0);
+    return count(doc.components, "");
+  };
+
+  it("opens everything when the document fits", () => {
+    const out = laidOut(HEADER + group("a", 4) + group("b", 5) + "component x\n");
+    expect(out.layout.filter((e) => e.display !== undefined)).toEqual([]);
+    expect(topBoxes(out)).toBe(10);
+  });
+
+  it("opens a big document as an overview: small groups open, big ones collapsed", () => {
+    const src =
+      HEADER +
+      group("clients", 3) +
+      group("web", 4) +
+      group("worker", 10) +
+      group("shared", 11) +
+      group("stores", 4) +
+      "component gateway\ncomponent ee\n";
+    const out = laidOut(src);
+    const show = displays(src);
+    expect(["clients", "stores", "web"].map(show)).toEqual(["plane", "plane", "plane"]);
+    expect(["worker", "shared"].map(show)).toEqual(["icon", "icon"]);
+    expect(topBoxes(out)).toBeLessThanOrEqual(VIEW_BUDGET);
+    expectTidy(out);
+    expect(validate(out)).toEqual([]);
+  });
+
+  it("gives a collapsed container's interior a budget of its own", () => {
+    const src = HEADER + `component big {\n${group("inner", 3)}${group("huge", 30)}}\n` + group("other", 30);
+    const show = displays(src);
+    // Opening `big` alone costs 1 (its children start collapsed), so it opens
+    // and `inner` fits beside it; `huge` and `other` never fit.
+    expect(["big", "big.inner", "big.huge", "other"].map(show)).toEqual(["plane", "plane", "icon", "icon"]);
+  });
+
+  it("never leaves a view as one lone box", () => {
+    const show = displays(HEADER + group("platform", 40));
+    expect(show("platform")).toBe("plane");
+  });
+
+  it("keeps the display of containers already on the canvas", () => {
+    const src =
+      HEADER +
+      group("a", 12) +
+      group("b", 12) +
+      "layout {\n  a: { at: [0, 0], size: [20, 20] }\n  b: { at: [30, 0], size: [20, 20] }\n}";
+    const show = displays(src);
+    expect([show("a"), show("b")]).toEqual(["plane", "plane"]);
+    // A reset re-arranges them but doesn't fold them away either.
+    const reset = layoutMap(autoLayout(parse(src).doc, { reset: true }));
+    expect([reset.get("a")!.display, reset.get("b")!.display]).toEqual([undefined, undefined]);
+  });
+
+  it("lets a new container into a full view collapsed", () => {
+    const src =
+      HEADER +
+      group("a", 15) +
+      group("fresh", 5) +
+      "layout {\n  a: { at: [0, 0], size: [20, 20] }\n}";
+    expect(displays(src)("fresh")).toBe("icon");
+  });
+
+  it("can be turned off", () => {
+    const doc = parse(HEADER + group("a", 15) + group("b", 15)).doc;
+    expect(autoLayout(doc, { collapse: false }).layout.filter((e) => e.display)).toEqual([]);
+    expect(planDisplays(doc.components, new Map(), Infinity).get("a")).toBe("plane");
+  });
+
+  it("re-layout keeps open containers open", () => {
+    const src =
+      HEADER +
+      group("a", 12) +
+      group("b", 12) +
+      "layout {\n  a: { at: [0, 0], size: [20, 20] }\n  b: { at: [30, 0], size: [20, 20] }\n}";
+    const out = relayoutComponents(parse(src).doc, [["a"], ["b"]]);
+    expect(out.layout.filter((e) => e.display === "icon")).toEqual([]);
   });
 });

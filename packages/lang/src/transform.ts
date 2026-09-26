@@ -705,7 +705,7 @@ export function relayoutComponents(doc: ArchDoc, paths: Paths): ArchDoc {
       layout: laid.layout
         .filter((e) => e.display !== undefined && under(e.path))
         .map((e) => ({ kind: "layout-entry", path: strip(e.path), display: e.display, span: ZERO_SPAN })),
-    });
+    }, { collapse: false });
     const outLayout = layoutMap(out);
     const before = topLeft(chosenPaths.map((p) => layout.get(pathToString(p))?.at ?? [0, 0]));
     const after = topLeft(chosen.map((c) => outLayout.get(c.id)?.at ?? [0, 0]));

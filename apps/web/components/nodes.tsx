@@ -15,6 +15,7 @@ import {
   type ResizeParams,
 } from "@xyflow/react";
 import { GLYPHS, GLYPH_VIEWBOX, lookupType } from "@archer/catalog";
+import { chipPoint, piecesBetween } from "@/lib/edgeRoute";
 import { CELL, type ArchEdge, type ArchNode, type NodeMarks } from "@/lib/toFlow";
 import { displayColor, useIsDark } from "@/lib/useIsDark";
 import { Icon, cx } from "./ui";
@@ -232,9 +233,44 @@ export function ArchPlaneNode({ id, data, width, height }: NodeProps<ArchNode>) 
   );
 }
 
+/**
+ * Drilled into a container: something outside it that connects in, drawn
+ * beside the view so it keeps its place in the whole. Faded and dashed, not
+ * part of this level: double-click goes to it.
+ */
+export function ArchContextNode({ data, width, height }: NodeProps<ArchNode>) {
+  const isDark = useIsDark();
+  const entry = lookupType(data.typeTag);
+  const accent = displayColor(data.accent ?? entry?.color, isDark);
+  const where = data.context?.where;
+  return (
+    <div
+      style={{ width, height }}
+      title={`${data.label} is outside this view${where ? `, in ${where}` : ""}. Double-click to go to it.`}
+      className="arch-node arch-node-context relative flex items-center gap-2 rounded-md border border-dashed border-line-2 bg-surface-2 px-2.5"
+    >
+      <EdgeHandles />
+      <div
+        className="flex h-6 w-6 shrink-0 items-center justify-center rounded-sm"
+        style={{ backgroundColor: alpha(accent ?? NEUTRAL, 0.12) }}
+      >
+        <Glyph tag={data.typeTag} color={accent} glyph={data.glyphKey} size={14} />
+      </div>
+      <div className="min-w-0">
+        <div className="truncate text-sm font-semibold leading-tight text-ink-2">{data.label}</div>
+        <div className="truncate text-xs leading-tight text-ink-3">
+          {where ? `in ${where}` : "outside"}
+          {data.display === "icon" && data.childCount > 0 ? ` · ${data.childCount} inside` : ""}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export const nodeTypes = {
   archComponent: ArchComponentNode,
   archPlane: ArchPlaneNode,
+  archContext: ArchContextNode,
 };
 
 /* ---------------------------------------------------------------- Edges */
@@ -272,6 +308,12 @@ export function ArchEdgeComponent({
   const mid = data?.mid;
   const inside = (m: number, a: number, b: number) =>
     m > Math.min(a, b) + 4 && m < Math.max(a, b) - 4;
+  const centerX =
+    mid !== undefined && data?.horizontal && inside(mid, sourceX, targetX) ? mid : undefined;
+  const centerY =
+    mid !== undefined && data?.horizontal === false && inside(mid, sourceY, targetY)
+      ? mid
+      : undefined;
   const [path, labelX, labelY] = getSmoothStepPath({
     sourceX,
     sourceY,
@@ -280,16 +322,24 @@ export function ArchEdgeComponent({
     sourcePosition,
     targetPosition,
     borderRadius: 8,
-    centerX:
-      mid !== undefined && data?.horizontal && inside(mid, sourceX, targetX) ? mid : undefined,
-    centerY:
-      mid !== undefined && data?.horizontal === false && inside(mid, sourceY, targetY)
-        ? mid
-        : undefined,
+    centerX,
+    centerY,
   });
+  // The chip sits where toFlow placed it (`placeChips`: off shared trunks and
+  // clear of boxes), measured along this edge's pieces as they are right now.
+  const sideways = (p: Position) => p === Position.Left || p === Position.Right;
+  const corner = sideways(sourcePosition) && !sideways(targetPosition);
+  const pieces = piecesBetween(sourceX, sourceY, targetX, targetY, {
+    corner,
+    horizontal: sideways(sourcePosition),
+    mid: centerX ?? centerY,
+  });
+  const chipAt = data?.chip ? chipPoint(pieces, data.chip) : undefined;
   const arrow = data?.arrow ?? "->";
-  const payloads = data?.payloadCount ?? 0;
-  const hasLabel = data?.protocol !== undefined || data?.label !== undefined || payloads > 0;
+  const count = data?.indices.length ?? 1;
+  const payloads = count > 1 ? 0 : (data?.payloadCount ?? 0);
+  const hasLabel =
+    count > 1 || data?.protocol !== undefined || data?.label !== undefined || payloads > 0;
   const diff = data?.diff;
   const diffCls = diff ? `arch-edge-diff-${diff}` : "";
   return (
@@ -324,20 +374,28 @@ export function ArchEdgeComponent({
       {hasLabel && (
         <EdgeLabelRenderer>
           <div
-            style={{ transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)` }}
+            style={{
+              transform: `translate(-50%, -50%) translate(${chipAt?.x ?? labelX}px, ${chipAt?.y ?? labelY}px)`,
+            }}
+            title={data?.members?.join("\n")}
             className={cx(
               "arch-edge-chip nodrag nopan pointer-events-auto absolute flex h-[18px] items-center gap-1 rounded-sm border bg-surface px-1.5 text-xs leading-none",
               diff === "added" ? "border-accent" : selected ? "border-accent" : "border-line",
               diffCls,
+              (selected || data?.emphasis === "lit") && "arch-edge-chip-keep",
+              data?.emphasis === "dim" && "dim",
             )}
           >
             {data?.protocol !== undefined && (
               <span className="mono text-ink-2">{data.protocol}</span>
             )}
-            {data?.protocol !== undefined && data?.label !== undefined && (
+            {count > 1 && <span className="text-ink">×{count}</span>}
+            {count === 1 && data?.protocol !== undefined && data?.label !== undefined && (
               <span className="text-ink-3">·</span>
             )}
-            {data?.label !== undefined && <span className="text-ink">{data.label}</span>}
+            {count === 1 && data?.label !== undefined && (
+              <span className="text-ink">{data.label}</span>
+            )}
             {payloads > 0 && (
               <span
                 className="mono text-ink-3"

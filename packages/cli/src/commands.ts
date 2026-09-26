@@ -96,6 +96,7 @@ export async function check(
             valid: r.errors.length === 0,
             errors: r.errors.map(diagnosticView),
             warnings: r.warnings.map(diagnosticView),
+            advice: r.advice,
           })),
         },
         null,
@@ -103,7 +104,11 @@ export async function check(
       ),
     );
   } else {
-    for (const r of results) for (const d of r.diagnostics) console.log(diagnosticLine(r.file, d));
+    for (const r of results) {
+      for (const d of r.diagnostics) console.log(diagnosticLine(r.file, d));
+      // How the diagram will read: never fails the check.
+      for (const a of r.advice) console.log(`${r.file === STDIN ? "<stdin>" : r.file}: advice: ${a}`);
+    }
     const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
     console.error(
       `${errors === 0 ? "ok" : "FAILED"} — ${plural(files.length, "file")}, ${plural(errors, "error")}, ${plural(warnings, "warning")}`,

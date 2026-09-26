@@ -253,6 +253,12 @@ Things to ask your agent:
 - **Your layout survives.** Agents send the architecture without the
   `layout` block. Components you've placed keep their positions, and only new
   ones are placed automatically.
+- **Big documents open as an overview.** A container the server lays out for
+  the first time starts collapsed when its level would show more than 16
+  boxes, and everything between a collapsed container and another box is
+  drawn as one edge. Agents also get `advice` on how the diagram will read (a
+  crowded level, a code library drawn as a hub) with every save, and are told
+  to act on it.
 - **Every save is reviewable.** Each agent save is its own revision, with its
   author, time, summary and a count of what changed.
 

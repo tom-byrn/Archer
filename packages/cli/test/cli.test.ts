@@ -75,6 +75,15 @@ describe("check", () => {
     expect(r.out).toContain("warning W301");
   });
 
+  it("gives advice on how the diagram will read, without failing", () => {
+    const crowded = Array.from({ length: 14 }, (_, i) => `component c${i}\n`).join("");
+    write("big.arch", `arch "Big" v0.1\n${crowded}`);
+    const r = archer(["check", "big.arch"]);
+    expect(r.code).toBe(0);
+    expect(r.out).toContain("big.arch: advice: The top level has 14 components.");
+    expect(JSON.parse(archer(["check", "--json"]).out).files[0].advice).toHaveLength(1);
+  });
+
   it("reads stdin and treats usage problems as exit 2", () => {
     expect(archer(["check", "-"], BAD).out).toContain("<stdin>:3:1");
     expect(archer(["check", "missing.arch"]).code).toBe(2);

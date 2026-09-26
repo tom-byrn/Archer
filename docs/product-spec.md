@@ -83,6 +83,13 @@ agent** (canonical code, layout stripped, spec header prepended) and **Export PN
   grow nudges aside what it would overlap. The result is persisted. "Re-layout"
   re-runs it on the selection, the current level, or the whole document, keeping
   collapsed containers collapsed.
+- One level at a time: a view (the top level, or a collapsed container's inside)
+  opens with at most 16 boxes. Containers laid out for the first time open smallest
+  first while they fit and start collapsed otherwise, so a big document an agent
+  wrote opens as an overview. A collapsed container draws everything between it and
+  another box as one edge with a count (click it to list them); inside a container,
+  what's outside it and connects in is drawn beside the view, dashed, and a
+  double-click goes to it. Zoomed far out, edge labels hide until hovered.
 - Selection: click, shift/⌘-click to add or remove, shift-drag on empty canvas to
   box-select, ⌘A for the current level. Dragging any selected component moves them
   all (one undo step); arrow keys nudge by a grid cell (shift: four).

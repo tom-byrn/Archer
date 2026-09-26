@@ -303,9 +303,11 @@ api -> payments @http
         "E101 [error] line 4: Connection target 'payments' does not resolve to a declared component.",
       ],
       warnings: [],
+      advice: [],
     },
     notes: [
       "The same checks as the write gate on `create_project` and `update_project`: a source that validates clean will save. Only errors make `valid` false.",
+      "`advice` is about how the diagram will read, never about validity: a level with more than a dozen components directly in it, a code library drawn as a hub that everything connects to, labels that are sentences. The writes return it too.",
     ],
   },
   format_source: {
@@ -483,9 +485,11 @@ api -> db @sql
       title: "Link Shortener",
       editor_url: `${APP}/documents/k1792cxn5wm0fq8hq6dhz4v3sr7b2eay`,
       warnings: [],
+      advice: [],
     },
     notes: [
       "The title comes from the `arch` header. The document is saved canonical and laid out. Without a `summary` the revision reads \"Created the project\".",
+      "A big document opens as an overview: containers laid out for the first time start collapsed when their level would show more than 16 boxes, and connections into a collapsed container are drawn as one edge per pair of boxes. `advice` says what would still read badly (see `validate_source`).",
       "A document with errors saves nothing. The error result lists them: `{ \"message\": \"REJECTED — fix these errors and retry.\", \"errors\": [\"E101 [error] line 3: …\"], \"warnings\": [] }`.",
     ],
   },
@@ -499,6 +503,7 @@ api -> db @sql
       attributed_to: "Claude Code",
       editor_url: EDITOR_URL,
       warnings: [],
+      advice: [],
     },
     notes: [
       "The source replaces the whole document, so start from what `get_project` returned. Rejected writes return the same error result as `create_project` and save nothing.",

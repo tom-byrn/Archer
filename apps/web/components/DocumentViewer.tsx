@@ -2,7 +2,14 @@
 
 import { useCallback, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { compileForAgent, componentPaths, findComponent, format } from "@archer/lang";
+import {
+  compileForAgent,
+  componentPaths,
+  effectiveDisplay,
+  findComponent,
+  format,
+  layoutMap,
+} from "@archer/lang";
 import { lookupType } from "@archer/catalog";
 import { archLanguage } from "@/lib/archLanguage";
 import type { RepoLink } from "@/lib/github";
@@ -83,6 +90,19 @@ export function DocumentViewer({
           setFocus(path.split("."));
           setSelected(null);
         }
+      },
+      onGoTo: (path) => {
+        // The level it's drawn on: inside its deepest collapsed ancestor.
+        const segs = path.split(".");
+        const layout = layoutMap(derived.laidOut);
+        let inside: string[] = [];
+        for (let i = 1; i < segs.length; i++) {
+          const anc = findComponent(derived.doc, segs.slice(0, i));
+          if (anc && effectiveDisplay(anc, layout.get(segs.slice(0, i).join("."))) === "icon")
+            inside = segs.slice(0, i);
+        }
+        setFocus(inside);
+        setSelected(path);
       },
       onSelectNode: (path) => setSelected(path),
       onSelectEdge: () => setSelected(null),

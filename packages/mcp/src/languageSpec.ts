@@ -247,6 +247,17 @@ layout {
   with no layout entry — e.g. in a file an agent wrote or that was pasted in — is
   positioned by the auto-layout engine on load, and its computed position is then
   written back.
+- **New containers open or collapse by themselves.** A container with neither a
+  position nor a \`display\` yet gets one from the auto-layout engine. Each view — the
+  top level, or the inside of a collapsed container — shows at most 16 boxes: new
+  containers open as planes, smallest first, while their view stays within that, and
+  the rest start as icons. A document that fits shows everything; a big one opens as
+  an overview, one double-click from each part. A container that has a position or a
+  display keeps it.
+- **Connections follow what's drawn.** A connection to a component inside a collapsed
+  container is drawn to the container, and everything between the same two boxes is
+  drawn as one edge with a count. Inside a container, whatever outside it connects in
+  is drawn beside the view.
 - Layout is always optional, never load-bearing: deleting the entire block yields the
   same architecture, auto-laid-out.
 - Agent guidance (stated in docs and in the export header): ignore \`layout\` when
