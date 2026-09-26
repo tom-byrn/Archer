@@ -38,6 +38,7 @@ import { githubTreeUrl } from "@/lib/githubApi";
 import type { RepoLink } from "@/lib/github";
 import { displayColor, useIsDark } from "@/lib/useIsDark";
 import { CodeEditor } from "./CodeMirror";
+import { Markdown, MarkdownTable, parseTable } from "./Markdown";
 import { Glyph, GlyphSwatch } from "./nodes";
 import { ShapeIcon, ShapePicker } from "./ShapePicker";
 import { TypeCombobox } from "./TypeCombobox";
@@ -300,23 +301,32 @@ function ReadRow({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
+/**
+ * A payload to read. Markdown and tables show rendered; json, yaml and a
+ * table that doesn't pass its check show their source.
+ */
 function PayloadReadout({ payload }: { payload: PayloadNode }) {
-  // Markdown is prose: wrap it to the panel instead of scrolling sideways.
-  const extensions = useMemo(
+  const { format, content } = payload;
+  const table = useMemo(
     () =>
-      payload.format === "markdown"
-        ? [langFor(payload.format), EditorView.lineWrapping]
-        : langFor(payload.format),
-    [payload.format],
+      format === "table" && checkPayload(format, content) === null ? parseTable(content) : null,
+    [format, content],
   );
+  const extensions = useMemo(() => langFor(format), [format]);
   return (
     <div className="mt-2 overflow-hidden rounded-md border border-line first:mt-0">
       <div className="flex h-7 items-center gap-1.5 border-b border-line bg-surface-2 pl-2.5 pr-1.5">
         <span className="mono min-w-0 flex-1 truncate text-sm font-semibold">{payload.name}</span>
-        <Chip>{payload.format}</Chip>
+        <Chip>{format}</Chip>
       </div>
-      <div style={{ maxHeight: 280, overflow: "auto" }}>
-        <CodeEditor value={payload.content} readOnly lineNumbers={false} extensions={extensions} />
+      <div className="bg-[var(--code-bg)]" style={{ maxHeight: 280, overflow: "auto" }}>
+        {format === "markdown" ? (
+          <Markdown source={content} />
+        ) : table ? (
+          <MarkdownTable token={table} />
+        ) : (
+          <CodeEditor value={content} readOnly lineNumbers={false} extensions={extensions} />
+        )}
       </div>
     </div>
   );

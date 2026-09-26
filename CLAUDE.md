@@ -187,8 +187,10 @@ Router + React Flow + Convex).
   GitHub's own mark on purpose); component glyphs are Phosphor paths
   generated into `packages/catalog/src/glyphs.ts` by `scripts/glyphs.ts`
   (strings, so `lib/svg.ts` and the OG image can draw them). Code editing
-  goes through `components/CodeMirror.tsx`. React Flow chrome lives in
-  `components/canvas.css`.
+  goes through `components/CodeMirror.tsx`. Markdown people wrote (markdown
+  and table payloads, read-only) renders through `components/Markdown.tsx`:
+  marked's tokens straight to React, never an HTML string. React Flow chrome
+  lives in `components/canvas.css`.
 - Language/product specs live in `docs/`; keep `docs/language-spec.md` in
   sync with `packages/*/src/languageSpec.ts` copies when the grammar changes.
 - Auto-layout: `autoLayout` (`packages/lang/src/layout.ts`) arranges a doc

@@ -20,7 +20,7 @@ component web "Web App" @vercel.nextjs {
     desc "Searchable curated catalog + this workspace's custom types; drag or click to place."
   }
   component detail "Detail Panel" {
-    desc "Opens read-only on the selection: a component's type, description, source and payloads, or a connection's ends, direction, type and label. Edit switches to the form: per-component name/id/type/description and payload editors with live format validation; per-connection direction/type/label."
+    desc "Opens read-only on the selection: a component's type, description, source and payloads (markdown and tables rendered), or a connection's ends, direction, type and label. Edit switches to the form: per-component name/id/type/description and payload editors with live format validation; per-connection direction/type/label."
   }
   component code_view "Code Pane" {
     desc "The raw .arch text with syntax highlighting, collapsible, editable in both directions, with diagnostics (code + line number)."
