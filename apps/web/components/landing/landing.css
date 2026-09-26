@@ -26,7 +26,7 @@
   background: linear-gradient(
     180deg,
     var(--landing-fade) 0%,
-    color-mix(in srgb, var(--landing-fade) 30%, var(--landing-bg))
+    color-mix(in srgb, var(--landing-fade) 45%, var(--landing-bg))
       calc(var(--dither-length) * 0.53),
     var(--landing-bg) var(--dither-length)
   );

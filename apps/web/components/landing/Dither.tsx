@@ -90,7 +90,7 @@ export function DitherBackdrop() {
 
 const UNIFORMS = {
   // Size of one dither cell, in CSS pixels.
-  u_pxSize: 2,
+  u_pxSize: 4,
 };
 
 const FRAGMENT_SHADER = `#version 300 es
@@ -120,7 +120,7 @@ void main() {
   // pushed further down toward the sides so the fade's edge arcs slightly.
   float x = 2. * uv.x - 1.;
   float down = 1. - uv.y + u_curve * x * x;
-  float shade = pow(clamp(1. - down / u_fadeLength, 0., 1.), 1.6);
+  float shade = pow(clamp(1. - down / u_fadeLength, 0., 1.), 1.1);
 
   ivec2 p = ivec2(mod(cell, 4.));
   float threshold = (float(bayer4x4[p.y * 4 + p.x]) + .5) / 16.;
