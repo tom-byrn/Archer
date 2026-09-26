@@ -422,8 +422,8 @@ export function ArchEdgeComponent({
   const payloads = data?.payloadCount ?? 0;
   const hasLabel = data?.protocol !== undefined || data?.label !== undefined || payloads > 0;
   // The chip stays hidden (and out of the pointer's way) until the edge, or a
-  // component it connects, is hovered, or the edge is selected.
-  const showLabel = selected || data?.lit === true;
+  // component it connects, is hovered or selected.
+  const showLabel = selected || data?.endSelected === true || data?.lit === true;
   const diff = data?.diff;
   const diffCls = diff ? `arch-edge-diff-${diff}` : "";
   return (

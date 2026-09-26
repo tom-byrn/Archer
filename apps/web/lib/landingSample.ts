@@ -1,10 +1,14 @@
 /** The document the landing-page sandbox starts from: small enough to read at a glance. */
 const BODY = `arch "Acme" v0.1
 
-component web "Web app" @vercel.nextjs
+component web "Web app" @vercel.nextjs {
+  shape browser
+}
 component api "API" @vercel.functions
 component auth "Auth" @clerk
-component db "Postgres" @supabase.postgres
+component db "Postgres" @supabase.postgres {
+  shape cylinder
+}
 component billing "Billing" @stripe
 
 web -> api @http
