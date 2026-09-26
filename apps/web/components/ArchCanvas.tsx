@@ -303,7 +303,8 @@ function CanvasInner({
     return () => clearTimeout(t);
   }, [reveal, initialized, getNodes, fitView, onRevealed]);
 
-  // Hover dimming: everything not connected to the hovered node/edge fades.
+  // Hover highlighting: the hovered node/edge and what it connects stay lit
+  // (lit edges show their label chips); everything else fades.
   const lit = useMemo(() => {
     if (hover === null || busy) return null;
     const litNodes = new Set<string>();
@@ -359,10 +360,14 @@ function CanvasInner({
   );
   const styledEdges = useMemo(
     () =>
-      edges.map((e) => ({
-        ...e,
-        className: joinCls(lit !== null && !lit.edges.has(e.id) && "dim"),
-      })),
+      edges.map((e) => {
+        const on = lit === null ? undefined : lit.edges.has(e.id);
+        return {
+          ...e,
+          ...(e.data && on !== e.data.lit ? { data: { ...e.data, lit: on } } : {}),
+          className: joinCls(on === false && "dim"),
+        };
+      }),
     [edges, lit],
   );
 

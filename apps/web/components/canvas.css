@@ -199,10 +199,23 @@
 .react-flow__edge.selected .arch-edge-arrow {
   fill: var(--accent);
 }
+/* Label chips show only while their edge is hovered or selected. Hidden ones
+   take no pointer events; visibility waits out the fade before switching off.
+   React Flow paints nodes, and edges that touch nested nodes, over its label
+   layer (selected nodes 1000 higher still), so chips go on top of it all. */
 .arch-edge-chip {
+  z-index: 2000;
+  opacity: 0;
+  visibility: hidden;
   transition:
     border-color 120ms ease,
-    opacity 120ms ease;
+    opacity 120ms ease,
+    visibility 120ms;
+}
+.arch-edge-chip.arch-edge-chip-shown {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
 }
 .react-flow__edge .arch-edge-path.arch-edge-diff-added {
   stroke: var(--accent);
@@ -242,7 +255,7 @@
 /* ---- Hover dimming ---- */
 .react-flow__node.dim,
 .react-flow__edge.dim,
-.react-flow__edge.dim .arch-edge-chip {
+.arch-edge-chip.dim {
   opacity: 0.6;
 }
 .react-flow__node,

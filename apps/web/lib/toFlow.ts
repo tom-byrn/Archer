@@ -88,6 +88,12 @@ export interface ArchEdgeData extends Record<string, unknown> {
   /** Where the middle segment runs (`routeEdge`): x for left/right routes, y for top/bottom. */
   mid?: number;
   horizontal?: boolean;
+  /**
+   * Hover highlighting, set by the canvas: true while the pointer is over the
+   * edge or a component it connects (its label chip shows), false while it's
+   * over something else (the edge fades), unset otherwise.
+   */
+  lit?: boolean;
 }
 
 export type ArchEdge = Edge<ArchEdgeData>;
