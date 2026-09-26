@@ -290,6 +290,8 @@ export function ArchEdgeComponent({
   const arrow = data?.arrow ?? "->";
   const payloads = data?.payloadCount ?? 0;
   const hasLabel = data?.protocol !== undefined || data?.label !== undefined || payloads > 0;
+  // The chip stays hidden (and out of the pointer's way) until the edge is hovered or selected.
+  const showLabel = selected || data?.hovered === true;
   const diff = data?.diff;
   const diffCls = diff ? `arch-edge-diff-${diff}` : "";
   return (
@@ -326,7 +328,8 @@ export function ArchEdgeComponent({
           <div
             style={{ transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)` }}
             className={cx(
-              "arch-edge-chip nodrag nopan pointer-events-auto absolute flex h-[18px] items-center gap-1 rounded-sm border bg-surface px-1.5 text-xs leading-none",
+              "arch-edge-chip nodrag nopan absolute flex h-[18px] items-center gap-1 rounded-sm border bg-surface px-1.5 text-xs leading-none",
+              showLabel && "arch-edge-chip-shown",
               diff === "added" ? "border-accent" : selected ? "border-accent" : "border-line",
               diffCls,
             )}

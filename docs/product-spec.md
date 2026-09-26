@@ -59,8 +59,9 @@ agent** (canonical code, layout stripped, spec header prepended) and **Export PN
 ## Key screens & components
 
 1. **Canvas** — React Flow: custom node types (generic box/circle, typed icon node,
-   plane/group node with icon badge in top-left), custom edge with type chip + label,
-   grid snap, pan/zoom, drill-in navigation (breadcrumb trail when inside a plane).
+   plane/group node with icon badge in top-left), custom edge with type chip + label
+   (shown while the edge is hovered or selected), grid snap, pan/zoom, drill-in
+   navigation (breadcrumb trail when inside a plane).
 2. **Palette** — curated catalog grouped by namespace (AWS, Vercel, databases, …),
    search, plus "My components"; drag-to-place.
 3. **Detail panel** (right side) — display name, id (read-only), type picker,

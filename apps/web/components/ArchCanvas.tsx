@@ -355,13 +355,19 @@ function CanvasInner({
       }),
     [nodes, lit, selectedPath, soleSelected],
   );
+  // An edge's label chip only shows while it's hovered or selected.
+  const hoveredEdge = hover?.kind === "edge" && !busy ? hover.id : null;
   const styledEdges = useMemo(
     () =>
-      edges.map((e) => ({
-        ...e,
-        className: joinCls(lit !== null && !lit.edges.has(e.id) && "dim"),
-      })),
-    [edges, lit],
+      edges.map((e) => {
+        const hovered = e.id === hoveredEdge;
+        return {
+          ...e,
+          ...(e.data && hovered !== !!e.data.hovered ? { data: { ...e.data, hovered } } : {}),
+          className: joinCls(lit !== null && !lit.edges.has(e.id) && "dim"),
+        };
+      }),
+    [edges, lit, hoveredEdge],
   );
 
   /** Report where dragged nodes landed: absolute position in this view, center, and grid size. */

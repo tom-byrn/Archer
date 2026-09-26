@@ -84,6 +84,8 @@ export interface ArchEdgeData extends Record<string, unknown> {
   /** Where the middle segment runs (`routeEdge`): x for left/right routes, y for top/bottom. */
   mid?: number;
   horizontal?: boolean;
+  /** The pointer is over it, which shows its label chip (set by the canvas). */
+  hovered?: boolean;
 }
 
 export type ArchEdge = Edge<ArchEdgeData>;
