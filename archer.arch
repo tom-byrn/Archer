@@ -170,7 +170,7 @@ component mcp "MCP Server" @mcp {
   shape hexagon
   desc "@archer/mcp: human-parity access for agents, served by the web app at /mcp. Writes are validation-gated (errors reject with diagnostics and nothing is saved) and layout-preserving (components keep their canvas positions); every save is a revision attributed to the client's name. Resources: archer://guide and archer://examples/<slug>."
   src "packages/mcp"
-  component remote "Remote Handler" {
+  component remote "HTTP Handler" {
     desc "handleRemoteRequest: a fresh McpServer and Streamable HTTP transport for every request, stateless with JSON responses, the verified user and client name passed in authInfo. It lives here so the web app never imports the MCP SDK: two copies, one per zod peer, don't interoperate."
     src "packages/mcp/src/remote.ts"
   }
@@ -191,7 +191,7 @@ component mcp "MCP Server" @mcp {
     | workspaces       | get_workspace_info, list_workspaces, use_workspace                         |
     ```
   }
-  component backend "Convex Access" {
+  component backend "Backend" {
     desc "Calls apps/web/convex as the user with the service credential. prepareWrite validates, carries stored positions over to the components that survive, auto-lays out the rest and formats canonically."
     src "packages/mcp/src/backend.ts"
   }
