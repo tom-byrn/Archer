@@ -11,11 +11,11 @@ import { Button, Chip, Icon, SwapIcon, cx } from "./ui";
 import {
   archLanguage,
   archerLinter,
-  componentAtPath,
-  componentPathAtOffset,
+  itemAtPath,
+  itemPathAtOffset,
 } from "@/lib/archLanguage";
 
-/* ---------------------------------------------- selected-component highlight */
+/* ------------------------------------------------- selected-item highlight */
 
 const setSelectedLines = StateEffect.define<{ from: number; to: number } | null>();
 
@@ -108,8 +108,8 @@ export function CodePane({
     view.dispatch(setDiagnostics(view.state, archerLinter(diagnostics, view.state.doc)));
   }, [diagnostics, open]);
 
-  // Canvas → code: highlight the selected component's lines and scroll to it,
-  // unless this selection originated from the editor's own cursor.
+  // Canvas → code: highlight the selected component's or plane's lines and
+  // scroll to it, unless this selection originated from the editor's own cursor.
   useEffect(() => {
     const view = viewRef.current;
     if (!view || !open) return;
@@ -118,7 +118,7 @@ export function CodePane({
       view.dispatch({ effects: setSelectedLines.of(null) });
       return;
     }
-    const node = componentAtPath(doc, selectedPath);
+    const node = itemAtPath(doc, selectedPath);
     if (!node) {
       view.dispatch({ effects: setSelectedLines.of(null) });
       return;
@@ -143,8 +143,8 @@ export function CodePane({
     view.dispatch(setDiagnostics(view.state, archerLinter(diagnosticsRef.current, view.state.doc)));
   }, []);
 
-  // Code → canvas: cursor moved by the user into a component. Registered as
-  // an extension so we see the real ViewUpdate (user-event flags).
+  // Code → canvas: cursor moved by the user into a component or plane.
+  // Registered as an extension so we see the real ViewUpdate (user-event flags).
   const selectionListener = useMemo(
     () =>
       EditorView.updateListener.of((u) => {
@@ -154,7 +154,7 @@ export function CodePane({
         );
         if (!userDriven) return;
         const offset = u.state.selection.main.head;
-        const path = componentPathAtOffset(docRef.current, offset);
+        const path = itemPathAtOffset(docRef.current, offset);
         if (path === null || path === selectedPathRef.current) return;
         lastEmittedPath.current = path;
         onSelectPathRef.current(path);

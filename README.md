@@ -20,7 +20,8 @@ not systems. An Archer document is a semantic model:
   validator rejects them with `E101`), ids must resolve, payloads must parse.
 - **Deep** — a Postgres node carries its actual schema as a validated
   `json`/`yaml`/`table` payload, and a queue edge carries its message schema
-  the same way; components nest like JSON.
+  the same way; components nest like JSON, and planes group them on the
+  canvas.
 - **Round-trip** — canvas ↔ text with zero loss. Layout lives in a quarantined
   machine-managed `layout` block that agents never see or write.
 - **Agent-first** — "Copy for agent" emits the canonical document, layout
@@ -28,19 +29,25 @@ not systems. An Archer document is a semantic model:
   and say "build this".
 
 ````
-arch "Acme SaaS" v0.1
+arch "Acme SaaS" v0.2
 
-component backend "Backend" @vercel {
-  component api "API" @vercel.functions
+component web "Web App" @vercel.nextjs
+
+plane backend "Backend" @vercel {
+  component api "API" @vercel.functions {
+    component checkout "Checkout"
+    component projects "Projects"
+  }
   component db "Postgres" @supabase.postgres {
+    shape cylinder
     schema json ```
     { "users": { "id": "uuid pk", "email": "text unique" } }
     ```
   }
 }
 
-web -> backend.api @http
-backend.api -> backend.db @sql
+api.projects -> db @sql
+web -> api @http
 ````
 
 ## Monorepo
@@ -92,13 +99,13 @@ commands for the deployment you're on.
 
 ## Status
 
-v1.1 — the full core loop works: design on the canvas (drag, connect,
-nest/drill down, detail panels with validated payloads), watch the `.arch`
-file update live, copy code + PNG for an agent — and agents get the same
-powers over MCP (validated writes, layout-preserving updates, custom types).
-A document can also be stored in a `.arch` file in its GitHub repository:
-agents edit the file alongside the code, the canvas follows the branch, and
-edits made on the canvas are published back as pull requests
+v1.1 — the full core loop works: design on the canvas (drag, connect, group
+on planes, nest and open components, detail panels with validated payloads),
+watch the `.arch` file update live, copy code + PNG for an agent — and agents
+get the same powers over MCP (validated writes, layout-preserving updates,
+custom types). A document can also be stored in a `.arch` file in its GitHub
+repository: agents edit the file alongside the code, the canvas follows the
+branch, and edits made on the canvas are published back as pull requests
 ([repo sync](docs/repo-sync.md)).
 Next: real auth, sharing, per-technology payload validation (SQL linting
 etc.), multi-file documents.

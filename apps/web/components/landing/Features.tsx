@@ -120,11 +120,18 @@ function Palette() {
   );
 }
 
-function MiniNode({ tag, label }: { tag: string; label: string }) {
+/** A component as the canvas draws it; `nested` is the count badge of a component with parts. */
+function MiniNode({ tag, label, nested }: { tag: string; label: string; nested?: number }) {
   return (
     <div className="flex h-12 items-center gap-2 rounded-md border border-line-2 bg-surface px-2">
       <TypeTile tag={tag} size="sm" />
       <span className="truncate text-sm font-semibold text-ink">{label}</span>
+      {nested !== undefined && (
+        <span className="mono ml-auto flex shrink-0 items-center gap-1 rounded-sm bg-surface-3 px-1 text-xs text-ink-2">
+          <Icon.Nested className="size-3" />
+          {nested}
+        </span>
+      )}
     </div>
   );
 }
@@ -132,9 +139,6 @@ function MiniNode({ tag, label }: { tag: string; label: string }) {
 function Nesting() {
   return (
     <div>
-      <p className="mono pb-2 text-xs text-ink-3">
-        Acme <span className="px-1">/</span> <span className="text-ink-2">Private network</span>
-      </p>
       <div className="rounded-lg border border-line-2 bg-surface-2">
         <div className="flex h-8 items-center gap-2 border-b border-line px-2.5">
           <svg
@@ -148,7 +152,7 @@ function Nesting() {
           <span className="mono text-xs text-ink-3">aws.vpc</span>
         </div>
         <div className="grid grid-cols-2 gap-2.5 p-3">
-          <MiniNode tag="aws.lambda" label="Jobs" />
+          <MiniNode tag="kubernetes" label="Services" nested={6} />
           <MiniNode tag="aws.rds" label="Orders DB" />
         </div>
       </div>
@@ -301,9 +305,9 @@ export function Features() {
           each with its own glyph. Missing one? Add a custom type and it shows up in
           everyone&apos;s palette.
         </Tile>
-        <Tile title="Nest and drill in" visual={<Nesting />}>
-          Put services inside a VPC, a cluster or a team boundary. Double-click to drill in;
-          breadcrumbs lead back out.
+        <Tile title="Planes and nesting" visual={<Nesting />}>
+          Lay components out on planes, like a frontend and a backend or a VPC. Any component can
+          hold its own parts: double-click to open it, and breadcrumbs lead back out.
         </Tile>
         <Tile title="History with real diffs" visual={<History />}>
           Every revision is kept, human or agent. Diffs list what was added, removed or changed.

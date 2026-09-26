@@ -26,7 +26,7 @@ const archer = (args: string[], input?: string) => {
 const write = (name: string, text: string) => writeFileSync(join(dir, name), text);
 const read = (name: string) => readFileSync(join(dir, name), "utf8");
 
-const BAD = `arch "Bad" v0.1
+const BAD = `arch "Bad" v0.2
 component a "A"
 component a "Dup"
 a -> ghost @http
@@ -35,7 +35,7 @@ a -> ghost @http
 describe("init", () => {
   it("writes a starter that is valid and already canonical", () => {
     expect(archer(["init", "--title", "My Shop"]).code).toBe(0);
-    expect(read("architecture.arch")).toContain('arch "My Shop" v0.1');
+    expect(read("architecture.arch")).toContain('arch "My Shop" v0.2');
     expect(archer(["check"]).code).toBe(0);
     expect(archer(["fmt", "--check"]).code).toBe(0);
   });
@@ -69,7 +69,7 @@ describe("check", () => {
   });
 
   it("unknown types only warn, so offline checks still pass", () => {
-    write("ok.arch", 'arch "T" v0.1\ncomponent a "A" @my.custom\n');
+    write("ok.arch", 'arch "T" v0.2\ncomponent a "A" @my.custom\n');
     const r = archer(["check", "--offline"]);
     expect(r.code).toBe(0);
     expect(r.out).toContain("warning W301");
@@ -85,28 +85,28 @@ describe("check", () => {
 
 describe("fmt", () => {
   it("formats in place; --check only reports", () => {
-    write("a.arch", 'arch "T" v0.1\ncomponent   x   "X"\n');
+    write("a.arch", 'arch "T" v0.2\ncomponent   x   "X"\n');
     expect(archer(["fmt", "--check"]).code).toBe(1);
     expect(archer(["fmt"]).code).toBe(0);
-    expect(read("a.arch")).toBe('arch "T" v0.1\n\ncomponent x "X"\n');
+    expect(read("a.arch")).toBe('arch "T" v0.2\n\ncomponent x "X"\n');
     expect(archer(["fmt", "--check"]).code).toBe(0);
   });
 
   it("won't silently delete comments, but a # inside a string is not a comment", () => {
-    const commented = 'arch "T" v0.1\n# keep me\ncomponent   x "X"\n';
+    const commented = 'arch "T" v0.2\n# keep me\ncomponent   x "X"\n';
     write("a.arch", commented);
     expect(archer(["fmt"]).code).toBe(1);
     expect(read("a.arch")).toBe(commented);
     expect(archer(["fmt", "--drop-comments"]).code).toBe(0);
     expect(read("a.arch")).not.toContain("keep me");
 
-    write("b.arch", 'arch "T" v0.1\ncomponent   x "Issue #1"\n');
+    write("b.arch", 'arch "T" v0.2\ncomponent   x "Issue #1"\n');
     expect(archer(["fmt", "b.arch"]).code).toBe(0);
     expect(read("b.arch")).toContain('"Issue #1"');
   });
 
   it("refuses files that don't parse", () => {
-    write("a.arch", 'arch "T" v0.1\ncomponent {{{\n');
+    write("a.arch", 'arch "T" v0.2\ncomponent {{{\n');
     expect(archer(["fmt"]).code).toBe(1);
     expect(read("a.arch")).toContain("{{{");
   });
@@ -114,7 +114,7 @@ describe("fmt", () => {
 
 describe("workspace commands", () => {
   it("say how to sign in instead of failing obscurely", () => {
-    write("a.arch", 'arch "T" v0.1\n');
+    write("a.arch", 'arch "T" v0.2\n');
     for (const args of [["push", "a.arch"], ["list"], ["workspace"], ["pull", "a.arch", "--project", "x"]]) {
       const r = archer(args);
       expect(r.code).toBe(2);

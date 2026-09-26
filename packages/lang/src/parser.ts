@@ -70,7 +70,7 @@ export function parse(source: string): ParseResult {
     try {
       next();
       doc.title = expect("string", "a quoted document title").value;
-      doc.version = expect("version", "a spec version like v0.1").value;
+      doc.version = expect("version", "a spec version like v0.2").value;
       const major = doc.version.split(".")[0];
       if (major !== CURRENT_VERSION.split(".")[0]) {
         diagnostics.push({
@@ -87,7 +87,7 @@ export function parse(source: string): ParseResult {
     diagnostics.push({
       code: "E001",
       severity: "error",
-      message: 'Missing header: a document must start with `arch "Title" v0.1`.',
+      message: 'Missing header: a document must start with `arch "Title" v0.2`.',
       span: peek().span,
     });
   }

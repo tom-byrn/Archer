@@ -32,7 +32,7 @@ import {
   relativeTime,
 } from "@/components/ui";
 
-const BLANK = 'arch "Untitled" v0.1\n';
+const BLANK = 'arch "Untitled" v0.2\n';
 
 interface DocRow {
   _id: Id<"documents">;

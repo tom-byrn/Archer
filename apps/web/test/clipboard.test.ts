@@ -39,3 +39,42 @@ describe("fragmentSize", () => {
     expect(fragmentSize(parse(DOC).doc)).toEqual([10, 3]);
   });
 });
+
+describe("planes on the clipboard", () => {
+  const PLANES = `arch "Shop" v0.2
+
+plane backend "Backend" {
+  component api "API"
+  component db "DB" @postgres
+}
+
+component web "Web"
+
+api -> db @sql
+web -> api @http
+
+layout {
+  api: { at: [1, 2], size: [4, 3] }
+  backend: { at: [6, 0], size: [12, 6] }
+  db: { at: [7, 2], size: [4, 3] }
+  web: { at: [0, 0], size: [4, 3] }
+}
+`;
+
+  it("copies a plane with what's on it, and reads it back", () => {
+    const text = format(extractFragment(parse(PLANES).doc, [["backend"]]));
+    const fragment = parseFragment(text);
+    expect(fragment?.planes.map((p) => p.id)).toEqual(["backend"]);
+    expect(fragment?.components.map((c) => [c.id, c.plane])).toEqual([
+      ["api", "backend"],
+      ["db", "backend"],
+    ]);
+    expect(fragment?.connections).toHaveLength(1);
+  });
+
+  it("accepts a lone plane, and measures planes as the top-level items they are", () => {
+    const fragment = parseFragment('plane lane "Lane"');
+    expect(fragment?.planes.map((p) => p.id)).toEqual(["lane"]);
+    expect(fragmentSize(parse(PLANES).doc)).toEqual([18, 6]);
+  });
+});

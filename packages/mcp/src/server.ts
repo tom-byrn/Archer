@@ -129,7 +129,7 @@ const describeSummary = (s: DiffSummary): string => {
   if (s.removed) parts.push(`−${s.removed} removed`);
   if (s.changed) parts.push(`~${s.changed} changed`);
   if (s.planesAdded) parts.push(`+${s.planesAdded} plane${s.planesAdded === 1 ? "" : "s"}`);
-  if (s.planesRemoved) parts.push(`−${s.planesRemoved} plane${s.planesRemoved === 1 ? "" : "s"} removed`);
+  if (s.planesRemoved) parts.push(`−${s.planesRemoved} plane${s.planesRemoved === 1 ? "" : "s"}`);
   if (s.planesChanged) parts.push(`~${s.planesChanged} plane${s.planesChanged === 1 ? "" : "s"} changed`);
   if (s.connectionsAdded) parts.push(`+${s.connectionsAdded} connection${s.connectionsAdded === 1 ? "" : "s"}`);
   if (s.connectionsRemoved) parts.push(`−${s.connectionsRemoved} connection${s.connectionsRemoved === 1 ? "" : "s"}`);

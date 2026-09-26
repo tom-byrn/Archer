@@ -1,6 +1,7 @@
 /**
  * CodeMirror language support for `.arch` source, plus helpers that map
- * Archer diagnostics / component spans onto editor positions.
+ * Archer diagnostics and the spans of components and planes onto editor
+ * positions.
  *
  * The tokenizer is shared with `lib/highlightArch.ts` (static code blocks).
  */
@@ -13,7 +14,7 @@ import {
 } from "@codemirror/language";
 import type { Diagnostic as CmDiagnostic } from "@codemirror/lint";
 import type { Text } from "@codemirror/state";
-import type { ArchDoc, ComponentNode, Diagnostic } from "@archer/lang";
+import { findItem, type ArchDoc, type Diagnostic, type ItemNode, type Scope } from "@archer/lang";
 
 interface ArchState {
   /** Inside a backtick fence of this length (0 = not in a fence). */
@@ -22,7 +23,7 @@ interface ArchState {
   triple: boolean;
 }
 
-const KEYWORDS = new Set(["arch", "component", "desc", "src", "shape", "layout"]);
+const KEYWORDS = new Set(["arch", "component", "plane", "desc", "src", "shape", "layout"]);
 const TYPE_RE = /^@[a-z][a-z0-9_]*(?:\.[a-z][a-z0-9_]*)*/;
 const ARROW_RE = /^(?:<->|->|--)/;
 const VERSION_RE = /^v\d+\.\d+\b/;
@@ -177,32 +178,31 @@ export function archerLinter(diagnostics: Diagnostic[], doc: Text): CmDiagnostic
 
 /* --------------------------------------------------------------- spans */
 
-/** Find a component by dotted path. */
-export function componentAtPath(doc: ArchDoc, path: string): ComponentNode | undefined {
-  const segs = path.split(".");
-  let items = doc.components;
-  let node: ComponentNode | undefined;
-  for (const seg of segs) {
-    node = items.find((c) => c.id === seg);
-    if (!node) return undefined;
-    items = node.children;
-  }
-  return node;
-}
+/** Find a component or plane by dotted path. */
+export const itemAtPath = (doc: ArchDoc, path: string): ItemNode | undefined =>
+  findItem(doc, path.split("."));
 
-/** Dotted path of the deepest component whose span contains `offset`. */
-export function componentPathAtOffset(doc: ArchDoc, offset: number): string | null {
+/**
+ * Dotted path of the innermost component or plane whose span contains
+ * `offset`: a component on a plane wins over the plane, a plane inside a
+ * plane over the outer one.
+ */
+export function itemPathAtOffset(doc: ArchDoc, offset: number): string | null {
+  const within = (x: ItemNode) => offset >= x.span.start.offset && offset <= x.span.end.offset;
+  const size = (x: ItemNode) => x.span.end.offset - x.span.start.offset;
   let best: string | null = null;
-  const walk = (items: ComponentNode[], prefix: string) => {
-    for (const c of items) {
-      const { start, end } = c.span;
-      if (offset >= start.offset && offset <= end.offset) {
-        best = prefix === "" ? c.id : `${prefix}.${c.id}`;
-        walk(c.children, best);
-        return;
-      }
+  let scope: Scope = doc;
+  let prefix = "";
+  for (;;) {
+    const c = scope.components.find(within);
+    if (c) {
+      best = prefix === "" ? c.id : `${prefix}.${c.id}`;
+      prefix = best;
+      scope = { components: c.children, planes: c.planes };
+      continue;
     }
-  };
-  walk(doc.components, "");
-  return best;
+    const inner = scope.planes.filter(within).sort((a, b) => size(a) - size(b))[0];
+    if (inner) best = prefix === "" ? inner.id : `${prefix}.${inner.id}`;
+    return best;
+  }
 }

@@ -1589,7 +1589,11 @@ function EditorView({ initialSource, library, session }: EditorProps) {
           onCopyForAgent={stored ? () => copyDoc("agent") : undefined}
           selectedPath={selectedPath}
           onSelectPath={(path) =>
-            setSelection(path === null ? null : { kind: "component", path })
+            setSelection(
+              path === null
+                ? null
+                : { kind: findPlane(derived.doc, path.split(".")) ? "plane" : "component", path },
+            )
           }
         />
         <main className="relative flex min-w-0 flex-1 flex-col">

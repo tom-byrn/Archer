@@ -1,4 +1,4 @@
-arch "Archer-Codebase" v0.1
+arch "Archer-Codebase" v0.2
 
 component dev "Developer" @user {
   desc "Designs architecture on the canvas; hands compiled specs to coding agents."
@@ -14,7 +14,7 @@ component web "Web App" @vercel.nextjs {
     desc "Orchestrator: holds the source + undo/redo history, derives doc/diagnostics/flow-graph per keystroke, routes every mutation through transform -> format -> save."
   }
   component canvas "Canvas" {
-    desc "React Flow: typed icon nodes and nested planes, drag/connect/reparent, drill-down focus with breadcrumbs, snap-back for dangling arrows (E101 is unrepresentable from the UI), PNG export."
+    desc "React Flow: components drawn in their shapes and planes as titled regions, drag/connect/nest, opening any component to its own canvas with breadcrumbs, snap-back for dangling arrows (E101 is unrepresentable from the UI), PNG export."
   }
   component palette "Palette" {
     desc "Searchable curated catalog + this workspace's custom types; drag or click to place."
@@ -39,13 +39,13 @@ component lang "Language Core" {
     desc "Canonical form: fixed section order, sorted connections/layout, smart fences. Idempotent; round-trips with zero diagnostics."
   }
   component layouter "Auto-layout" {
-    desc "Deterministic grid placement from the connection graph; layers wrap into sub-columns past a height cap; never moves existing entries; planes sized to contain their children."
+    desc "Deterministic grid placement from the connection graph; layers wrap into sub-columns past a height cap; never moves existing entries; planes sized to hold what's on them, and every component's inside laid out as its own canvas."
   }
   component exporter "Agent Export" {
     desc "compileForAgent: canonical text with the layout block stripped and a reading-guide preamble prepended."
   }
   component transforms "Transforms" {
-    desc "Pure AST edits behind every canvas gesture: add/move/resize/reparent/rename components, connections, payloads, display modes."
+    desc "Pure AST edits behind every canvas gesture: add/move/resize/nest/rename components and planes, connections, payloads."
   }
 }
 
@@ -62,7 +62,7 @@ component mcp "MCP Server" @service {
   | language  | validate_source, format_source, compile_for_agent, auto_layout_source       |
   | catalog   | list_types, create_custom_type, delete_custom_type                          |
   | projects  | list_projects, get_project, create_project, update_project, delete_project  |
-  | canvas    | set_display, auto_layout_project                                            |
+  | canvas    | auto_layout_project                                                         |
   | workspace | get_workspace_info, set_workspace                                           |
   ```
 }

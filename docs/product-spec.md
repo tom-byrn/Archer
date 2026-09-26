@@ -20,8 +20,8 @@ direction (theirs is code→diagram documentation).
 
 **In:** solo use (accounts, but no sharing/multiplayer), one `.arch` document per
 canvas, cloud-stored; curated component catalog + user-defined components; typed and
-untyped components and connections; nesting with icon/plane display and click-in
-navigation; detail panel with description + validated payloads; live code view; copy
+untyped components and connections; planes (titled regions that group components on
+the canvas) and nesting to any depth, opened by drilling in; detail panel with description + validated payloads; live code view; copy
 code / copy-as-prompt / PNG export; paste-in of external `.arch` text with grid
 auto-layout.
 
@@ -48,9 +48,10 @@ documents, MCP server for the app itself (fast-follow after v1).
 Drag components from the palette (or press `/` to search the catalog) onto a gridded
 canvas. Drag arrows between them — an arrow released over empty canvas snaps back;
 dangling connections cannot exist. Click a component to open its detail panel:
-description, payloads (JSON/YAML/table/markdown, validated live), type. Nest by
-dropping a component onto a plane, or toggle any container between icon and plane;
-double-click an icon container to drill into it. Every edit rewrites the `.arch` file
+description, payloads (JSON/YAML/table/markdown, validated live), type. Group
+components by putting them on a plane, a titled region like "Frontend" or "AWS"; nest
+one component in another by dropping it there, and double-click any component to open
+it and work on its parts. Every edit rewrites the `.arch` file
 (debounced), and the code view updates live; edits in the code view re-render the
 canvas (auto-layouting anything without a layout entry). When ready: **Copy for
 agent** (canonical code, layout stripped, spec header prepended) and **Export PNG**
@@ -58,11 +59,12 @@ agent** (canonical code, layout stripped, spec header prepended) and **Export PN
 
 ## Key screens & components
 
-1. **Canvas** — React Flow: custom node types (generic box/circle, typed icon node,
-   plane/group node with icon badge in top-left), custom edge with type chip + label
-   (shown while the edge or a component it connects is hovered, or the edge is
-   selected), grid snap, pan/zoom, drill-in navigation (breadcrumb trail when
-   inside a plane).
+1. **Canvas** — React Flow: custom node types (components drawn in their shape with
+   the type's icon, and a count badge when they hold components; planes as titled
+   regions with their type's icon in the title bar), custom edge with type chip +
+   label (shown while the edge or a component it connects is hovered, or the edge is
+   selected), grid snap, pan/zoom, drill-in navigation (breadcrumb trail inside a
+   component, with the outside components it connects to along the sides).
 2. **Palette** — curated catalog grouped by namespace (AWS, Vercel, databases, …),
    search, plus "My components"; drag-to-place.
 3. **Detail panel** (right side) — display name, id (read-only), type picker,
@@ -79,12 +81,12 @@ agent** (canonical code, layout stripped, spec header prepended) and **Export PN
   canvas state that can drift.
 - One editor at a time (v1): last-write-wins on the stored text, no merging.
 - Auto-layout: deterministic layered layout on the grid — connections flow left to
-  right with few crossings and straight edges, planes wrap their children. A document
+  right with few crossings and straight edges, planes wrap what's on them. Each canvas
+  (the top level and every component's inside) is laid out on its own. A document
   with no positions is arranged from scratch; otherwise existing positions are kept,
   new components are placed next to what they connect to, and a plane that has to
   grow nudges aside what it would overlap. The result is persisted. "Re-layout"
-  re-runs it on the selection, the current level, or the whole document, keeping
-  collapsed containers collapsed.
+  re-runs it on the selection, the current level, or the whole document.
 - Selection: click, shift/⌘-click to add or remove, shift-drag on empty canvas to
   box-select, ⌘A for the current level. Dragging any selected component moves them
   all (one undo step); arrow keys nudge by a grid cell (shift: four).
@@ -92,13 +94,16 @@ agent** (canonical code, layout stripped, spec header prepended) and **Export PN
   connections between them), so they paste into another document, the code view or
   an agent; ⌘V pastes any `.arch` text, header or not, at the pointer (inside the
   plane under it); ⌘D duplicates next to the originals.
-- Structure: ⌘G groups the selection in a new container sized around it; "Add
-  child" nests a new component in any component; dragging either end of a selected
-  connection re-points it; the selected component resizes from its handles (planes
-  from the right and bottom, so their children stay put).
+- Structure: ⌘G puts the selection on a new plane sized around it, and "Nest in a
+  new component" wraps it in a component instead; dropping components on a component
+  nests them in it, "Move out" lifts them back out; "Add nested component" opens any
+  component with a new one inside; a plane and a component convert into each other;
+  dragging either end of a selected connection re-points it; the selected component
+  resizes from its handles (planes from the right and bottom, so what's on them
+  stays put).
 - Right-click menus on components, connections and empty canvas; ⌘K runs commands,
   finds components and adds new ones; ⌘F finds a component anywhere in the document
-  and brings it into view, drilling into collapsed containers as needed.
+  and brings it into view, opening the components it's inside as needed.
 
 ## Build order (each stage independently useful)
 

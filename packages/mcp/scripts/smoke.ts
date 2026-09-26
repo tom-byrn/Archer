@@ -22,7 +22,7 @@ const { check, failures } = checks();
 // tools/list
 const tools = await client.listTools();
 const names = tools.tools.map((t) => t.name).sort();
-check("26 tools registered", names.length === 26, names);
+check("25 tools registered", names.length === 25, names);
 
 // guide + resource
 const guide = await call("get_guide");
@@ -38,11 +38,11 @@ check("get_example returns its source", typeof example.json?.source === "string"
 check("example resources listed", resources.resources.some((r) => r.uri.startsWith("archer://examples/")));
 
 // stateless language tools
-const bad = await call("validate_source", { source: 'arch "T" v0.1\ncomponent a\na -> ghost' });
+const bad = await call("validate_source", { source: 'arch "T" v0.2\ncomponent a\na -> ghost' });
 check("validate: E101 reported", bad.json?.valid === false && bad.json.errors[0].includes("E101"), bad.json);
-const fmt = await call("format_source", { source: 'arch "T" v0.1\ncomponent a "A" @postgres' });
+const fmt = await call("format_source", { source: 'arch "T" v0.2\ncomponent a "A" @postgres' });
 check("format: canonical", fmt.text.trim().endsWith('component a "A" @postgres'));
-const laid = await call("auto_layout_source", { source: 'arch "T" v0.1\ncomponent a\ncomponent b\na -> b' });
+const laid = await call("auto_layout_source", { source: 'arch "T" v0.2\ncomponent a\ncomponent b\na -> b' });
 check("auto_layout_source adds layout", laid.text.includes("layout {"));
 
 // catalog
@@ -56,11 +56,11 @@ check("writes will be attributed to this agent", info.json?.agent_name === "smok
 const spaces = await call("list_workspaces");
 check("list_workspaces marks the current one", spaces.json?.workspaces?.some((w: { current: boolean }) => w.current), spaces.text);
 
-const rejected = await call("create_project", { source: 'arch "Smoke" v0.1\ncomponent a\na -> ghost' });
+const rejected = await call("create_project", { source: 'arch "Smoke" v0.2\ncomponent a\na -> ghost' });
 check("create rejects invalid source", rejected.isError && rejected.text.includes("E101"));
 
 const created = await call("create_project", {
-  source: 'arch "Smoke Test" v0.1\n\ncomponent api "API" @vercel.functions\ncomponent db "DB" @postgres {\n  schema json ```\n{"t": 1}\n```\n}\n\napi -> db @sql\n',
+  source: 'arch "Smoke Test" v0.2\n\ncomponent api "API" @vercel.functions\ncomponent db "DB" @postgres {\n  schema json ```\n{"t": 1}\n```\n}\n\napi -> db @sql\n',
 });
 check("create_project succeeds", !created.isError && typeof created.json?.id === "string", created.text);
 const pid = created.json.id as string;
@@ -75,7 +75,7 @@ const dbLayoutLine = (got.json.source as string).split("\n").find((l: string) =>
 // update WITHOUT layout: db position must survive (layout merge)
 const updated = await call("update_project", {
   project_id: pid,
-  source: 'arch "Smoke Test" v0.1\n\ncomponent api "API" @vercel.functions {\n  src "apps/api"\n}\ncomponent db "DB" @postgres\ncomponent cache "Cache" @redis\n\napi -> db @sql\napi -> cache\n',
+  source: 'arch "Smoke Test" v0.2\n\ncomponent api "API" @vercel.functions {\n  src "apps/api"\n}\ncomponent db "DB" @postgres\ncomponent cache "Cache" @redis\n\napi -> db @sql\napi -> cache\n',
   summary: "Added a cache",
 });
 check("update_project succeeds", !updated.isError && updated.json?.saved === true, updated.text);
@@ -96,9 +96,7 @@ const useCustom = await call("update_project", {
 const got3 = await call("get_project", { project_id: pid });
 check("custom tag validates clean (no W301)", !useCustom.isError && got3.json.warnings.length === 0, got3.json.warnings);
 
-// display + compile
-const disp = await call("set_display", { project_id: pid, path: "api", display: "icon" });
-check("set_display saves", !disp.isError && disp.json?.saved === true);
+// compile
 const compiled = await call("compile_for_agent", { project_id: pid });
 check("compile_for_agent: preamble, no layout", compiled.text.includes("Archer architecture document") && !compiled.text.includes("layout {"));
 
