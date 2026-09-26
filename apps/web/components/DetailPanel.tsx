@@ -564,6 +564,8 @@ function ComponentInspector({
   onDrillIn,
   library,
   repo,
+  openShapes = false,
+  onShapeListOpened,
 }: {
   doc: ArchDoc;
   path: string;
@@ -576,6 +578,9 @@ function ComponentInspector({
   onDrillIn?: (path: string) => void;
   library: UserLibrary;
   repo: RepoLink | null;
+  /** Open the form's shape list as soon as it shows. */
+  openShapes?: boolean;
+  onShapeListOpened?: () => void;
 }) {
   const isDark = useIsDark();
   const segments = path.split(".");
@@ -659,6 +664,8 @@ function ComponentInspector({
             onSelect={onSelect}
             library={library}
             repo={repo}
+            openShapes={openShapes}
+            onShapeListOpened={onShapeListOpened}
           />
         ) : (
           <ComponentDetails node={node} library={library} repo={repo} onOpen={openInside} />
@@ -677,6 +684,8 @@ function ComponentForm({
   onSelect,
   library,
   repo,
+  openShapes,
+  onShapeListOpened,
 }: {
   node: ComponentNode;
   path: string;
@@ -686,6 +695,8 @@ function ComponentForm({
   onSelect: (s: Selection) => void;
   library: UserLibrary;
   repo: RepoLink | null;
+  openShapes: boolean;
+  onShapeListOpened?: () => void;
 }) {
   const segments = path.split(".");
   return (
@@ -728,6 +739,8 @@ function ComponentForm({
             value={node.shape}
             plane={plane}
             onChange={(shape) => mutate((d) => setComponentMeta(d, segments, { shape }))}
+            autoOpen={openShapes}
+            onAutoOpened={onShapeListOpened}
           />
         </PropertyRow>
         <PropertyRow label="Description" align="start">
@@ -1061,6 +1074,8 @@ export function DetailPanel({
   onDrillIn,
   library,
   repo = null,
+  shapeFor = null,
+  onShapeListOpened,
 }: {
   doc: ArchDoc;
   selection: Selection;
@@ -1078,6 +1093,9 @@ export function DetailPanel({
   library: UserLibrary;
   /** Linked repository: turns relative `src` paths into GitHub links. */
   repo?: RepoLink | null;
+  /** A component whose form should open straight onto its shape list ("Change shape…"). */
+  shapeFor?: string | null;
+  onShapeListOpened?: () => void;
 }) {
   if (selection === null && multi === null) return null;
   const form = editing && !readOnly;
@@ -1100,6 +1118,8 @@ export function DetailPanel({
           onDrillIn={onDrillIn}
           library={library}
           repo={repo}
+          openShapes={shapeFor === selection.path}
+          onShapeListOpened={onShapeListOpened}
         />
       ) : (
         <ConnectionInspector

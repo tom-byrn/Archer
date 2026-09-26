@@ -367,7 +367,7 @@ export function registerArcherTools(server: McpServer): void {
         catalog: CATALOG.filter(match).map(({ tag, name, namespace }) => ({ tag, name, namespace })),
         custom_types: custom.filter(match),
         connection_types: CONNECTION_TYPES,
-        shapes: SHAPES.map((shape) => ({ shape, ...SHAPE_INFO[shape] })),
+        shapes: SHAPES.map((shape) => ({ shape, name: SHAPE_INFO[shape].name, use: SHAPE_INFO[shape].use })),
         glyphs_for_custom_types: Object.keys(GLYPHS),
         note: ws
           ? undefined

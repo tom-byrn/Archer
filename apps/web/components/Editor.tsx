@@ -322,6 +322,8 @@ function EditorView({ initialSource, library, session }: EditorProps) {
    * reading.
    */
   const [editingId, setEditingId] = useState<string | null>(null);
+  /** "Change shape…": the component whose shape list the form opens on. */
+  const [shapeFor, setShapeFor] = useState<string | null>(null);
   const [focus, setFocus] = useState<string[]>([]);
   const [codeOpen, setCodeOpen] = useState(false);
   // The component palette (left sidebar) starts closed every time the editor
@@ -571,7 +573,9 @@ function EditorView({ initialSource, library, session }: EditorProps) {
   // Once something else is selected the form stays closed, so coming back reads first.
   useEffect(() => {
     if (editingId !== null && editingId !== selectedId) setEditingId(null);
-  }, [editingId, selectedId]);
+    if (shapeFor !== null && shapeFor !== selectedId) setShapeFor(null);
+  }, [editingId, shapeFor, selectedId]);
+  const shapeListOpened = useCallback(() => setShapeFor(null), []);
 
   /** Select a component that was just made, its form open to name it. */
   const selectNew = useCallback((path: string) => {
@@ -1047,6 +1051,7 @@ function EditorView({ initialSource, library, session }: EditorProps) {
                 onSelect: () => {
                   setSel(only(t.path));
                   setEditingId(t.path);
+                  setShapeFor(t.path);
                 },
               },
             ]),
@@ -1580,6 +1585,8 @@ function EditorView({ initialSource, library, session }: EditorProps) {
             onDrillIn={callbacks.onDrillIn}
             library={library}
             repo={repo}
+            shapeFor={shapeFor}
+            onShapeListOpened={shapeListOpened}
           />
         )}
       </div>
