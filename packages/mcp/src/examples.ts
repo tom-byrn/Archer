@@ -24,19 +24,25 @@ export const EXAMPLES: readonly Example[] = [
     slug: "components-and-connections",
     title: "Link Shortener",
     summary:
-      "The smallest useful document: a header, a few typed components and the connections between them. A `@type` picks the icon and color; a label says what travels on an arrow.",
+      "The smallest useful document: a header, a few typed components and the connections between them. A `@type` picks the icon and color, a `shape` the outline; a label says what travels on an arrow.",
     features: ["components", "types", "connections", "labels"],
     source: `arch "Link Shortener" v0.1
 
-component browser "Browser" @browser
+component browser "Browser" @browser {
+  shape browser
+}
 
 component app "Web App" @vercel.nextjs
 
 component api "API" @vercel.functions
 
-component db "Links" @postgres
+component db "Links" @postgres {
+  shape cylinder
+}
 
-component cache "Hot Links" @redis
+component cache "Hot Links" @redis {
+  shape cylinder
+}
 
 api -> cache @reads : "resolve"
 api -> db @sql
@@ -52,7 +58,9 @@ browser -> app @http
     features: ["descriptions", "source links", "payloads"],
     source: `arch "Billing Service" v0.1
 
-component dashboard "Dashboard" @vercel.nextjs
+component dashboard "Dashboard" @vercel.nextjs {
+  shape browser
+}
 
 component api "Billing API" @service {
   desc "Owns plans, subscriptions and invoices. Stateless."
@@ -73,6 +81,7 @@ component api "Billing API" @service {
 }
 
 component db "Billing DB" @postgres {
+  shape cylinder
   desc "Plans, subscriptions and invoice rows."
   schema json ${FENCE}
   {
@@ -82,7 +91,9 @@ component db "Billing DB" @postgres {
   ${FENCE}
 }
 
-component stripe "Stripe" @stripe
+component stripe "Stripe" @stripe {
+  shape cloud
+}
 
 api -> db @sql
 api -> stripe @http : "charges"
@@ -149,13 +160,17 @@ widget -> agent @ws : "chat"
 
 component apps "Listener Apps" {
   desc "Every client talks to one API and streams from one CDN."
-  component web "Web Player" @vercel.nextjs
+  component web "Web Player" @vercel.nextjs {
+    shape browser
+  }
   component mobile "iOS & Android" @mobile {
+    shape phone
     desc "Premium listeners can download for offline play. Downloads stay encrypted on the device."
   }
 }
 
 component auth "Accounts" @auth0 {
+  shape cloud
   desc "Email, Apple and Google sign-in. Issues the JWT every API call carries."
 }
 
@@ -214,6 +229,7 @@ component services "Services" @aws.eks {
 
 component storage "Storage" {
   component catalog_db "Catalog DB" @aws.rds {
+    shape cylinder
     desc "Postgres. The source of truth for metadata."
     schema json ${FENCE}
     {
@@ -223,35 +239,50 @@ component storage "Storage" {
     }
     ${FENCE}
   }
-  component index "Search Index" @elasticsearch
+  component index "Search Index" @elasticsearch {
+    shape cylinder
+  }
   component playlists "Playlists" @aws.dynamodb {
+    shape cylinder
     desc "Libraries and playlists, partitioned by listener."
   }
   component sessions "Play Sessions" @redis {
+    shape cylinder
     desc "Active streams per account, for device limits. Keys expire 30 seconds after the last heartbeat."
   }
-  component events "Play Events" @kafka
-  component embeddings "Embeddings" @pinecone
-  component accounts_db "Accounts DB" @aws.rds
+  component events "Play Events" @kafka {
+    shape queue
+  }
+  component embeddings "Embeddings" @pinecone {
+    shape cylinder
+  }
+  component accounts_db "Accounts DB" @aws.rds {
+    shape cylinder
+  }
 }
 
 component content "Content Ingestion" {
   component inbox "Delivery Inbox" @aws.s3 {
+    shape bucket
     desc "Labels drop DDEX packages here: XML metadata, lossless masters and artwork."
   }
   component pipeline "Pipeline" @temporal {
     desc "One durable workflow per release: validate, encode, then publish on release day."
   }
   component transcoder "Transcoder" @aws.fargate {
+    shape stack
     desc "FFmpeg workers. Ogg Vorbis at 96, 160 and 320 kbps plus AAC, loudness-normalized to -14 LUFS."
   }
   component audio "Audio Files" @aws.s3 {
+    shape bucket
     desc "Every encoded rendition, keyed by track and bitrate."
   }
 }
 
 component analytics "Analytics" {
-  component warehouse "Warehouse" @snowflake
+  component warehouse "Warehouse" @snowflake {
+    shape cylinder
+  }
   component royalties "Royalties" {
     desc "Monthly job that splits each market's revenue across rights holders by share of streams."
     rules markdown ${FENCE}
@@ -265,9 +296,13 @@ component analytics "Analytics" {
   }
 }
 
-component labels "Record Labels" @external
+component labels "Record Labels" @external {
+  shape cloud
+}
 
-component stripe "Stripe" @stripe
+component stripe "Stripe" @stripe {
+  shape cloud
+}
 
 analytics.royalties -> analytics.warehouse @reads
 
