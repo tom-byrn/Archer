@@ -5,6 +5,7 @@ import {
   checkPayload,
   effectiveDisplay,
   findComponent,
+  isShape,
   layoutMap,
   pathToString,
   removeComponent,
@@ -17,6 +18,8 @@ import {
   setConnectionPayload,
   setDisplay,
   setPayload,
+  shapeOf,
+  SHAPE_INFO,
   type ArchDoc,
   type Arrow,
   type ComponentNode,
@@ -36,7 +39,8 @@ import type { RepoLink } from "@/lib/github";
 import { displayColor, useIsDark } from "@/lib/useIsDark";
 import { CodeEditor } from "./CodeMirror";
 import { Markdown, MarkdownTable, parseTable } from "./Markdown";
-import { Glyph } from "./nodes";
+import { Glyph, GlyphSwatch } from "./nodes";
+import { ShapeIcon, ShapePicker } from "./ShapePicker";
 import { TypeCombobox } from "./TypeCombobox";
 import {
   Button,
@@ -386,6 +390,20 @@ export function ComponentDetails({
               </span>
             )}
           </ReadRow>
+          {node.shape !== undefined && (
+            <ReadRow label="Shape">
+              <span className="flex min-w-0 items-center gap-1.5">
+                <ShapeIcon shape={shapeOf(node)} width={18} className="text-ink-2" />
+                {isShape(node.shape) ? (
+                  <span className="truncate">{SHAPE_INFO[node.shape].name}</span>
+                ) : (
+                  <span className="truncate text-ink-3">
+                    <span className="mono">{node.shape}</span> (unknown, drawn as a box)
+                  </span>
+                )}
+              </span>
+            </ReadRow>
+          )}
           <ReadRow label="Description">
             {node.desc ? (
               <p className="whitespace-pre-wrap break-words">{node.desc}</p>
@@ -602,12 +620,15 @@ function ComponentInspector({
   return (
     <div className="flex h-full flex-col">
       <div className="flex h-11 shrink-0 items-center gap-2.5 border-b border-line px-3">
-        <span
-          className="flex h-6 w-6 shrink-0 items-center justify-center rounded-sm"
-          style={{ backgroundColor: `${accent}1a` }}
-        >
-          <Glyph tag={node.type} color={custom?.color} glyph={custom?.glyph} size={15} />
-        </span>
+        <GlyphSwatch
+          tag={node.type}
+          color={custom?.color}
+          glyph={custom?.glyph}
+          box={24}
+          size={15}
+          background={`${accent}1a`}
+          className="rounded-sm"
+        />
         <div className="min-w-0 flex-1 leading-tight" title={node.name ?? node.id}>
           <div className="truncate text-base font-semibold">{node.name ?? node.id}</div>
           <div className="mono truncate text-xs text-ink-3">{path}</div>
@@ -633,6 +654,7 @@ function ComponentInspector({
           <ComponentForm
             node={node}
             path={path}
+            plane={isContainer && display === "plane"}
             mutate={mutate}
             onSelect={onSelect}
             library={library}
@@ -650,6 +672,7 @@ function ComponentInspector({
 function ComponentForm({
   node,
   path,
+  plane,
   mutate,
   onSelect,
   library,
@@ -657,6 +680,8 @@ function ComponentForm({
 }: {
   node: ComponentNode;
   path: string;
+  /** Drawn as a plane right now (an expanded container). */
+  plane: boolean;
   mutate: (fn: (d: ArchDoc) => ArchDoc) => void;
   onSelect: (s: Selection) => void;
   library: UserLibrary;
@@ -696,6 +721,13 @@ function ComponentForm({
             onChange={(tag) =>
               mutate((d) => setComponentMeta(d, segments, { type: tag ?? null }))
             }
+          />
+        </PropertyRow>
+        <PropertyRow label="Shape" align="start">
+          <ShapePicker
+            value={node.shape}
+            plane={plane}
+            onChange={(shape) => mutate((d) => setComponentMeta(d, segments, { shape }))}
           />
         </PropertyRow>
         <PropertyRow label="Description" align="start">

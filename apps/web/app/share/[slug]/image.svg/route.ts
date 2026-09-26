@@ -1,4 +1,5 @@
 import { ConvexHttpClient } from "convex/browser";
+import { LOGOS } from "@archer/catalog/logos";
 import { api } from "@/convex/_generated/api";
 import { renderArchSvg } from "@/lib/svg";
 
@@ -35,5 +36,5 @@ export async function GET(
   const doc = await client.query(api.documents.getPublic, { slug });
   if (!doc) return svgResponse(NOT_SHARED, 404, false);
   const theme = new URL(req.url).searchParams.get("theme") === "dark" ? "dark" : "light";
-  return svgResponse(renderArchSvg(doc.source, { theme }));
+  return svgResponse(renderArchSvg(doc.source, { theme, logos: LOGOS }));
 }

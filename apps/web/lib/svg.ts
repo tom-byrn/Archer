@@ -10,10 +10,12 @@ import {
   layoutMap,
   parse,
   pathToString,
+  shapeOf,
   type ArchDoc,
   type ComponentNode,
 } from "@archer/lang";
-import { GLYPHS, GLYPH_VIEWBOX, lookupType } from "@archer/catalog";
+import { GLYPHS, GLYPH_VIEWBOX, lookupType, type Logo } from "@archer/catalog";
+import { LABEL, labelLayout, shapeGeometry, type ShapeGeometry } from "./shapes";
 import {
   BOX_COST,
   bendOf,
@@ -37,6 +39,11 @@ export interface RenderOptions {
   showTitle?: boolean;
   /** Paint the ground behind the diagram (default true). Off for in-app thumbnails. */
   background?: boolean;
+  /**
+   * Product logos to draw catalog types with (`@archer/catalog/logos`); without
+   * them every type draws its glyph, as on the landing page.
+   */
+  logos?: Readonly<Record<string, Logo>>;
 }
 
 interface Palette {
@@ -101,6 +108,34 @@ const fit = (text: string, width: number, pxPerChar: number): string => {
   return text.length <= max ? text : text.slice(0, Math.max(1, max - 1)) + "…";
 };
 
+/**
+ * Break `text` into at most `lines` lines of `width` px, at spaces where it
+ * can (the canvas's line-clamp); the last line is truncated.
+ */
+const wrap = (text: string, width: number, pxPerChar: number, lines: number): string[] => {
+  const words = text.trim().split(/\s+/);
+  const flat = words.join(" ");
+  const max = Math.max(1, Math.floor(width / pxPerChar));
+  if (flat.length <= max || lines <= 1) return [fit(flat, width, pxPerChar)];
+  let head = "";
+  for (const word of words) {
+    const next = head === "" ? word : `${head} ${word}`;
+    if (next.length > max) break;
+    head = next;
+  }
+  if (head === "") head = flat.slice(0, max);
+  return [head, ...wrap(flat.slice(head.length), width, pxPerChar, lines - 1)];
+};
+
+/** Mix two #rrggbb colors: `t` of `a`, the rest `b` (CSS color-mix in srgb). */
+const mix = (a: string, b: string, t: number): string => {
+  const pa = parseInt(a.slice(1), 16);
+  const pb = parseInt(b.slice(1), 16);
+  const ch = (shift: number) =>
+    Math.round(((pa >> shift) & 255) * t + ((pb >> shift) & 255) * (1 - t));
+  return `#${((ch(16) << 16) | (ch(8) << 8) | ch(0)).toString(16).padStart(6, "0")}`;
+};
+
 const luminance = (hex: string): number => {
   const n = parseInt(hex.slice(1), 16);
   return (0.2126 * ((n >> 16) & 255) + 0.7152 * ((n >> 8) & 255) + 0.0722 * (n & 255)) / 255;
@@ -123,6 +158,16 @@ export const displayColor = (hex: string, dark: boolean): string => {
 const glyphSvg = (key: string, size: number, color: string, x: number, y: number): string =>
   `<svg x="${x}" y="${y}" width="${size}" height="${size}" viewBox="${GLYPH_VIEWBOX}" style="color:${color}">${GLYPHS[key] ?? GLYPHS.box!}</svg>`;
 
+/** A logo like components/logos.tsx draws it: a mark in its brand color, or artwork as it is. */
+const logoSvg = (logo: Logo, size: number, x: number, y: number, dark: boolean): string =>
+  `<svg x="${x}" y="${y}" width="${size}" height="${size}" viewBox="${logo.viewBox}"` +
+  (logo.kind === "mono" ? ` style="color:${displayColor(logo.color!, dark)}"` : "") +
+  `>${logo.body}</svg>`;
+
+/** A box's icon: its logo when it has one, its glyph otherwise. */
+const iconSvg = (b: Box, size: number, x: number, y: number, dark: boolean): string =>
+  b.logo ? logoSvg(b.logo, size, x, y, dark) : glyphSvg(b.glyph, size, b.color, x, y);
+
 interface Box {
   path: string;
   node: ComponentNode;
@@ -133,7 +178,14 @@ interface Box {
   plane: boolean;
   color: string;
   glyph: string;
+  logo: Logo | undefined;
+  /** Drawn as a shape (lib/shapes.ts) instead of the card. */
+  shape?: ShapeGeometry;
 }
+
+/** How far in from each side of a box its edges end: a shape's outline, or the card's border. */
+const NO_INSET = { t: 0, r: 0, b: 0, l: 0 };
+const insets = (b: Box) => b.shape?.anchors ?? NO_INSET;
 
 export function renderArchSvg(source: string, opts: RenderOptions = {}): string {
   const dark = opts.theme === "dark";
@@ -173,16 +225,22 @@ export function renderArchSvg(source: string, opts: RenderOptions = {}): string 
       const abs: [number, number] = [origin[0] + at[0] * CELL, origin[1] + at[1] * CELL];
       if (isVisible) {
         const type = c.type ? lookupType(c.type) : undefined;
+        const plane = display === "plane" && c.children.length > 0;
+        const shape = shapeOf(c);
+        const w = size[0] * CELL;
+        const h = size[1] * CELL;
         boxes.push({
           path,
           node: c,
           x: abs[0],
           y: abs[1],
-          w: size[0] * CELL,
-          h: size[1] * CELL,
-          plane: display === "plane" && c.children.length > 0,
+          w,
+          h,
+          plane,
           color: displayColor(type?.color ?? P.fallback, dark),
           glyph: type?.glyph ?? "box",
+          logo: type?.logo === undefined ? undefined : opts.logos?.[type.logo],
+          ...(!plane && shape !== "box" ? { shape: shapeGeometry(shape, w, h) } : {}),
         });
       }
       const childCollapsed = collapsed ?? (display === "icon" && c.children.length > 0 ? path : null);
@@ -220,13 +278,15 @@ export function renderArchSvg(source: string, opts: RenderOptions = {}): string 
         `<g>` +
           `<rect x="${x}" y="${y}" width="${b.w}" height="${b.h}" rx="8" fill="${fill}" stroke="${stroke}"/>` +
           `<path d="M${x + 0.5} ${y + 32}h${b.w - 1}" stroke="${alpha(b.color, 0.2)}"/>` +
-          glyphSvg(b.glyph, 16, b.color, x + 10, y + 8) +
+          iconSvg(b, 16, x + 10, y + 8, dark) +
           `<text x="${x + 32}" y="${y + 20.5}" font-family='${SANS}' font-size="12" font-weight="600" fill="${P.ink}">${esc(fit(name, b.w - 44 - (b.node.type ? b.node.type.length * 6 + 10 : 0), 6.8))}</text>` +
           (b.node.type
             ? `<text x="${x + b.w - 10}" y="${y + 20.5}" text-anchor="end" font-family='${MONO}' font-size="10" fill="${P.ink3}">${esc(b.node.type)}</text>`
             : "") +
           `</g>`,
       );
+    } else if (b.shape) {
+      out.push(shapeSvg(b, x, y, P, dark));
     } else {
       const collapsedCount = b.node.children.length;
       const sub = (b.node.type ?? "component") + (collapsedCount > 0 ? ` · ${collapsedCount} inside` : "");
@@ -238,8 +298,11 @@ export function renderArchSvg(source: string, opts: RenderOptions = {}): string 
       out.push(
         `<g>` +
           `<rect x="${x}" y="${y}" width="${b.w}" height="${b.h}" rx="6" fill="${P.surface}" stroke="${P.line2}"/>` +
-          `<rect x="${tileX}" y="${tileY}" width="32" height="32" rx="6" fill="${alpha(b.color, 0.14)}"/>` +
-          glyphSvg(b.glyph, 18, b.color, tileX + 7, tileY + 7) +
+          // A vendor's square icon (AWS) takes the tinted tile's place.
+          (b.logo?.kind === "tile"
+            ? logoSvg(b.logo, 32, tileX, tileY, dark)
+            : `<rect x="${tileX}" y="${tileY}" width="32" height="32" rx="6" fill="${alpha(b.color, 0.14)}"/>` +
+              iconSvg(b, 18, tileX + 7, tileY + 7, dark)) +
           `<text x="${textX}" y="${midY - 2}" font-family='${SANS}' font-size="13" font-weight="600" fill="${P.ink}">${esc(fit(name, textW, 6.8))}</text>` +
           `<text x="${textX}" y="${midY + 12}" font-family='${MONO}' font-size="10" fill="${P.ink3}">${esc(fit(sub, textW, 6.2))}</text>` +
           `</g>`,
@@ -247,8 +310,10 @@ export function renderArchSvg(source: string, opts: RenderOptions = {}): string 
     }
   }
 
-  // Edges.
+  // Edges, then their label chips over all of them (as on the canvas, where
+  // labels sit above every edge), so a later edge never strikes through a chip.
   const edgeOut: string[] = [];
+  const chipOut: string[] = [];
   const leafRects = boxes
     .filter((b) => !b.plane)
     .map((b) => ({ x: b.x + dx, y: b.y + dy, w: b.w, h: b.h }));
@@ -291,7 +356,10 @@ export function renderArchSvg(source: string, opts: RenderOptions = {}): string 
   // Untangle shared handles, then keep parallel bends from merging.
   untangle(routed, obstaclesFor);
   separateBends(routed.map((e) => bendOf(e.route, e.s, e.t, e.source, e.target)));
-  for (const { c, s: sr, t: tr, route } of routed) {
+  for (const { c, source, target, s: sr, t: tr, route } of routed) {
+    // Edges end where a shape's outline crosses the middle of the side.
+    const si = insets(byPath.get(source)!);
+    const ti = insets(byPath.get(target)!);
     let p1: { x: number; y: number };
     let p2: { x: number; y: number };
     let d: string;
@@ -302,8 +370,8 @@ export function renderArchSvg(source: string, opts: RenderOptions = {}): string 
     if (route.corner) {
       const right = route.from === "r";
       const down = route.to === "t";
-      p1 = { x: right ? sr.x + sr.w : sr.x, y: sr.y + sr.h / 2 };
-      p2 = { x: tr.x + tr.w / 2, y: down ? tr.y : tr.y + tr.h };
+      p1 = { x: right ? sr.x + sr.w - si.r : sr.x + si.l, y: sr.y + sr.h / 2 };
+      p2 = { x: tr.x + tr.w / 2, y: down ? tr.y + ti.t : tr.y + tr.h - ti.b };
       d = `M${p1.x} ${p1.y}H${p2.x}V${p2.y}`;
       candidates.push(
         { x: (p1.x + p2.x) / 2, y: p1.y },
@@ -312,8 +380,8 @@ export function renderArchSvg(source: string, opts: RenderOptions = {}): string 
     } else if (route.horizontal) {
       const right = route.from === "r";
       const sign = right ? 1 : -1;
-      p1 = { x: right ? sr.x + sr.w : sr.x, y: sr.y + sr.h / 2 };
-      p2 = { x: right ? tr.x : tr.x + tr.w, y: tr.y + tr.h / 2 };
+      p1 = { x: right ? sr.x + sr.w - si.r : sr.x + si.l, y: sr.y + sr.h / 2 };
+      p2 = { x: right ? tr.x + ti.l : tr.x + tr.w - ti.r, y: tr.y + tr.h / 2 };
       const mx = route.mid;
       d = `M${p1.x} ${p1.y}H${mx}V${p2.y}H${p2.x}`;
       candidates.push(
@@ -324,8 +392,8 @@ export function renderArchSvg(source: string, opts: RenderOptions = {}): string 
       );
     } else {
       const down = route.from === "b";
-      p1 = { x: sr.x + sr.w / 2, y: down ? sr.y + sr.h : sr.y };
-      p2 = { x: tr.x + tr.w / 2, y: down ? tr.y : tr.y + tr.h };
+      p1 = { x: sr.x + sr.w / 2, y: down ? sr.y + sr.h - si.b : sr.y + si.t };
+      p2 = { x: tr.x + tr.w / 2, y: down ? tr.y + ti.t : tr.y + tr.h - ti.b };
       const my = route.mid;
       d = `M${p1.x} ${p1.y}V${my}H${p2.x}V${p2.y}`;
       candidates.push(
@@ -370,7 +438,7 @@ export function renderArchSvg(source: string, opts: RenderOptions = {}): string 
       const lx = spot.x;
       const ly = spot.y;
       chipRects.push({ x: lx - lw / 2, y: ly - 9, w: lw, h: 18 });
-      edgeOut.push(
+      chipOut.push(
         `<g>` +
           `<rect x="${lx - lw / 2}" y="${ly - 9}" width="${lw}" height="18" rx="4" fill="${P.surface}" stroke="${P.line}"/>` +
           (c.type
@@ -407,8 +475,60 @@ export function renderArchSvg(source: string, opts: RenderOptions = {}): string 
     title +
     out.join("") +
     edgeOut.join("") +
+    chipOut.join("") +
     `</svg>`
   );
+}
+
+/**
+ * A component drawn as its shape (mirrors nodes.tsx ArchShapeNode): the
+ * outline, tinted by its type, then the label centered in the shape's
+ * middle, with as much of glyph, name and tag as `labelLayout` finds room for.
+ */
+function shapeSvg(b: Box, x: number, y: number, P: Palette, dark: boolean): string {
+  const g = b.shape!;
+  const typed = b.node.type !== undefined;
+  // Tinted by a type that resolves; an unknown one keeps the plain outline, as on the canvas.
+  const tinted = lookupType(b.node.type) !== undefined;
+  const stroke = tinted ? mix(b.color, P.line2, 0.45) : P.line2;
+  const fill = tinted ? mix(b.color, P.surface, 0.05) : P.surface;
+  const inside = b.node.children.length;
+  const sub = [b.node.type, inside > 0 ? `${inside} inside` : undefined].filter(Boolean).join(" · ");
+  const c = g.content;
+  const layout = labelLayout(c, typed, sub !== "");
+  const inline = layout.glyph === "inline" ? 14 + 6 : 0;
+  const lines = wrap(b.node.name ?? b.node.id, c.w - inline, 6.8, layout.lines);
+  const height =
+    (layout.glyph === "above" ? LABEL.glyph + LABEL.gap : 0) +
+    lines.length * LABEL.nameLine +
+    (layout.sub ? LABEL.subGap + LABEL.subLine : 0);
+  const mid = x + c.x + c.w / 2;
+  let top = y + c.y + (c.h - height) / 2;
+
+  let svg =
+    `<g transform="translate(${x} ${y})">` +
+    g.parts.map((d) => `<path d="${d}" fill="${fill}" stroke="${stroke}" stroke-linejoin="round"/>`).join("") +
+    (g.details ? `<path d="${g.details}" fill="none" stroke="${stroke}"/>` : "") +
+    (g.dots ? `<path d="${g.dots}" fill="${stroke}"/>` : "") +
+    `</g>`;
+  if (layout.glyph === "above") {
+    svg += iconSvg(b, LABEL.glyph, mid - LABEL.glyph / 2, top, dark);
+    top += LABEL.glyph + LABEL.gap;
+  }
+  const name = (text: string, tx: number, ty: number, anchor: string) =>
+    `<text x="${tx}" y="${ty}"${anchor} font-family='${SANS}' font-size="13" font-weight="600" fill="${P.ink}">${esc(text)}</text>`;
+  lines.forEach((line, i) => {
+    const lineTop = top + i * LABEL.nameLine;
+    if (i === 0 && inline > 0) {
+      // Glyph and text centered together, the glyph leading.
+      const left = mid - (Math.min(line.length * 6.8, c.w - inline) + inline) / 2;
+      svg += iconSvg(b, 14, left, lineTop + 1, dark) + name(line, left + inline, lineTop + 12, "");
+    } else svg += name(line, mid, lineTop + 12, ` text-anchor="middle"`);
+  });
+  top += lines.length * LABEL.nameLine;
+  if (layout.sub)
+    svg += `<text x="${mid}" y="${top + LABEL.subGap + 10}" text-anchor="middle" font-family='${typed ? MONO : SANS}' font-size="10" fill="${P.ink3}">${esc(fit(sub, c.w, 6.2))}</text>`;
+  return `<g>${svg}</g>`;
 }
 
 const invalidSvg = (P: Palette, background: boolean): string =>

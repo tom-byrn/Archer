@@ -15,7 +15,10 @@ as an implementation spec.
 3. **Semantics and presentation are quarantined from each other.** Everything an agent
    needs lives in the semantic sections. Everything about pixels lives in the \`layout\`
    block, which is machine-managed and stripped from agent exports. Agents MUST ignore
-   \`layout\` when reading and MUST NOT write it.
+   \`layout\` when reading and MUST NOT write it. The one visual property outside it is a
+   component's \`shape\` (§3.3): it says what a thing *is* at a glance (a cylinder is a
+   store, a person is a user), belongs to the component in every view, and agents write
+   it like any other field.
 4. **Strict references, permissive semantics.** Every reference must resolve — a
    connection to an undeclared component is a validation error, never an auto-created
    node (deliberately the opposite of Eraser's parser). But the language imposes no
@@ -68,6 +71,9 @@ component <id> ["Display Name"] [@<type>] [{ <body> }]
 - \`@<type>\` — optional type tag (see §5). Untyped components render as generic
   boxes/shapes and are fully valid.
 - Body — optional \`{ ... }\` block containing, in any mix:
+  - \`shape <name>\` — how the canvas draws the component: \`cylinder\`, \`cloud\`, \`person\`,
+    \`robot\`, … (§3.3). At most one per component (a second one is error \`E004\`).
+    Without one, a component is a box.
   - \`desc "..."\` — human-readable description (shown in the detail view). One per
     component. Multiline via triple quotes: \`desc """ ... """\`.
   - \`src "..."\` — where the component lives in code: a repo-relative path
@@ -116,6 +122,51 @@ component db "Primary Postgres" @postgres {
 
 Granularity is the author's choice: one \`@postgres\` node with a schema payload, or
 individual \`@postgres.table\` children, or both.
+
+### 3.3 Shapes
+
+A component is drawn as a box unless its body names a shape:
+
+\`\`\`
+component db "Orders" @postgres {
+  shape cylinder
+  desc "Every order and its line items."
+}
+
+component support "Support Agent" @agent {
+  shape robot
+}
+\`\`\`
+
+| shape      | usually stands for                               |
+| ---------- | ------------------------------------------------ |
+| \`box\`      | anything (the default)                           |
+| \`cylinder\` | databases and other stores                       |
+| \`cloud\`    | cloud providers, external services, the internet |
+| \`server\`   | servers, hosts and VMs                           |
+| \`robot\`    | AI agents, bots and automations                  |
+| \`person\`   | users, customers and teams                       |
+| \`queue\`    | queues, streams and logs                         |
+| \`bucket\`   | object storage and blobs                         |
+| \`browser\`  | web apps and sites                               |
+| \`phone\`    | mobile apps and devices                          |
+| \`document\` | files, reports and specs                         |
+| \`folder\`   | file shares and directories                      |
+| \`stack\`    | replicas, pools and fleets                       |
+| \`hexagon\`  | services and processing steps                    |
+| \`circle\`   | events, triggers and endpoints                   |
+| \`diamond\`  | decisions and routing                            |
+
+- A shape is independent of the type: the type still picks the icon and color drawn
+  inside it, and any shape goes with any type (or none).
+- The shape fills the component's box, whatever its size. A container drawn as a plane
+  stays a plane; its shape shows when it's collapsed to an icon.
+- A shape is a hint for readers, never a requirement: it doesn't change what a component
+  is, and agents implementing a document may ignore it.
+- A name the language doesn't know is a warning (\`W304\`), not an error, and the component
+  is drawn as a box, so files stay readable by tools that predate a newer shape.
+- A payload may still be named \`shape\`: a \`shape\` line followed by a format and a fenced
+  body is read as a payload, as it was before \`shape\` was a keyword.
 
 ## 4. Payload blocks
 
@@ -260,12 +311,13 @@ A document is **valid** when:
 | \`E001\` | file parses (header, declarations, fences)                      | error    |
 | \`E002\` | component ids unique within their scope                         | error    |
 | \`E003\` | payload names unique per component / per connection             | error    |
-| \`E004\` | at most one \`src\` per component                                 | error    |
+| \`E004\` | at most one \`src\` and one \`shape\` per component                 | error    |
 | \`E101\` | every connection endpoint resolves to a declared component      | error    |
 | \`E201\` | \`json\` / \`yaml\` / \`table\` payloads parse in their format        | error    |
 | \`W301\` | type tag resolves in the catalog                                | warning  |
 | \`W302\` | duplicate connection                                            | warning  |
 | \`W303\` | layout entry references a declared component                    | warning (entry dropped) |
+| \`W304\` | shape is one the language knows (§3.3)                          | warning (drawn as a box) |
 
 Errors block agent export ("copy as prompt") and mark the document invalid in the UI;
 the canvas still renders as much as it can. Warnings never block anything.
@@ -307,6 +359,7 @@ component backend "Backend" @vercel {
   }
 
   component db "Postgres" @supabase.postgres {
+    shape cylinder
     desc "Primary datastore."
     schema json \`\`\`
     {
@@ -356,7 +409,8 @@ layout {
 file        = header { component | connection } [ layout ] ;
 header      = "arch" string version ;
 component   = "component" id [ string ] [ type ] [ "{" { bodyitem } "}" ] ;
-bodyitem    = desc | src | component | payload ;
+bodyitem    = shape | desc | src | component | payload ;
+shape       = "shape" id ;
 desc        = "desc" ( string | tripleString ) ;
 src         = "src" string ;
 payload     = id format fence ;

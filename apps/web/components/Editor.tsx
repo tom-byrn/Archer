@@ -28,6 +28,7 @@ import {
   setConnectionEndpoints,
   setDisplay,
   type ArchDoc,
+  type Shape,
 } from "@archer/lang";
 import Link from "next/link";
 import { useAuth } from "@clerk/nextjs";
@@ -77,6 +78,7 @@ import {
   type MultiSelection,
   type Selection,
 } from "./DetailPanel";
+import { LogoProvider } from "./logos";
 import { Palette } from "./Palette";
 import {
   Button,
@@ -271,16 +273,23 @@ function TitleField({ value, onCommit }: { value: string; onCommit: (v: string) 
   );
 }
 
-export function Editor({
-  initialSource,
-  library,
-  session,
-}: {
+interface EditorProps {
   initialSource: string;
   /** Custom component types: the workspace's, or in-memory ones in a sandbox. */
   library: UserLibrary;
   session: EditorSession;
-}) {
+}
+
+/** The editor draws catalog types with their product logos (components/logos.tsx). */
+export function Editor(props: EditorProps) {
+  return (
+    <LogoProvider>
+      <EditorView {...props} />
+    </LogoProvider>
+  );
+}
+
+function EditorView({ initialSource, library, session }: EditorProps) {
   // Everything that saves, shares or exports checks `stored`; a sandbox has none of it.
   const stored = session.kind === "document" ? session : null;
   const persist = stored?.persist;
@@ -490,10 +499,10 @@ export function Editor({
         });
         setSel(NONE);
       },
-      onDropType: (tag, pos) =>
+      onDropType: (tag, pos, shape) =>
         mutate((d) => {
           const target = resolveDropTarget(d, pos, { base: liveFocus });
-          return addComponent(d, target.parent, { type: tag, at: target.at }).doc;
+          return addComponent(d, target.parent, { type: tag, shape, at: target.at }).doc;
         }),
       onReconnect: (index, end, path) => {
         const key = mutateWith((d) => {
@@ -571,14 +580,14 @@ export function Editor({
   }, []);
 
   const addFromPalette = useCallback(
-    (tag: string | undefined) => {
+    (tag: string | undefined, shape?: Shape) => {
       const point = addAt.current;
       addAt.current = null;
       const path = mutateWith((d) => {
         const target = point ? resolveDropTarget(d, point, { base: liveFocus }) : null;
         const r = target
-          ? addComponent(d, target.parent, { type: tag, at: target.at })
-          : addComponent(d, liveFocus, { type: tag });
+          ? addComponent(d, target.parent, { type: tag, shape, at: target.at })
+          : addComponent(d, liveFocus, { type: tag, shape });
         return { doc: r.doc, value: r.path.join(".") };
       });
       if (path) selectNew(path);
@@ -1028,6 +1037,19 @@ export function Editor({
               },
             ]
           : []),
+        // A plane is drawn as a plane; its shape shows once it's collapsed.
+        ...(isContainer && display === "plane"
+          ? []
+          : [
+              {
+                label: "Change shape…",
+                icon: <Icon.Shapes />,
+                onSelect: () => {
+                  setSel(only(t.path));
+                  setEditingId(t.path);
+                },
+              },
+            ]),
         "separator",
         ...selectionActions(isContainer),
       ];

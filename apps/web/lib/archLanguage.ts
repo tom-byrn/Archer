@@ -22,7 +22,7 @@ interface ArchState {
   triple: boolean;
 }
 
-const KEYWORDS = new Set(["arch", "component", "desc", "layout"]);
+const KEYWORDS = new Set(["arch", "component", "desc", "src", "shape", "layout"]);
 const TYPE_RE = /^@[a-z][a-z0-9_]*(?:\.[a-z][a-z0-9_]*)*/;
 const ARROW_RE = /^(?:<->|->|--)/;
 const VERSION_RE = /^v\d+\.\d+\b/;

@@ -14,7 +14,8 @@ ${BRIEF}
 2. **Everything semantic is in the source; everything visual is in the
    \`layout\` block** at the end of the document. You normally never write
    \`layout\` — the server auto-completes it and preserves the human's manual
-   arrangement when you update (see "Layout rules" below).
+   arrangement when you update (see "Layout rules" below). The one visual
+   field you do write is a component's \`shape\` (see "Shapes" below).
 3. **The language is strict.** Writes are rejected while the document has
    errors (unresolved connection endpoints, invalid payloads, duplicate ids).
    The workflow is: write → get diagnostics → fix → retry. Diagnostics carry
@@ -163,6 +164,18 @@ The full language specification is at the end of this guide. Key habits:
   communication. Both are allowed across any depth.
 - **Type tags are optional.** An unknown tag is only a warning (renders as a
   generic box); prefer catalog/custom tags when a good one exists.
+- **Shapes.** A component is drawn as a box unless its body says otherwise
+  with \`shape <name>\`: \`cylinder\` for a store, \`cloud\` for an outside
+  service, \`person\` for a user, \`robot\` for an AI agent, \`queue\`,
+  \`server\`, \`browser\`, \`phone\` and more (spec §3.3, or \`list_types\`).
+  The type still picks the icon and color inside the shape. Shapes make a
+  diagram readable at a glance: use them where they say something, and leave
+  the rest as boxes:
+
+      component orders "Orders" @postgres {
+        shape cylinder
+        desc "Every order and its line items."
+      }
 - **AI systems have their own building blocks:** \`@llm\`, \`@agent\`, \`@mcp\`
   (an MCP server), \`@tool\`, \`@rag\`, \`@embeddings\`, \`@vector_db\`,
   \`@memory\`, \`@guardrails\`, \`@evals\` and more (\`list_types\` with search
@@ -193,18 +206,19 @@ The full language specification is at the end of this guide. Key habits:
 | E001 | Syntax error | Follow the message; check fences and quotes |
 | E002 | Duplicate component id in one scope | Rename one of them |
 | E003 | Duplicate payload name on one component or connection | Rename one payload |
-| E004 | More than one \`src\` on a component | Keep one |
+| E004 | More than one \`src\` or \`shape\` on a component | Keep one |
 | E101 | Connection endpoint doesn't resolve | Declare the component or fix the path |
 | E201 | json/yaml/table payload doesn't parse | Fix the payload content |
 | W301 | Unknown type tag (warning) | Optional: use a catalog tag or create a custom type |
 | W302 | Duplicate connection (warning) | Optional: remove one |
 | W303 | Layout entry for unknown path (warning) | Ignored; entry is dropped |
+| W304 | Unknown shape (warning) | Optional: use one of the shapes the message lists |
 
 ## Capability map (vs. the human app)
 
 Everything a human can do in the app maps to a tool: browse projects
 (\`list_projects\`/\`get_project\`), create/delete projects, edit anything —
-components, connections, descriptions, payloads, nesting — (\`update_project\`
+components, connections, descriptions, shapes, payloads, nesting — (\`update_project\`
 with full source), manage the custom component library
 (\`create_custom_type\`/\`delete_custom_type\`), arrange the canvas
 (\`auto_layout_project\`, \`set_display\`, or explicit layout entries), review history

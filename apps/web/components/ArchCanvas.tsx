@@ -31,8 +31,9 @@ import {
   type ResizeParams,
 } from "@xyflow/react";
 import { toPng } from "html-to-image";
+import { isShape, type Shape } from "@archer/lang";
 import { CELL, type ArchEdge, type ArchNode } from "@/lib/toFlow";
-import { DND_MIME } from "./Palette";
+import { DND_MIME, DND_SHAPE_MIME } from "./Palette";
 import { ResizeContext, edgeTypes, nodeTypes } from "./nodes";
 import { Icon } from "./ui";
 import "./canvas.css";
@@ -61,7 +62,8 @@ export interface CanvasCallbacks {
   onConnect: (source: string, target: string) => void;
   /** Delete key: selected nodes plus selected and attached edges, as one edit. */
   onDelete: (paths: string[], edgeIndices: number[]) => void;
-  onDropType: (tag: string | undefined, flowPos: { x: number; y: number }) => void;
+  /** A palette item dropped: a type (undefined: untyped), drawn as `shape` when given. */
+  onDropType: (tag: string | undefined, flowPos: { x: number; y: number }, shape?: Shape) => void;
   /** Box selection finished (shift-drag on the canvas). */
   onSelectMany?: (paths: string[]) => void;
   /** An edge's end was dragged onto another node. */
@@ -301,7 +303,8 @@ function CanvasInner({
     return () => clearTimeout(t);
   }, [reveal, initialized, getNodes, fitView, onRevealed]);
 
-  // Hover dimming: everything not connected to the hovered node/edge fades.
+  // Hover highlighting: the hovered node/edge and what it connects stay lit
+  // (lit edges show their label chips); everything else fades.
   const lit = useMemo(() => {
     if (hover === null || busy) return null;
     const litNodes = new Set<string>();
@@ -357,10 +360,14 @@ function CanvasInner({
   );
   const styledEdges = useMemo(
     () =>
-      edges.map((e) => ({
-        ...e,
-        className: joinCls(lit !== null && !lit.edges.has(e.id) && "dim"),
-      })),
+      edges.map((e) => {
+        const on = lit === null ? undefined : lit.edges.has(e.id);
+        return {
+          ...e,
+          ...(e.data && on !== e.data.lit ? { data: { ...e.data, lit: on } } : {}),
+          className: joinCls(on === false && "dim"),
+        };
+      }),
     [edges, lit],
   );
 
@@ -442,10 +449,11 @@ function CanvasInner({
   const onDrop = useCallback(
     (e: React.DragEvent) => {
       const tag = e.dataTransfer.getData(DND_MIME);
+      const shape = e.dataTransfer.getData(DND_SHAPE_MIME);
       if (tag === null) return;
       e.preventDefault();
       const pos = screenToFlowPosition({ x: e.clientX, y: e.clientY });
-      callbacks.onDropType(tag === "" ? undefined : tag, pos);
+      callbacks.onDropType(tag === "" ? undefined : tag, pos, isShape(shape) ? shape : undefined);
     },
     [callbacks, screenToFlowPosition],
   );

@@ -5,10 +5,12 @@ import {
   findComponent,
   layoutMap,
   pathToString,
+  shapeOf,
   type ArchDoc,
   type Arrow,
   type ComponentNode,
   type DisplayMode,
+  type Shape,
 } from "@archer/lang";
 import {
   BOX_COST,
@@ -52,6 +54,8 @@ export interface ArchNodeData extends Record<string, unknown> {
   typeTag?: string;
   desc?: string;
   display: DisplayMode;
+  /** Drawn as this shape (lib/shapes.ts) instead of the card; never set on a plane. */
+  shape?: Exclude<Shape, "box">;
   childCount: number;
   payloadCount: number;
   accent?: string;
@@ -84,6 +88,12 @@ export interface ArchEdgeData extends Record<string, unknown> {
   /** Where the middle segment runs (`routeEdge`): x for left/right routes, y for top/bottom. */
   mid?: number;
   horizontal?: boolean;
+  /**
+   * Hover highlighting, set by the canvas: true while the pointer is over the
+   * edge or a component it connects (its label chip shows), false while it's
+   * over something else (the edge fades), unset otherwise.
+   */
+  lit?: boolean;
 }
 
 export type ArchEdge = Edge<ArchEdgeData>;
@@ -164,6 +174,7 @@ export function toFlow(
             minSize[1] = Math.max(minSize[1], e.at[1] + e.size[1] + PLANE_INNER_MARGIN[1]);
           }
         }
+        const shape = shapeOf(c);
         nodes.push({
           id: path,
           type: isPlane ? "archPlane" : "archComponent",
@@ -177,6 +188,7 @@ export function toFlow(
             typeTag: c.type,
             desc: c.desc,
             display,
+            ...(!isPlane && shape !== "box" ? { shape } : {}),
             childCount: c.children.length,
             payloadCount: c.payloads.length,
             minSize,

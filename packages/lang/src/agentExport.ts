@@ -13,6 +13,9 @@ const PREAMBLE = `# This is an Archer architecture document — a complete, mach
 # - \`desc\` is the author's human-readable intent for that component.
 # - \`src\` points at where the component lives in code (a repo path or URL).
 #   Start there when implementing or verifying that component.
+# - \`shape\` (cylinder, cloud, person, robot, …) is how the canvas draws a
+#   component: a hint at what it is (a store, an outside service, a user, an
+#   agent), never an instruction for how to build it.
 # - Named payload blocks (json | yaml | table | markdown) carry structured detail
 #   such as schemas, endpoint lists, or env vars. json/yaml/table payloads are
 #   syntactically validated — trust them as authored data.

@@ -67,6 +67,8 @@ export interface TypeList {
   catalog: { tag: string; name: string; namespace: string }[];
   custom_types: { tag: string; name: string; color: string; glyph: string }[];
   connection_types: readonly string[];
+  /** What `shape <name>` in a component body can name, and what each usually stands for. */
+  shapes: { shape: string; name: string; use: string }[];
   glyphs_for_custom_types: string[];
   note?: string;
 }
