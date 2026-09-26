@@ -99,7 +99,7 @@ function formatLayoutEntry(e: LayoutEntry): string {
 }
 
 export interface FormatOptions {
-  /** Omit the layout block entirely (used by the agent export). */
+  /** Omit the layout block entirely (used for repository files). */
   stripLayout?: boolean;
 }
 

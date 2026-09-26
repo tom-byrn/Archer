@@ -42,7 +42,7 @@ component lang "Language Core" {
     desc "Deterministic grid placement from the connection graph; layers wrap into sub-columns past a height cap; never moves existing entries; planes sized to contain their children."
   }
   component exporter "Agent Export" {
-    desc "compileForAgent: canonical text with the layout block stripped and a reading-guide preamble prepended."
+    desc "compileForAgent: canonical text with a complete layout block and a reading-guide preamble prepended."
   }
   component transforms "Transforms" {
     desc "Pure AST edits behind every canvas gesture: add/move/resize/reparent/rename components, connections, payloads, display modes."

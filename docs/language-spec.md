@@ -2,8 +2,8 @@
 
 Archer is a textual language for describing software architecture. An `.arch` file is
 the **single source of truth** for an architecture document: the canvas renders it, edits
-on the canvas compile back into it, and a stripped form of it is handed to coding agents
-as an implementation spec.
+on the canvas compile back into it, and it is handed to coding agents, with a short
+reading guide, as an implementation spec.
 
 ## 1. Design principles
 
@@ -13,9 +13,11 @@ as an implementation spec.
    skimmable.
 2. **The file is the truth.** The canvas is a view. Every canvas edit is a file edit.
 3. **Semantics and presentation are quarantined from each other.** Everything an agent
-   needs lives in the semantic sections. Everything about pixels lives in the `layout`
-   block, which is machine-managed and stripped from agent exports. Agents MUST ignore
-   `layout` when reading and MUST NOT write it. The one visual property outside it is a
+   needs to build lives in the semantic sections. Everything about pixels lives in the
+   `layout` block, which is machine-managed. Agent exports include it so the agent sees
+   the diagram the author drew, but it is never architecture: agents MAY read it for
+   context, MUST NOT implement anything from it, and SHOULD NOT write it unless asked
+   to arrange the diagram. The one visual property outside it is a
    component's `shape` (§3.3): it says what a thing *is* at a glance (a cylinder is a
    store, a person is a user), belongs to the component in every view, and agents write
    it like any other field.
@@ -293,14 +295,16 @@ layout {
   (`icon` | `plane`) for components with children.
 - Grid-based: all positions are integer grid cells, matching the app's snap-to-grid
   canvas (React Flow).
-- **Machine-managed.** The canvas writes it; humans and agents never do. A component
-  with no layout entry — e.g. in a file an agent wrote or that was pasted in — is
+- **Machine-managed.** The canvas writes it; agents only when asked to arrange the
+  diagram. A component with no layout entry — e.g. in a file an agent wrote or that was pasted in — is
   positioned by the auto-layout engine on load, and its computed position is then
   written back.
 - Layout is always optional, never load-bearing: deleting the entire block yields the
   same architecture, auto-laid-out.
-- Agent guidance (stated in docs and in the export header): ignore `layout` when
-  reading; never emit it when writing.
+- Agent guidance (stated in docs and in the export header): read `layout` as the
+  author's arrangement — context for how they see the system, never something to
+  implement; leave it out when writing (surviving components keep their positions,
+  new ones are auto-placed) unless asked to arrange the diagram.
 
 ## 8. Validation
 
@@ -329,10 +333,10 @@ a dangling connection is never created in the first place.
 
 1. **Canonical form** — the formatter output the app always saves: fixed section order,
    sorted connections, normalized whitespace. Ensures clean diffs.
-2. **Agent export ("copy as prompt")** — canonical form with the `layout` block
-   stripped, prefixed by a short fixed header telling the agent what Archer is, how to
-   read it, and that this document is the implementation spec. One click, ends up on the
-   clipboard.
+2. **Agent export ("copy as prompt")** — canonical form with a complete `layout` block
+   (every component placed, as the canvas draws it), prefixed by a short fixed header
+   telling the agent what Archer is, how to read it (layout included), and that this
+   document is the implementation spec. One click, ends up on the clipboard.
 3. **Image export** — PNG of the current canvas view, for pasting alongside the code.
 
 ## 10. Full example

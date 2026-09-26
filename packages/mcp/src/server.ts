@@ -301,7 +301,7 @@ export function registerArcherTools(server: McpServer): void {
     {
       title: "Compile an implementation spec",
       description:
-        "Compile an Archer document into the agent-handoff form: canonical text with the layout block stripped and a short reading-guide preamble prepended. This is what you paste to a coding agent (or use yourself) as the implementation spec. Pass either raw source OR a project_id (loads the stored document). Fails if the document has validation errors.",
+        "Compile an Archer document into the agent-handoff form: canonical text, including a complete layout block (where each component sits on the canvas, for context), with a short reading-guide preamble prepended. This is what you paste to a coding agent (or use yourself) as the implementation spec. Pass either raw source OR a project_id (loads the stored document). Fails if the document has validation errors.",
       inputSchema: {
         source: z.string().optional().describe("Archer source (omit when passing project_id)"),
         project_id: z.string().optional().describe("Stored project to compile (omit when passing source)"),

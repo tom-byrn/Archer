@@ -224,7 +224,7 @@ export function CodePane({
                 disabled={!valid}
                 title={
                   valid
-                    ? "Layout stripped, language guide prepended — paste it to an agent"
+                    ? "Layout included, language guide prepended — paste it to an agent"
                     : "Fix validation errors first"
                 }
                 onClick={() => flash("agent", onCopyForAgent)}

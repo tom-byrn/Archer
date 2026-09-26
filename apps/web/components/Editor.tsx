@@ -1073,7 +1073,7 @@ function EditorView({ initialSource, library, session }: EditorProps) {
     {
       label: "Copy for agent",
       hint: derived.valid
-        ? "Layout stripped, language guide prepended"
+        ? "Layout included, language guide prepended"
         : "Fix validation errors first",
       icon: <Icon.Sparkle />,
       disabled: !derived.valid,
