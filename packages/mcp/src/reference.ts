@@ -279,7 +279,7 @@ export const TOOL_DOCS: Record<string, ToolDoc> = {
       features: ["components", "types", "connections", "labels"],
       docs_url: `${APP}/language/examples#components-and-connections`,
       sandbox_url: `${APP}/sandbox/components-and-connections`,
-      source: 'arch "Link Shortener" v0.1\n\ncomponent browser "Browser" @browser\n…',
+      source: 'arch "Link Shortener" v0.1\n\ncomponent browser "Browser" @browser {\n  shape browser\n}\n…',
     },
     notes: [
       "`source` is canonical and validates clean, so it can go straight to `create_project` to give the user an editable copy. Each example is also the resource `archer://examples/<slug>`.",

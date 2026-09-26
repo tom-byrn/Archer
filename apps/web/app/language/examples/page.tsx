@@ -116,7 +116,7 @@ export default function ExamplesPage() {
             change however you like, no account needed. Nothing there is saved.
           </p>
           <p className="pb-3 text-[14px] leading-relaxed text-ink-2">
-            The first two have no <code className={inlineCode}>layout</code> block. That is how
+            The first three have no <code className={inlineCode}>layout</code> block. That is how
             agents write Archer, and those diagrams are the app&apos;s auto-layout. The last one is
             a whole product laid out by hand, so it shows what the canvas writes once you arrange
             things yourself.
