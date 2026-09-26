@@ -14,7 +14,7 @@ import {
   type ArchDoc,
   type ComponentNode,
 } from "@archer/lang";
-import { GLYPHS, GLYPH_VIEWBOX, lookupType } from "@archer/catalog";
+import { GLYPHS, GLYPH_VIEWBOX, lookupType, type Logo } from "@archer/catalog";
 import { LABEL, labelLayout, shapeGeometry, type ShapeGeometry } from "./shapes";
 import {
   BOX_COST,
@@ -39,6 +39,11 @@ export interface RenderOptions {
   showTitle?: boolean;
   /** Paint the ground behind the diagram (default true). Off for in-app thumbnails. */
   background?: boolean;
+  /**
+   * Product logos to draw catalog types with (`@archer/catalog/logos`); without
+   * them every type draws its glyph, as on the landing page.
+   */
+  logos?: Readonly<Record<string, Logo>>;
 }
 
 interface Palette {
@@ -153,6 +158,16 @@ export const displayColor = (hex: string, dark: boolean): string => {
 const glyphSvg = (key: string, size: number, color: string, x: number, y: number): string =>
   `<svg x="${x}" y="${y}" width="${size}" height="${size}" viewBox="${GLYPH_VIEWBOX}" style="color:${color}">${GLYPHS[key] ?? GLYPHS.box!}</svg>`;
 
+/** A logo like components/logos.tsx draws it: a mark in its brand color, or artwork as it is. */
+const logoSvg = (logo: Logo, size: number, x: number, y: number, dark: boolean): string =>
+  `<svg x="${x}" y="${y}" width="${size}" height="${size}" viewBox="${logo.viewBox}"` +
+  (logo.kind === "mono" ? ` style="color:${displayColor(logo.color!, dark)}"` : "") +
+  `>${logo.body}</svg>`;
+
+/** A box's icon: its logo when it has one, its glyph otherwise. */
+const iconSvg = (b: Box, size: number, x: number, y: number, dark: boolean): string =>
+  b.logo ? logoSvg(b.logo, size, x, y, dark) : glyphSvg(b.glyph, size, b.color, x, y);
+
 interface Box {
   path: string;
   node: ComponentNode;
@@ -163,6 +178,7 @@ interface Box {
   plane: boolean;
   color: string;
   glyph: string;
+  logo: Logo | undefined;
   /** Drawn as a shape (lib/shapes.ts) instead of the card. */
   shape?: ShapeGeometry;
 }
@@ -223,6 +239,7 @@ export function renderArchSvg(source: string, opts: RenderOptions = {}): string 
           plane,
           color: displayColor(type?.color ?? P.fallback, dark),
           glyph: type?.glyph ?? "box",
+          logo: type?.logo === undefined ? undefined : opts.logos?.[type.logo],
           ...(!plane && shape !== "box" ? { shape: shapeGeometry(shape, w, h) } : {}),
         });
       }
@@ -261,7 +278,7 @@ export function renderArchSvg(source: string, opts: RenderOptions = {}): string 
         `<g>` +
           `<rect x="${x}" y="${y}" width="${b.w}" height="${b.h}" rx="8" fill="${fill}" stroke="${stroke}"/>` +
           `<path d="M${x + 0.5} ${y + 32}h${b.w - 1}" stroke="${alpha(b.color, 0.2)}"/>` +
-          glyphSvg(b.glyph, 16, b.color, x + 10, y + 8) +
+          iconSvg(b, 16, x + 10, y + 8, dark) +
           `<text x="${x + 32}" y="${y + 20.5}" font-family='${SANS}' font-size="12" font-weight="600" fill="${P.ink}">${esc(fit(name, b.w - 44 - (b.node.type ? b.node.type.length * 6 + 10 : 0), 6.8))}</text>` +
           (b.node.type
             ? `<text x="${x + b.w - 10}" y="${y + 20.5}" text-anchor="end" font-family='${MONO}' font-size="10" fill="${P.ink3}">${esc(b.node.type)}</text>`
@@ -269,7 +286,7 @@ export function renderArchSvg(source: string, opts: RenderOptions = {}): string 
           `</g>`,
       );
     } else if (b.shape) {
-      out.push(shapeSvg(b, x, y, P));
+      out.push(shapeSvg(b, x, y, P, dark));
     } else {
       const collapsedCount = b.node.children.length;
       const sub = (b.node.type ?? "component") + (collapsedCount > 0 ? ` · ${collapsedCount} inside` : "");
@@ -281,8 +298,11 @@ export function renderArchSvg(source: string, opts: RenderOptions = {}): string 
       out.push(
         `<g>` +
           `<rect x="${x}" y="${y}" width="${b.w}" height="${b.h}" rx="6" fill="${P.surface}" stroke="${P.line2}"/>` +
-          `<rect x="${tileX}" y="${tileY}" width="32" height="32" rx="6" fill="${alpha(b.color, 0.14)}"/>` +
-          glyphSvg(b.glyph, 18, b.color, tileX + 7, tileY + 7) +
+          // A vendor's square icon (AWS) takes the tinted tile's place.
+          (b.logo?.kind === "tile"
+            ? logoSvg(b.logo, 32, tileX, tileY, dark)
+            : `<rect x="${tileX}" y="${tileY}" width="32" height="32" rx="6" fill="${alpha(b.color, 0.14)}"/>` +
+              iconSvg(b, 18, tileX + 7, tileY + 7, dark)) +
           `<text x="${textX}" y="${midY - 2}" font-family='${SANS}' font-size="13" font-weight="600" fill="${P.ink}">${esc(fit(name, textW, 6.8))}</text>` +
           `<text x="${textX}" y="${midY + 12}" font-family='${MONO}' font-size="10" fill="${P.ink3}">${esc(fit(sub, textW, 6.2))}</text>` +
           `</g>`,
@@ -465,7 +485,7 @@ export function renderArchSvg(source: string, opts: RenderOptions = {}): string 
  * outline, tinted by its type, then the label centered in the shape's
  * middle, with as much of glyph, name and tag as `labelLayout` finds room for.
  */
-function shapeSvg(b: Box, x: number, y: number, P: Palette): string {
+function shapeSvg(b: Box, x: number, y: number, P: Palette, dark: boolean): string {
   const g = b.shape!;
   const typed = b.node.type !== undefined;
   // Tinted by a type that resolves; an unknown one keeps the plain outline, as on the canvas.
@@ -492,7 +512,7 @@ function shapeSvg(b: Box, x: number, y: number, P: Palette): string {
     (g.dots ? `<path d="${g.dots}" fill="${stroke}"/>` : "") +
     `</g>`;
   if (layout.glyph === "above") {
-    svg += glyphSvg(b.glyph, LABEL.glyph, b.color, mid - LABEL.glyph / 2, top);
+    svg += iconSvg(b, LABEL.glyph, mid - LABEL.glyph / 2, top, dark);
     top += LABEL.glyph + LABEL.gap;
   }
   const name = (text: string, tx: number, ty: number, anchor: string) =>
@@ -502,7 +522,7 @@ function shapeSvg(b: Box, x: number, y: number, P: Palette): string {
     if (i === 0 && inline > 0) {
       // Glyph and text centered together, the glyph leading.
       const left = mid - (Math.min(line.length * 6.8, c.w - inline) + inline) / 2;
-      svg += glyphSvg(b.glyph, 14, b.color, left, lineTop + 1) + name(line, left + inline, lineTop + 12, "");
+      svg += iconSvg(b, 14, left, lineTop + 1, dark) + name(line, left + inline, lineTop + 12, "");
     } else svg += name(line, mid, lineTop + 12, ` text-anchor="middle"`);
   });
   top += lines.length * LABEL.nameLine;

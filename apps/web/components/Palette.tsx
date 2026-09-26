@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { CATALOG, type CatalogType } from "@archer/catalog";
 import { SHAPES, SHAPE_INFO, type Shape } from "@archer/lang";
 import type { CustomType, UserLibrary } from "@/lib/userLibrary";
-import { Glyph } from "./nodes";
+import { Glyph, GlyphSwatch } from "./nodes";
 import { ShapeIcon, shapeTitle } from "./ShapePicker";
 import { Button, IconButton, Icon, Input, Kbd, cx } from "./ui";
 
@@ -112,12 +112,15 @@ function PaletteItem({
         title={`@${entry.tag} — drag onto the canvas or click to add`}
         className="flex h-7 w-full cursor-grab items-center gap-2 rounded-md px-1.5 text-left transition-colors duration-75 hover:bg-surface-2 active:cursor-grabbing"
       >
-        <span
-          className="flex h-5 w-5 shrink-0 items-center justify-center rounded-sm"
-          style={{ backgroundColor: `${entry.color}24` }}
-        >
-          <Glyph glyph={entry.glyph} color={entry.color} size={13} />
-        </span>
+        <GlyphSwatch
+          tag={entry.tag}
+          glyph={entry.glyph}
+          color={entry.color}
+          box={20}
+          size={13}
+          background={`${entry.color}24`}
+          className="rounded-sm"
+        />
         <span className="min-w-0 flex-1 truncate text-sm text-ink">{entry.name}</span>
       </button>
       {trailing && (
@@ -550,6 +553,14 @@ export function Palette({
 
         {searching && !anyVisible && !plainVisible && (
           <p className="px-1.5 pt-3 text-sm text-ink-3">No matches</p>
+        )}
+        {/* Credit for the product logos (packages/catalog/scripts/logos.ts); AWS's
+            icons are CC BY-ND 2.0, which asks for it. */}
+        {!searching && (
+          <p className="px-1.5 pt-4 text-xs leading-snug text-ink-3">
+            Logos belong to their owners and only identify their products. AWS icons: AWS
+            Architecture Icons, © Amazon Web Services, CC BY-ND 2.0.
+          </p>
         )}
       </div>
     </aside>

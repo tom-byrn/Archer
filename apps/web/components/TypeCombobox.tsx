@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { CATALOG, CONNECTION_TYPES, lookupType } from "@archer/catalog";
 import type { UserLibrary } from "@/lib/userLibrary";
 import { Icon, Input, cx } from "./ui";
-import { Glyph } from "./nodes";
+import { Glyph, GlyphSwatch } from "./nodes";
 
 type Row =
   | { kind: "untyped" }
@@ -193,12 +193,15 @@ export function TypeCombobox({
                 <button key={row.tag} type="button" className={cls} onMouseEnter={() => setActive(i)} onClick={() => pick(row)}>
                   {mode === "component" ? (
                     <>
-                      <span
-                        className="flex h-5 w-5 shrink-0 items-center justify-center rounded-sm"
-                        style={{ backgroundColor: `${row.color ?? "#64748b"}1a` }}
-                      >
-                        <Glyph glyph={row.glyph} color={row.color} size={12} />
-                      </span>
+                      <GlyphSwatch
+                        tag={row.tag}
+                        glyph={row.glyph}
+                        color={row.color}
+                        box={20}
+                        size={12}
+                        background={`${row.color ?? "#64748b"}1a`}
+                        className="rounded-sm"
+                      />
                       <span className="min-w-0 flex-1 truncate">{row.name}</span>
                       <span className="mono shrink-0 text-xs text-ink-3">@{row.tag}</span>
                     </>

@@ -14,6 +14,7 @@ import { MembersDialog } from "@/components/MembersDialog";
 import { ACME_SAAS } from "@/lib/samples/acme-saas";
 import { DocPreview } from "@/lib/preview";
 import { ConnectAgentDialog } from "@/components/ConnectAgentDialog";
+import { LogoProvider } from "@/components/logos";
 import { SampleDialog } from "@/components/SampleDialog";
 import { GitHubFileDialog } from "@/components/GitHubFileDialog";
 import { SiteFrame, siteNavLinkCls } from "@/components/landing/SiteFrame";
@@ -453,7 +454,16 @@ function Skeletons() {
   );
 }
 
+/** Document previews draw catalog types with their product logos (components/logos.tsx). */
 export default function Home() {
+  return (
+    <LogoProvider>
+      <Dashboard />
+    </LogoProvider>
+  );
+}
+
+function Dashboard() {
   const router = useRouter();
   const { workspaceId, role, workspaces, select } = useWorkspace();
   const current = workspaces.find((w) => w.id === workspaceId);

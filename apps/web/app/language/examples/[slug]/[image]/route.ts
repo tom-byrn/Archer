@@ -1,3 +1,4 @@
+import { LOGOS } from "@archer/catalog/logos";
 import { EXAMPLES, findExample } from "@archer/mcp/examples";
 import { renderArchSvg } from "@/lib/svg";
 
@@ -23,7 +24,7 @@ export async function GET(
   const example = findExample(slug);
   const theme = THEMES[image as keyof typeof THEMES];
   if (!example || !theme) return new Response("Not found", { status: 404 });
-  return new Response(renderArchSvg(example.source, { theme, showTitle: false }), {
+  return new Response(renderArchSvg(example.source, { theme, showTitle: false, logos: LOGOS }), {
     headers: { "Content-Type": "image/svg+xml; charset=utf-8" },
   });
 }

@@ -20,6 +20,7 @@ import type { Shape } from "@archer/lang";
 import { LABEL, labelLayout, shapeGeometry, type ShapeGeometry } from "@/lib/shapes";
 import { CELL, type ArchEdge, type ArchNode, type NodeMarks } from "@/lib/toFlow";
 import { displayColor, useIsDark } from "@/lib/useIsDark";
+import { LogoArt, useLogo } from "./logos";
 import { Icon, cx } from "./ui";
 
 /** Neutral fallback for untyped components (matches `--ink-3`-ish gray). */
@@ -46,6 +47,8 @@ export function Glyph({
 }) {
   const isDark = useIsDark();
   const entry = lookupType(tag);
+  const logo = useLogo(tag);
+  if (logo) return <LogoArt logo={logo} size={size} className={className} />;
   const g = GLYPHS[glyph ?? entry?.glyph ?? "box"] ?? GLYPHS.box!;
   return (
     <svg
@@ -56,6 +59,39 @@ export function Glyph({
       style={{ color: displayColor(color ?? entry?.color, isDark) ?? "var(--ink-3)" }}
       dangerouslySetInnerHTML={{ __html: g }}
     />
+  );
+}
+
+/**
+ * A type's glyph (or logo) on its tinted square, `box` px across. A vendor's
+ * own square icon (an AWS service) is drawn in place of the square instead.
+ */
+export function GlyphSwatch({
+  tag,
+  color,
+  glyph,
+  box,
+  size,
+  background,
+  className,
+}: {
+  tag?: string;
+  color?: string;
+  glyph?: string;
+  box: number;
+  size: number;
+  background?: string;
+  className?: string;
+}) {
+  const logo = useLogo(tag);
+  if (logo?.kind === "tile") return <LogoArt logo={logo} size={box} className={cx("shrink-0", className)} />;
+  return (
+    <span
+      className={cx("flex shrink-0 items-center justify-center", className)}
+      style={{ width: box, height: box, backgroundColor: background }}
+    >
+      <Glyph tag={tag} color={color} glyph={glyph} size={size} />
+    </span>
   );
 }
 
@@ -263,12 +299,15 @@ function ArchCardNode({ id, data, width, height }: NodeProps<ArchNode>) {
       <Resizer id={id} data={data} />
       <EdgeHandles />
       <Badges marks={marks} />
-      <div
-        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-sm"
-        style={{ backgroundColor: alpha(tile, 0.14) }}
-      >
-        <Glyph tag={data.typeTag} color={accent} glyph={data.glyphKey} size={18} />
-      </div>
+      <GlyphSwatch
+        tag={data.typeTag}
+        color={accent}
+        glyph={data.glyphKey}
+        box={32}
+        size={18}
+        background={alpha(tile, 0.14)}
+        className="rounded-sm"
+      />
       <div className="min-w-0">
         <div className="arch-node-label truncate text-base font-semibold leading-tight text-ink">
           {data.label}

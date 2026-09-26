@@ -78,6 +78,7 @@ import {
   type MultiSelection,
   type Selection,
 } from "./DetailPanel";
+import { LogoProvider } from "./logos";
 import { Palette } from "./Palette";
 import {
   Button,
@@ -272,16 +273,23 @@ function TitleField({ value, onCommit }: { value: string; onCommit: (v: string) 
   );
 }
 
-export function Editor({
-  initialSource,
-  library,
-  session,
-}: {
+interface EditorProps {
   initialSource: string;
   /** Custom component types: the workspace's, or in-memory ones in a sandbox. */
   library: UserLibrary;
   session: EditorSession;
-}) {
+}
+
+/** The editor draws catalog types with their product logos (components/logos.tsx). */
+export function Editor(props: EditorProps) {
+  return (
+    <LogoProvider>
+      <EditorView {...props} />
+    </LogoProvider>
+  );
+}
+
+function EditorView({ initialSource, library, session }: EditorProps) {
   // Everything that saves, shares or exports checks `stored`; a sandbox has none of it.
   const stored = session.kind === "document" ? session : null;
   const persist = stored?.persist;

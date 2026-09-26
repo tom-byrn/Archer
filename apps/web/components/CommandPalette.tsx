@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { CATALOG } from "@archer/catalog";
 import { SHAPE_INFO, type Shape } from "@archer/lang";
 import type { UserLibrary } from "@/lib/userLibrary";
-import { Glyph } from "./nodes";
+import { GlyphSwatch } from "./nodes";
 import { ShapeIcon } from "./ShapePicker";
 import { Icon, Kbd, cx } from "./ui";
 import { PALETTE_SHAPES, namespaceLabel, orderedNamespaces } from "./Palette";
@@ -314,12 +314,15 @@ export function CommandPalette({
 
 /** A tinted square holding a component glyph. */
 const Swatch = ({ color, glyph, tag }: { color?: string; glyph?: string; tag?: string }) => (
-  <span
-    className={cx("flex h-5 w-5 shrink-0 items-center justify-center rounded-sm", !color && "bg-surface-2")}
-    style={color ? { backgroundColor: `${color}24` } : undefined}
-  >
-    <Glyph tag={tag} glyph={glyph} color={color} size={13} />
-  </span>
+  <GlyphSwatch
+    tag={tag}
+    glyph={glyph}
+    color={color}
+    box={20}
+    size={13}
+    background={color ? `${color}24` : undefined}
+    className={cx("rounded-sm", !color && "bg-surface-2")}
+  />
 );
 
 function RowBody({ row }: { row: Row }) {
@@ -359,7 +362,7 @@ function RowBody({ row }: { row: Row }) {
     );
   return (
     <>
-      <Swatch color={e.color} glyph={e.glyph} />
+      <Swatch color={e.color} glyph={e.glyph} tag={e.tag} />
       <span className="min-w-0 flex-1 truncate text-base text-ink">{e.name}</span>
       {e.tag && <span className="mono shrink-0 text-xs text-ink-3">@{e.tag}</span>}
     </>
