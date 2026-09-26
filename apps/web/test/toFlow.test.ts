@@ -96,3 +96,29 @@ describe("resolveDropTarget", () => {
     expect(resolveDropTarget(DOC, onOrders, { nest: true, exclude: [["orders"]] }).scope).toEqual([]);
   });
 });
+
+describe("parallel connections", () => {
+  it("stack their chips when nested parts reach the same outside component", () => {
+    const doc = parse(`arch "T" v0.2
+
+component a {
+  component x
+  component y
+  component z
+}
+
+component b
+
+a.x -> b @http : "one"
+a.y -> b @grpc : "two"
+a.z -> b
+`).doc;
+    const { edges } = toFlow(doc);
+    expect(edges.map((e) => [e.source, e.target, e.data!.stack])).toEqual([
+      ["a", "b", [0, 2]],
+      ["a", "b", [1, 2]],
+      // No chip, no place in the stack.
+      ["a", "b", undefined],
+    ]);
+  });
+});

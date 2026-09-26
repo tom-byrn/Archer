@@ -117,6 +117,13 @@ export interface ArchEdgeData extends Record<string, unknown> {
   lit?: boolean;
   /** One end is a context node (a component outside the canvas). */
   context?: boolean;
+  /**
+   * Several labelled connections between the same two boxes (nested parts
+   * reaching one outside component, say) share a path: this chip's place in
+   * their stack, [index, count], so the chips sit apart instead of on top of
+   * each other.
+   */
+  stack?: [number, number];
 }
 
 export type ArchEdge = Edge<ArchEdgeData>;
@@ -382,8 +389,20 @@ export function toFlow(
   untangle(withRoutes, obstaclesFor);
   separateBends(withRoutes.map((e) => bendOf(e.route, e.s, e.t, e.source, e.target)));
 
+  const pair = (a: string, b: string) => (a < b ? `${a}\n${b}` : `${b}\n${a}`);
+  const chips = new Map<string, number>();
+  const labelled = (c: ArchDoc["connections"][number]) =>
+    c.type !== undefined || c.label !== undefined || c.payloads.length > 0;
+  for (const { c, source, target } of routed)
+    if (labelled(c)) chips.set(pair(source, target), (chips.get(pair(source, target)) ?? 0) + 1);
+  const stacked = new Map<string, number>();
+
   const edges: ArchEdge[] = [];
   for (const { c, i, source, target, context: isContext, edge } of routed) {
+    const k = pair(source, target);
+    const count = labelled(c) ? (chips.get(k) ?? 1) : 1;
+    const slot = count > 1 ? (stacked.get(k) ?? 0) : 0;
+    if (count > 1) stacked.set(k, slot + 1);
     const route: EdgeRoute | undefined = edge?.route;
     const sourceHandle = `s${route?.from ?? "r"}`;
     const targetHandle = `t${route?.to ?? "l"}`;
@@ -408,6 +427,7 @@ export function toFlow(
         })(),
         ...(route && !route.corner ? { mid: route.mid, horizontal: route.horizontal } : {}),
         ...(isContext ? { context: true } : {}),
+        ...(count > 1 ? { stack: [slot, count] as [number, number] } : {}),
       },
     });
   }
