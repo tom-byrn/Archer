@@ -30,14 +30,14 @@ export const SECTION = {
   title: 2,
   /** Canvas ↔ code, both directions. */
   loop: 3,
-  /** One feature per bar. */
+  /** One feature per bar, seven of them. */
   features: 7,
   /** Break: drums out, "Copy for agent", riser. */
-  build: 15,
+  build: 14,
   /** Drop 2: the big diagram. */
-  drop: 16,
+  drop: 15,
   /** Final hit: end card. */
-  end: 19,
+  end: 18,
 } as const;
 
 /** The end card holds for this long after its hit (the reverb tail rings out). */

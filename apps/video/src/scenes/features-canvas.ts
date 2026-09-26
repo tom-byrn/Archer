@@ -1,26 +1,16 @@
 /**
- * Stations 1–4 of the feature montage: the catalog, strict connections,
- * nesting, and payloads inside a component.
+ * Stations 1–3 of the feature montage: the catalog, nesting, and payloads
+ * inside a component.
  */
 import { CATALOG } from "@archer/catalog";
 import { cue } from "../cues";
-import {
-  arrowPoints,
-  glyph,
-  hideAll,
-  layoutDiagram,
-  nodeEl,
-  renderDiagram,
-  rounded,
-  type Pt,
-} from "../diagram";
-import { h, s } from "../dom";
-import { gsap, master, onFrame } from "../engine";
+import { glyph, hideAll, layoutDiagram, renderDiagram } from "../diagram";
+import { h } from "../dom";
+import { gsap, master } from "../engine";
 import { icon } from "../icons";
-import { pointer } from "../pointer";
 import { NEST_LAYOUT, NEST_SOURCE } from "../sources";
 import { BEAT } from "../time";
-import { mix, pill, typeColor, typeTile } from "../ui";
+import { pill, typeColor, typeTile } from "../ui";
 import type { Station } from "./features";
 
 /** The landing page's claim, rounded down so it stays true as the catalog grows. */
@@ -97,114 +87,7 @@ export const catalogStation: Station = {
   },
 };
 
-/* ------------------------------------------------------- 2. Strict edges */
-
-const STRICT = { x: 3200, y: 60 };
-
-export const strictStation: Station = {
-  kicker: "Validation",
-  title: "Arrows can't point at nothing.",
-  cam: { x: STRICT.x, y: STRICT.y, z: 2.2 },
-  build({ view, t0 }) {
-    const O = STRICT;
-    const api = { x: O.x - 330, y: O.y - 40, w: 160, h: 80 };
-    const db = { x: O.x + 170, y: O.y + 40, w: 160, h: 80 };
-    const apiEl = nodeEl({ ...api, name: "API", type: "aws.lambda", color: typeColor("aws.lambda"), glyph: "lambda" });
-    const dbEl = nodeEl({ ...db, name: "Orders DB", type: "aws.rds", color: typeColor("aws.rds"), glyph: "database" });
-    const svg = s("svg", { class: "edges", width: 1, height: 1 });
-    const band = s("path", { class: "edge", d: "" });
-    const head = s("polygon", { class: "head", points: "" });
-    svg.append(band, head);
-    view.world.append(svg, apiEl, dbEl);
-
-    const handle: Pt = { x: api.x + api.w, y: api.y + api.h / 2 };
-    const end = { x: handle.x, y: handle.y, on: 0 };
-    onFrame(() => {
-      const len = Math.hypot(end.x - handle.x, end.y - handle.y);
-      if (end.on < 0.5 || len < 2) {
-        band.setAttribute("d", "");
-        head.setAttribute("points", "");
-        return;
-      }
-      const mx = (handle.x + end.x) / 2;
-      band.setAttribute("d", rounded([handle, { x: mx, y: handle.y }, { x: mx, y: end.y }, end]));
-      head.setAttribute("points", "");
-    });
-
-    // The error the canvas would otherwise have written into the file.
-    const err = h(
-      "div",
-      {
-        class: "abs",
-        style: {
-          left: O.x - 90,
-          top: O.y + 120,
-          display: "flex",
-          alignItems: "center",
-          gap: "6px",
-          height: 26,
-          padding: "0 10px",
-          borderRadius: 6,
-          border: "1px solid var(--danger)",
-          background: mix("#f0655a", "#161719", 0.14),
-          fontSize: 12,
-          color: "var(--ink)",
-          whiteSpace: "nowrap",
-          boxShadow: "0 8px 24px rgba(0,0,0,.5)",
-        },
-      },
-      h("span", { style: { display: "flex", color: "var(--danger)" } }, icon("warningCircle", 15)),
-      h("span", { class: "mono", style: { color: "var(--danger)", fontWeight: 600 } }, "E101"),
-      h("span", { style: { color: "var(--ink-2)" } }, "an arrow has to end on a component"),
-    );
-    view.world.append(err);
-    gsap.set(err, { opacity: 0, scale: 0.6, transformOrigin: "0% 50%" });
-
-    const p = pointer(view, { x: handle.x + 2, y: handle.y + 4 });
-    gsap.set(p.pos, { o: 0 });
-    master.set(p.pos, { o: 1 }, t0 - 0.2);
-
-    // Drag 1: into empty canvas. Released there, it springs back.
-    const miss = { x: O.x - 20, y: O.y + 150 };
-    const press = t0 + 0.1;
-    const release = t0 + 0.62;
-    p.click(press);
-    master.set(end, { on: 1, x: handle.x, y: handle.y }, press + 0.04);
-    master.to(end, { x: miss.x, y: miss.y, duration: release - press - 0.04, ease: "power2.inOut" }, press + 0.04);
-    p.move(press + 0.04, miss.x, miss.y, release - press - 0.04, "power2.inOut");
-    master.to(end, { x: handle.x, y: handle.y, duration: 0.55, ease: "elastic.out(1, 0.45)" }, release);
-    master.set(end, { on: 0 }, release + 0.55);
-    cue(release, "snap");
-    master.to(err, { opacity: 1, scale: 1, duration: 0.3, ease: "back.out(2.5)" }, release + 0.04);
-    master.fromTo(err, { x: 0 }, { x: 10, duration: 0.05, repeat: 5, yoyo: true, ease: "sine.inOut", immediateRender: false }, release + 0.08);
-    cue(release + 0.04, "error");
-    master.fromTo(apiEl, { x: 0 }, { x: -5, duration: 0.05, repeat: 3, yoyo: true, ease: "sine.inOut", immediateRender: false }, release + 0.1);
-
-    // Drag 2: onto Orders DB. It holds, and becomes a connection.
-    const target: Pt = { x: db.x, y: db.y + db.h / 2 };
-    const press2 = t0 + 1.02;
-    const release2 = t0 + 1.4;
-    p.move(release + 0.1, handle.x + 2, handle.y + 2, press2 - release - 0.12, "power2.inOut");
-    p.click(press2);
-    master.set(end, { on: 1, x: handle.x, y: handle.y }, press2 + 0.04);
-    master.to(end, { x: target.x, y: target.y, duration: release2 - press2 - 0.04, ease: "power2.inOut" }, press2 + 0.04);
-    p.move(press2 + 0.04, target.x + 3, target.y + 2, release2 - press2 - 0.04, "power2.inOut");
-    master.set(head, { attr: { points: arrowPoints(target, "l") }, scale: 0, svgOrigin: `${target.x} ${target.y}` }, release2);
-    master.to(head, { scale: 1, duration: 0.22, ease: "back.out(3)" }, release2);
-    master.fromTo(
-      dbEl,
-      { boxShadow: "0 0 0 0px #121315, 0 0 0 0px #23c088" },
-      { boxShadow: "0 0 0 2px #121315, 0 0 0 4px #23c088", duration: 0.15, immediateRender: false },
-      release2,
-    );
-    master.to(err, { opacity: 0, scale: 0.8, duration: 0.2, ease: "power2.in" }, release2 - 0.1);
-    cue(release2, "success");
-    master.to(p.pos, { x: target.x + 60, y: target.y + 70, duration: 0.4, ease: "power2.out" }, release2 + 0.1);
-    master.to(p.pos, { o: 0, duration: 0.2 }, release2 + 0.3);
-  },
-};
-
-/* ---------------------------------------------- 3 & 4. Nesting, payloads */
+/* ---------------------------------------------- 2 & 3. Nesting, payloads */
 
 const NEST_ORIGIN = { x: 6400, y: -120 };
 

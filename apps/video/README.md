@@ -1,6 +1,6 @@
 # Archer launch film
 
-A 39-second, 1920×1080, 60 fps launch video, rendered from code: the page in
+A 37-second, 1920×1080, 60 fps launch video, rendered from code: the page in
 `src/` is one GSAP timeline that Chromium seeks frame by frame, and the
 soundtrack in `scripts/audio/` is synthesized to the same 128 BPM grid.
 
@@ -36,14 +36,15 @@ and `FFMPEG` (or have `ffmpeg` on the PATH). `out/` is not committed.
 ## How it's built
 
 - `src/time.ts` — the clock: BPM, bars, and `SECTION`, the bar each part of the
-  film starts on. The soundtrack's arrangement follows the same map.
+  film starts on. The soundtrack's arrangement follows the same map, so change
+  a section's bar there and the music moves with it.
 - `src/engine.ts` — the paused master timeline (film seconds, with a pre-roll so
   moves can start before frame 0) and `onFrame` hooks for state that GSAP
   tweens on plain objects, like cameras and the pointer.
 - `src/film.ts` → `src/scenes/*` — one module per part: `open` (Draw it. / the
-  canvas flips to its code), `title`, `loop` (canvas ⇄ file), `features` (eight
-  stations on one canvas, whip-panned), `finale` (Copy for agent, the drop,
-  the end card).
+  canvas flips to its code), `title`, `loop` (canvas ⇄ file: drag and connect,
+  then an agent writes), `features` (seven stations on one canvas,
+  whip-panned), `finale` (Copy for agent, the drop, the end card).
 - `src/diagram.ts`, `src/code.ts`, `src/codepane.ts`, `src/camera.ts`,
   `src/pointer.ts`, `src/text.ts` — the building blocks.
 - `src/sources.ts` — every `.arch` document on screen.

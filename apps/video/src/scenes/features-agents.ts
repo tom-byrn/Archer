@@ -1,5 +1,5 @@
 /**
- * Stations 5–8 of the feature montage: agents over MCP, agents drawing,
+ * Stations 4–7 of the feature montage: agents over MCP, agents drawing,
  * repo sync, and share links.
  */
 import { cue } from "../cues";

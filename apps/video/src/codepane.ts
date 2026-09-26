@@ -1,9 +1,10 @@
 /**
  * An editor pane whose file grows over time: lines arrive (pasted in from a
- * canvas edit, or typed), the lines under them slide down, the gutter
- * counts up, and each arrival flashes like the landing page's source pane.
+ * canvas edit, typed, or written by an agent), the lines under them slide
+ * down, the gutter counts up, and each arrival flashes like the landing
+ * page's source pane.
  */
-import { charWidth, codeBlock, flashLine, typeLine, type CodeLine } from "./code";
+import { charWidth, codeBlock, flashLine, streamLine, typeLine, type CodeLine } from "./code";
 import { cue } from "./cues";
 import { h } from "./dom";
 import { gsap, master } from "./engine";
@@ -14,6 +15,8 @@ export interface PaneLine {
   at?: number;
   /** Typed character by character instead of appearing whole. */
   typed?: boolean;
+  /** Written by an agent: streamed in tokens behind a labelled cursor (implies typed). */
+  agent?: boolean;
 }
 
 export interface CodePane {
@@ -28,7 +31,10 @@ export interface CodePane {
   typedEnd: Map<number, number>;
 }
 
-export function codePane(lines: PaneLine[], o: { size: number; lineHeight?: number; cps?: number }): CodePane {
+export function codePane(
+  lines: PaneLine[],
+  o: { size: number; lineHeight?: number; cps?: number; agentLabel?: () => Node },
+): CodePane {
   const source = lines.map((l) => l.text).join("\n");
   const view = codeBlock(source, { size: o.size, lineHeight: o.lineHeight, gutter: false, chars: true });
   const { lineH } = view;
@@ -80,7 +86,11 @@ export function codePane(lines: PaneLine[], o: { size: number; lineHeight?: numb
     view.lines.forEach((ln, i) => {
       if (lines[i]!.at !== t) return;
       master.set(ln.el, { y: slotAt(i, t) * lineH }, t);
-      if (lines[i]!.typed) {
+      if (lines[i]!.agent) {
+        master.set(ln.el, { opacity: 1 }, t);
+        const writing = streamLine({ ...view, lineH, charW, gutterW: 0 }, ln, t + 0.08, { label: o.agentLabel?.() });
+        typedEnd.set(i, writing.end);
+      } else if (lines[i]!.typed) {
         master.set(ln.el, { opacity: 1 }, t);
         const typing = typeLine({ ...view, lineH, charW, gutterW: 0 }, ln, t + 0.08, { cps: o.cps });
         typedEnd.set(i, typing.end);

@@ -1,5 +1,5 @@
 /**
- * Bars 7–14: one feature a bar, each a station on one long dotted canvas.
+ * Bars 7–13: one feature a bar, each a station on one long dotted canvas.
  * The camera whips from station to station on the downbeats (motion blur
  * on the dot grid sells the speed) while the kicker and title roll over.
  */
@@ -10,7 +10,7 @@ import { gsap, master, showBetween } from "../engine";
 import { caption, riseIn, riseOut } from "../text";
 import { SECTION, at } from "../time";
 import { agentsStation, mcpStation, repoStation, shareStation } from "./features-agents";
-import { catalogStation, nestingStation, payloadStation, strictStation } from "./features-canvas";
+import { catalogStation, nestingStation, payloadStation } from "./features-canvas";
 
 export interface StationCtx {
   view: CanvasView;
@@ -32,7 +32,6 @@ export interface Station {
 
 const STATIONS: Station[] = [
   catalogStation,
-  strictStation,
   nestingStation,
   payloadStation,
   mcpStation,

@@ -1,8 +1,8 @@
 /**
  * Bars 3–6: the editor, canvas left and file right, both ways round. A box
  * dragged in from the palette and an arrow pulled between two boxes land in
- * the file; a component and a connection typed into the file land on the
- * canvas.
+ * the file; a component and a connection an agent writes into the file land
+ * on the canvas, wearing the agent badge.
  */
 import { canvasView } from "../camera";
 import { flashLine } from "../code";
@@ -63,9 +63,9 @@ export function loopScene(stage: HTMLElement): void {
     LOOP_LINES.map((text, i) => ({
       text,
       at: i === 5 ? tDrop + 0.1 : i === 10 ? tConnect + 0.08 : i === 6 ? tType1 : i === 11 ? tType2 : undefined,
-      typed: i === 6 || i === 11,
+      agent: i === 6 || i === 11,
     })),
-    { size: 27, lineHeight: 1.62, cps: 34 },
+    { size: 27, lineHeight: 1.62, agentLabel: () => icon("robot", 16) },
   );
   pane.el.style.position = "absolute";
   pane.el.style.left = "44px";
@@ -177,7 +177,7 @@ export function loopScene(stage: HTMLElement): void {
   master.to(p.pos, { motionPath: { path: edge.edge.d }, duration: pullDur, ease: "power2.inOut" }, tPress + 0.06);
   cue(tPress + 0.06, "draw");
   p.click(tConnect);
-  p.move(tConnect + 0.15, 900, 420, 0.7, "power2.inOut");
+  p.move(tConnect + 0.15, cacheBox.x - 40, cacheBox.y + 170, 0.7, "power2.inOut");
   master.to(p.pos, { o: 0, duration: 0.25 }, tConnect + 0.6);
 
   /* ------------------------------------------------ Typed in, drawn out */
@@ -186,8 +186,11 @@ export function loopScene(stage: HTMLElement): void {
   flashLine(pane.lines[6]!, jobsEnd + 0.05);
   flashLine(pane.lines[11]!, edgeEnd + 0.05);
   popNode(dg, "jobs", jobsEnd + 0.1);
+  // What the agent changed wears the canvas' agent badge (canvas.css .arch-badge).
+  badge(dg.nodes.get("jobs")!, jobsEnd + 0.3);
   cue(jobsEnd + 0.1, "pop", { pitch: 12 });
   drawEdge(dg, "api->jobs", edgeEnd + 0.1, 0.32);
+  badge(dg.nodes.get("api")!, edgeEnd + 0.36);
   cue(edgeEnd + 0.1, "draw");
   // The camera eases down to make room for the new row.
   master.to(view.cam, { y: 150, duration: 0.8, ease: "power3.inOut" }, jobsEnd - 0.2);
@@ -199,7 +202,7 @@ export function loopScene(stage: HTMLElement): void {
   const connect = caption(left, "Connect it.", L);
   const follows = caption(left, "The canvas follows.", { ...L, size: 104 });
   const updates = caption(right, "The file updates.", { ...R, x: 64, size: 90 });
-  const type = caption(right, "Or type it.", { ...R, x: 64 });
+  const type = caption(right, "Or let your agent\nwrite it.", { ...R, x: 64, size: 86, lineHeight: 1.04 });
   riseIn(drag.words, t0 + 0.08);
   riseIn(updates.words, tDrop + 0.18);
   riseOut(drag.words, bar(1) - 0.12);
@@ -233,6 +236,13 @@ export function loopScene(stage: HTMLElement): void {
   /* ------------------------------------------------ In: rise from the title */
   gsap.set(root, { y: 320, opacity: 0 });
   master.to(root, { y: 0, opacity: 1, duration: 0.5, ease: "expo.out" }, t0 - 0.2);
+}
+
+function badge(node: HTMLElement, t: number) {
+  const el = h("span", { class: "badge" }, icon("robot"));
+  node.append(el);
+  gsap.set(el, { scale: 0 });
+  master.to(el, { scale: 1, duration: 0.3, ease: "back.out(3)" }, t);
 }
 
 function sized<T extends SVGElement>(el: T, size: number): T {

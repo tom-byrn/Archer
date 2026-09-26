@@ -139,3 +139,70 @@ export function typeLine(
   master.set(caret, { opacity: 0 }, end + (o.caretAfter ?? 0.25));
   return { dur: end - t, end };
 }
+
+/**
+ * An agent writes `line` (built with `chars: true`) from `t`: it streams in a
+ * token at a time, behind an accent caret wearing an "agent" label, the way a
+ * collaborator's cursor shows in a shared editor. A soft tick every few tokens.
+ */
+export function streamLine(view: CodeView, line: CodeLine, t: number, o: { gap?: number; label?: Node } = {}): Typing {
+  const gap = o.gap ?? 0.055;
+  const caret = h("span", {
+    style: {
+      width: Math.max(3, Math.round(view.charW * 0.12)),
+      height: Math.round(view.lineH * 0.64),
+      background: "var(--accent)",
+    },
+  });
+  const label = h(
+    "span",
+    {
+      style: {
+        display: "inline-flex",
+        alignItems: "center",
+        gap: "6px",
+        height: Math.round(view.lineH * 0.62),
+        padding: "0 9px 0 7px",
+        borderRadius: 5,
+        background: "var(--accent)",
+        color: "var(--accent-ink)",
+        fontFamily: "var(--sans)",
+        fontSize: Math.round(view.lineH * 0.38),
+        fontWeight: 650,
+        letterSpacing: 0,
+      },
+    },
+    ...(o.label ? [o.label] : []),
+    "agent",
+  );
+  const cursor = h(
+    "span",
+    { style: { position: "absolute", left: 0, top: 0, height: view.lineH, display: "inline-flex", alignItems: "center", gap: "8px", opacity: 0 } },
+    caret,
+    label,
+  );
+  line.src.append(cursor);
+  gsap.set(line.chars, { opacity: 0 });
+
+  // Tokens as a model emits them: each word with its leading space (" jobs"),
+  // long words split every five characters.
+  const tokens: number[][] = [];
+  line.chars.forEach((ch, i) => {
+    const prev = line.chars[i - 1]?.textContent ?? " ";
+    const cur = tokens[tokens.length - 1];
+    const wordStart = ch.textContent === " " ? prev !== " " : prev === " " && cur?.length !== 1;
+    if (!cur || wordStart || cur.length >= 5) tokens.push([i]);
+    else cur.push(i);
+  });
+  let at = t;
+  master.set(cursor, { opacity: 1, x: 0 }, t);
+  tokens.forEach((tok, k) => {
+    // Deterministic unevenness, like tokens arriving over a network.
+    at += gap * (0.65 + ((k * 37) % 11) / 14);
+    master.set(tok.map((i) => line.chars[i]!), { opacity: 1 }, at);
+    master.set(cursor, { x: (tok[tok.length - 1]! + 1) * view.charW }, at);
+    if (k % 3 === 0) cue(at, "tick", { gain: 0.35, pitch: 12 + (k % 4) * 2 });
+  });
+  master.to(cursor, { opacity: 0, duration: 0.2 }, at + 0.45);
+  return { dur: at - t, end: at };
+}
