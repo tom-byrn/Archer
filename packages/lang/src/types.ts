@@ -52,9 +52,41 @@ export interface ComponentNode {
    */
   src?: string;
   payloads: PayloadNode[];
+  /**
+   * The plane it sits on: the id of one of its scope's planes (the document's
+   * top-level `planes`, or its parent component's). Absent when it sits on no
+   * plane. Planes aren't part of paths, so this never changes its path.
+   */
+  plane?: string;
+  /** Nested components: its own canvas, which the editor opens by drilling in. */
   children: ComponentNode[];
+  /** The planes on that canvas. */
+  planes: PlaneNode[];
   span: Span;
 }
+
+/**
+ * A plane: a titled region of the canvas that components (and smaller planes)
+ * sit on — "Frontend", "Backend", a VPC. It groups things for the reader and
+ * nothing more: it is no component's parent, never part of a path, and never
+ * a connection's endpoint. Its id shares a namespace with the components of
+ * its scope, and `path + id` keys its layout entry.
+ */
+export interface PlaneNode {
+  kind: "plane";
+  id: string;
+  /** Display name; defaults to id when absent. */
+  name?: string;
+  /** Type tag without the leading `@`, for its icon and tint, e.g. "aws.vpc". */
+  type?: string;
+  desc?: string;
+  /** The plane it sits on, by id in the same scope; absent at the top of the scope. */
+  plane?: string;
+  span: Span;
+}
+
+/** Anything declared in a scope: a component or a plane. */
+export type ItemNode = ComponentNode | PlaneNode;
 
 export type Arrow = "->" | "<->" | "--";
 
@@ -75,23 +107,28 @@ export interface ConnectionNode {
   span: Span;
 }
 
-export type DisplayMode = "icon" | "plane";
-
+/**
+ * Where a component or plane sits on its canvas. `path` is a component's
+ * dot-path, or a plane's: its scope's path plus its id. `at` is relative to
+ * the plane it sits on (else to its canvas), `size` in grid cells.
+ */
 export interface LayoutEntry {
   kind: "layout-entry";
   path: string[];
   at?: [number, number];
   size?: [number, number];
-  display?: DisplayMode;
   span: Span;
 }
 
 export interface ArchDoc {
   kind: "doc";
   title: string;
-  /** Spec version, e.g. "0.1". */
+  /** Spec version, e.g. "0.2". */
   version: string;
+  /** Top-level components. */
   components: ComponentNode[];
+  /** Top-level planes. */
+  planes: PlaneNode[];
   connections: ConnectionNode[];
   layout: LayoutEntry[];
 }

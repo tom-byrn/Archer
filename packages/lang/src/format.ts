@@ -1,3 +1,4 @@
+import { planeTree, scopeOf, type Scope } from "./scope";
 import {
   pathToString,
   type ArchDoc,
@@ -5,6 +6,7 @@ import {
   type ConnectionNode,
   type LayoutEntry,
   type PayloadNode,
+  type PlaneNode,
 } from "./types";
 
 const INDENT = "  ";
@@ -38,6 +40,19 @@ function formatDesc(desc: string, depth: number): string {
   return `${pad}desc """\n${indentBlock(desc, depth + 1)}\n${pad}"""`;
 }
 
+/**
+ * A scope's declarations (or one plane's): components and planes in
+ * canonical order, each plane with what sits on it.
+ */
+function formatItems(scope: Scope, on: PlaneNode | undefined, depth: number): string[] {
+  const tree = planeTree(scope);
+  const items = (plane: PlaneNode | undefined, d: number): string[] =>
+    tree.itemsOn(plane).map((item) =>
+      item.kind === "component" ? formatComponent(item, d) : formatPlane(item, d, items(item, d + 1)),
+    );
+  return items(on, depth);
+}
+
 function formatComponent(c: ComponentNode, depth: number): string {
   const pad = INDENT.repeat(depth);
   let head = `${pad}component ${c.id}`;
@@ -49,7 +64,21 @@ function formatComponent(c: ComponentNode, depth: number): string {
   if (c.desc !== undefined) body.push(formatDesc(c.desc, depth + 1));
   if (c.src !== undefined) body.push(`${INDENT.repeat(depth + 1)}src ${quote(c.src)}`);
   for (const p of c.payloads) body.push(formatPayload(p, depth + 1));
-  for (const child of c.children) body.push(formatComponent(child, depth + 1));
+  body.push(...formatItems(scopeOf(c), undefined, depth + 1));
+
+  if (body.length === 0) return head;
+  return `${head} {\n${body.join("\n")}\n${pad}}`;
+}
+
+function formatPlane(p: PlaneNode, depth: number, items: string[]): string {
+  const pad = INDENT.repeat(depth);
+  let head = `${pad}plane ${p.id}`;
+  if (p.name !== undefined) head += ` ${quote(p.name)}`;
+  if (p.type !== undefined) head += ` @${p.type}`;
+
+  const body: string[] = [];
+  if (p.desc !== undefined) body.push(formatDesc(p.desc, depth + 1));
+  body.push(...items);
 
   if (body.length === 0) return head;
   return `${head} {\n${body.join("\n")}\n${pad}}`;
@@ -94,7 +123,6 @@ function formatLayoutEntry(e: LayoutEntry): string {
   const props: string[] = [];
   if (e.at) props.push(`at: [${e.at[0]}, ${e.at[1]}]`);
   if (e.size) props.push(`size: [${e.size[0]}, ${e.size[1]}]`);
-  if (e.display) props.push(`display: ${e.display}`);
   return `${INDENT}${pathToString(e.path)}: { ${props.join(", ")} }`;
 }
 
@@ -104,15 +132,15 @@ export interface FormatOptions {
 }
 
 /**
- * Canonical form: header, components (document order), connections (sorted),
- * layout (sorted by path). format(parse(format(x))) === format(x).
+ * Canonical form: header, declarations (components and planes in document
+ * order, see PlaneTree.itemsOn), connections (sorted), layout (sorted by
+ * path). format(parse(format(x))) === format(x).
  */
 export function format(doc: ArchDoc, opts: FormatOptions = {}): string {
   const sections: string[] = [`arch ${quote(doc.title)} v${doc.version}`];
 
-  if (doc.components.length > 0) {
-    sections.push(doc.components.map((c) => formatComponent(c, 0)).join("\n\n"));
-  }
+  const declarations = formatItems({ components: doc.components, planes: doc.planes }, undefined, 0);
+  if (declarations.length > 0) sections.push(declarations.join("\n\n"));
 
   if (doc.connections.length > 0) {
     const sorted = [...doc.connections].sort((a, b) =>

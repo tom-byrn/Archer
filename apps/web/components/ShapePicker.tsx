@@ -48,13 +48,10 @@ export function ShapeIcon({ shape, width = 20, className }: { shape: Shape; widt
 export function ShapePicker({
   value,
   onChange,
-  plane = false,
 }: {
   /** The component's `shape` as written (undefined: none). */
   value: string | undefined;
   onChange: (shape: Shape | null) => void;
-  /** An expanded container: drawn as a plane, so its shape only shows collapsed. */
-  plane?: boolean;
 }) {
   const current: Shape | null = value === undefined ? "box" : isShape(value) ? value : null;
   return (
@@ -82,9 +79,7 @@ export function ShapePicker({
         ))}
       </div>
       <p className="truncate pt-1 text-xs text-ink-3">
-        {plane ? (
-          "Shows when this container is collapsed to an icon"
-        ) : current ? (
+        {current ? (
           <>
             <span className="text-ink-2">{SHAPE_INFO[current].name}</span> · {SHAPE_INFO[current].use}
           </>

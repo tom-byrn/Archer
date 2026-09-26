@@ -129,10 +129,13 @@ export const ResizeContext = createContext<
   ((id: string, params: ResizeParams) => void) | null
 >(null);
 
+/** How a component asks to be opened, to show what's nested in it (unset: it can't be). */
+export const OpenContext = createContext<((path: string) => void) | null>(null);
+
 /**
  * Resize handles on the selected node. A plain component resizes from any
- * side; a plane only from its right and bottom, so its children, which are
- * placed relative to its top-left, stay where they are.
+ * side; a plane only from its right and bottom, so what's on it, which is
+ * placed relative to its top-left, stays where it is.
  */
 function Resizer({ id, data }: { id: string; data: ArchNode["data"] }) {
   const onResizeEnd = useContext(ResizeContext);
@@ -142,7 +145,7 @@ function Resizer({ id, data }: { id: string; data: ArchNode["data"] }) {
     minHeight: data.minSize[1] * CELL,
     onResizeEnd: (_: unknown, params: ResizeParams) => onResizeEnd(id, params),
   };
-  if (data.display === "plane" && data.childCount > 0) {
+  if (data.kind === "plane") {
     return (
       <>
         <NodeResizeControl {...common} position="right" variant={ResizeControlVariant.Line} className="arch-resize-line" />
@@ -157,6 +160,42 @@ function Resizer({ id, data }: { id: string; data: ArchNode["data"] }) {
 /** Root class for a node's diff status (styled in canvas.css). */
 const diffClass = (marks: NodeMarks | undefined): string | undefined =>
   marks?.diff ? `arch-diff-${marks.diff}` : undefined;
+
+/**
+ * How many components are nested in a component, in its corner: a button
+ * that opens it (double-clicking does too), or a plain badge where it can't.
+ */
+function NestedBadge({ path, count }: { path: string; count: number }) {
+  const open = useContext(OpenContext);
+  if (count === 0) return null;
+  const body = (
+    <>
+      <Icon.Nested />
+      {count}
+    </>
+  );
+  if (!open)
+    return (
+      <span className="arch-nested" title={`${count} inside`}>
+        {body}
+      </span>
+    );
+  return (
+    <button
+      type="button"
+      title={`${count} inside · open`}
+      aria-label={`Open: ${count} inside`}
+      className="arch-nested nodrag nopan"
+      onClick={(e) => {
+        e.stopPropagation();
+        open(path);
+      }}
+      onDoubleClick={(e) => e.stopPropagation()}
+    >
+      {body}
+    </button>
+  );
+}
 
 /**
  * Overlay badges: agent-touched sits top-right; drift sits top-left.
@@ -213,10 +252,7 @@ function ArchShapeNode({ id, data, width, height, shape }: NodeProps<ArchNode> &
   const h = height ?? CELL * 3;
   const geo = useMemo(() => shapeGeometry(shape, w, h), [shape, w, h]);
   const typed = data.typeTag !== undefined;
-  const collapsed = data.display === "icon" && data.childCount > 0;
-  const sub = [data.typeTag, collapsed ? `${data.childCount} inside` : undefined]
-    .filter(Boolean)
-    .join(" · ");
+  const sub = data.typeTag ?? "";
   const layout = labelLayout(geo.content, typed, sub !== "");
   const marks = data.marks;
   const c = geo.content;
@@ -226,11 +262,17 @@ function ArchShapeNode({ id, data, width, height, shape }: NodeProps<ArchNode> &
   return (
     <div
       style={{ width: w, height: h, ...(accent ? { "--shape-accent": accent } : {}) } as CSSProperties}
-      className={cx("arch-node arch-node-shape relative", accent && "arch-shape-typed", diffClass(marks))}
+      className={cx(
+        "arch-node arch-node-shape relative",
+        accent && "arch-shape-typed",
+        data.dropTarget && "arch-drop-target",
+        diffClass(marks),
+      )}
     >
       <Resizer id={id} data={data} />
       <EdgeHandles anchors={geo.anchors} />
       <Badges marks={marks} />
+      <NestedBadge path={data.path} count={data.childCount} />
       <svg className="arch-shape" width={w} height={h} aria-hidden>
         {geo.parts.map((d, i) => (
           <path key={i} className="arch-shape-part" d={d} />
@@ -286,19 +328,22 @@ function ArchCardNode({ id, data, width, height }: NodeProps<ArchNode>) {
   const entry = lookupType(data.typeTag);
   const accent = displayColor(data.accent ?? entry?.color, isDark);
   const tile = accent ?? NEUTRAL;
-  const collapsed = data.display === "icon" && data.childCount > 0;
+  const nested = data.childCount > 0;
   const marks = data.marks;
   return (
     <div
       style={{ width, height }}
       className={cx(
         "arch-node arch-node-component relative flex items-center gap-2.5 rounded-md border bg-surface px-2.5",
+        nested && "arch-node-nested",
+        data.dropTarget && "arch-drop-target",
         diffClass(marks),
       )}
     >
       <Resizer id={id} data={data} />
       <EdgeHandles />
       <Badges marks={marks} />
+      <NestedBadge path={data.path} count={data.childCount} />
       <GlyphSwatch
         tag={data.typeTag}
         color={accent}
@@ -316,7 +361,6 @@ function ArchCardNode({ id, data, width, height }: NodeProps<ArchNode>) {
           <span className={data.typeTag ? "mono" : undefined}>
             {data.typeTag ?? "component"}
           </span>
-          {collapsed ? ` · ${data.childCount} inside` : ""}
           <SrcHint src={marks?.src} />
         </div>
       </div>
@@ -342,11 +386,11 @@ export function ArchPlaneNode({ id, data, width, height }: NodeProps<ArchNode>) 
       className={cx(
         "arch-node arch-node-plane relative rounded-lg border",
         typed ? "" : "arch-plane-untyped",
+        data.dropTarget && "arch-drop-target",
         diffClass(marks),
       )}
     >
       <Resizer id={id} data={data} />
-      <EdgeHandles />
       <Badges marks={marks} />
       <div
         className="flex h-8 items-center gap-2 px-2.5"
@@ -357,7 +401,29 @@ export function ArchPlaneNode({ id, data, width, height }: NodeProps<ArchNode>) 
         {data.typeTag && (
           <span className="mono truncate text-xs text-ink-3">{data.typeTag}</span>
         )}
-        <SrcHint src={marks?.src} />
+      </div>
+    </div>
+  );
+}
+
+/**
+ * A component outside the canvas that something on it connects to, shown
+ * beside the canvas when you're inside a component. Clicking it goes there.
+ */
+export function ArchContextNode({ data, width, height }: NodeProps<ArchNode>) {
+  const isDark = useIsDark();
+  const accent = displayColor(data.accent ?? lookupType(data.typeTag)?.color, isDark);
+  return (
+    <div
+      style={{ width, height }}
+      title={`${data.path} — outside this component. Click to go there.`}
+      className="arch-node arch-node-context relative flex items-center gap-2 rounded-md border border-dashed px-2"
+    >
+      <EdgeHandles />
+      <Glyph tag={data.typeTag} color={accent} glyph={data.glyphKey} size={16} className="shrink-0" />
+      <div className="min-w-0 leading-tight">
+        <div className="truncate text-sm font-semibold text-ink-2">{data.label}</div>
+        <div className="mono truncate text-xs text-ink-3">{data.path}</div>
       </div>
     </div>
   );
@@ -366,6 +432,7 @@ export function ArchPlaneNode({ id, data, width, height }: NodeProps<ArchNode>) 
 export const nodeTypes = {
   archComponent: ArchComponentNode,
   archPlane: ArchPlaneNode,
+  archContext: ArchContextNode,
 };
 
 /* ---------------------------------------------------------------- Edges */

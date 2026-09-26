@@ -26,6 +26,76 @@
   box-shadow: var(--shadow-md);
 }
 
+/* A component with components nested in it: a second card peeks out
+   behind it, like a stack. */
+.arch-node-nested {
+  box-shadow:
+    3px 3px 0 -1px var(--surface),
+    3px 3px 0 0 var(--line-2);
+}
+.react-flow__node.dragging .arch-node-nested {
+  box-shadow:
+    3px 3px 0 -1px var(--surface),
+    3px 3px 0 0 var(--line-2),
+    var(--shadow-md);
+}
+
+/* How many are nested in it, in its corner; a button that opens it
+   (nodes.tsx NestedBadge). */
+.arch-nested {
+  position: absolute;
+  right: 5px;
+  bottom: 5px;
+  z-index: 2;
+  display: flex;
+  height: 16px;
+  align-items: center;
+  gap: 3px;
+  padding: 0 5px 0 4px;
+  border-radius: var(--radius-sm);
+  background-color: var(--surface-2);
+  color: var(--ink-3);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  transition:
+    background-color 75ms ease,
+    color 75ms ease;
+}
+.arch-nested svg {
+  height: 11px;
+  width: 11px;
+}
+button.arch-nested:hover {
+  background-color: var(--accent-soft);
+  color: var(--accent);
+}
+
+/* Where a drag would land: on a plane, or into a component. */
+.arch-node.arch-drop-target {
+  box-shadow:
+    0 0 0 2px var(--ground),
+    0 0 0 4px color-mix(in srgb, var(--accent) 55%, transparent);
+}
+.arch-node-plane.arch-drop-target {
+  background-color: color-mix(in srgb, var(--accent-soft) 60%, transparent);
+}
+.arch-node-shape.arch-drop-target {
+  box-shadow: none;
+  --shape-stroke: var(--accent);
+}
+
+/* A component outside the canvas, beside it (nodes.tsx ArchContextNode). */
+.arch-node-context {
+  border-color: var(--line-2);
+  background-color: color-mix(in srgb, var(--surface) 70%, transparent);
+  cursor: pointer;
+}
+.react-flow__node:hover .arch-node-context {
+  border-color: color-mix(in srgb, var(--edge-strong) 50%, transparent);
+  background-color: var(--surface);
+}
+
 /* ---- Shapes (nodes.tsx ArchShapeNode) ---- */
 /* The outline is the node: states restyle it instead of ringing the box. A
    typed shape takes a tint of its type's color (--shape-accent). */

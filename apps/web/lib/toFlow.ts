@@ -1,15 +1,18 @@
 import type { Edge, Node } from "@xyflow/react";
 import {
+  EMPTY_PLANE_SIZE,
+  LEAF_SIZE,
   PLANE_INNER_MARGIN,
-  effectiveDisplay,
   findComponent,
   layoutMap,
   pathToString,
+  planeTree,
+  scopeAt,
   shapeOf,
   type ArchDoc,
   type Arrow,
   type ComponentNode,
-  type DisplayMode,
+  type PlaneNode,
   type Shape,
 } from "@archer/lang";
 import {
@@ -29,8 +32,15 @@ import {
 export const CELL = 40;
 /** Smallest a plain component can be resized to, in grid cells. */
 export const MIN_LEAF_SIZE: [number, number] = [3, 2];
+/** Smallest a plane can be resized to, in grid cells. */
+export const MIN_PLANE_SIZE: [number, number] = [4, 3];
 /** Height of a plane's title bar in pixels (see ArchPlaneNode). */
 const PLANE_TITLE = 32;
+/** A context node's footprint, and its distance from what the view shows, in cells. */
+const CONTEXT_SIZE: [number, number] = [4, 2];
+const CONTEXT_GAP = 3;
+/** Prefix of a context node's id (component paths never contain a colon). */
+export const CONTEXT_PREFIX = "ctx:";
 
 /** Position-independent identity of a connection (mirrors @archer/lang connectionKey). */
 const edgeKey = (c: ArchDoc["connections"][number]): string =>
@@ -49,13 +59,20 @@ export interface NodeMarks {
 }
 
 export interface ArchNodeData extends Record<string, unknown> {
+  /**
+   * What it is: a component (a box, or its shape), a plane (a titled region
+   * things sit on), or context (a component outside the canvas that
+   * something on it connects to; only shown inside a component).
+   */
+  kind: "component" | "plane" | "context";
+  /** Its path (for context, the outside component's). */
   path: string;
   label: string;
   typeTag?: string;
   desc?: string;
-  display: DisplayMode;
-  /** Drawn as this shape (lib/shapes.ts) instead of the card; never set on a plane. */
+  /** Drawn as this shape (lib/shapes.ts) instead of the card; components only. */
   shape?: Exclude<Shape, "box">;
+  /** Components nested in it, shown when it's opened; components only. */
   childCount: number;
   payloadCount: number;
   accent?: string;
@@ -63,11 +80,15 @@ export interface ArchNodeData extends Record<string, unknown> {
   marks?: NodeMarks;
   /**
    * Smallest size a resize may leave it, in grid cells: a plane must still
-   * hold its children.
+   * hold what's on it.
    */
   minSize: [number, number];
   /** Show resize handles (set by the canvas on the one selected node). */
   resizable?: boolean;
+  /** Drag feedback, set by the canvas: what's dragged would land on (or in) this. */
+  dropTarget?: boolean;
+  /** Context only: which side of the canvas it stands on. */
+  side?: "left" | "right";
 }
 
 export type ArchNode = Node<ArchNodeData>;
@@ -94,129 +115,223 @@ export interface ArchEdgeData extends Record<string, unknown> {
    * over something else (the edge fades), unset otherwise.
    */
   lit?: boolean;
+  /** One end is a context node (a component outside the canvas). */
+  context?: boolean;
 }
 
 export type ArchEdge = Edge<ArchEdgeData>;
 
 export interface ToFlowOptions {
-  /** Render only this component's subtree (drill-down view). */
+  /** The canvas to draw: inside this component (drill-down); the top level when empty. */
   focus?: string[];
   /** Resolve a type tag to visuals (catalog + user library). */
   resolveType?: (tag: string) => { color: string; glyph: string } | undefined;
   /** Dark theme (kept for API compatibility; colors are token-driven). */
   isDark?: boolean;
   /** Per-path overlay badges (diff status, agent-touched, drift). */
-  marks?: (path: string, component: ComponentNode) => NodeMarks | undefined;
+  marks?: (path: string, item: ComponentNode | PlaneNode) => NodeMarks | undefined;
   /** Per-connection diff status, keyed by `connectionKey()` from @archer/lang. */
   edgeDiff?: Map<string, "added" | "removed" | "changed">;
+  /**
+   * Inside a component, draw the components outside it that connect in, as
+   * context nodes at the canvas's sides (default true).
+   */
+  context?: boolean;
 }
 
+/** Whether `path` is strictly inside the component at `focus` (everything is, at the top level). */
+const inside = (path: readonly string[], focus: readonly string[]) =>
+  path.length > focus.length && focus.every((seg, i) => path[i] === seg);
+
 /**
- * Compile a (fully laid out) doc into React Flow nodes/edges.
- * - `plane` containers render children inside them (positions are parent-relative).
- * - `icon` containers collapse: descendants are hidden and their edges remap to
- *   the collapsed ancestor.
- * - With `focus`, the focused component's children become the view's roots and
- *   only edges internal to the subtree are drawn.
+ * Compile a (fully laid out) doc into React Flow nodes/edges for one canvas:
+ * the top level, or the inside of the component at `focus`.
+ * - Planes are regions; what sits on one is its child node (positions are
+ *   relative to it). Planes come first, so they're drawn under everything.
+ * - Components are boxes. A connection to something nested in a component on
+ *   this canvas is drawn to that component.
+ * - Inside a component, a connection to something outside it is drawn to a
+ *   context node for that outside component, beside the canvas.
  */
 export function toFlow(
   doc: ArchDoc,
   opts: ToFlowOptions = {},
 ): { nodes: ArchNode[]; edges: ArchEdge[] } {
-  const layout = layoutMap(doc);
-  const nodes: ArchNode[] = [];
-  /** path -> deepest visible ancestor path (itself when visible). */
-  const visibleAncestor = new Map<string, string>();
-
   const focus = opts.focus ?? [];
-  const rootPrefix = focus.join(".");
-  const rootItems =
-    focus.length === 0 ? doc.components : (findComponent(doc, focus)?.children ?? []);
+  const scope = scopeAt(doc, focus);
+  if (!scope) return { nodes: [], edges: [] };
+  const layout = layoutMap(doc);
+  const tree = planeTree(scope);
+  const pre = focus.join(".");
+  const pathOf = (id: string) => (pre === "" ? id : `${pre}.${id}`);
 
-  /** Absolute rect (px) of each visible node, for edge routing. */
+  const planes: ArchNode[] = [];
+  const boxes: ArchNode[] = [];
+  /** Canvas rect (px) of each node, for edge routing. */
   const rects = new Map<string, Rect & { plane: boolean }>();
+  /** Planes each node sits on, innermost first (for edge routing). */
+  const onPlanes = new Map<string, string[]>();
+  const style = (item: ComponentNode | PlaneNode, path: string) => ({
+    ...(item.type !== undefined
+      ? (() => {
+          const v = opts.resolveType?.(item.type!);
+          return v ? { accent: v.color, glyphKey: v.glyph } : {};
+        })()
+      : {}),
+    ...(() => {
+      const m = opts.marks?.(path, item);
+      return m && Object.keys(m).length > 0 ? { marks: m } : {};
+    })(),
+  });
 
-  const walk = (
-    items: ComponentNode[],
-    prefix: string,
-    parentVisible: boolean,
-    collapsedAncestor: string | null,
-    originPx: [number, number],
-  ) => {
-    for (const c of items) {
-      const path = prefix === "" ? c.id : `${prefix}.${c.id}`;
+  const walk = (on: PlaneNode | undefined, parentId: string | undefined, originPx: [number, number], chain: string[]) => {
+    for (const item of tree.itemsOn(on)) {
+      const path = pathOf(item.id);
+      if (rects.has(path)) continue; // duplicate id (invalid doc)
+      const isPlane = item.kind === "plane";
       const entry = layout.get(path);
-      const display = effectiveDisplay(c, entry);
-      const isVisible = parentVisible && collapsedAncestor === null;
-      visibleAncestor.set(path, collapsedAncestor ?? path);
-
       const at = entry?.at ?? [0, 0];
-      const size = entry?.size ?? [4, 3];
-      const absPx: [number, number] = [
-        originPx[0] + at[0] * CELL,
-        originPx[1] + at[1] * CELL,
-      ];
-      if (isVisible) {
-        const isPlane = display === "plane" && c.children.length > 0;
-        rects.set(path, {
-          x: absPx[0],
-          y: absPx[1],
-          w: size[0] * CELL,
-          h: size[1] * CELL,
-          plane: isPlane,
-        });
-        const minSize: [number, number] = [...MIN_LEAF_SIZE];
-        if (isPlane) {
-          for (const child of c.children) {
-            const e = layout.get(`${path}.${child.id}`);
-            if (!e?.at || !e.size) continue;
-            minSize[0] = Math.max(minSize[0], e.at[0] + e.size[0] + PLANE_INNER_MARGIN[0]);
-            minSize[1] = Math.max(minSize[1], e.at[1] + e.size[1] + PLANE_INNER_MARGIN[1]);
-          }
+      const size = entry?.size ?? (isPlane ? EMPTY_PLANE_SIZE : LEAF_SIZE);
+      const absPx: [number, number] = [originPx[0] + at[0] * CELL, originPx[1] + at[1] * CELL];
+      rects.set(path, { x: absPx[0], y: absPx[1], w: size[0] * CELL, h: size[1] * CELL, plane: isPlane });
+      onPlanes.set(path, chain);
+      const base = {
+        id: path,
+        position: { x: at[0] * CELL, y: at[1] * CELL },
+        width: size[0] * CELL,
+        height: size[1] * CELL,
+        ...(parentId !== undefined ? { parentId } : {}),
+      };
+      if (isPlane) {
+        const minSize: [number, number] = [...MIN_PLANE_SIZE];
+        for (const x of tree.itemsOn(item)) {
+          const e = layout.get(pathOf(x.id));
+          if (!e?.at || !e.size) continue;
+          minSize[0] = Math.max(minSize[0], e.at[0] + e.size[0] + PLANE_INNER_MARGIN[0]);
+          minSize[1] = Math.max(minSize[1], e.at[1] + e.size[1] + PLANE_INNER_MARGIN[1]);
         }
-        const shape = shapeOf(c);
-        nodes.push({
-          id: path,
-          type: isPlane ? "archPlane" : "archComponent",
-          position: { x: at[0] * CELL, y: at[1] * CELL },
-          width: size[0] * CELL,
-          height: size[1] * CELL,
-          ...(prefix !== rootPrefix ? { parentId: prefix } : {}),
+        planes.push({
+          ...base,
+          type: "archPlane",
           data: {
+            kind: "plane",
             path,
-            label: c.name ?? c.id,
-            typeTag: c.type,
-            desc: c.desc,
-            display,
-            ...(!isPlane && shape !== "box" ? { shape } : {}),
-            childCount: c.children.length,
-            payloadCount: c.payloads.length,
+            label: item.name ?? item.id,
+            typeTag: item.type,
+            desc: item.desc,
+            childCount: 0,
+            payloadCount: 0,
             minSize,
-            ...(c.type !== undefined ? (() => {
-              const v = opts.resolveType?.(c.type!);
-              return v ? { accent: v.color, glyphKey: v.glyph } : {};
-            })() : {}),
-            ...(() => {
-              const m = opts.marks?.(path, c);
-              return m && Object.keys(m).length > 0 ? { marks: m } : {};
-            })(),
+            ...style(item, path),
+          },
+        });
+        walk(item, path, absPx, [path, ...chain]);
+      } else {
+        const shape = shapeOf(item);
+        boxes.push({
+          ...base,
+          type: "archComponent",
+          data: {
+            kind: "component",
+            path,
+            label: item.name ?? item.id,
+            typeTag: item.type,
+            desc: item.desc,
+            ...(shape !== "box" ? { shape } : {}),
+            childCount: item.children.length,
+            payloadCount: item.payloads.length,
+            minSize: [...MIN_LEAF_SIZE],
+            ...style(item, path),
           },
         });
       }
-
-      const childCollapsed =
-        collapsedAncestor ??
-        (display === "icon" && c.children.length > 0 ? path : null);
-      walk(c.children, path, isVisible, childCollapsed, absPx);
     }
   };
-  walk(rootItems, rootPrefix, true, null, [0, 0]);
+  walk(undefined, undefined, [0, 0], []);
+
+  // The box on this canvas each connection end is drawn as: a component here,
+  // or the one here it's nested in.
+  const boxOf = (p: readonly string[]): string | undefined => {
+    if (!inside(p, focus)) return undefined;
+    const key = p.slice(0, focus.length + 1).join(".");
+    return rects.get(key)?.plane === false ? key : undefined;
+  };
+
+  // Inside a component: what outside it connects in, beside the canvas.
+  const context: ArchNode[] = [];
+  const contextOf = new Map<string, string>();
+  if (focus.length > 0 && opts.context !== false && rects.size > 0) {
+    const outside = new Map<string, { partners: string[]; incoming: boolean }>();
+    for (const c of doc.connections) {
+      const s = boxOf(c.source);
+      const t = boxOf(c.target);
+      if ((s === undefined) === (t === undefined)) continue;
+      const far = pathToString(s === undefined ? c.source : c.target);
+      if (!findComponent(doc, far.split("."))) continue;
+      const o = outside.get(far) ?? { partners: [], incoming: true };
+      o.partners.push((s ?? t)!);
+      // Incoming when the outside end starts it; `--` and `<->` count as outgoing.
+      if (!(s === undefined && c.arrow === "->")) o.incoming = false;
+      outside.set(far, o);
+    }
+    if (outside.size > 0) {
+      const all = [...rects.values()];
+      const minX = Math.min(...all.map((r) => r.x));
+      const maxX = Math.max(...all.map((r) => r.x + r.w));
+      const [w, h] = CONTEXT_SIZE;
+      for (const side of ["left", "right"] as const) {
+        const list = [...outside.entries()]
+          .filter(([, o]) => (side === "left") === o.incoming)
+          .map(([far, o]) => {
+            const ys = o.partners.map((p) => rects.get(p)!).map((r) => r.y + r.h / 2);
+            const mid = ys.reduce((a, b) => a + b, 0) / ys.length;
+            return { far, y: Math.round((mid - (h * CELL) / 2) / CELL) };
+          })
+          .sort((a, b) => a.y - b.y || (a.far < b.far ? -1 : 1));
+        // Stack them down the side, each as near its partners' middle as it can.
+        let next = -Infinity;
+        const x = side === "left" ? Math.floor(minX / CELL) - CONTEXT_GAP - w : Math.ceil(maxX / CELL) + CONTEXT_GAP;
+        for (const item of list) {
+          const y = Math.max(item.y, next);
+          next = y + h + 1;
+          const node = findComponent(doc, item.far.split("."))!;
+          const id = CONTEXT_PREFIX + item.far;
+          contextOf.set(item.far, id);
+          rects.set(id, { x: x * CELL, y: y * CELL, w: w * CELL, h: h * CELL, plane: false });
+          onPlanes.set(id, []);
+          context.push({
+            id,
+            type: "archContext",
+            position: { x: x * CELL, y: y * CELL },
+            width: w * CELL,
+            height: h * CELL,
+            draggable: false,
+            selectable: false,
+            connectable: false,
+            deletable: false,
+            data: {
+              kind: "context",
+              path: item.far,
+              label: node.name ?? node.id,
+              typeTag: node.type,
+              side,
+              childCount: node.children.length,
+              payloadCount: node.payloads.length,
+              minSize: [...CONTEXT_SIZE],
+              ...style(node, item.far),
+            },
+          });
+        }
+      }
+    }
+  }
 
   // Edges avoid boxes and plane title bars; an unrelated plane's body is a
   // soft obstacle, so edges go around it when there is room.
   const drawn = [...rects.entries()];
   const obstaclesFor = (source: string, target: string): Obstacle[] => {
     const out: Obstacle[] = [];
+    const related = new Set([...(onPlanes.get(source) ?? []), ...(onPlanes.get(target) ?? [])]);
     for (const [p, r] of drawn) {
       if (p === source || p === target) continue;
       if (!r.plane) {
@@ -224,8 +339,7 @@ export function toFlow(
         continue;
       }
       out.push({ x: r.x, y: r.y, w: r.w, h: PLANE_TITLE, cost: BOX_COST / 4 });
-      if (!source.startsWith(p + ".") && !target.startsWith(p + "."))
-        out.push({ x: r.x, y: r.y, w: r.w, h: r.h, cost: BOX_COST / 20 });
+      if (!related.has(p)) out.push({ x: r.x, y: r.y, w: r.w, h: r.h, cost: BOX_COST / 20 });
     }
     return out;
   };
@@ -237,16 +351,22 @@ export function toFlow(
     i: number;
     source: string;
     target: string;
+    context: boolean;
     edge?: RoutedEdge;
   }[] = [];
   doc.connections.forEach((c, i) => {
-    const source = visibleAncestor.get(pathToString(c.source));
-    const target = visibleAncestor.get(pathToString(c.target));
+    let source = boxOf(c.source);
+    let target = boxOf(c.target);
+    const isContext = (source === undefined) !== (target === undefined);
+    if (isContext) {
+      source ??= contextOf.get(pathToString(c.source));
+      target ??= contextOf.get(pathToString(c.target));
+    }
     if (source === undefined || target === undefined || source === target) return;
     const s = rects.get(source);
     const t = rects.get(target);
     if (!s || !t) {
-      routed.push({ c, i, source, target });
+      routed.push({ c, i, source, target, context: isContext });
       return;
     }
     const route = routeEdge(
@@ -256,14 +376,14 @@ export function toFlow(
       chipWidth(c.type, c.label, c.payloads.length),
     );
     const headAtTarget = c.arrow !== "--";
-    routed.push({ c, i, source, target, edge: { source, target, s, t, route, headAtTarget } });
+    routed.push({ c, i, source, target, context: isContext, edge: { source, target, s, t, route, headAtTarget } });
   });
   const withRoutes = routed.flatMap((r) => (r.edge ? [r.edge] : []));
   untangle(withRoutes, obstaclesFor);
   separateBends(withRoutes.map((e) => bendOf(e.route, e.s, e.t, e.source, e.target)));
 
   const edges: ArchEdge[] = [];
-  for (const { c, i, source, target, edge } of routed) {
+  for (const { c, i, source, target, context: isContext, edge } of routed) {
     const route: EdgeRoute | undefined = edge?.route;
     const sourceHandle = `s${route?.from ?? "r"}`;
     const targetHandle = `t${route?.to ?? "l"}`;
@@ -274,6 +394,7 @@ export function toFlow(
       sourceHandle,
       targetHandle,
       type: "archEdge",
+      ...(isContext ? { reconnectable: false } : {}),
       data: {
         index: i,
         key: edgeKey(c),
@@ -286,9 +407,10 @@ export function toFlow(
           return d ? { diff: d } : {};
         })(),
         ...(route && !route.corner ? { mid: route.mid, horizontal: route.horizontal } : {}),
+        ...(isContext ? { context: true } : {}),
       },
     });
   }
 
-  return { nodes, edges };
+  return { nodes: [...planes, ...boxes, ...context], edges };
 }

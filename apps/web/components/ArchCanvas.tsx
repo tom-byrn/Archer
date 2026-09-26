@@ -27,14 +27,15 @@ import {
   type Edge,
   type Node,
   type OnConnect,
+  type OnNodeDrag,
   type OnReconnect,
   type ResizeParams,
 } from "@xyflow/react";
 import { toPng } from "html-to-image";
 import { isShape, type Shape } from "@archer/lang";
 import { CELL, type ArchEdge, type ArchNode } from "@/lib/toFlow";
-import { DND_MIME, DND_SHAPE_MIME } from "./Palette";
-import { ResizeContext, edgeTypes, nodeTypes } from "./nodes";
+import { DND_MIME, DND_PLANE_MIME, DND_SHAPE_MIME } from "./Palette";
+import { OpenContext, ResizeContext, edgeTypes, nodeTypes } from "./nodes";
 import { Icon } from "./ui";
 import "./canvas.css";
 
@@ -46,15 +47,27 @@ export interface DragEndInfo {
 
 /** What a right-click landed on. */
 export type ContextTarget =
-  | { kind: "node"; path: string }
+  /** A component or plane, and where on it (flow px). */
+  | { kind: "node"; path: string; at?: { x: number; y: number } }
   | { kind: "edge"; index: number }
   /** Empty canvas, at this point in flow px. */
   | { kind: "pane"; at: { x: number; y: number } };
 
+/** Something being dragged over the canvas, for drop feedback. */
+export interface Dragging {
+  /** Nodes being dragged (empty for something from the palette). */
+  paths: string[];
+  /** It may go into a component dropped onto (components may; planes may not). */
+  nest: boolean;
+}
+
 export interface CanvasCallbacks {
-  /** One or more nodes dropped after a drag (outermost only: children ride along). */
+  /** One or more nodes dropped after a drag (outermost only: what's on a plane rides along). */
   onNodesDragEnd: (moves: { path: string; info: DragEndInfo }[]) => void;
+  /** Open a component: show what's nested in it (double-click, or its corner button). */
   onDrillIn: (path: string) => void;
+  /** A context node (a component outside the canvas) was clicked: go to it. */
+  onOpenContext?: (path: string) => void;
   /** `additive`: shift/⌘/ctrl was held, so toggle it in the selection. */
   onSelectNode: (path: string, additive?: boolean) => void;
   onSelectEdge: (index: number, additive?: boolean) => void;
@@ -64,6 +77,13 @@ export interface CanvasCallbacks {
   onDelete: (paths: string[], edgeIndices: number[]) => void;
   /** A palette item dropped: a type (undefined: untyped), drawn as `shape` when given. */
   onDropType: (tag: string | undefined, flowPos: { x: number; y: number }, shape?: Shape) => void;
+  /** The palette's plane dropped. */
+  onDropPlane?: (flowPos: { x: number; y: number }) => void;
+  /**
+   * While something is dragged over the canvas: the node it would land on or
+   * in, to highlight (null: loose on the canvas). `point` is in flow px.
+   */
+  dropTargetAt?: (point: { x: number; y: number }, dragging: Dragging) => string | null;
   /** Box selection finished (shift-drag on the canvas). */
   onSelectMany?: (paths: string[]) => void;
   /** An edge's end was dragged onto another node. */
@@ -185,6 +205,8 @@ function CanvasInner({
   const initialized = useNodesInitialized();
   const [hover, setHover] = useState<Hover>(null);
   const [busy, setBusy] = useState(false); // dragging, connecting, reconnecting or resizing
+  /** The node a drag would land on or in (drop feedback). */
+  const [dropTarget, setDropTarget] = useState<string | null>(null);
   const wrapper = useRef<HTMLDivElement>(null);
   const pointer = useRef<{ x: number; y: number } | null>(null);
   const editable = !readOnly && !embedded;
@@ -347,16 +369,18 @@ function CanvasInner({
     () =>
       nodes.map((n) => {
         const resizable = n.id === soleSelected;
+        const target = n.id === dropTarget;
+        const changed = resizable !== !!n.data.resizable || target !== !!n.data.dropTarget;
         return {
           ...n,
-          ...(resizable !== !!n.data.resizable ? { data: { ...n.data, resizable } } : {}),
+          ...(changed ? { data: { ...n.data, resizable, dropTarget: target } } : {}),
           className: joinCls(
             lit !== null && !lit.nodes.has(n.id) && "dim",
             selectedPath === n.id && "arch-selected",
           ),
         };
       }),
-    [nodes, lit, selectedPath, soleSelected],
+    [nodes, lit, selectedPath, soleSelected, dropTarget],
   );
   const styledEdges = useMemo(
     () =>
@@ -372,23 +396,49 @@ function CanvasInner({
   );
 
   /** Report where dragged nodes landed: absolute position in this view, center, and grid size. */
+  /** Top-left of a node in the canvas's own coordinates (positions are relative to its plane). */
+  const absolute = useCallback(
+    (node: Node, byId: Map<string, Node>) => {
+      let x = node.position.x;
+      let y = node.position.y;
+      let parent = node.parentId ? byId.get(node.parentId) : undefined;
+      while (parent) {
+        x += parent.position.x;
+        y += parent.position.y;
+        parent = parent.parentId ? byId.get(parent.parentId) : undefined;
+      }
+      return { x, y };
+    },
+    [],
+  );
+
+  // Drop feedback while nodes are dragged: highlight where the first one would land.
+  const onNodeDrag: OnNodeDrag<ArchNode> = useCallback(
+    (_e, node, dragged) => {
+      if (!callbacks.dropTargetAt) return;
+      const byId = new Map(nodes.map((n) => [n.id, n]));
+      const { x, y } = absolute(node, byId);
+      const w = node.width ?? node.measured?.width ?? CELL * 4;
+      const h = node.height ?? node.measured?.height ?? CELL * 3;
+      const paths = (dragged.length > 0 ? dragged : [node]).map((n) => n.id);
+      const nest = (dragged.length > 0 ? dragged : [node]).every((n) => n.type !== "archPlane");
+      const target = callbacks.dropTargetAt({ x: x + w / 2, y: y + h / 2 }, { paths, nest });
+      setDropTarget((t) => (t === target ? t : target));
+    },
+    [callbacks, nodes, absolute],
+  );
+
   const commitDrag = useCallback(
     (dragged: Node[]) => {
       setBusy(false);
+      setDropTarget(null);
       const byId = new Map(nodes.map((n) => [n.id, n]));
       const ids = new Set(dragged.map((n) => n.id));
       const moves = dragged
         // A child whose parent moved too rides along; it hasn't moved inside it.
         .filter((n) => !n.parentId || !isAncestorIn(n.parentId, ids, byId))
         .map((node) => {
-          let x = node.position.x;
-          let y = node.position.y;
-          let parent = node.parentId ? byId.get(node.parentId) : undefined;
-          while (parent) {
-            x += parent.position.x;
-            y += parent.position.y;
-            parent = parent.parentId ? byId.get(parent.parentId) : undefined;
-          }
+          const { x, y } = absolute(node, byId);
           const w = node.width ?? node.measured?.width ?? CELL * 4;
           const h = node.height ?? node.measured?.height ?? CELL * 3;
           return {
@@ -402,7 +452,7 @@ function CanvasInner({
         });
       if (moves.length > 0) callbacks.onNodesDragEnd(moves);
     },
-    [callbacks, nodes],
+    [callbacks, nodes, absolute],
   );
 
   const onConnect: OnConnect = useCallback(
@@ -448,12 +498,34 @@ function CanvasInner({
 
   const onDrop = useCallback(
     (e: React.DragEvent) => {
+      setDropTarget(null);
+      const pos = screenToFlowPosition({ x: e.clientX, y: e.clientY });
+      if (e.dataTransfer.types.includes(DND_PLANE_MIME)) {
+        e.preventDefault();
+        callbacks.onDropPlane?.(pos);
+        return;
+      }
       const tag = e.dataTransfer.getData(DND_MIME);
       const shape = e.dataTransfer.getData(DND_SHAPE_MIME);
       if (tag === null) return;
       e.preventDefault();
-      const pos = screenToFlowPosition({ x: e.clientX, y: e.clientY });
       callbacks.onDropType(tag === "" ? undefined : tag, pos, isShape(shape) ? shape : undefined);
+    },
+    [callbacks, screenToFlowPosition],
+  );
+
+  // Drop feedback while something from the palette is dragged over the canvas.
+  const onDragOver = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "copy";
+      if (!callbacks.dropTargetAt) return;
+      const nest = !e.dataTransfer.types.includes(DND_PLANE_MIME);
+      const target = callbacks.dropTargetAt(
+        screenToFlowPosition({ x: e.clientX, y: e.clientY }),
+        { paths: [], nest },
+      );
+      setDropTarget((t) => (t === target ? t : target));
     },
     [callbacks, screenToFlowPosition],
   );
@@ -467,88 +539,103 @@ function CanvasInner({
 
   return (
     <ResizeContext.Provider value={editable && callbacks.onResize ? onResizeEnd : null}>
-      <ReactFlow
-        ref={wrapper}
-        nodes={styledNodes}
-        edges={styledEdges}
-        nodeTypes={nodeTypes}
-        edgeTypes={edgeTypes}
-        onNodesChange={onNodesChange}
-        onEdgesChange={onEdgesChange}
-        onPointerMove={(e) => {
-          pointer.current = { x: e.clientX, y: e.clientY };
-        }}
-        onPointerLeave={() => {
-          pointer.current = null;
-        }}
-        onNodeDragStart={(e, node) => {
-          setBusy(true);
-          // Dragging an unselected node selects it (React Flow does the same internally).
-          if (controlled && !selRef.current.nodes.has(node.id))
-            callbacks.onSelectNode(node.id, isAdditive(e));
-        }}
-        onNodeDragStop={(_e, node, dragged) => commitDrag(dragged.length > 0 ? dragged : [node])}
-        onConnectStart={() => setBusy(true)}
-        onConnectEnd={() => setBusy(false)}
-        onConnect={onConnect}
-        onReconnect={onReconnect}
-        onReconnectStart={() => setBusy(true)}
-        onReconnectEnd={() => setBusy(false)}
-        edgesReconnectable={editable && callbacks.onReconnect !== undefined}
-        onDelete={onDelete}
-        onNodeMouseEnter={(_e, n) => setHover({ kind: "node", id: n.id })}
-        onNodeMouseLeave={() => setHover(null)}
-        onEdgeMouseEnter={(_e, edge) => setHover({ kind: "edge", id: edge.id })}
-        onEdgeMouseLeave={() => setHover(null)}
-        onNodeClick={(e, n) => callbacks.onSelectNode(n.id, isAdditive(e))}
-        onNodeDoubleClick={(_e, n) => callbacks.onDrillIn(n.id)}
-        onEdgeClick={(e, edge) => {
-          const i = (edge.data as { index?: number } | undefined)?.index;
-          if (i !== undefined) callbacks.onSelectEdge(i, isAdditive(e));
-        }}
-        onPaneClick={() => callbacks.onClearSelection()}
-        onSelectionEnd={() =>
-          callbacks.onSelectMany?.(getNodes().filter((n) => n.selected).map((n) => n.id))
-        }
-        onNodeContextMenu={(e, n) => openMenu(e, { kind: "node", path: n.id })}
-        onEdgeContextMenu={(e, edge) => {
-          const i = (edge.data as { index?: number } | undefined)?.index;
-          if (i !== undefined) openMenu(e, { kind: "edge", index: i });
-        }}
-        onPaneContextMenu={(e) =>
-          openMenu(e, {
-            kind: "pane",
-            at: screenToFlowPosition({ x: e.clientX, y: e.clientY }),
-          })
-        }
-        onDrop={readOnly ? undefined : onDrop}
-        nodesDraggable={!readOnly}
-        nodesConnectable={!readOnly}
-        onDragOver={(e) => {
-          e.preventDefault();
-          e.dataTransfer.dropEffect = "copy";
-        }}
-        fitView
-        fitViewOptions={{ padding: 0.2, maxZoom: 1 }}
-        minZoom={0.15}
-        snapToGrid
-        snapGrid={[CELL, CELL]}
-        connectionRadius={36}
-        reconnectRadius={14}
-        deleteKeyCode={editable ? ["Backspace", "Delete"] : null}
-        // Box selection: hold shift and drag on empty canvas. Dragging alone pans.
-        selectionKeyCode={controlled && editable ? "Shift" : null}
-        multiSelectionKeyCode={controlled && editable ? ["Shift", "Meta", "Control"] : null}
-        preventScrolling={!embedded}
-        zoomOnScroll={!embedded}
-        zoomOnPinch={!embedded}
-        zoomOnDoubleClick={!embedded}
-        panOnDrag={!embedded}
-        proOptions={{ hideAttribution: true }}
-      >
-        <Background variant={BackgroundVariant.Dots} gap={CELL} size={1.5} color="var(--dot)" />
-        {!embedded && <CanvasControls />}
-      </ReactFlow>
+      <OpenContext.Provider value={embedded ? null : callbacks.onDrillIn}>
+        <ReactFlow
+          ref={wrapper}
+          nodes={styledNodes}
+          edges={styledEdges}
+          nodeTypes={nodeTypes}
+          edgeTypes={edgeTypes}
+          onNodesChange={onNodesChange}
+          onEdgesChange={onEdgesChange}
+          onPointerMove={(e) => {
+            pointer.current = { x: e.clientX, y: e.clientY };
+          }}
+          onPointerLeave={() => {
+            pointer.current = null;
+          }}
+          onNodeDragStart={(e, node) => {
+            setBusy(true);
+            // Dragging an unselected node selects it (React Flow does the same internally).
+            if (controlled && !selRef.current.nodes.has(node.id))
+              callbacks.onSelectNode(node.id, isAdditive(e));
+          }}
+          onNodeDrag={onNodeDrag}
+          onNodeDragStop={(_e, node, dragged) => commitDrag(dragged.length > 0 ? dragged : [node])}
+          onConnectStart={() => setBusy(true)}
+          onConnectEnd={() => setBusy(false)}
+          onConnect={onConnect}
+          onReconnect={onReconnect}
+          onReconnectStart={() => setBusy(true)}
+          onReconnectEnd={() => setBusy(false)}
+          edgesReconnectable={editable && callbacks.onReconnect !== undefined}
+          onDelete={onDelete}
+          onNodeMouseEnter={(_e, n) => setHover({ kind: "node", id: n.id })}
+          onNodeMouseLeave={() => setHover(null)}
+          onEdgeMouseEnter={(_e, edge) => setHover({ kind: "edge", id: edge.id })}
+          onEdgeMouseLeave={() => setHover(null)}
+          onNodeClick={(e, n) =>
+            n.type === "archContext"
+              ? callbacks.onOpenContext?.(n.data.path)
+              : callbacks.onSelectNode(n.id, isAdditive(e))
+          }
+          onNodeDoubleClick={(_e, n) => {
+            if (n.type === "archComponent") callbacks.onDrillIn(n.id);
+          }}
+          onEdgeClick={(e, edge) => {
+            const i = (edge.data as { index?: number } | undefined)?.index;
+            if (i !== undefined) callbacks.onSelectEdge(i, isAdditive(e));
+          }}
+          onPaneClick={() => callbacks.onClearSelection()}
+          onSelectionEnd={() =>
+            callbacks.onSelectMany?.(getNodes().filter((n) => n.selected).map((n) => n.id))
+          }
+          onNodeContextMenu={(e, n) => {
+            if (n.type === "archContext") e.preventDefault();
+            else
+              openMenu(e, {
+                kind: "node",
+                path: n.id,
+                at: screenToFlowPosition({ x: e.clientX, y: e.clientY }),
+              });
+          }}
+          onEdgeContextMenu={(e, edge) => {
+            const i = (edge.data as { index?: number } | undefined)?.index;
+            if (i !== undefined) openMenu(e, { kind: "edge", index: i });
+          }}
+          onPaneContextMenu={(e) =>
+            openMenu(e, {
+              kind: "pane",
+              at: screenToFlowPosition({ x: e.clientX, y: e.clientY }),
+            })
+          }
+          onDrop={readOnly ? undefined : onDrop}
+          nodesDraggable={!readOnly}
+          nodesConnectable={!readOnly}
+          onDragOver={readOnly ? undefined : onDragOver}
+          onDragLeave={() => setDropTarget(null)}
+          fitView
+          fitViewOptions={{ padding: 0.2, maxZoom: 1 }}
+          minZoom={0.15}
+          snapToGrid
+          snapGrid={[CELL, CELL]}
+          connectionRadius={36}
+          reconnectRadius={14}
+          deleteKeyCode={editable ? ["Backspace", "Delete"] : null}
+          // Box selection: hold shift and drag on empty canvas. Dragging alone pans.
+          selectionKeyCode={controlled && editable ? "Shift" : null}
+          multiSelectionKeyCode={controlled && editable ? ["Shift", "Meta", "Control"] : null}
+          preventScrolling={!embedded}
+          zoomOnScroll={!embedded}
+          zoomOnPinch={!embedded}
+          zoomOnDoubleClick={!embedded}
+          panOnDrag={!embedded}
+          proOptions={{ hideAttribution: true }}
+        >
+          <Background variant={BackgroundVariant.Dots} gap={CELL} size={1.5} color="var(--dot)" />
+          {!embedded && <CanvasControls />}
+        </ReactFlow>
+      </OpenContext.Provider>
     </ResizeContext.Provider>
   );
 }

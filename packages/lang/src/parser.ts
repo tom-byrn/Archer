@@ -1,4 +1,5 @@
 import { lex, type Token, type TokenType } from "./lexer";
+import { forEachScope } from "./scope";
 import { SHAPES } from "./shapes";
 import {
   PAYLOAD_FORMATS,
@@ -7,10 +8,10 @@ import {
   type ComponentNode,
   type ConnectionNode,
   type Diagnostic,
-  type DisplayMode,
   type LayoutEntry,
   type ParseResult,
   type PayloadFormat,
+  type PlaneNode,
   type Span,
 } from "./types";
 
@@ -20,7 +21,14 @@ class ParseError extends Error {
   }
 }
 
-export const CURRENT_VERSION = "0.1";
+export const CURRENT_VERSION = "0.2";
+
+/** Where a declaration goes: a scope's components and planes, and the plane it sits on. */
+interface Target {
+  components: ComponentNode[];
+  planes: PlaneNode[];
+  plane?: string;
+}
 
 export function parse(source: string): ParseResult {
   const { tokens, diagnostics } = lex(source);
@@ -50,9 +58,12 @@ export function parse(source: string): ParseResult {
     title: "Untitled",
     version: CURRENT_VERSION,
     components: [],
+    planes: [],
     connections: [],
     layout: [],
   };
+  /** `display` values from a v0.1 layout block (see upgradeV01). */
+  const legacyDisplay = new Map<string, string>();
 
   // --- header ---------------------------------------------------------------
   if (at("ident", "arch")) {
@@ -109,16 +120,20 @@ export function parse(source: string): ParseResult {
       id: idTok.value,
       payloads: [],
       children: [],
+      planes: [],
       span: { start: kw.span.start, end: idTok.span.end },
     };
     if (at("string")) node.name = next().value;
     if (at("at")) node.type = parseType();
     if (at("lbrace")) {
       next();
+      const inside: Target = { components: node.children, planes: node.planes };
       while (!at("rbrace") && !at("eof")) {
         try {
           if (at("ident", "component")) {
             node.children.push(parseComponent());
+          } else if (startsPlane()) {
+            parsePlane(inside);
           } else if (at("ident", "desc")) {
             next();
             const t = peek();
@@ -166,7 +181,7 @@ export function parse(source: string): ParseResult {
             node.payloads.push(parsePayload());
           } else {
             fail(
-              `Expected 'desc', 'src', 'shape', 'component', or a payload inside a component body, got ${describe(peek())}.`,
+              `Expected 'desc', 'src', 'shape', 'component', 'plane', or a payload inside a component body, got ${describe(peek())}.`,
               peek().span,
             );
           }
@@ -189,6 +204,68 @@ export function parse(source: string): ParseResult {
    */
   const startsPayload = (): boolean =>
     peek(1).type === "ident" && peek(2).type === "fence";
+
+  /**
+   * `plane <id>` ahead. Checking for the id keeps `plane` usable as a
+   * component id in connections (`plane -> db`) and as a payload name.
+   */
+  const startsPlane = (): boolean =>
+    at("ident", "plane") && peek(1).type === "ident" && !startsPayload();
+
+  /**
+   * `plane <id> ["Name"] [@type] [{ desc, components, planes }]`. Its
+   * components and planes belong to the enclosing scope, marked as sitting on
+   * it: planes group what's on a canvas without adding a level to paths.
+   */
+  const parsePlane = (into: Target): void => {
+    const kw = expect("ident", "'plane'");
+    const idTok = expect("ident", "a plane id");
+    const node: PlaneNode = {
+      kind: "plane",
+      id: idTok.value,
+      ...(into.plane !== undefined ? { plane: into.plane } : {}),
+      span: { start: kw.span.start, end: idTok.span.end },
+    };
+    // Listed before its body, so a scope's planes are in document order.
+    into.planes.push(node);
+    if (at("string")) node.name = next().value;
+    if (at("at")) node.type = parseType();
+    if (!at("lbrace")) return;
+    next();
+    const on: Target = { components: into.components, planes: into.planes, plane: node.id };
+    while (!at("rbrace") && !at("eof")) {
+      const start = i;
+      try {
+        if (at("ident", "component")) {
+          const c = parseComponent();
+          c.plane = node.id;
+          into.components.push(c);
+        } else if (startsPlane()) {
+          parsePlane(on);
+        } else if (at("ident", "desc")) {
+          next();
+          const t = peek();
+          if (t.type === "string" || t.type === "triple-string") node.desc = next().value;
+          else fail(`Expected a string after 'desc', got ${describe(t)}.`, t.span);
+        } else {
+          fail(
+            `Expected 'desc', 'component', or 'plane' inside a plane body, got ${describe(peek())}.`,
+            peek().span,
+          );
+        }
+      } catch (e) {
+        if (e instanceof ParseError) {
+          diagnostics.push(e.diagnostic);
+          // `src` and `shape` are statement starts elsewhere but not here:
+          // step over one so recovery always moves on.
+          if (i === start) next();
+          syncBody();
+        } else throw e;
+      }
+    }
+    const close = expect("rbrace", "'}'");
+    node.span = { start: kw.span.start, end: close.span.end };
+  };
 
   const parsePayload = () => {
     const nameTok = expect("ident", "a payload name");
@@ -234,7 +311,7 @@ export function parse(source: string): ParseResult {
       while (!at("rbrace") && !at("eof")) {
         // A statement keyword here means the body was never closed: report it
         // and hand the token back to the top-level loop instead of eating it.
-        if (["component", "layout", "desc", "src"].some((kw) => at("ident", kw))) {
+        if (["component", "layout", "desc", "src"].some((kw) => at("ident", kw)) || startsPlane()) {
           diagnostics.push({
             code: "E001",
             severity: "error",
@@ -279,7 +356,7 @@ export function parse(source: string): ParseResult {
             next();
             continue;
           }
-          const key = expect("ident", "a layout property (at | size | display)");
+          const key = expect("ident", "a layout property (at | size)");
           expect("colon", "':'");
           if (key.value === "at" || key.value === "size") {
             expect("lbracket", "'['");
@@ -289,11 +366,10 @@ export function parse(source: string): ParseResult {
             expect("rbracket", "']'");
             entry[key.value] = [parseInt(a.value, 10), parseInt(b.value, 10)];
           } else if (key.value === "display") {
+            // v0.1 drew a container as a plane or an icon. Components are
+            // always boxes now, so the value only matters to upgradeV01.
             const v = expect("ident", "'icon' or 'plane'");
-            if (v.value !== "icon" && v.value !== "plane") {
-              fail(`display must be 'icon' or 'plane', got '${v.value}'.`, v.span);
-            }
-            entry.display = v.value as DisplayMode;
+            legacyDisplay.set(path.join("."), v.value);
           } else {
             fail(`Unknown layout property '${key.value}'.`, key.span);
           }
@@ -319,6 +395,7 @@ export function parse(source: string): ParseResult {
       !at("ident", "desc") &&
       !at("ident", "src") &&
       !at("ident", "shape") &&
+      !at("ident", "plane") &&
       !at("ident", "layout")
     ) {
       next();
@@ -326,17 +403,20 @@ export function parse(source: string): ParseResult {
   };
 
   // --- top-level statements -------------------------------------------------
+  const top: Target = { components: doc.components, planes: doc.planes };
   while (!at("eof")) {
     try {
       if (at("ident", "component")) {
         doc.components.push(parseComponent());
+      } else if (startsPlane()) {
+        parsePlane(top);
       } else if (at("ident", "layout")) {
         parseLayoutBlock();
       } else if (at("ident")) {
         doc.connections.push(parseConnection());
       } else {
         fail(
-          `Expected 'component', 'layout', or a connection, got ${describe(peek())}.`,
+          `Expected 'component', 'plane', 'layout', or a connection, got ${describe(peek())}.`,
           peek().span,
         );
       }
@@ -351,7 +431,28 @@ export function parse(source: string): ParseResult {
     }
   }
 
+  if (doc.version === "0.1") upgradeV01(doc, legacyDisplay);
   return { doc, diagnostics };
+}
+
+/**
+ * Read a v0.1 document as v0.2. Its text means the same thing (v0.2 only
+ * adds planes), but its layout was written for a canvas that drew every
+ * component with nested components as a plane around them, unless the
+ * layout said `display: icon`. v0.2 draws such a component as a box you open
+ * to see inside, so the size it had as a plane goes and it gets a box's.
+ * Positions stay: its children keep their arrangement inside it.
+ */
+function upgradeV01(doc: ArchDoc, display: ReadonlyMap<string, string>): void {
+  const wasPlane = new Set<string>();
+  forEachScope(doc, (path, scope) => {
+    for (const c of scope.components) {
+      const key = [...path, c.id].join(".");
+      if (c.children.length > 0 && display.get(key) !== "icon") wasPlane.add(key);
+    }
+  });
+  for (const entry of doc.layout) if (wasPlane.has(entry.path.join("."))) delete entry.size;
+  doc.version = CURRENT_VERSION;
 }
 
 function describe(t: Token): string {

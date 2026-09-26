@@ -1,6 +1,6 @@
 const FENCE = "```";
 
-export const AI_SUPPORT_AGENT = `arch "AI Support Agent" v0.1
+export const AI_SUPPORT_AGENT = `arch "AI Support Agent" v0.2
 
 component widget "Chat Widget" @chat_ui {
   desc "Embedded in the app and the help center. Streams replies as they're written."
@@ -30,7 +30,7 @@ component evals "Evals" @evals {
   desc "Nightly: grades a sample of yesterday's conversations for accuracy, tone and policy."
 }
 
-component tools "MCP Servers" {
+plane tools "MCP Servers" {
   component orders "Orders" @mcp {
     desc "Read-only lookups against the order service."
     tools table ${FENCE}
@@ -69,9 +69,9 @@ component knowledge "Knowledge Base" @knowledge_base {
 agent -> knowledge.retriever @http : "search"
 agent -> llm @http : "messages"
 agent -> memory : "history"
-agent -> tools.orders @mcp
+agent -> orders @mcp
 
-agent -> tools.refunds @mcp : "create_refund" {
+agent -> refunds @mcp : "create_refund" {
   call json ${FENCE}
   { "order_id": "uuid", "amount_cents": "int", "reason": "text" }
   ${FENCE}
@@ -83,24 +83,24 @@ knowledge.ingest -> knowledge.embeddings @http
 knowledge.ingest -> knowledge.vectors @writes
 knowledge.retriever -> knowledge.embeddings @http : "embed query"
 knowledge.retriever -> knowledge.vectors @sql : "similarity"
-tools.refunds -> team @event : "needs approval"
+refunds -> team @event : "needs approval"
 widget -> guardrails @http : "chat"
 
 layout {
   agent: { at: [15, 8], size: [4, 3] }
   evals: { at: [28, 15], size: [4, 3] }
   guardrails: { at: [8, 8], size: [4, 3] }
-  knowledge: { at: [0, 17], size: [20, 12], display: plane }
-  knowledge.embeddings: { at: [8, 2], size: [4, 3] }
-  knowledge.ingest: { at: [1, 5], size: [4, 3] }
-  knowledge.retriever: { at: [15, 5], size: [4, 3] }
-  knowledge.vectors: { at: [8, 8], size: [4, 3] }
+  knowledge: { at: [15, 15], size: [4, 3] }
+  knowledge.embeddings: { at: [7, 0], size: [4, 3] }
+  knowledge.ingest: { at: [0, 3], size: [4, 3] }
+  knowledge.retriever: { at: [14, 3], size: [4, 3] }
+  knowledge.vectors: { at: [7, 6], size: [4, 3] }
   llm: { at: [22, 8], size: [4, 3] }
   memory: { at: [21, 15], size: [4, 3] }
+  orders: { at: [1, 2], size: [4, 3] }
+  refunds: { at: [9, 2], size: [4, 3] }
   team: { at: [27, 2], size: [4, 3] }
-  tools: { at: [10, 0], size: [14, 6], display: plane }
-  tools.orders: { at: [1, 2], size: [4, 3] }
-  tools.refunds: { at: [9, 2], size: [4, 3] }
+  tools: { at: [10, 0], size: [14, 6] }
   widget: { at: [1, 8], size: [4, 3] }
 }
 `;

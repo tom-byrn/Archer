@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { extractFragment, format, parse } from "@archer/lang";
 import { fragmentSize, parseFragment } from "../lib/clipboard";
 
-const DOC = `arch "Shop" v0.1
+const DOC = `arch "Shop" v0.2
 
 component web "Web" @vercel.nextjs
 component api "API"
@@ -29,8 +29,8 @@ describe("parseFragment", () => {
   it("ignores text that isn't Archer, and documents with nothing to paste", () => {
     expect(parseFragment("")).toBeNull();
     expect(parseFragment("just some words")).toBeNull();
-    expect(parseFragment('arch "Empty" v0.1\n')).toBeNull();
-    expect(parseFragment('arch "Broken" v0.1\ncomponent {')).toBeNull();
+    expect(parseFragment('arch "Empty" v0.2\n')).toBeNull();
+    expect(parseFragment('arch "Broken" v0.2\ncomponent {')).toBeNull();
   });
 });
 

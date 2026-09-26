@@ -11,6 +11,8 @@ import { Button, IconButton, Icon, Input, Kbd, cx } from "./ui";
 export const DND_MIME = "application/archer-type";
 /** Dragging a shape from the palette: the shape's name (an untyped component drawn that way). */
 export const DND_SHAPE_MIME = "application/archer-shape";
+/** Dragging a plane from the palette (the value is unused). */
+export const DND_PLANE_MIME = "application/archer-plane";
 
 /** The shapes the palette puts down; the box is "Plain component". */
 export const PALETTE_SHAPES = SHAPES.filter((s): s is Exclude<Shape, "box"> => s !== "box");
@@ -187,6 +189,28 @@ function PlainItem({ onAdd }: { onAdd: () => void }) {
         <Glyph size={13} />
       </span>
       <span className="min-w-0 flex-1 truncate text-sm text-ink">Plain component</span>
+    </button>
+  );
+}
+
+/** A plane: a titled region to put components on. Under the plain component. */
+function PlaneItem({ onAdd }: { onAdd: () => void }) {
+  return (
+    <button
+      type="button"
+      draggable
+      onDragStart={(e) => {
+        e.dataTransfer.setData(DND_PLANE_MIME, "plane");
+        e.dataTransfer.effectAllowed = "copy";
+      }}
+      onClick={onAdd}
+      title="A plane: a region to put components on, like Frontend or Backend — drag onto the canvas or click to add"
+      className="flex h-7 w-full cursor-grab items-center gap-2 rounded-md px-1.5 text-left transition-colors duration-75 hover:bg-surface-2 active:cursor-grabbing"
+    >
+      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-sm bg-surface-2 text-ink-2">
+        <Icon.Plane className="h-3.5 w-3.5" />
+      </span>
+      <span className="min-w-0 flex-1 truncate text-sm text-ink">Plane</span>
     </button>
   );
 }
@@ -377,12 +401,15 @@ function NewTypeForm({
 export function Palette({
   open,
   onAdd,
+  onAddPlane,
   library,
 }: {
   /** Closed, the sidebar is hidden but keeps its search and new-type form. */
   open: boolean;
   /** Add a component of this type (undefined: untyped), drawn as `shape` when given. */
   onAdd: (tag: string | undefined, shape?: Shape) => void;
+  /** Add a plane. */
+  onAddPlane: () => void;
   library: UserLibrary;
 }) {
   const [query, setQuery] = useState("");
@@ -437,6 +464,7 @@ export function Palette({
 
   const anyVisible = groups.some((g) => g.visible.length > 0) || shapes.length > 0;
   const plainVisible = !searching || matchRank({ name: "Plain component", tag: "", namespace: "generic" }, q) >= 0;
+  const planeVisible = !searching || matchRank({ name: "Plane", tag: "plane", namespace: "generic" }, q) >= 0;
 
   return (
     <aside
@@ -485,9 +513,12 @@ export function Palette({
         {groups.map(({ ns, items, visible }) => {
           const isCustom = ns === "custom";
           const showPlain = isCustom && plainVisible;
-          if (searching && visible.length === 0 && !showPlain && !(isCustom && creating)) return null;
+          const showPlane = isCustom && planeVisible;
+          if (searching && visible.length === 0 && !showPlain && !showPlane && !(isCustom && creating))
+            return null;
           const open = searching || (openState[ns] ?? false);
-          const count = (searching ? visible.length : items.length) + (showPlain ? 1 : 0);
+          const count =
+            (searching ? visible.length : items.length) + (showPlain ? 1 : 0) + (showPlane ? 1 : 0);
           return (
             <div key={ns} className="mt-1">
               <GroupHeader
@@ -514,6 +545,7 @@ export function Palette({
               {open && (
                 <div className="pb-1">
                   {showPlain && <PlainItem onAdd={() => onAdd(undefined)} />}
+                  {showPlane && <PlaneItem onAdd={onAddPlane} />}
                   {visible.map((t) => (
                     <PaletteItem
                       key={t.tag}
@@ -551,7 +583,7 @@ export function Palette({
           );
         })}
 
-        {searching && !anyVisible && !plainVisible && (
+        {searching && !anyVisible && !plainVisible && !planeVisible && (
           <p className="px-1.5 pt-3 text-sm text-ink-3">No matches</p>
         )}
         {/* Credit for the product logos (packages/catalog/scripts/logos.ts); AWS's

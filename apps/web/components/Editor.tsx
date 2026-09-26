@@ -2,32 +2,46 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  EMPTY_PLANE_SIZE,
   addComponent,
   addConnection,
+  addPlane,
   autoLayout,
   compileForAgent,
   componentPaths,
+  componentToPlane,
   diffDocs,
   duplicateComponents,
-  effectiveDisplay,
   extractFragment,
   findComponent,
+  findItem,
+  findPlane,
   format,
   freshId,
-  groupComponents,
+  groupInPlane,
   insertFragment,
   layoutMap,
   mergeForDiff,
   moveComponent,
+  nestInComponent,
+  outermostItems,
   parse,
+  planePathOf,
+  planePaths,
+  planeToComponent,
+  planeTree,
   relayoutComponents,
   removeComponent,
   removeConnection,
+  removePlane,
   reparentComponent,
   resizeComponent,
+  scopeAt,
   setConnectionEndpoints,
-  setDisplay,
+  setPlane,
   type ArchDoc,
+  type ComponentNode,
+  type PlaneNode,
   type Shape,
 } from "@archer/lang";
 import Link from "next/link";
@@ -137,6 +151,7 @@ type DiffView =
 const EMPTY_DOC = (like: ArchDoc): ArchDoc => ({
   ...like,
   components: [],
+  planes: [],
   connections: [],
   layout: [],
 });
@@ -157,9 +172,24 @@ function setSrc(
   );
 }
 
-/** Drop paths that sit inside another path in the same set (delete parent deletes them). */
-const outermostOnly = (paths: readonly string[]): string[] =>
-  paths.filter((p) => !paths.some((q) => q !== p && p.startsWith(q + ".")));
+/**
+ * Delete components and planes (a plane with everything on it). Something
+ * already gone with an earlier one (nested in it, or on it) is skipped.
+ */
+function deleteItems(doc: ArchDoc, paths: readonly string[]): ArchDoc {
+  return outermostItems(doc, paths.map((p) => p.split("."))).reduce(
+    (acc, segs) =>
+      findComponent(acc, segs)
+        ? removeComponent(acc, segs)
+        : findPlane(acc, segs)
+          ? removePlane(acc, segs)
+          : acc,
+    doc,
+  );
+}
+
+/** Every component and plane path in a document. */
+const itemPaths = (doc: ArchDoc): Set<string> => new Set([...componentPaths(doc), ...planePaths(doc)]);
 
 /** What's selected on the canvas: component paths and connection keys. */
 type Sel = { nodes: string[]; edges: string[] };
@@ -353,7 +383,8 @@ function EditorView({ initialSource, library, session }: EditorProps) {
   const toggleCode = useCallback(() => setCodeOpen((open) => !open), []);
   const toggleComponents = useCallback(() => setComponentsOpen((open) => !open), []);
 
-  // A focus that stopped resolving (component deleted/renamed) falls back to root.
+  // The component open on the canvas; one that stopped resolving (deleted,
+  // renamed) falls back to the top level.
   const liveFocus = useMemo(
     () =>
       focus.length > 0 && !componentPaths(derived.doc).has(focus.join("."))
@@ -389,6 +420,7 @@ function EditorView({ initialSource, library, session }: EditorProps) {
     return {
       doc: autoLayout(merged.doc),
       components: merged.components,
+      planes: merged.planes,
       connections: merged.connections,
       summary: diffDocs(base, next),
     };
@@ -398,18 +430,20 @@ function EditorView({ initialSource, library, session }: EditorProps) {
   const touched = useMemo(() => {
     if (activity.unseenRevisions.length === 0 || !activity.baseline) return new Set<string>();
     const d = diffDocs(parse(activity.baseline.source).doc, derived.doc);
-    return new Set(d.components.filter((c) => c.kind !== "removed").map((c) => c.path));
+    return new Set(
+      [...d.components, ...d.planes].filter((c) => c.kind !== "removed").map((c) => c.path),
+    );
   }, [activity.unseenRevisions.length, activity.baseline, derived.doc]);
 
   const marks = useCallback(
-    (path: string, c: { src?: string }): NodeMarks | undefined => {
+    (path: string, item: ComponentNode | PlaneNode): NodeMarks | undefined => {
       const m: NodeMarks = {};
-      const d = diff?.components.get(path);
+      const d = item.kind === "plane" ? diff?.planes.get(path) : diff?.components.get(path);
       if (d) m.diff = d;
       if (!diff && touched.has(path)) m.touched = true;
       const f = activity.driftByPath.get(path);
       if (f && (f.status === "missing" || f.status === "changed")) m.drift = f.status;
-      if (c.src) m.src = c.src;
+      if (item.kind === "component" && item.src) m.src = item.src;
       return Object.keys(m).length > 0 ? m : undefined;
     },
     [diff, touched, activity.driftByPath],
@@ -428,53 +462,74 @@ function EditorView({ initialSource, library, session }: EditorProps) {
     [displayDoc, liveFocus, resolveType, isDark, marks, diff],
   );
 
+  /** A component's display name, for toasts. */
+  const nameOf = useCallback(
+    (path: readonly string[]) => {
+      const node = findItem(derived.doc, path);
+      return node?.name ?? node?.id ?? path.join(".");
+    },
+    [derived.doc],
+  );
+
   const callbacks: CanvasCallbacks = useMemo(
     () => ({
       onNodesDragEnd: (moves) => {
         const moved = mutateWith((d) => {
           const dragged = moves.map((m) => m.path.split("."));
           // Every landing spot is decided on the doc as it was, before any of them moves.
-          const targets = moves.map(({ info }) =>
+          const targets = moves.map(({ path, info }) =>
             resolveDropTarget(d, info.center, {
               base: liveFocus,
               exclude: dragged,
               topLeft: info.topLeft,
               sizeGrid: info.sizeGrid,
+              nest: findComponent(d, path.split(".")) !== undefined,
             }),
           );
           const renamed = new Map<string, string>();
+          let into: string[] | null = null;
           let next = d;
           dragged.forEach((segs, i) => {
             const target = targets[i]!;
-            if (target.parent.join(".") === segs.slice(0, -1).join(".")) {
-              next = moveComponent(next, segs, target.at);
+            if (target.scope.join(".") === segs.slice(0, -1).join(".")) {
+              // On this canvas: onto a plane, off one, or just somewhere else.
+              const plane = planePathOf(next, segs);
+              const current = plane ? plane[plane.length - 1] : undefined;
+              if ((target.plane ?? null) !== (current ?? null))
+                next = setPlane(next, segs, target.plane ?? null, target.at);
+              else if (target.at) next = moveComponent(next, segs, target.at);
               return;
             }
-            // Reparenting keeps the id unless it clashes in the new parent.
+            // Into the component it was dropped on. Its id stays unless taken there.
             const id = segs[segs.length - 1]!;
-            const siblings =
-              target.parent.length === 0
-                ? next.components
-                : (findComponent(next, target.parent)?.children ?? []);
-            const newId = siblings.some((c) => c.id === id) ? freshId(next, target.parent, id) : id;
-            next = reparentComponent(next, segs, target.parent, target.at);
-            renamed.set(segs.join("."), [...target.parent, newId].join("."));
+            const taken = scopeAt(next, target.scope);
+            const clash =
+              taken?.components.some((c) => c.id === id) || taken?.planes.some((p) => p.id === id);
+            const newId = clash ? freshId(next, target.scope, id) : id;
+            next = reparentComponent(next, segs, target.scope, target.at, target.plane);
+            renamed.set(segs.join("."), [...target.scope, newId].join("."));
+            into = target.scope;
           });
-          return { doc: next, value: renamed };
+          return { doc: next, value: { renamed, into: into as string[] | null } };
         });
-        if (moved && moved.size > 0) {
-          setSel((s) => ({ ...s, nodes: s.nodes.map((p) => remapPath(p, moved)) }));
-          setEditingId((id) => id && remapPath(id, moved));
+        if (!moved) return;
+        if (moved.into) {
+          // What went in is out of sight now: select where it went.
+          setSel(only(moved.into.join(".")));
+          notify(`Moved ${plural(moved.renamed.size, "component")} into ${nameOf(moved.into)}`);
+        } else if (moved.renamed.size > 0) {
+          setSel((s) => ({ ...s, nodes: s.nodes.map((p) => remapPath(p, moved.renamed)) }));
+          setEditingId((id) => id && remapPath(id, moved.renamed));
         }
       },
       onDrillIn: (path) => {
         const segs = path.split(".");
-        const node = findComponent(derived.doc, segs);
-        if (node && node.children.length > 0) {
+        if (findComponent(derived.doc, segs)) {
           setFocus(segs);
           setSel(NONE);
         }
       },
+      onOpenContext: (path) => goTo(path),
       onSelectNode: (path, additive) =>
         setSel((s) => (additive ? { ...s, nodes: toggle(s.nodes, path) } : only(path))),
       onSelectEdge: (index, additive) => {
@@ -488,22 +543,36 @@ function EditorView({ initialSource, library, session }: EditorProps) {
       onConnect: (s, t) => mutate((d) => addConnection(d, s.split("."), t.split("."))),
       onDelete: (paths, indices) => {
         mutate((d) => {
-          // Connections first, by index on the unchanged doc; then components.
+          // Connections first, by index on the unchanged doc; then components and planes.
           const withoutEdges = [...new Set(indices)]
             .sort((a, b) => b - a)
             .reduce((acc, i) => removeConnection(acc, i), d);
-          return outermostOnly(paths).reduce(
-            (acc, p) => removeComponent(acc, p.split(".")),
-            withoutEdges,
-          );
+          return deleteItems(withoutEdges, paths);
         });
         setSel(NONE);
       },
-      onDropType: (tag, pos, shape) =>
-        mutate((d) => {
-          const target = resolveDropTarget(d, pos, { base: liveFocus });
-          return addComponent(d, target.parent, { type: tag, shape, at: target.at }).doc;
-        }),
+      onDropType: (tag, pos, shape) => {
+        const added = mutateWith((d) => {
+          const target = resolveDropTarget(d, pos, { base: liveFocus, nest: true });
+          const r = addComponent(d, target.scope, { type: tag, shape, plane: target.plane, at: target.at });
+          return { doc: r.doc, value: target.at ? null : target.scope };
+        });
+        if (added) notify(`Added inside ${nameOf(added)}`);
+      },
+      onDropPlane: (pos) => {
+        const path = mutateWith((d) => {
+          const target = resolveDropTarget(d, pos, { base: liveFocus, sizeGrid: EMPTY_PLANE_SIZE });
+          const r = addPlane(d, target.scope, { name: "Plane", plane: target.plane, at: target.at });
+          return { doc: r.doc, value: r.path.join(".") };
+        });
+        if (path) selectNew(path);
+      },
+      dropTargetAt: (point, dragging) =>
+        resolveDropTarget(derived.laidOut, point, {
+          base: liveFocus,
+          exclude: dragging.paths.map((p) => p.split(".")),
+          nest: dragging.nest,
+        }).highlight ?? null,
       onReconnect: (index, end, path) => {
         const key = mutateWith((d) => {
           const c = d.connections[index];
@@ -536,13 +605,15 @@ function EditorView({ initialSource, library, session }: EditorProps) {
         setMenu({ target, at });
       },
     }),
-    [mutate, mutateWith, derived, liveFocus],
+    // goTo, notify and selectNew are recreated each render but only read state setters.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [mutate, mutateWith, derived, liveFocus, nameOf],
   );
 
   // What's selected, minus anything that no longer resolves (deleted, renamed,
   // connection edited away). One thing selected opens its inspector.
   const liveSel: Sel = useMemo(() => {
-    const paths = componentPaths(derived.doc);
+    const paths = itemPaths(derived.doc);
     const keys = new Set(derived.doc.connections.map(connectionKey));
     const nodes = sel.nodes.filter((p) => paths.has(p));
     const edges = sel.edges.filter((k) => keys.has(k));
@@ -552,22 +623,24 @@ function EditorView({ initialSource, library, session }: EditorProps) {
   }, [sel, derived]);
   const liveSelection: Selection =
     liveSel.nodes.length === 1 && liveSel.edges.length === 0
-      ? { kind: "component", path: liveSel.nodes[0]! }
+      ? findPlane(derived.doc, liveSel.nodes[0]!.split("."))
+        ? { kind: "plane", path: liveSel.nodes[0]! }
+        : { kind: "component", path: liveSel.nodes[0]! }
       : liveSel.nodes.length === 0 && liveSel.edges.length === 1
         ? { kind: "connection", key: liveSel.edges[0]! }
         : null;
   const setSelection = useCallback(
     (s: Selection) =>
-      setSel(s === null ? NONE : s.kind === "component" ? only(s.path) : { nodes: [], edges: [s.key] }),
+      setSel(s === null ? NONE : s.kind === "connection" ? { nodes: [], edges: [s.key] } : only(s.path)),
     [],
   );
-  const selectedPath = liveSelection?.kind === "component" ? liveSelection.path : null;
+  const selectedPath = liveSelection && liveSelection.kind !== "connection" ? liveSelection.path : null;
   const selectedId =
     liveSelection === null
       ? null
-      : liveSelection.kind === "component"
-        ? liveSelection.path
-        : liveSelection.key;
+      : liveSelection.kind === "connection"
+        ? liveSelection.key
+        : liveSelection.path;
   // Once something else is selected the form stays closed, so coming back reads first.
   useEffect(() => {
     if (editingId !== null && editingId !== selectedId) setEditingId(null);
@@ -586,8 +659,26 @@ function EditorView({ initialSource, library, session }: EditorProps) {
       const path = mutateWith((d) => {
         const target = point ? resolveDropTarget(d, point, { base: liveFocus }) : null;
         const r = target
-          ? addComponent(d, target.parent, { type: tag, shape, at: target.at })
+          ? addComponent(d, target.scope, { type: tag, shape, plane: target.plane, at: target.at })
           : addComponent(d, liveFocus, { type: tag, shape });
+        return { doc: r.doc, value: r.path.join(".") };
+      });
+      if (path) selectNew(path);
+    },
+    [mutateWith, liveFocus, selectNew],
+  );
+
+  /** A new plane, at the point the menu was opened (else wherever there's room), its form open. */
+  const addPlaneHere = useCallback(
+    (point?: { x: number; y: number }) => {
+      const at = point ?? addAt.current;
+      addAt.current = null;
+      const path = mutateWith((d) => {
+        const target = at ? resolveDropTarget(d, at, { base: liveFocus, sizeGrid: EMPTY_PLANE_SIZE }) : null;
+        const r = addPlane(d, target?.scope ?? liveFocus, {
+          name: "Plane",
+          ...(target ? { plane: target.plane, at: target.at } : {}),
+        });
         return { doc: r.doc, value: r.path.join(".") };
       });
       if (path) selectNew(path);
@@ -777,21 +868,29 @@ function EditorView({ initialSource, library, session }: EditorProps) {
   const editing = editable && selectedId !== null && editingId === selectedId;
   const selCount = liveSel.nodes.length;
   const selPaths = () => liveSel.nodes.map((p) => p.split("."));
-  /** Paths of the components at the current level (the view's roots). */
-  const levelPaths = (d: ArchDoc) =>
-    (liveFocus.length === 0 ? d.components : (findComponent(d, liveFocus)?.children ?? [])).map(
-      (c) => [...liveFocus, c.id],
-    );
+  /** The selection's planes, if any: they can't be nested in a component. */
+  const selHasPlane = liveSel.nodes.some((p) => findPlane(derived.doc, p.split(".")) !== undefined);
+  /** Everything on the canvas on screen: its components and planes. */
+  const levelPaths = (d: ArchDoc): string[][] => {
+    const scope = scopeAt(d, liveFocus);
+    if (!scope) return [];
+    return [...scope.planes, ...scope.components].map((x) => [...liveFocus, x.id]);
+  };
+  /** The top of the canvas on screen: what isn't on a plane there. */
+  const topPaths = (d: ArchDoc): string[][] => {
+    const scope = scopeAt(d, liveFocus);
+    return scope ? planeTree(scope).itemsOn(undefined).map((x) => [...liveFocus, x.id]) : [];
+  };
   const selectCreated = (paths: string[][] | undefined, verb: string) => {
     if (!paths || paths.length === 0) return;
     setSel({ nodes: paths.map((p) => p.join(".")), edges: [] });
-    notify(`${verb} ${plural(paths.length, "component")}`);
+    notify(`${verb} ${plural(paths.length, "item")}`);
   };
 
   const copyText = () =>
     selCount === 0 ? null : format(extractFragment(derived.laidOut, selPaths()));
   const deleteSelection = () => {
-    const paths = outermostOnly(liveSel.nodes);
+    const paths = liveSel.nodes;
     const keys = liveSel.edges;
     if (paths.length === 0 && keys.length === 0) return;
     mutate((d) => {
@@ -800,7 +899,7 @@ function EditorView({ initialSource, library, session }: EditorProps) {
         .filter((i) => i >= 0)
         .sort((a, b) => b - a)
         .reduce((acc, i) => removeConnection(acc, i), d);
-      return paths.reduce((acc, p) => removeComponent(acc, p.split(".")), withoutEdges);
+      return deleteItems(withoutEdges, paths);
     });
     setSel(NONE);
   };
@@ -809,7 +908,7 @@ function EditorView({ initialSource, library, session }: EditorProps) {
   const copySelection = (cut = false) => {
     const text = copyText();
     if (text === null) return;
-    const n = plural(selCount, "component");
+    const n = plural(selCount, "item");
     void navigator.clipboard.writeText(text).then(
       () => {
         if (cut) deleteSelection();
@@ -821,11 +920,11 @@ function EditorView({ initialSource, library, session }: EditorProps) {
   const pasteFragment = (fragment: ArchDoc, point?: { x: number; y: number }) => {
     const anchor = point ?? canvasApi.current?.pasteAnchor();
     const created = mutateWith((d) => {
-      // Centered on the pointer, inside whichever plane is under it.
+      // Centered on the pointer, on whichever plane is under it.
       const target = anchor
         ? resolveDropTarget(d, anchor, { base: liveFocus, sizeGrid: fragmentSize(fragment) })
         : null;
-      const r = insertFragment(d, fragment, target?.parent ?? liveFocus, target?.at);
+      const r = insertFragment(d, fragment, target?.scope ?? liveFocus, target?.at, target?.plane);
       return { doc: r.doc, value: r.paths };
     });
     selectCreated(created, "Pasted");
@@ -847,52 +946,114 @@ function EditorView({ initialSource, library, session }: EditorProps) {
     });
     selectCreated(created, "Duplicated");
   };
+  /** Put the selection on a new plane, drawn around it (⌘G). */
   const groupSelection = () => {
     if (selCount === 0) return;
     const path = mutateWith((d) => {
-      const r = groupComponents(d, selPaths());
+      const r = groupInPlane(d, selPaths());
       return { doc: r.doc, value: r.path.join(".") };
     });
     if (path) selectNew(path);
   };
-  const addChild = (path: string) => {
-    const child = mutateWith((d) => {
-      const segs = path.split(".");
-      // A collapsed container opens up to show what's being added to it.
-      const base = layoutMap(d).get(path)?.display === "icon" ? setDisplay(d, segs, "plane") : d;
-      const added = addComponent(base, segs);
-      // Auto-layout finds it a free spot inside; moving it there grows the parent around it.
-      const laid = autoLayout(added.doc);
-      const at = layoutMap(laid).get(added.path.join("."))?.at ?? [1, 2];
-      return { doc: moveComponent(laid, added.path, at), value: added.path.join(".") };
+  /** Nest the selected components in a new component, which takes their place. */
+  const nestSelection = () => {
+    if (selCount === 0 || selHasPlane) return;
+    const path = mutateWith((d) => {
+      const r = nestInComponent(d, selPaths());
+      return { doc: r.doc, value: r.path.join(".") };
     });
-    if (child) selectNew(child);
+    if (path) {
+      selectNew(path);
+      notify(`Nested ${plural(selCount, "component")} in a new component`);
+    }
   };
-  const toggleDisplay = (path: string) => {
+  /** Add a component inside this one, and open it to show where it went. */
+  const addChild = (path: string) => {
+    const segs = path.split(".");
+    const child = mutateWith((d) => {
+      const added = addComponent(d, segs);
+      // Auto-layout finds it a free spot inside.
+      return { doc: autoLayout(added.doc), value: added.path.join(".") };
+    });
+    if (!child) return;
+    setFocus(segs);
+    selectNew(child);
+  };
+  /** Take a component out of the one it's nested in, onto that one's canvas. */
+  const moveOut = (path: string) => {
+    const segs = path.split(".");
+    if (segs.length < 2) return;
+    const parent = segs.slice(0, -1);
+    const moved = mutateWith((d) => {
+      const outer = parent.slice(0, -1);
+      const id = segs[segs.length - 1]!;
+      const scope = scopeAt(d, outer);
+      const taken = scope?.components.some((c) => c.id === id) || scope?.planes.some((p) => p.id === id);
+      const newId = taken ? freshId(d, outer, id) : id;
+      // On the plane the component it leaves is on, if any.
+      const plane = planePathOf(d, parent);
+      return {
+        doc: reparentComponent(d, segs, outer, undefined, plane ? plane[plane.length - 1] : undefined),
+        value: [...outer, newId],
+      };
+    });
+    if (!moved) return;
+    notify(`Moved ${nameOf(moved)} out of ${nameOf(parent)}`);
+    goTo(moved.join("."));
+  };
+  const convertToPlane = (path: string) => {
+    const plane = mutateWith((d) => {
+      const r = componentToPlane(d, path.split("."));
+      return { doc: r.doc, value: r.path.join(".") };
+    });
+    if (plane) {
+      setSel(only(plane));
+      notify("Converted to a plane: what was inside is on it now");
+    }
+  };
+  const convertToComponent = (path: string) => {
+    const comp = mutateWith((d) => {
+      const r = planeToComponent(d, path.split("."));
+      return { doc: r.doc, value: r.path.join(".") };
+    });
+    if (comp) {
+      setSel(only(comp));
+      notify("Converted to a component: open it to see what was on the plane");
+    }
+  };
+  /** Remove a plane, leaving what was on it where it is. */
+  const ungroup = (path: string) => {
+    mutate((d) => removePlane(d, path.split("."), { keepContents: true }));
+    setSel(NONE);
+  };
+  /** Why a component can't become a plane, or null when it can. */
+  const whyNotPlane = (path: string): string | null => {
     const node = findComponent(derived.doc, path.split("."));
-    if (!node) return;
-    const display = effectiveDisplay(node, layoutMap(derived.laidOut).get(path));
-    mutate((d) => setDisplay(d, path.split("."), display === "plane" ? "icon" : "plane"));
+    if (!node) return "Not a component";
+    if (derived.doc.connections.some((c) => c.source.join(".") === path || c.target.join(".") === path))
+      return "It has connections of its own";
+    if (node.payloads.length > 0) return "It has payloads";
+    if (node.src !== undefined) return "It has a source link";
+    return null;
   };
   const relayoutSelection = () => {
     if (selCount > 0) mutate((d) => relayoutComponents(d, selPaths()));
   };
-  const relayoutLevel = () => mutate((d) => relayoutComponents(d, levelPaths(d)));
+  const relayoutLevel = () => mutate((d) => relayoutComponents(d, topPaths(d)));
   const relayoutAll = () => {
-    mutate((d) => relayoutComponents(d, d.components.map((c) => [c.id])));
+    mutate((d) => autoLayout(d, { reset: true }));
     // Everything moved: fit the view once the new arrangement is on the canvas.
     setTimeout(() => canvasApi.current?.fitView(), 50);
   };
   const selectAll = () =>
     setSel({ nodes: levelPaths(derived.doc).map((p) => p.join(".")), edges: [] });
   const nudge = (dx: number, dy: number) => {
-    const paths = outermostOnly(liveSel.nodes);
-    if (paths.length === 0) return;
+    if (selCount === 0) return;
     mutate((d) => {
       const layout = layoutMap(d);
-      return paths.reduce((acc, p) => {
-        const at = layout.get(p)?.at;
-        return at ? moveComponent(acc, p.split("."), [at[0] + dx, at[1] + dy]) : acc;
+      return outermostItems(d, selPaths()).reduce((acc, segs) => {
+        const at = layout.get(segs.join("."))?.at;
+        return at ? moveComponent(acc, segs, [at[0] + dx, at[1] + dy]) : acc;
       }, d);
     });
   };
@@ -910,21 +1071,10 @@ function EditorView({ initialSource, library, session }: EditorProps) {
     setSel(NONE);
   };
 
-  /** Find / go to: switch to a level where it's visible, select it, and pan to it. */
+  /** Find / go to: open the canvas it's on, select it, and pan to it. */
   const goTo = (path: string) => {
-    const segs = path.split(".");
-    const layout = layoutMap(derived.laidOut);
-    // The deepest collapsed container above it: the view has to be inside that one.
-    let inside: string[] = [];
-    for (let i = 1; i < segs.length; i++) {
-      const anc = segs.slice(0, i);
-      const node = findComponent(derived.doc, anc);
-      if (node && effectiveDisplay(node, layout.get(anc.join("."))) === "icon") inside = anc;
-    }
-    const current = liveFocus.join(".");
-    const parent = segs.slice(0, -1).join(".");
-    const underCurrent = current === "" || parent === current || parent.startsWith(current + ".");
-    if (!underCurrent || inside.length > liveFocus.length) setFocus(inside);
+    const scope = path.split(".").slice(0, -1);
+    if (scope.join(".") !== liveFocus.join(".")) setFocus(scope);
     setDiffView(null);
     setSel(only(path));
     setReveal((r) => ({ path, nonce: (r?.nonce ?? 0) + 1 }));
@@ -969,10 +1119,11 @@ function EditorView({ initialSource, library, session }: EditorProps) {
     paste: (fragment) => pasteFragment(fragment),
   };
 
+  const focusName = liveFocus.length > 0 ? nameOf(liveFocus) : null;
   const relayoutItems: MenuItem[] = [
     {
       label: "Re-layout selection",
-      hint: selCount > 0 ? "Tidy what's selected and what's inside it" : "Select components first",
+      hint: selCount > 0 ? "Tidy what's selected and what's in it" : "Select something first",
       icon: <Icon.Layout />,
       disabled: selCount === 0,
       onSelect: relayoutSelection,
@@ -981,7 +1132,7 @@ function EditorView({ initialSource, library, session }: EditorProps) {
       ? [
           {
             label: "Re-layout this level",
-            hint: `Everything inside ${liveFocus[liveFocus.length - 1]}`,
+            hint: `Everything inside ${focusName}`,
             icon: <Icon.Layout />,
             onSelect: relayoutLevel,
           },
@@ -995,19 +1146,26 @@ function EditorView({ initialSource, library, session }: EditorProps) {
     },
   ];
 
-  /** Actions on the selected components: canvas menu and multi-select panel. */
+  /** Actions on the selection: canvas menu and multi-select panel. */
   const selectionActions = (withRelayout: boolean): (MenuItem | "separator")[] => [
     { label: "Copy", icon: <Icon.Copy />, shortcut: `${MOD}C`, onSelect: () => copySelection() },
     { label: "Cut", icon: <Icon.Cut />, shortcut: `${MOD}X`, onSelect: () => copySelection(true) },
     { label: "Duplicate", icon: <Icon.Duplicate />, shortcut: `${MOD}D`, onSelect: duplicateSelection },
     "separator",
-    { label: "Group in container", icon: <Icon.Group />, shortcut: `${MOD}G`, onSelect: groupSelection },
+    { label: "Group on a plane", icon: <Icon.Group />, shortcut: `${MOD}G`, onSelect: groupSelection },
+    {
+      label: "Nest in a new component",
+      hint: selHasPlane ? "Planes can't be nested" : undefined,
+      icon: <Icon.Nested />,
+      disabled: selHasPlane,
+      onSelect: nestSelection,
+    },
     ...(withRelayout
       ? [{ label: selCount > 1 ? "Re-layout selection" : "Re-layout inside", icon: <Icon.Layout />, onSelect: relayoutSelection }]
       : []),
     "separator",
     {
-      label: selCount > 1 ? `Delete ${plural(selCount, "component")}` : "Delete",
+      label: selCount > 1 ? `Delete ${plural(selCount, "item")}` : "Delete",
       icon: <Icon.Trash />,
       shortcut: "⌫",
       danger: true,
@@ -1019,39 +1177,71 @@ function EditorView({ initialSource, library, session }: EditorProps) {
     if (!menu) return [];
     const t = menu.target;
     if (t.kind === "node" && selCount > 1) return selectionActions(true);
+    if (t.kind === "node" && findPlane(derived.doc, t.path.split("."))) {
+      return [
+        {
+          label: "Add component here…",
+          icon: <Icon.Plus />,
+          onSelect: () => openPalette("add", t.at),
+        },
+        {
+          label: "Rename…",
+          icon: <Icon.Pencil />,
+          onSelect: () => {
+            setSel(only(t.path));
+            setEditingId(t.path);
+          },
+        },
+        "separator",
+        {
+          label: "Convert to component",
+          hint: "What's on it goes inside",
+          icon: <Icon.Nested />,
+          onSelect: () => convertToComponent(t.path),
+        },
+        { label: "Ungroup", hint: "Remove the plane, keep what's on it", icon: <Icon.Ungroup />, onSelect: () => ungroup(t.path) },
+        "separator",
+        ...selectionActions(true).map((a) =>
+          a !== "separator" && a.onSelect === deleteSelection ? { ...a, label: "Delete plane and contents" } : a,
+        ),
+      ];
+    }
     if (t.kind === "node") {
       const node = findComponent(derived.doc, t.path.split("."));
-      const isContainer = !!node && node.children.length > 0;
-      const display = node ? effectiveDisplay(node, layoutMap(derived.laidOut).get(t.path)) : "icon";
+      const inside = node?.children.length ?? 0;
+      const planeBlocker = inside > 0 ? whyNotPlane(t.path) : null;
       return [
-        ...(isContainer
-          ? [{ label: "Open", icon: <Icon.ChevronRight />, onSelect: () => callbacks.onDrillIn(t.path) }]
+        {
+          label: "Open",
+          hint: inside > 0 ? `${inside} inside` : "Put components inside it",
+          icon: <Icon.Open />,
+          onSelect: () => callbacks.onDrillIn(t.path),
+        },
+        { label: "Add nested component", icon: <Icon.AddChild />, onSelect: () => addChild(t.path) },
+        ...(liveFocus.length > 0
+          ? [{ label: `Move out of ${focusName}`, icon: <Icon.MoveOut />, onSelect: () => moveOut(t.path) }]
           : []),
-        { label: "Add child", icon: <Icon.AddChild />, onSelect: () => addChild(t.path) },
-        ...(isContainer
+        {
+          label: "Change shape…",
+          icon: <Icon.Shapes />,
+          onSelect: () => {
+            setSel(only(t.path));
+            setEditingId(t.path);
+          },
+        },
+        ...(inside > 0
           ? [
               {
-                label: display === "plane" ? "Collapse to icon" : "Expand to plane",
-                icon: <Icon.Layout />,
-                onSelect: () => toggleDisplay(t.path),
+                label: "Convert to plane",
+                hint: planeBlocker ?? "What's inside goes on it",
+                icon: <Icon.Plane />,
+                disabled: planeBlocker !== null,
+                onSelect: () => convertToPlane(t.path),
               },
             ]
           : []),
-        // A plane is drawn as a plane; its shape shows once it's collapsed.
-        ...(isContainer && display === "plane"
-          ? []
-          : [
-              {
-                label: "Change shape…",
-                icon: <Icon.Shapes />,
-                onSelect: () => {
-                  setSel(only(t.path));
-                  setEditingId(t.path);
-                },
-              },
-            ]),
         "separator",
-        ...selectionActions(isContainer),
+        ...selectionActions(inside > 0),
       ];
     }
     if (t.kind === "edge") {
@@ -1064,6 +1254,7 @@ function EditorView({ initialSource, library, session }: EditorProps) {
     return [
       { label: "Paste here", icon: <Icon.Paste />, shortcut: `${MOD}V`, onSelect: () => pasteFromClipboard(t.at) },
       { label: "Add component…", icon: <Icon.Plus />, onSelect: () => openPalette("add", t.at) },
+      { label: "Add plane here", icon: <Icon.Plane />, onSelect: () => addPlaneHere(t.at) },
       { label: "Select all", icon: <Icon.SelectAll />, shortcut: `${MOD}A`, onSelect: selectAll },
       "separator",
       ...relayoutItems,
@@ -1099,17 +1290,24 @@ function EditorView({ initialSource, library, session }: EditorProps) {
     ...(editable && selCount > 0
       ? [
           { id: "duplicate", label: "Duplicate selection", icon: <Icon.Duplicate />, shortcut: `${MOD}D`, run: duplicateSelection },
-          { id: "group", label: "Group selection in a container", keywords: "wrap frame", icon: <Icon.Group />, shortcut: `${MOD}G`, run: groupSelection },
+          { id: "group", label: "Group selection on a plane", keywords: "wrap frame region background", icon: <Icon.Group />, shortcut: `${MOD}G`, run: groupSelection },
+          ...(selHasPlane
+            ? []
+            : [{ id: "nest", label: "Nest selection in a new component", keywords: "wrap inside group", icon: <Icon.Nested />, run: nestSelection }]),
           { id: "copy", label: "Copy selection", icon: <Icon.Copy />, shortcut: `${MOD}C`, run: () => copySelection() },
           { id: "relayout-selection", label: "Re-layout selection", keywords: "tidy arrange auto-layout", icon: <Icon.Layout />, run: relayoutSelection },
-          { id: "delete", label: `Delete ${plural(selCount, "component")}`, icon: <Icon.Trash />, shortcut: "⌫", run: deleteSelection },
+          { id: "delete", label: `Delete ${plural(selCount, "item")}`, icon: <Icon.Trash />, shortcut: "⌫", run: deleteSelection },
         ]
       : []),
+    ...(single
+      ? [{ id: "open", label: `Open ${nameOf(single.split("."))}`, keywords: "drill in inside nested", icon: <Icon.Open />, run: () => callbacks.onDrillIn(single) }]
+      : []),
     ...(editable && single
-      ? [{ id: "child", label: `Add a child to ${findComponent(derived.doc, single.split("."))?.name ?? single}`, keywords: "nest inside", icon: <Icon.AddChild />, run: () => addChild(single) }]
+      ? [{ id: "child", label: `Add a component inside ${nameOf(single.split("."))}`, keywords: "nest child", icon: <Icon.AddChild />, run: () => addChild(single) }]
       : []),
     ...(editable
       ? [
+          { id: "plane", label: "Add a plane", keywords: "region background group frontend backend", icon: <Icon.Plane />, run: () => addPlaneHere() },
           { id: "paste", label: "Paste", icon: <Icon.Paste />, shortcut: `${MOD}V`, run: () => pasteFromClipboard() },
           { id: "select-all", label: "Select all", icon: <Icon.SelectAll />, shortcut: `${MOD}A`, run: selectAll },
           ...(liveFocus.length > 0
@@ -1151,15 +1349,21 @@ function EditorView({ initialSource, library, session }: EditorProps) {
   const paletteComponents: PaletteComponent[] = useMemo(() => {
     if (palette === null || palette === "add") return [];
     const out: PaletteComponent[] = [];
-    const walk = (items: ArchDoc["components"], prefix: string) => {
+    const walk = (items: ArchDoc["components"], planes: ArchDoc["planes"], prefix: string) => {
+      const look = (type: string | undefined) => (type ? resolveType(type) : undefined);
+      for (const p of planes) {
+        const path = prefix === "" ? p.id : `${prefix}.${p.id}`;
+        const l = look(p.type);
+        out.push({ path, name: p.name ?? p.id, type: p.type, color: l?.color, glyph: l?.glyph, plane: true });
+      }
       for (const c of items) {
         const path = prefix === "" ? c.id : `${prefix}.${c.id}`;
-        const look = c.type ? resolveType(c.type) : undefined;
-        out.push({ path, name: c.name ?? c.id, type: c.type, color: look?.color, glyph: look?.glyph });
-        walk(c.children, path);
+        const l = look(c.type);
+        out.push({ path, name: c.name ?? c.id, type: c.type, color: l?.color, glyph: l?.glyph });
+        walk(c.children, c.planes, path);
       }
     };
-    walk(derived.doc.components, "");
+    walk(derived.doc.components, derived.doc.planes, "");
     return out;
   }, [palette, derived.doc, resolveType]);
 
@@ -1168,8 +1372,8 @@ function EditorView({ initialSource, library, session }: EditorProps) {
     liveSelection === null && liveSel.nodes.length + liveSel.edges.length > 1
       ? {
           components: liveSel.nodes.map((path) => {
-            const c = findComponent(derived.doc, path.split("."));
-            return { path, name: c?.name ?? c?.id ?? path, type: c?.type };
+            const c = findItem(derived.doc, path.split("."));
+            return { path, name: c?.name ?? c?.id ?? path, type: c?.type, plane: c?.kind === "plane" };
           }),
           connections: liveSel.edges.length,
           actions:
@@ -1366,7 +1570,12 @@ function EditorView({ initialSource, library, session }: EditorProps) {
       </header>
 
       <div className="flex min-h-0 flex-1">
-        <Palette open={componentsOpen} onAdd={addFromPalette} library={library} />
+        <Palette
+          open={componentsOpen}
+          onAdd={addFromPalette}
+          onAddPlane={() => addPlaneHere()}
+          library={library}
+        />
         <CodePane
           source={source}
           onChange={setSource}
@@ -1398,13 +1607,14 @@ function EditorView({ initialSource, library, session }: EditorProps) {
                   <Icon.ChevronRight className="h-3 w-3 text-ink-3" />
                   <button
                     type="button"
+                    title={liveFocus.slice(0, i + 1).join(".")}
                     onClick={() => setFocus(liveFocus.slice(0, i + 1))}
                     className={cx(
                       "rounded-sm px-1.5 py-0.5 transition-colors hover:bg-surface-2",
                       i === liveFocus.length - 1 ? "font-medium text-ink" : "text-ink-2 hover:text-ink",
                     )}
                   >
-                    {seg}
+                    {findComponent(derived.doc, liveFocus.slice(0, i + 1))?.name ?? seg}
                   </button>
                 </span>
               ))}
@@ -1530,6 +1740,18 @@ function EditorView({ initialSource, library, session }: EditorProps) {
                 </div>
               </div>
             ) : null}
+            {liveFocus.length > 0 && flow.nodes.length === 0 && (
+              <div className="pointer-events-none absolute inset-0 z-[5] flex items-center justify-center p-6">
+                <div className="max-w-[320px] text-center">
+                  <p className="text-base font-medium text-ink">Nothing inside {focusName} yet</p>
+                  <p className="pt-1 text-sm text-ink-3">
+                    {editable
+                      ? "Drag components here from the palette, or right-click to add one. What you put here is nested in it."
+                      : "Nothing is nested in this component."}
+                  </p>
+                </div>
+              </div>
+            )}
             <ArchCanvas
               key={liveFocus.join(".")}
               nodes={flow.nodes}
@@ -1574,7 +1796,7 @@ function EditorView({ initialSource, library, session }: EditorProps) {
             onSelect={(s) => {
               // From the form, a new selection is the same thing re-keyed (a
               // rename, a connection's new label): keep editing it.
-              if (editing && s) setEditingId(s.kind === "component" ? s.path : s.key);
+              if (editing && s) setEditingId(s.kind === "connection" ? s.key : s.path);
               setSelection(s);
             }}
             onDrillIn={callbacks.onDrillIn}
@@ -1638,6 +1860,7 @@ function EditorView({ initialSource, library, session }: EditorProps) {
         mode={palette ?? "all"}
         onClose={() => setPalette(null)}
         onAdd={addFromPalette}
+        onAddPlane={editable ? () => addPlaneHere() : undefined}
         library={library}
         commands={paletteCommands}
         components={paletteComponents}

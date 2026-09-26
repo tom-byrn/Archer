@@ -90,25 +90,25 @@ const EDITOR_URL = `${APP}/documents/${PROJECT}`;
 const FENCE = "```";
 
 /** "Shop" as Claude Code created it. */
-const SHOP_CREATED = `arch "Shop" v0.1
+const SHOP_CREATED = `arch "Shop" v0.2
 
 component web "Storefront" @vercel.nextjs
 
-component backend "Backend" {
+plane backend "Backend" {
   component api "API" @vercel.functions
   component db "Orders DB" @postgres
 }
 
-backend.api -> backend.db @sql
-web -> backend.api @http
+api -> db @sql
+web -> api @http
 `;
 
 /** …after the user added Stripe and a code link on the canvas. The current document. */
-const SHOP = `arch "Shop" v0.1
+const SHOP = `arch "Shop" v0.2
 
 component web "Storefront" @vercel.nextjs
 
-component backend "Backend" {
+plane backend "Backend" {
   component api "API" @vercel.functions {
     src "apps/api"
   }
@@ -117,17 +117,17 @@ component backend "Backend" {
 
 component stripe "Stripe" @stripe
 
-backend.api -> backend.db @sql
-backend.api -> stripe @http : "charges"
-web -> backend.api @http
+api -> db @sql
+api -> stripe @http : "charges"
+web -> api @http
 `;
 
 /** The update_project example: an agent adds an order-events queue with its message schema. */
-const SHOP_WITH_QUEUE = `arch "Shop" v0.1
+const SHOP_WITH_QUEUE = `arch "Shop" v0.2
 
 component web "Storefront" @vercel.nextjs
 
-component backend "Backend" {
+plane backend "Backend" {
   component api "API" @vercel.functions {
     src "apps/api"
   }
@@ -137,14 +137,14 @@ component backend "Backend" {
 
 component stripe "Stripe" @stripe
 
-backend.api -> backend.db @sql
-backend.api -> backend.events @queue : "order placed" {
+api -> db @sql
+api -> events @queue : "order placed" {
   message json ${FENCE}
   { "order_id": "uuid", "total_cents": "int" }
   ${FENCE}
 }
-backend.api -> stripe @http : "charges"
-web -> backend.api @http
+api -> stripe @http : "charges"
+web -> api @http
 `;
 
 /** Ids and documents the reference test seeds its backend with. */
@@ -169,7 +169,7 @@ export const EXAMPLE_STATE = {
     drift: [
       {
         status: "changed" as const,
-        path: "backend.db",
+        path: "db",
         src: "apps/api/src/db/schema.ts",
         note: "Orders now carry a currency column the document doesn't mention.",
       },
@@ -186,6 +186,9 @@ const REVISION_CHANGES = {
   connectionsAdded: 1,
   connectionsRemoved: 0,
   connectionsChanged: 0,
+  planesAdded: 0,
+  planesRemoved: 0,
+  planesChanged: 0,
 };
 
 // ---------------------------------------------------------------------------
@@ -217,8 +220,9 @@ export const TOOL_GROUPS: readonly ToolGroup[] = [
   },
   {
     title: "Canvas",
-    intro: "Change how the diagram is drawn without touching the architecture. Both save a revision.",
-    tools: ["set_display", "auto_layout_project"],
+    intro:
+      "Change how the diagram is drawn without touching the architecture. It saves a revision. (Planes and nesting are architecture: write them in the source.)",
+    tools: ["auto_layout_project"],
   },
   {
     title: "History",
@@ -279,7 +283,7 @@ export const TOOL_DOCS: Record<string, ToolDoc> = {
       features: ["components", "types", "connections", "labels"],
       docs_url: `${APP}/language/examples#components-and-connections`,
       sandbox_url: `${APP}/sandbox/components-and-connections`,
-      source: 'arch "Link Shortener" v0.1\n\ncomponent browser "Browser" @browser {\n  shape browser\n}\n…',
+      source: 'arch "Link Shortener" v0.2\n\ncomponent browser "Browser" @browser {\n  shape browser\n}\n…',
     },
     notes: [
       "`source` is canonical and validates clean, so it can go straight to `create_project` to give the user an editable copy. Each example is also the resource `archer://examples/<slug>`.",
@@ -290,7 +294,7 @@ export const TOOL_DOCS: Record<string, ToolDoc> = {
   validate_source: {
     access: "read",
     args: {
-      source: `arch "Shop" v0.1
+      source: `arch "Shop" v0.2
 component api "API" @vercel.functions
 component api "Orders DB" @postgres
 api -> payments @http
@@ -311,13 +315,13 @@ api -> payments @http
   format_source: {
     access: "none",
     args: {
-      source: `arch "Shop" v0.1
+      source: `arch "Shop" v0.2
 component   db "Orders DB"   @postgres
 component api "API" @vercel.functions
 api->db @sql
 `,
     },
-    result: `arch "Shop" v0.1
+    result: `arch "Shop" v0.2
 
 component db "Orders DB" @postgres
 
@@ -326,7 +330,7 @@ component api "API" @vercel.functions
 api -> db @sql
 `,
     notes: [
-      "Components keep the order they were written in; connections are sorted. A `layout` block is kept but never added (that's `auto_layout_source`). `#` comments are dropped, since they aren't part of the document.",
+      "Components and planes keep the order they were written in (a plane goes where its first component was); connections are sorted. A `layout` block is kept but never added (that's `auto_layout_source`). `#` comments are dropped, since they aren't part of the document.",
       "It formats whatever parses: after a syntax error (E001) the output can be missing the broken part and what the parser skipped after it. Call `validate_source` first.",
     ],
   },
@@ -342,11 +346,11 @@ api -> db @sql
 # - If you write Archer back, follow the grammar above and NEVER emit a
 #   \`layout\` block — layout is machine-managed presentation, not architecture.
 
-arch "Shop" v0.1
+arch "Shop" v0.2
 
 component web "Storefront" @vercel.nextjs
 
-component backend "Backend" {
+plane backend "Backend" {
   component api "API" @vercel.functions {
     src "apps/api"
   }
@@ -355,9 +359,9 @@ component backend "Backend" {
 
 component stripe "Stripe" @stripe
 
-backend.api -> backend.db @sql
-backend.api -> stripe @http : "charges"
-web -> backend.api @http
+api -> db @sql
+api -> stripe @http : "charges"
+web -> api @http
 `,
     notes: [
       "Pass `source` or `project_id`. The output is what the editor's **Copy for agent** puts on the clipboard.",
@@ -367,7 +371,7 @@ web -> backend.api @http
   auto_layout_source: {
     access: "none",
     args: {
-      source: `arch "Shop" v0.1
+      source: `arch "Shop" v0.2
 
 component api "API" @vercel.functions
 
@@ -376,7 +380,7 @@ component db "Orders DB" @postgres
 api -> db @sql
 `,
     },
-    result: `arch "Shop" v0.1
+    result: `arch "Shop" v0.2
 
 component api "API" @vercel.functions
 
@@ -389,7 +393,7 @@ layout {
 }
 `,
     notes: [
-      "Each entry is `path: { at: [column, row], size: [width, height] }` on the canvas grid, plus `display: plane | icon` for containers. With `reset: true` every position is recomputed, but collapsed containers stay collapsed.",
+      "Each entry is `path: { at: [column, row], size: [width, height] }` on the canvas grid, for components and planes alike. Something on a plane is placed relative to the plane, and each component's inside is its own canvas. With `reset: true` every position is recomputed.",
       "`create_project` and `update_project` lay out for you, so this is for previewing or re-arranging a source before you save it.",
     ],
   },
@@ -464,7 +468,7 @@ layout {
         url: "https://github.com/acme/shop/tree/main",
         hint: "Drift checks and `src` paths refer to this repository at this branch.",
       },
-      source: 'arch "Shop" v0.1\n\ncomponent web "Storefront" @vercel.nextjs\n…\n\nlayout {\n…\n}\n',
+      source: 'arch "Shop" v0.2\n\ncomponent web "Storefront" @vercel.nextjs\n…\n\nlayout {\n…\n}\n',
     },
     notes: [
       "`source` is the stored document, `layout` block included. Agents leave that block out of their edits and the server keeps it.",
@@ -474,7 +478,7 @@ layout {
   create_project: {
     access: "write",
     args: {
-      source: `arch "Link Shortener" v0.1
+      source: `arch "Link Shortener" v0.2
 
 component app "Web App" @vercel.nextjs
 component api "API" @vercel.functions
@@ -521,20 +525,12 @@ api -> db @sql
   },
 
   // --- canvas ------------------------------------------------------------------
-  set_display: {
-    access: "write",
-    args: { project_id: PROJECT, path: "backend", display: "icon" },
-    result: { id: PROJECT, path: "backend", display: "icon", saved: true },
-    notes: [
-      "`path` names a component that has children. The revision's summary reads \"Collapsed backend to icon\" or \"Expanded backend to plane\".",
-    ],
-  },
   auto_layout_project: {
     access: "write",
     args: { project_id: PROJECT, reset: true },
     result: { id: PROJECT, reset: true, saved: true },
     notes: [
-      "Without `reset`, only components that have no position are placed, next to what they connect to (\"Placed unpositioned components\"). With `reset: true` every position is recomputed (\"Re-arranged the canvas\") and collapsed containers stay collapsed: the user's arrangement survives only in the previous revision.",
+      "Without `reset`, only components and planes that have no position are placed, next to what they connect to (\"Placed unpositioned components\"). With `reset: true` every position is recomputed (\"Re-arranged the canvas\"), the top level and the inside of every component: the user's arrangement survives only in the previous revision.",
     ],
   },
 
@@ -557,8 +553,8 @@ api -> db @sql
         author: { kind: "agent", name: "Claude Code" },
         summary: "Created the project",
         title: "Shop",
-        changes: { ...REVISION_CHANGES, added: 4, changed: 0, connectionsAdded: 2 },
-        description: "+4 components, +2 connections",
+        changes: { ...REVISION_CHANGES, added: 3, changed: 0, connectionsAdded: 2, planesAdded: 1 },
+        description: "+3 components, +1 plane, +2 connections",
       },
     ],
     notes: [
@@ -575,7 +571,7 @@ api -> db @sql
       created_at: "2026-09-01T09:00:00.000Z",
       author: { kind: "agent", name: "Claude Code" },
       summary: "Created the project",
-      source: 'arch "Shop" v0.1\n\ncomponent web "Storefront" @vercel.nextjs\n…',
+      source: 'arch "Shop" v0.2\n\ncomponent web "Storefront" @vercel.nextjs\n…',
     },
     notes: ["To roll back, send `source` to `update_project` with a summary that says so."],
   },
@@ -589,16 +585,17 @@ api -> db @sql
       summary: REVISION_CHANGES,
       diff: {
         components: [
-          { path: "backend.api", kind: "changed", fields: ["src"] },
+          { path: "api", kind: "changed", fields: ["src"] },
           { path: "stripe", kind: "added" },
         ],
+        planes: [],
         connections: [
           {
-            key: "backend.api|->|stripe|http|charges",
+            key: "api|->|stripe|http|charges",
             kind: "added",
             connection: {
               kind: "connection",
-              source: ["backend", "api"],
+              source: ["api"],
               target: ["stripe"],
               arrow: "->",
               payloads: [],
@@ -612,7 +609,7 @@ api -> db @sql
     },
     notes: [
       "`from` and `to` are revision ids, `current` (the project as it is now) or `empty` (before the first revision). Only the newest 200 revisions can be named.",
-      "A changed component lists its changed `fields`: `name`, `type`, `shape`, `desc`, `src` or `payloads`. A connection is `changed` when only its payloads differ, and `title` appears when the document was renamed.",
+      "A changed component lists its changed `fields`: `name`, `type`, `shape`, `desc`, `src`, `payloads` or `plane` (it sits on a different plane). `planes` lists planes added, removed and changed (`name`, `type`, `desc` or `plane`) the same way. A connection is `changed` when only its payloads differ, and `title` appears when the document was renamed.",
     ],
   },
 
@@ -655,7 +652,7 @@ api -> db @sql
         findings: [
           {
             status: "changed",
-            path: "backend.db",
+            path: "db",
             src: "apps/api/src/db/schema.ts",
             note: "Orders now carry a currency column the document doesn't mention.",
           },

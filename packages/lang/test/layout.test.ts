@@ -3,19 +3,22 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import {
   autoLayout,
+  canvasAt,
   componentPaths,
+  forEachScope,
   format,
   layoutMap,
   parse,
-  setDisplay,
+  planePaths,
+  planeTree,
   validate,
 } from "../src/index";
-import type { ArchDoc, ComponentNode, LayoutEntry } from "../src/index";
+import type { ArchDoc, LayoutEntry, PlaneNode } from "../src/index";
 
 const fixture = (name: string) =>
   readFileSync(fileURLToPath(new URL(`./fixtures/${name}`, import.meta.url)), "utf8");
 
-const HEADER = 'arch "X" v0.1\n';
+const HEADER = 'arch "X" v0.2\n';
 
 interface Box {
   at: [number, number];
@@ -33,47 +36,41 @@ const overlap = (a: Box, b: Box) =>
 
 const laidOut = (src: string) => autoLayout(parse(src).doc);
 
-/** Absolute top-left of a component (sum of `at` along its path). */
-function abs(doc: ArchDoc, path: string): [number, number] {
-  const map = layoutMap(doc);
-  const segs = path.split(".");
-  let x = 0;
-  let y = 0;
-  for (let i = 1; i <= segs.length; i++) {
-    const e = map.get(segs.slice(0, i).join("."))!;
-    x += e.at![0];
-    y += e.at![1];
-  }
-  return [x, y];
-}
+/** Top-left on its canvas (its `at` plus those of the planes it sits on). */
+const abs = (doc: ArchDoc, path: string): [number, number] => canvasAt(doc, path.split("."));
 
-/** Every scope's children: no two overlap, and each sits inside its plane. */
+/**
+ * On every canvas: nothing on one plane (or loose on the canvas) overlaps
+ * anything else there, and whatever is on a plane sits inside its interior.
+ */
 function expectTidy(doc: ArchDoc) {
   const map = layoutMap(doc);
-  const walk = (items: ComponentNode[], prefix: string) => {
-    const kids = items.map((c) => {
-      const path = prefix === "" ? c.id : `${prefix}.${c.id}`;
-      const e = map.get(path)!;
-      expect(e?.at, path).toBeDefined();
-      expect(e?.size, path).toBeDefined();
-      return { path, at: e.at!, size: e.size! };
-    });
-    for (let i = 0; i < kids.length; i++)
-      for (let j = i + 1; j < kids.length; j++)
-        expect(overlap(kids[i]!, kids[j]!), `${kids[i]!.path} vs ${kids[j]!.path}`).toBe(false);
-    if (prefix !== "") {
-      const plane = map.get(prefix)!;
-      if (plane.display !== "icon")
+  forEachScope(doc, (scopePath, scope) => {
+    const tree = planeTree(scope);
+    const key = (id: string) => [...scopePath, id].join(".");
+    const frame = (on: PlaneNode | undefined) => {
+      const kids = tree.itemsOn(on).map((item) => {
+        const e = map.get(key(item.id))!;
+        expect(e?.at, key(item.id)).toBeDefined();
+        expect(e?.size, key(item.id)).toBeDefined();
+        return { path: key(item.id), at: e.at!, size: e.size! };
+      });
+      for (let i = 0; i < kids.length; i++)
+        for (let j = i + 1; j < kids.length; j++)
+          expect(overlap(kids[i]!, kids[j]!), `${kids[i]!.path} vs ${kids[j]!.path}`).toBe(false);
+      if (on) {
+        const plane = map.get(key(on.id))!;
         for (const k of kids) {
           expect(k.at[0], k.path).toBeGreaterThanOrEqual(1);
           expect(k.at[1], k.path).toBeGreaterThanOrEqual(2);
           expect(k.at[0] + k.size[0], k.path).toBeLessThanOrEqual(plane.size![0] - 1);
           expect(k.at[1] + k.size[1], k.path).toBeLessThanOrEqual(plane.size![1] - 1);
         }
-    }
-    for (const c of items) walk(c.children, prefix === "" ? c.id : `${prefix}.${c.id}`);
-  };
-  walk(doc.components, "");
+      }
+    };
+    frame(undefined);
+    for (const p of scope.planes) frame(p);
+  });
 }
 
 /** Row of a box's middle, in half cells (so odd and even heights compare). */
@@ -83,11 +80,13 @@ const middle = (doc: ArchDoc, path: string) => {
 };
 
 describe("autoLayout", () => {
-  it("gives every component an at and size", () => {
-    const src = HEADER + "component a\ncomponent b { component c { component d } }";
+  it("gives every component and plane an at and size", () => {
+    const src =
+      HEADER +
+      "component a\ncomponent b { component c { component d }\nplane q { component e } }\nplane p { component f\nplane r }";
     const out = autoLayout(parse(src).doc);
     const map = layoutMap(out);
-    for (const p of componentPaths(out)) {
+    for (const p of [...componentPaths(out), ...planePaths(out)]) {
       expect(map.get(p)?.at, p).toBeDefined();
       expect(map.get(p)?.size, p).toBeDefined();
     }
@@ -109,10 +108,12 @@ describe("autoLayout", () => {
     const map = layoutMap(out);
     expect(map.get("web")!.at).toEqual([0, 3]);
     expect(map.get("backend")!.at).toEqual([6, 0]);
-    expect(map.get("backend.db")!.display).toBe("icon");
+    expect(map.get("api")!.at).toEqual([1, 2]);
+    // New: api's inside, a canvas of its own.
+    expect(map.get("api.checkout")!.at).toBeDefined();
   });
 
-  it("keeps every scope free of overlaps and inside its plane", () => {
+  it("keeps every canvas free of overlaps and everything inside its plane", () => {
     expectTidy(laidOut(fixture("streaming.arch")));
     expectTidy(laidOut(fixture("acme.arch").replace(/layout \{[\s\S]*\}\n/, "")));
   });
@@ -169,28 +170,53 @@ describe("autoLayout", () => {
     expect(map.get("b")!.at).toBeDefined();
   });
 
-  it("sizes planes to contain their children", () => {
-    const map = layoutMap(laidOut(HEADER + "component p { component x\ncomponent y }\np.x -> p.y"));
+  it("sizes planes to contain what's on them", () => {
+    const map = layoutMap(laidOut(HEADER + "plane p { component x\ncomponent y }\nx -> y"));
     const p = map.get("p")!;
-    for (const id of ["p.x", "p.y"]) {
+    for (const id of ["x", "y"]) {
       const child = map.get(id)!;
       expect(child.at![0] + child.size![0]).toBeLessThanOrEqual(p.size![0]);
       expect(child.at![1] + child.size![1]).toBeLessThanOrEqual(p.size![1]);
     }
-    expect(map.get("p.x")!.at![0]).toBeLessThan(map.get("p.y")!.at![0]);
+    expect(map.get("x")!.at![0]).toBeLessThan(map.get("y")!.at![0]);
   });
 
-  it("pulls a plane's children toward the side their connections leave from", () => {
-    // Inside p, `out` talks to something on the right and `in` is fed from
-    // the left, so the plane runs right-to-left inside: `in` on the left.
+  it("pulls what's on a plane toward the side its connections leave from", () => {
+    // On p, `out` talks to something on the right and `in` is fed from the
+    // left, so the plane runs right-to-left inside: `in` on the left.
     const out = laidOut(
       HEADER +
-        "component left\ncomponent p { component out\ncomponent in }\ncomponent right\n" +
-        "left -> p.in\np.out -> right\np.out -> p.in",
+        "component left\nplane p { component out\ncomponent in }\ncomponent right\n" +
+        "left -> in\nout -> right\nout -> in",
     );
-    expect(abs(out, "p.in")[0]).toBeLessThan(abs(out, "p.out")[0]);
+    expect(abs(out, "in")[0]).toBeLessThan(abs(out, "out")[0]);
     expect(abs(out, "left")[0]).toBeLessThan(abs(out, "p")[0]);
     expect(abs(out, "p")[0]).toBeLessThan(abs(out, "right")[0]);
+  });
+
+  it("nests planes on planes", () => {
+    const out = laidOut(
+      HEADER + "plane cloud { plane vpc { component api\ncomponent db }\ncomponent cdn }\ncdn -> api\napi -> db",
+    );
+    const map = layoutMap(out);
+    const vpc = map.get("vpc")!;
+    expect(map.get("api")!.at![0]).toBeGreaterThanOrEqual(1);
+    expect(map.get("api")!.at![0] + 4).toBeLessThanOrEqual(vpc.size![0]);
+    expect(abs(out, "cdn")[0]).toBeLessThan(abs(out, "api")[0]);
+    expectTidy(out);
+  });
+
+  it("draws a component with nested components as a box, its inside a canvas of its own", () => {
+    const out = laidOut(
+      HEADER + "component a\ncomponent p { component x\ncomponent y }\na -> p.x\np.x -> p.y",
+    );
+    const map = layoutMap(out);
+    expect(map.get("p")!.size).toEqual([4, 3]);
+    // A connection into p's inside pulls p itself.
+    expect(map.get("a")!.at![0]).toBeLessThan(map.get("p")!.at![0]);
+    // Inside p: laid out from the canvas's origin, x before y.
+    expect(map.get("p.x")!.at).toEqual([0, 0]);
+    expect(map.get("p.x")!.at![0]).toBeLessThan(map.get("p.y")!.at![0]);
   });
 
   it("widens a column gap to fit the label drawn in it", () => {
@@ -205,13 +231,18 @@ describe("autoLayout", () => {
     expect(labelled).toBeGreaterThan(plain);
   });
 
-  it("collapsed (display: icon) containers keep leaf size", () => {
+  it("keeps a component's size whatever is nested in it", () => {
     const map = layoutMap(
-      laidOut(HEADER + "component p { component x }\nlayout { p: { at: [0, 0], display: icon } }"),
+      laidOut(HEADER + "component p { component x\ncomponent y }\nlayout { p: { at: [0, 0], size: [6, 4] } }"),
     );
-    expect(map.get("p")!.size).toEqual([4, 3]);
-    // Children still get laid out for when the plane is expanded.
+    expect(map.get("p")!.size).toEqual([6, 4]);
+    // Its inside is laid out anyway, for when it's opened.
     expect(map.get("p.x")!.at).toBeDefined();
+  });
+
+  it("gives an empty plane room to drop things on", () => {
+    const map = layoutMap(laidOut(HEADER + "plane p\ncomponent a\nlayout { a: { at: [0, 0] } }"));
+    expect(map.get("p")!.size).toEqual([10, 6]);
   });
 
   it("avoids fixed entries when placing new nodes", () => {
@@ -223,13 +254,13 @@ describe("autoLayout", () => {
   it("wraps sibling-heavy scopes into multiple columns", () => {
     const src =
       HEADER +
-      "component p { component a\ncomponent b\ncomponent c\ncomponent d\ncomponent e\ncomponent f }";
+      "plane p { component a\ncomponent b\ncomponent c\ncomponent d\ncomponent e\ncomponent f }";
     const map = layoutMap(laidOut(src));
-    const xs = new Set(["a", "b", "c", "d", "e", "f"].map((id) => map.get(`p.${id}`)!.at![0]));
+    const xs = new Set(["a", "b", "c", "d", "e", "f"].map((id) => map.get(id)!.at![0]));
     expect(xs.size).toBeGreaterThan(1); // not one endless column
     const p = map.get("p")!;
     expect(p.size![1]).toBeLessThan(25); // plane stays roughly rectangular
-    const rs = rects(["a", "b", "c", "d", "e", "f"].map((id) => map.get(`p.${id}`)!));
+    const rs = rects(["a", "b", "c", "d", "e", "f"].map((id) => map.get(id)!));
     for (let i = 0; i < rs.length; i++)
       for (let j = i + 1; j < rs.length; j++) expect(overlap(rs[i]!, rs[j]!)).toBe(false);
   });
@@ -241,12 +272,12 @@ describe("autoLayout", () => {
     expect(format(parse(once).doc)).toBe(once);
   });
 
-  it("reset re-arranges everything but keeps collapsed containers collapsed", () => {
+  it("reset re-arranges everything", () => {
     const doc = parse(fixture("acme.arch")).doc;
     const out = autoLayout(doc, { reset: true });
     const map = layoutMap(out);
-    expect(map.get("backend.db")!.display).toBe("icon");
     expect(map.get("web")!.at).not.toEqual([0, 3]);
+    expect(map.get("stripe")!.size).toEqual([4, 3]);
     expect(map.get("web")!.at![0]).toBeLessThan(map.get("backend")!.at![0]);
     expectTidy(out);
   });
@@ -261,14 +292,19 @@ describe("autoLayout", () => {
       let src = HEADER;
       const paths: string[] = [];
       for (let p = 0; p < 5; p++) {
-        src += `component p${p} {\n`;
+        // Planes (one with a plane on it) and components with insides.
+        src += p === 4 ? `component p${p} {\n` : `plane p${p} {\n`;
+        const pre = p === 4 ? `p${p}.` : "";
         for (let i = 0; i < 6; i++) {
           if (i === 5 && p % 2 === 0) {
-            src += `  component q${i} { component x\ncomponent y }\n`;
-            paths.push(`p${p}.q${i}.x`, `p${p}.q${i}.y`);
+            src += `  component q${p}${i} { component x\ncomponent y }\n`;
+            paths.push(`${pre}q${p}${i}.x`, `${pre}q${p}${i}.y`);
+          } else if (i === 4 && p === 1) {
+            src += `  plane s${p}${i} { component c${p}${i}\ncomponent d${p}${i} }\n`;
+            paths.push(`${pre}c${p}${i}`, `${pre}d${p}${i}`);
           } else {
-            src += `  component c${i}\n`;
-            paths.push(`p${p}.c${i}`);
+            src += `  component c${p}${i}\n`;
+            paths.push(`${pre}c${p}${i}`);
           }
         }
         src += "}\n";
@@ -304,43 +340,41 @@ describe("autoLayout (existing positions)", () => {
     expect(map.get("c")!.at![1]).toBe(0);
   });
 
-  it("puts a new child inside its plane and grows the plane to fit", () => {
+  it("puts a new component on its plane and grows the plane to fit", () => {
     const src =
       HEADER +
-      "component p { component x\ncomponent y }\ncomponent q\np.x -> p.y\n" +
-      "layout {\n  p: { at: [0, 0], size: [6, 6] }\n  p.x: { at: [1, 2], size: [4, 3] }\n  q: { at: [8, 0], size: [4, 3] }\n}";
+      "plane p { component x\ncomponent y }\ncomponent q\nx -> y\n" +
+      "layout {\n  p: { at: [0, 0], size: [6, 6] }\n  x: { at: [1, 2], size: [4, 3] }\n  q: { at: [8, 0], size: [4, 3] }\n}";
     const out = laidOut(src);
     const map = layoutMap(out);
-    expect(map.get("p.x")!.at).toEqual([1, 2]);
-    expect(map.get("p.y")!.at![0]).toBeGreaterThan(1 + 4); // right of x, inside p
+    expect(map.get("x")!.at).toEqual([1, 2]);
+    expect(map.get("y")!.at![0]).toBeGreaterThan(1 + 4); // right of x, on p
     expectTidy(out);
     // q was in the way of the grown plane: nudged aside rather than overlapped.
     expect(map.get("q")!.at![0]).toBeGreaterThanOrEqual(map.get("p")!.size![0] + 1);
   });
 
-  it("re-fits a collapsed plane when it is expanded", () => {
+  it("lays out a new plane's contents and places it as a unit", () => {
     const src =
       HEADER +
-      "component p { component x\ncomponent y }\ncomponent q\np.x -> p.y\np -> q\n" +
-      "layout {\n  p: { at: [0, 0], size: [4, 3], display: icon }\n  p.x: { at: [1, 2], size: [4, 3] }\n" +
-      "  p.y: { at: [8, 2], size: [4, 3] }\n  q: { at: [7, 0], size: [4, 3] }\n}";
-    const expanded = autoLayout(setDisplay(parse(src).doc, ["p"], "plane"));
-    const map = layoutMap(expanded);
-    expect(map.get("p")!.display).toBe("plane");
-    expect(map.get("p")!.size).toEqual([13, 6]);
-    expectTidy(expanded);
-  });
-
-  it("lays out a new plane's interior and places it as a unit", () => {
-    const src =
-      HEADER +
-      "component a\ncomponent p { component x\ncomponent y }\na -> p.x\np.x -> p.y\n" +
+      "component a\nplane p { component x\ncomponent y }\na -> x\nx -> y\n" +
       "layout {\n  a: { at: [0, 0], size: [4, 3] }\n}";
     const out = laidOut(src);
     const map = layoutMap(out);
     expect(map.get("a")!.at).toEqual([0, 0]);
     expect(map.get("p")!.at![0]).toBeGreaterThan(4);
-    expect(map.get("p.x")!.at![0]).toBeLessThan(map.get("p.y")!.at![0]);
+    expect(map.get("x")!.at![0]).toBeLessThan(map.get("y")!.at![0]);
     expectTidy(out);
+  });
+
+  it("lays out a component's inside from scratch while the canvas it's on keeps its places", () => {
+    const src =
+      HEADER +
+      "component a\ncomponent p { component x\ncomponent y }\na -> p\np.x -> p.y\n" +
+      "layout {\n  a: { at: [0, 0], size: [4, 3] }\n  p: { at: [8, 0], size: [4, 3] }\n}";
+    const map = layoutMap(laidOut(src));
+    expect(map.get("p")!.at).toEqual([8, 0]);
+    expect(map.get("p.x")!.at).toEqual([0, 0]);
+    expect(map.get("p.y")!.at![0]).toBeGreaterThan(4);
   });
 });

@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { LOGOS } from "@archer/catalog/logos";
 import { renderArchSvg } from "../lib/svg";
 
-const SOURCE = `arch "Logos" v0.1
+const SOURCE = `arch "Logos" v0.2
 
 component fn "Handler" @aws.lambda
 component billing "Billing" @stripe
@@ -27,7 +27,7 @@ describe("logos", () => {
   });
 
   it("draws a shaped component's logo too, as the canvas does", () => {
-    const shaped = `arch "Shapes" v0.1
+    const shaped = `arch "Shapes" v0.2
 
 component store "Store" @redis {
   shape cylinder

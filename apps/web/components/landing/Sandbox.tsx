@@ -10,9 +10,11 @@ import {
   moveComponent,
   parse,
   pathToString,
+  planePathOf,
   removeConnection,
   setComponentMeta,
   setConnectionMeta,
+  setPlane,
 } from "@archer/lang";
 import { lookupType } from "@archer/catalog";
 import { ArchCanvas, type CanvasCallbacks } from "../ArchCanvas";
@@ -90,13 +92,21 @@ export default function Sandbox() {
       onNodesDragEnd: (moves) =>
         mutate((d) => {
           const dragged = moves.map((m) => m.path.split("."));
-          return moves.reduce((acc, { info }, i) => {
-            const target = resolveDropTarget(d, info.center, {
+          // Every landing spot is decided on the doc as it was, before any of them moves.
+          const targets = moves.map(({ info }) =>
+            resolveDropTarget(d, info.center, {
               exclude: dragged,
               topLeft: info.topLeft,
               sizeGrid: info.sizeGrid,
-            });
-            return moveComponent(acc, dragged[i]!, target.at);
+            }),
+          );
+          return dragged.reduce((acc, segs, i) => {
+            const target = targets[i]!;
+            const plane = planePathOf(acc, segs);
+            // Onto a plane, off one, or just somewhere else on it.
+            if ((target.plane ?? null) !== (plane ? plane[plane.length - 1] : null))
+              return setPlane(acc, segs, target.plane ?? null, target.at);
+            return target.at ? moveComponent(acc, segs, target.at) : acc;
           }, d);
         }),
       onConnect: (s, t) => mutate((d) => addConnection(d, s.split("."), t.split("."))),

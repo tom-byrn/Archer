@@ -24,7 +24,9 @@ import {
   ArrowElbowDownRightIcon,
   ArrowRightIcon,
   ArrowsLeftRightIcon,
+  ArrowSquareInIcon,
   ArrowSquareOutIcon,
+  ArrowSquareUpLeftIcon,
   ArrowUUpLeftIcon,
   ArrowUUpRightIcon,
   BoundingBoxIcon,
@@ -55,13 +57,16 @@ import {
   PencilSimpleIcon,
   PlugIcon,
   PlusIcon,
+  RectangleDashedIcon,
   RobotIcon,
   ScissorsIcon,
   SelectionAllIcon,
+  SelectionSlashIcon,
   ShapesIcon,
   SidebarSimpleIcon,
   SparkleIcon,
   SquaresFourIcon,
+  StackSimpleIcon,
   SunIcon,
   TrashSimpleIcon,
   UserIcon,
@@ -827,6 +832,16 @@ export const Icon = {
   Swap: (p: IconProps) => <ArrowsLeftRightIcon {...UI} {...p} />,
   Sidebar: (p: IconProps) => <SidebarSimpleIcon {...UI} {...p} />,
   Shapes: (p: IconProps) => <ShapesIcon {...UI} {...p} />,
+  /** A plane: a region things sit on. */
+  Plane: (p: IconProps) => <RectangleDashedIcon {...UI} {...p} />,
+  /** Open a component: see what's nested in it. */
+  Open: (p: IconProps) => <ArrowSquareInIcon {...UI} {...p} />,
+  /** Components nested in one. */
+  Nested: (p: IconProps) => <StackSimpleIcon {...UI} {...p} />,
+  /** Move out of the component it's nested in. */
+  MoveOut: (p: IconProps) => <ArrowSquareUpLeftIcon {...UI} {...p} />,
+  /** Remove a plane, keeping what's on it. */
+  Ungroup: (p: IconProps) => <SelectionSlashIcon {...UI} {...p} />,
 };
 
 /**

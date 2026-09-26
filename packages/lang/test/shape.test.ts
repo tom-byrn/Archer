@@ -16,7 +16,7 @@ import {
 const stripSpans = (value: unknown): unknown =>
   JSON.parse(JSON.stringify(value, (key, v) => (key === "span" ? undefined : v)));
 
-const HEADER = 'arch "X" v0.1\n';
+const HEADER = 'arch "X" v0.2\n';
 const FENCE = "```";
 
 describe("shape field", () => {
