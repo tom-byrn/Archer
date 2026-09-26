@@ -418,8 +418,8 @@ layout {
       connection_types: ["http", "grpc", "ws", "sql", "queue", "event", "…"],
       shapes: [
         { shape: "box", name: "Box", use: "anything (the default)" },
-        { shape: "cylinder", name: "Cylinder", use: "databases and other stores" },
-        { shape: "cloud", name: "Cloud", use: "cloud providers, external services, the internet" },
+        { shape: "pill", name: "Pill", use: "starts, ends and states" },
+        { shape: "circle", name: "Circle", use: "events, triggers and endpoints" },
         "…",
       ],
       glyphs_for_custom_types: ["box", "circle", "database", "table", "…"],

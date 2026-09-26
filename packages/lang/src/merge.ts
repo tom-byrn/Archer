@@ -1,4 +1,4 @@
-import { connectionKey } from "./diff";
+import { connectionKey, sameSources } from "./diff";
 import {
   pathToString,
   type ArchDoc,
@@ -67,11 +67,13 @@ const samePayloads = (a: PayloadNode[], b: PayloadNode[]): boolean => {
   return b.every((p) => samePayload(byName.get(p.name), p));
 };
 
-const OWN_FIELDS = ["name", "type", "shape", "desc", "src"] as const;
+/** Own fields holding one string each; `src`, a list, merges beside them. */
+const OWN_FIELDS = ["name", "type", "shape", "desc"] as const;
 
 /** Same component, own fields and whole subtree, ignoring child order. */
 function sameTree(a: ComponentNode, b: ComponentNode): boolean {
   for (const field of OWN_FIELDS) if (a[field] !== b[field]) return false;
+  if (!sameSources(a.src, b.src)) return false;
   if (!samePayloads(a.payloads, b.payloads)) return false;
   if (a.children.length !== b.children.length) return false;
   const other = new Map(b.children.map((c) => [c.id, c]));
@@ -136,6 +138,10 @@ function mergeComponent(
       if (r.value === undefined) delete merged[field];
       else merged[field] = r.value;
     }
+    const src = merge3(b?.src, o.src, t.src, sameSources);
+    if (src.conflict) conflicts.add("component", path, "changed src on both sides");
+    if (src.value === undefined || src.value.length === 0) delete merged.src;
+    else merged.src = src.value;
     merged.payloads = mergePayloads(b?.payloads, o.payloads, t.payloads, (name) =>
       conflicts.add("component", path, `changed payload ${name} on both sides`),
     );

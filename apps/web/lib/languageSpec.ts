@@ -78,10 +78,11 @@ component <id> ["Display Name"] [@<type>] [{ <body> }]
     Without one, a component is a box.
   - \`desc "..."\` — human-readable description (shown in the detail view). One per
     component. Multiline via triple quotes: \`desc """ ... """\`.
-  - \`src "..."\` — where the component lives in code: a repo-relative path
-    (\`apps/api/src/billing\`) or a URL. Single-line string only, at most one per
-    component (a second one is error \`E004\`). Agents start here when implementing
-    or verifying the component; the app renders it as a link.
+  - \`src "..."\` — where the component lives in code: a repo-relative path to a
+    file or a folder (\`apps/api/src/billing\`, \`apps/api/src/billing/invoices.ts\`)
+    or a URL. Single-line string only. A component that lives in several places
+    has one \`src\` line for each, kept in the order written. Agents start here when
+    implementing or verifying the component; the app renders each one as a link.
   - Child \`component\` declarations — components nest arbitrarily deep, with JSON-object
     nesting semantics.
   - Payload blocks (§4).
@@ -138,26 +139,63 @@ component db "Orders" @postgres {
 component support "Support Agent" @agent {
   shape robot
 }
+
+component nightly "Nightly Export" @worker {
+  shape clock
+}
 \`\`\`
 
-| shape      | usually stands for                               |
-| ---------- | ------------------------------------------------ |
-| \`box\`      | anything (the default)                           |
-| \`cylinder\` | databases and other stores                       |
-| \`cloud\`    | cloud providers, external services, the internet |
-| \`server\`   | servers, hosts and VMs                           |
-| \`robot\`    | AI agents, bots and automations                  |
-| \`person\`   | users, customers and teams                       |
-| \`queue\`    | queues, streams and logs                         |
-| \`bucket\`   | object storage and blobs                         |
-| \`browser\`  | web apps and sites                               |
-| \`phone\`    | mobile apps and devices                          |
-| \`document\` | files, reports and specs                         |
-| \`folder\`   | file shares and directories                      |
-| \`stack\`    | replicas, pools and fleets                       |
-| \`hexagon\`  | services and processing steps                    |
-| \`circle\`   | events, triggers and endpoints                   |
-| \`diamond\`  | decisions and routing                            |
+The shapes, in the groups the editor's pickers show them in:
+
+| group                  | shape           | usually stands for                               |
+| ---------------------- | --------------- | ------------------------------------------------ |
+| Basic                  | \`box\`           | anything (the default)                           |
+|                        | \`pill\`          | starts, ends and states                          |
+|                        | \`circle\`        | events, triggers and endpoints                   |
+|                        | \`diamond\`       | decisions and routing                            |
+|                        | \`hexagon\`       | services and processing steps                    |
+|                        | \`parallelogram\` | inputs, outputs and data                         |
+|                        | \`chevron\`       | steps and pipeline stages                        |
+|                        | \`subroutine\`    | functions and subprocesses                       |
+|                        | \`note\`          | notes and annotations                            |
+| People                 | \`person\`        | users, customers and roles                       |
+|                        | \`people\`        | teams, groups and audiences                      |
+|                        | \`robot\`         | AI agents, bots and automations                  |
+|                        | \`building\`      | companies, partners and on-prem sites            |
+| Apps & devices         | \`browser\`       | web apps and sites                               |
+|                        | \`phone\`         | mobile apps, tablets and devices                 |
+|                        | \`desktop\`       | desktop apps, consoles and workstations          |
+|                        | \`laptop\`        | laptops and developer machines                   |
+|                        | \`terminal\`      | CLIs, shells and scripts                         |
+|                        | \`chip\`          | hardware, IoT and embedded devices               |
+| Network & security     | \`cloud\`         | cloud providers, external services, the internet |
+|                        | \`globe\`         | the web, DNS, CDNs and regions                   |
+|                        | \`firewall\`      | firewalls, WAFs and network boundaries           |
+|                        | \`shield\`        | security, guardrails and policies                |
+|                        | \`lock\`          | auth, secrets and encryption                     |
+| Compute                | \`server\`        | servers, hosts and VMs                           |
+|                        | \`stack\`         | replicas, pools and fleets                       |
+|                        | \`cube\`          | containers, pods and build artifacts             |
+|                        | \`module\`        | modules, libraries and packages                  |
+|                        | \`gear\`          | workers, jobs and background tasks               |
+|                        | \`clock\`         | schedulers, cron jobs and timers                 |
+|                        | \`puzzle\`        | plugins, extensions and integrations             |
+|                        | \`brain\`         | AI models, LLMs and ML                           |
+| Data & storage         | \`cylinder\`      | databases and other stores                       |
+|                        | \`bucket\`        | object storage and blobs                         |
+|                        | \`table\`         | tables, datasets and spreadsheets                |
+|                        | \`memory\`        | caches and in-memory stores                      |
+|                        | \`archive\`       | backups, archives and cold storage               |
+|                        | \`document\`      | files, reports and specs                         |
+|                        | \`folder\`        | file shares and directories                      |
+|                        | \`book\`          | docs, wikis and knowledge bases                  |
+|                        | \`search\`        | search engines and indexes                       |
+|                        | \`funnel\`        | filters, pipelines and ETL                       |
+| Messaging & monitoring | \`queue\`         | queues, streams and logs                         |
+|                        | \`envelope\`      | email, inboxes and messages                      |
+|                        | \`chat\`          | chat, SMS and conversations                      |
+|                        | \`bell\`          | alerts, notifications and on-call                |
+|                        | \`gauge\`         | metrics, monitoring and SLOs                     |
 
 - A shape is independent of the type: the type still picks the icon and color drawn
   inside it, and any shape goes with any type (or none).
@@ -315,7 +353,7 @@ A document is **valid** when:
 | \`E001\` | file parses (header, declarations, fences)                      | error    |
 | \`E002\` | component ids unique within their scope                         | error    |
 | \`E003\` | payload names unique per component / per connection             | error    |
-| \`E004\` | at most one \`src\` and one \`shape\` per component                 | error    |
+| \`E004\` | at most one \`shape\` per component                               | error    |
 | \`E101\` | every connection endpoint resolves to a declared component      | error    |
 | \`E201\` | \`json\` / \`yaml\` / \`table\` payloads parse in their format        | error    |
 | \`W301\` | type tag resolves in the catalog                                | warning  |
@@ -347,6 +385,7 @@ arch "Acme SaaS" v0.1
 component web "Next.js App" @vercel.nextjs {
   desc "App shell + marketing. RSC, deployed on Vercel."
   src "apps/web"
+  src "packages/ui"
 }
 
 component backend "Backend" @vercel {

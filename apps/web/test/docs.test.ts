@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { beforeAll, describe, expect, it } from "vitest";
 import { createSlugger, readDoc, renderDocs, renderInline, siteHref } from "../lib/docs";
 import { LANGUAGE_SPEC } from "../lib/languageSpec";
@@ -52,6 +53,10 @@ describe("docs pages", () => {
       }
     }
     expect(broken).toEqual([]);
+  });
+
+  it("show the language spec as docs/language-spec.md has it", () => {
+    expect(LANGUAGE_SPEC).toBe(readFileSync(new URL("../../../docs/language-spec.md", import.meta.url), "utf8"));
   });
 
   it("don't link to repository files the site doesn't serve", () => {

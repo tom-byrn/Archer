@@ -46,11 +46,12 @@ export interface ComponentNode {
   shape?: string;
   desc?: string;
   /**
-   * Where this component lives in code: a repo-relative path (e.g.
-   * `apps/api/src/billing`) or a URL. Lets agents and humans jump from the
-   * diagram to the implementation.
+   * Where this component lives in code, one entry per `src` line in the order
+   * written: repo-relative paths to a file or a folder (e.g.
+   * `apps/api/src/billing`) or URLs. Lets agents and humans jump from the
+   * diagram to the implementation. Absent, never empty, when there are none.
    */
-  src?: string;
+  src?: string[];
   payloads: PayloadNode[];
   children: ComponentNode[];
   span: Span;

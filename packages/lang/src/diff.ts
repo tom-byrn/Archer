@@ -59,6 +59,13 @@ export function connectionKey(c: ConnectionNode): string {
   ].join("|");
 }
 
+/** Same `src` list: the same places in the same order (absent and empty alike). */
+export const sameSources = (a: readonly string[] | undefined, b: readonly string[] | undefined): boolean => {
+  const x = a ?? [];
+  const y = b ?? [];
+  return x.length === y.length && x.every((s, i) => s === y[i]);
+};
+
 /** Flatten a component tree into (path, node) pairs in document order. */
 const flatten = (doc: ArchDoc): Map<string, ComponentNode> => {
   const out = new Map<string, ComponentNode>();
@@ -92,7 +99,7 @@ const changedFields = (a: ComponentNode, b: ComponentNode): string[] => {
   if (a.type !== b.type) fields.push("type");
   if (a.shape !== b.shape) fields.push("shape");
   if (a.desc !== b.desc) fields.push("desc");
-  if (a.src !== b.src) fields.push("src");
+  if (!sameSources(a.src, b.src)) fields.push("src");
   if (!payloadsEqual(a, b)) fields.push("payloads");
   return fields;
 };

@@ -125,6 +125,64 @@ function CommitInput({
   );
 }
 
+/**
+ * The form's sources: one input per `src` line, each with a way to open (or
+ * copy) it and to remove it, then an empty input that adds one more. Clearing
+ * an input removes that source; setComponentMeta drops blanks and repeats.
+ */
+function SourcesField({
+  path,
+  sources,
+  repo,
+  onChange,
+}: {
+  /** The component's path: another component gets fresh inputs. */
+  path: string;
+  sources: readonly string[];
+  repo: RepoLink | null;
+  onChange: (src: string[]) => void;
+}) {
+  const replace = (i: number, v: string) => onChange(sources.map((s, j) => (j === i ? v : s)));
+  const remove = (i: number) => onChange(sources.filter((_, j) => j !== i));
+  return (
+    <PropertyRow label={sources.length > 1 ? "Sources" : "Source"} align="start">
+      <div className="flex flex-col gap-1.5">
+        {sources.map((src, i) => {
+          const href = sourceHref(src, repo);
+          return (
+            <div key={`${path}:${i}:${src}`} className="flex items-center gap-1">
+              <CommitInput className="min-w-0 flex-1" mono defaultValue={src} onCommit={(v) => replace(i, v)} />
+              {href ? (
+                <IconButton
+                  label={isHttpUrl(src) ? "Open" : "Open on GitHub"}
+                  size="sm"
+                  onClick={() => window.open(href, "_blank", "noopener,noreferrer")}
+                >
+                  <Icon.External />
+                </IconButton>
+              ) : (
+                <IconButton label="Copy path" size="sm" onClick={() => void navigator.clipboard.writeText(src)}>
+                  <Icon.Copy />
+                </IconButton>
+              )}
+              <IconButton label="Remove source" size="sm" onClick={() => remove(i)}>
+                <Icon.Close />
+              </IconButton>
+            </div>
+          );
+        })}
+        <CommitInput
+          key={`${path}:new:${sources.length}`}
+          mono
+          defaultValue=""
+          placeholder={sources.length > 0 ? "Add a file, folder or URL" : "apps/api/src/billing or https://…"}
+          onCommit={(v) => onChange([...sources, v])}
+        />
+      </div>
+    </PropertyRow>
+  );
+}
+
 /* --------------------------------------------------------------- Payloads */
 
 function PayloadCard({
@@ -345,6 +403,13 @@ function PayloadReadouts({ payloads }: { payloads: PayloadNode[] }) {
 }
 
 /**
+ * Where a `src` entry opens: a URL as it is, a repo path (file or folder) in the
+ * linked repository on GitHub. Null when there's nowhere to open it.
+ */
+const sourceHref = (src: string, repo: RepoLink | null): string | null =>
+  isHttpUrl(src) ? src : repo ? githubTreeUrl(repo.owner, repo.name, repo.branch, src) : null;
+
+/**
  * A component as it reads: what it is, what it's for, where its code lives
  * and its payloads. The inspector shows this until "Edit"; the read-only
  * viewer (share links, viewers) shows only this.
@@ -358,22 +423,14 @@ export function ComponentDetails({
   node: ComponentNode;
   /** Custom types, for their names and glyphs. */
   library?: UserLibrary;
-  /** Linked repository: turns a relative `src` into a GitHub link. */
+  /** Linked repository: turns relative `src` paths into GitHub links. */
   repo: RepoLink | null;
   /** Show what's inside a container. */
   onOpen?: () => void;
 }) {
   const custom = library?.items.find((t) => t.tag === node.type);
   const typeName = custom?.name ?? lookupType(node.type)?.name;
-  const src = node.src;
-  const srcHref =
-    src === undefined
-      ? null
-      : isHttpUrl(src)
-        ? src
-        : repo
-          ? githubTreeUrl(repo.owner, repo.name, repo.branch, src)
-          : null;
+  const sources = node.src ?? [];
   const inside = node.children.length;
   return (
     <>
@@ -411,21 +468,30 @@ export function ComponentDetails({
               <span className="text-ink-3">No description</span>
             )}
           </ReadRow>
-          {src !== undefined && (
-            <ReadRow label="Source">
-              {srcHref ? (
-                <a
-                  href={srcHref}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="mono break-all text-sm text-accent hover:underline"
-                >
-                  {src}
-                  <Icon.External className="ml-1 inline h-3 w-3 align-middle" />
-                </a>
-              ) : (
-                <span className="mono break-all text-sm">{src}</span>
-              )}
+          {sources.length > 0 && (
+            <ReadRow label={sources.length > 1 ? "Sources" : "Source"}>
+              <ul className="flex flex-col gap-1">
+                {sources.map((src, i) => {
+                  const href = sourceHref(src, repo);
+                  return (
+                    <li key={`${i}:${src}`}>
+                      {href ? (
+                        <a
+                          href={href}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="mono break-all text-sm text-accent hover:underline"
+                        >
+                          {src}
+                          <Icon.External className="ml-1 inline h-3 w-3 align-middle" />
+                        </a>
+                      ) : (
+                        <span className="mono break-all text-sm">{src}</span>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
             </ReadRow>
           )}
           {inside > 0 && (
@@ -564,6 +630,8 @@ function ComponentInspector({
   onDrillIn,
   library,
   repo,
+  openShapes = false,
+  onShapeListOpened,
 }: {
   doc: ArchDoc;
   path: string;
@@ -576,6 +644,9 @@ function ComponentInspector({
   onDrillIn?: (path: string) => void;
   library: UserLibrary;
   repo: RepoLink | null;
+  /** Open the form's shape list as soon as it shows. */
+  openShapes?: boolean;
+  onShapeListOpened?: () => void;
 }) {
   const isDark = useIsDark();
   const segments = path.split(".");
@@ -659,6 +730,8 @@ function ComponentInspector({
             onSelect={onSelect}
             library={library}
             repo={repo}
+            openShapes={openShapes}
+            onShapeListOpened={onShapeListOpened}
           />
         ) : (
           <ComponentDetails node={node} library={library} repo={repo} onOpen={openInside} />
@@ -677,6 +750,8 @@ function ComponentForm({
   onSelect,
   library,
   repo,
+  openShapes,
+  onShapeListOpened,
 }: {
   node: ComponentNode;
   path: string;
@@ -686,6 +761,8 @@ function ComponentForm({
   onSelect: (s: Selection) => void;
   library: UserLibrary;
   repo: RepoLink | null;
+  openShapes: boolean;
+  onShapeListOpened?: () => void;
 }) {
   const segments = path.split(".");
   return (
@@ -728,6 +805,8 @@ function ComponentForm({
             value={node.shape}
             plane={plane}
             onChange={(shape) => mutate((d) => setComponentMeta(d, segments, { shape }))}
+            autoOpen={openShapes}
+            onAutoOpened={onShapeListOpened}
           />
         </PropertyRow>
         <PropertyRow label="Description" align="start">
@@ -745,54 +824,15 @@ function ComponentForm({
             }}
           />
         </PropertyRow>
-        <PropertyRow label="Source">
-          <div className="flex items-center gap-1">
-            <CommitInput
-              key={`${path}-src`}
-              className="min-w-0 flex-1"
-              mono
-              defaultValue={node.src ?? ""}
-              placeholder="apps/api/src/billing or https://…"
-              onCommit={(v) =>
-                mutate((d) => setComponentMeta(d, segments, { src: v.trim() === "" ? null : v.trim() }))
-              }
-            />
-            {node.src !== undefined && isHttpUrl(node.src) && (
-              <IconButton
-                label="Open"
-                size="sm"
-                onClick={() => window.open(node.src, "_blank", "noopener,noreferrer")}
-              >
-                <Icon.External />
-              </IconButton>
-            )}
-            {node.src !== undefined && !isHttpUrl(node.src) && repo && (
-              <IconButton
-                label="Open on GitHub"
-                size="sm"
-                onClick={() =>
-                  window.open(
-                    githubTreeUrl(repo.owner, repo.name, repo.branch, node.src ?? ""),
-                    "_blank",
-                    "noopener,noreferrer",
-                  )
-                }
-              >
-                <Icon.External />
-              </IconButton>
-            )}
-            {node.src !== undefined && !isHttpUrl(node.src) && !repo && (
-              <IconButton
-                label="Copy path"
-                size="sm"
-                onClick={() => void navigator.clipboard.writeText(node.src ?? "")}
-              >
-                <Icon.Copy />
-              </IconButton>
-            )}
-          </div>
-        </PropertyRow>
-        <p className="pl-[100px] text-xs text-ink-3">Where this lives in the codebase. Agents start here.</p>
+        <SourcesField
+          path={path}
+          sources={node.src ?? []}
+          repo={repo}
+          onChange={(src) => mutate((d) => setComponentMeta(d, segments, { src }))}
+        />
+        <p className="pl-[100px] text-xs text-ink-3">
+          Files, folders or URLs where this lives in the codebase. Agents start here.
+        </p>
       </Section>
 
       <PayloadsSection
@@ -1061,6 +1101,8 @@ export function DetailPanel({
   onDrillIn,
   library,
   repo = null,
+  shapeFor = null,
+  onShapeListOpened,
 }: {
   doc: ArchDoc;
   selection: Selection;
@@ -1078,6 +1120,9 @@ export function DetailPanel({
   library: UserLibrary;
   /** Linked repository: turns relative `src` paths into GitHub links. */
   repo?: RepoLink | null;
+  /** A component whose form should open straight onto its shape list ("Change shape…"). */
+  shapeFor?: string | null;
+  onShapeListOpened?: () => void;
 }) {
   if (selection === null && multi === null) return null;
   const form = editing && !readOnly;
@@ -1100,6 +1145,8 @@ export function DetailPanel({
           onDrillIn={onDrillIn}
           library={library}
           repo={repo}
+          openShapes={shapeFor === selection.path}
+          onShapeListOpened={onShapeListOpened}
         />
       ) : (
         <ConnectionInspector
