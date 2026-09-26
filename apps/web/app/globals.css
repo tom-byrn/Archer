@@ -66,7 +66,7 @@
      prompt's window dots. The dots keep the dark theme's --danger, --warn and
      --accent in both themes, since the light ones are too deep for them. */
   --landing-bg: #fbfaf8;
-  --landing-fade: #d9d3c7;
+  --landing-fade: #edeae4;
   --landing-close: #f0655a;
   --landing-minimize: #f2a33a;
   --landing-zoom: #23c088;
@@ -125,7 +125,7 @@
   --tok-version: #5eead4;
 
   --landing-bg: #000000;
-  --landing-fade: #2e2e2e;
+  --landing-fade: #121212;
 }
 
 /* Expose tokens to Tailwind utilities: bg-surface, text-ink-2, border-line,
