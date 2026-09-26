@@ -12,7 +12,8 @@ import { displayColor, useIsDark } from "@/lib/useIsDark";
 import { ArchCanvas, type CanvasCallbacks } from "./ArchCanvas";
 import { CodeEditor } from "./CodeMirror";
 import { ComponentDetails } from "./DetailPanel";
-import { Glyph } from "./nodes";
+import { LogoProvider } from "./logos";
+import { GlyphSwatch } from "./nodes";
 import { Button, Chip, Icon, IconButton, Kbd, Menu, SidePanel, cx, relativeTime } from "./ui";
 
 const resolveType = (tag: string) => {
@@ -25,17 +26,18 @@ const noop = () => {};
 /**
  * Read-only presentation of a document: canvas, optional code pane, and a
  * details panel for the selected component. Used for public share links and
- * for workspace members with the viewer role.
+ * for workspace members with the viewer role. Catalog types draw with their
+ * product logos (components/logos.tsx).
  */
-export function DocumentViewer({
-  title,
-  source,
-  updatedAt,
-  editHref,
-  backHref,
-  signedIn,
-  repo = null,
-}: {
+export function DocumentViewer(props: DocumentViewerProps) {
+  return (
+    <LogoProvider>
+      <DocumentView {...props} />
+    </LogoProvider>
+  );
+}
+
+interface DocumentViewerProps {
   title: string;
   source: string;
   updatedAt: number;
@@ -45,7 +47,17 @@ export function DocumentViewer({
   signedIn: boolean;
   /** Linked repository: shown in the header, turns `src` paths into GitHub links. */
   repo?: RepoLink | null;
-}) {
+}
+
+function DocumentView({
+  title,
+  source,
+  updatedAt,
+  editHref,
+  backHref,
+  signedIn,
+  repo = null,
+}: DocumentViewerProps) {
   const isDark = useIsDark();
   const derived = useMemo(() => deriveDoc(source), [source]);
   const [selected, setSelected] = useState<string | null>(null);
@@ -279,12 +291,7 @@ function Details({
   return (
     <SidePanel className="md:w-[300px]">
       <div className="flex h-11 shrink-0 items-center gap-2.5 border-b border-line px-3">
-        <span
-          className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md"
-          style={{ backgroundColor: `${accent}24` }}
-        >
-          <Glyph tag={node.type} size={14} />
-        </span>
+        <GlyphSwatch tag={node.type} box={24} size={14} background={`${accent}24`} className="rounded-md" />
         <div className="min-w-0 flex-1">
           <div className="truncate text-base font-semibold text-ink">{node.name ?? node.id}</div>
           <div className="mono truncate text-xs text-ink-3">{path}</div>

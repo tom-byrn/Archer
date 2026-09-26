@@ -13,7 +13,7 @@ import {
   type ArchDoc,
   type ComponentNode,
 } from "@archer/lang";
-import { GLYPHS, GLYPH_VIEWBOX, lookupType } from "@archer/catalog";
+import { GLYPHS, GLYPH_VIEWBOX, lookupType, type Logo } from "@archer/catalog";
 import {
   BOX_COST,
   bendOf,
@@ -37,6 +37,11 @@ export interface RenderOptions {
   showTitle?: boolean;
   /** Paint the ground behind the diagram (default true). Off for in-app thumbnails. */
   background?: boolean;
+  /**
+   * Product logos to draw catalog types with (`@archer/catalog/logos`); without
+   * them every type draws its glyph, as on the landing page.
+   */
+  logos?: Readonly<Record<string, Logo>>;
 }
 
 interface Palette {
@@ -123,6 +128,12 @@ export const displayColor = (hex: string, dark: boolean): string => {
 const glyphSvg = (key: string, size: number, color: string, x: number, y: number): string =>
   `<svg x="${x}" y="${y}" width="${size}" height="${size}" viewBox="${GLYPH_VIEWBOX}" style="color:${color}">${GLYPHS[key] ?? GLYPHS.box!}</svg>`;
 
+/** A logo like components/logos.tsx draws it: a mark in its brand color, or artwork as it is. */
+const logoSvg = (logo: Logo, size: number, x: number, y: number, dark: boolean): string =>
+  `<svg x="${x}" y="${y}" width="${size}" height="${size}" viewBox="${logo.viewBox}"` +
+  (logo.kind === "mono" ? ` style="color:${displayColor(logo.color!, dark)}"` : "") +
+  `>${logo.body}</svg>`;
+
 interface Box {
   path: string;
   node: ComponentNode;
@@ -133,6 +144,7 @@ interface Box {
   plane: boolean;
   color: string;
   glyph: string;
+  logo: Logo | undefined;
 }
 
 export function renderArchSvg(source: string, opts: RenderOptions = {}): string {
@@ -183,6 +195,7 @@ export function renderArchSvg(source: string, opts: RenderOptions = {}): string 
           plane: display === "plane" && c.children.length > 0,
           color: displayColor(type?.color ?? P.fallback, dark),
           glyph: type?.glyph ?? "box",
+          logo: type?.logo === undefined ? undefined : opts.logos?.[type.logo],
         });
       }
       const childCollapsed = collapsed ?? (display === "icon" && c.children.length > 0 ? path : null);
@@ -220,7 +233,7 @@ export function renderArchSvg(source: string, opts: RenderOptions = {}): string 
         `<g>` +
           `<rect x="${x}" y="${y}" width="${b.w}" height="${b.h}" rx="8" fill="${fill}" stroke="${stroke}"/>` +
           `<path d="M${x + 0.5} ${y + 32}h${b.w - 1}" stroke="${alpha(b.color, 0.2)}"/>` +
-          glyphSvg(b.glyph, 16, b.color, x + 10, y + 8) +
+          (b.logo ? logoSvg(b.logo, 16, x + 10, y + 8, dark) : glyphSvg(b.glyph, 16, b.color, x + 10, y + 8)) +
           `<text x="${x + 32}" y="${y + 20.5}" font-family='${SANS}' font-size="12" font-weight="600" fill="${P.ink}">${esc(fit(name, b.w - 44 - (b.node.type ? b.node.type.length * 6 + 10 : 0), 6.8))}</text>` +
           (b.node.type
             ? `<text x="${x + b.w - 10}" y="${y + 20.5}" text-anchor="end" font-family='${MONO}' font-size="10" fill="${P.ink3}">${esc(b.node.type)}</text>`
@@ -238,8 +251,11 @@ export function renderArchSvg(source: string, opts: RenderOptions = {}): string 
       out.push(
         `<g>` +
           `<rect x="${x}" y="${y}" width="${b.w}" height="${b.h}" rx="6" fill="${P.surface}" stroke="${P.line2}"/>` +
-          `<rect x="${tileX}" y="${tileY}" width="32" height="32" rx="6" fill="${alpha(b.color, 0.14)}"/>` +
-          glyphSvg(b.glyph, 18, b.color, tileX + 7, tileY + 7) +
+          // A vendor's square icon (AWS) takes the tinted tile's place.
+          (b.logo?.kind === "tile"
+            ? logoSvg(b.logo, 32, tileX, tileY, dark)
+            : `<rect x="${tileX}" y="${tileY}" width="32" height="32" rx="6" fill="${alpha(b.color, 0.14)}"/>` +
+              (b.logo ? logoSvg(b.logo, 18, tileX + 7, tileY + 7, dark) : glyphSvg(b.glyph, 18, b.color, tileX + 7, tileY + 7))) +
           `<text x="${textX}" y="${midY - 2}" font-family='${SANS}' font-size="13" font-weight="600" fill="${P.ink}">${esc(fit(name, textW, 6.8))}</text>` +
           `<text x="${textX}" y="${midY + 12}" font-family='${MONO}' font-size="10" fill="${P.ink3}">${esc(fit(sub, textW, 6.2))}</text>` +
           `</g>`,
