@@ -52,6 +52,7 @@ backend.api -> backend.db @sql
 | `packages/mcp` | MCP tools giving agents full human-parity access — projects CRUD, validated writes, custom types, layout control, spec compilation, the docs' worked examples — served by the app at `/mcp` with OAuth sign-in. See [docs/mcp.md](docs/mcp.md). |
 | `packages/cli` | The `archer` command (npm: `archerctl`): `check` / `fmt` for `.arch` files in CI and agent shells, `init`, `login`, `push` / `pull`, and `archer mcp` (stdio bridge to the hosted server). See [docs/cli.md](docs/cli.md). |
 | `apps/web` | Next.js app: React Flow canvas, palette, detail panel, live code pane, drill-down navigation, Convex persistence. |
+| `apps/video` | The launch film, rendered from code: a GSAP timeline seeked frame by frame in headless Chromium, drawn with the app's own layout, edge routing and highlighter, over a synthesized soundtrack. See [apps/video/README.md](apps/video/README.md). |
 
 Docs: [language spec](docs/language-spec.md) · [MCP server](docs/mcp.md) · [CLI](docs/cli.md) · [repo sync](docs/repo-sync.md) · [product spec](docs/product-spec.md) · [roadmap](docs/roadmap.md). The site publishes the first three at [/language](https://archer.tombyrne.dev/language), [/docs/mcp](https://archer.tombyrne.dev/docs/mcp) (with a tool reference generated from the server) and [/docs/cli](https://archer.tombyrne.dev/docs/cli).
 

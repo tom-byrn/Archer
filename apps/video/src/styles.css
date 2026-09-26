@@ -1,0 +1,516 @@
+@import "@fontsource-variable/inter/wght.css";
+@import "@fontsource-variable/geist-mono/wght.css";
+@import "@fontsource-variable/newsreader/opsz.css";
+@import "@fontsource/playfair-display/latin-700.css";
+@import "@fontsource/playfair-display/latin-900.css";
+
+/* ---------------------------------------------------------------------------
+   Archer's dark theme (apps/web/app/globals.css), the landing page's black,
+   and the film's type. The film only ever runs dark: it is the OG image's look.
+   --------------------------------------------------------------------------- */
+:root {
+  --black: #000000;
+  --fade: #121212;
+
+  --bg: #0f1012;
+  --surface: #161719;
+  --surface-2: #1c1e21;
+  --surface-3: #25282c;
+  --ink: #ecebe7;
+  --ink-2: #a5a19a;
+  --ink-3: #6d6963;
+  --line: #26292d;
+  --line-2: #383c42;
+  --accent: #23c088;
+  --accent-hover: #3dd39c;
+  --accent-ink: #08110d;
+  --accent-soft: rgba(35, 192, 136, 0.16);
+  --danger: #f0655a;
+  --danger-soft: rgba(240, 101, 90, 0.14);
+  --warn: #f2a33a;
+  --warn-soft: rgba(242, 163, 58, 0.14);
+
+  --ground: #121315;
+  --dot: #2a2d32;
+  --edge: #ecebe7;
+
+  --code-bg: #121315;
+  --code-fg: #d3d1cc;
+  --code-gutter: #4d5057;
+  --tok-kw: #3dd39c;
+  --tok-string: #a5d6ff;
+  --tok-type: #7dd3fc;
+  --tok-arrow: #f5f4f1;
+  --tok-num: #fca5a5;
+  --tok-comment: #6d6963;
+  --tok-fence: #6d6963;
+  --tok-payload: #a5a19a;
+  --tok-version: #5eead4;
+
+  --close: #f0655a;
+  --minimize: #f2a33a;
+  --zoom: #23c088;
+
+  --serif: "Newsreader Variable", Georgia, serif;
+  --display: "Playfair Display", Georgia, serif;
+  --sans: "Inter Variable", system-ui, sans-serif;
+  --mono: "Geist Mono Variable", ui-monospace, monospace;
+}
+
+html,
+body {
+  margin: 0;
+  background: var(--black);
+}
+
+#viewport {
+  position: relative;
+  width: 1920px;
+  height: 1080px;
+  overflow: hidden;
+  transform-origin: 0 0;
+}
+
+#stage {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: var(--black);
+  color: var(--ink);
+  font-family: var(--sans);
+  -webkit-font-smoothing: antialiased;
+  font-synthesis: none;
+}
+
+.layer {
+  position: absolute;
+  inset: 0;
+  visibility: hidden;
+}
+
+.abs {
+  position: absolute;
+  left: 0;
+  top: 0;
+}
+
+/* ---------------------------------------------------------------- Type */
+
+/* The landing headline's setting: Newsreader at its display optical size. */
+.serif {
+  font-family: var(--serif);
+  font-weight: 500;
+  font-variation-settings: "opsz" 72;
+  letter-spacing: -0.012em;
+}
+
+.wordmark {
+  font-family: var(--display);
+  font-weight: 900;
+  letter-spacing: -0.04em;
+  line-height: 0.8;
+}
+
+.mono {
+  font-family: var(--mono);
+}
+
+/* Section labels, as on the landing page ("WORKS WITH ANY MCP CLIENT"). */
+.kicker {
+  font-family: var(--mono);
+  font-size: 22px;
+  line-height: 1;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+
+.caption {
+  position: absolute;
+  font-family: var(--serif);
+  font-weight: 500;
+  font-variation-settings: "opsz" 72;
+  letter-spacing: -0.015em;
+  line-height: 1;
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+/* A word inside a clipping mask, so it can rise into view. */
+.w {
+  display: inline-block;
+  overflow: hidden;
+  vertical-align: top;
+  padding: 0.08em 0.02em 0.14em;
+  margin: -0.08em -0.02em -0.14em;
+}
+.w > span {
+  display: inline-block;
+}
+
+.accent {
+  color: var(--accent);
+}
+
+/* ---------------------------------------------------------------- Canvas */
+
+.canvas {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background-color: var(--ground);
+}
+
+/* Screen-space dot grid; camera.ts moves it with the world. */
+.dots {
+  position: absolute;
+  inset: -2px;
+  background-image: radial-gradient(circle, var(--dot) 0 var(--dot-r, 1.4px), transparent calc(var(--dot-r, 1.4px) + 0.6px));
+}
+
+.world {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 0;
+  height: 0;
+  transform-origin: 0 0;
+}
+
+/* ---------------------------------------------------------------- Diagram
+   Mirrors components/nodes.tsx + canvas.css: a card node is a surface box
+   with a tinted glyph tile, name and mono type tag; planes are tinted
+   frames with a title bar; edges are ink lines with a head; chips are
+   18px pills. Everything is drawn at canvas pixels and zoomed by the camera. */
+
+.node {
+  position: absolute;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 10px;
+  border: 1px solid var(--line-2);
+  border-radius: 6px;
+  background: var(--surface);
+  transform-origin: 50% 50%;
+}
+.node .tile {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 4px;
+}
+.node .tile svg {
+  width: 18px;
+  height: 18px;
+}
+.node .label {
+  min-width: 0;
+}
+.node .name {
+  font-size: 13px;
+  line-height: 1.25;
+  font-weight: 600;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.node .sub {
+  font-size: 11px;
+  line-height: 1.25;
+  color: var(--ink-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.node .sub .mono {
+  font-size: 10.5px;
+}
+
+/* Selection ring (canvas.css `.selected .arch-node`). */
+.node.selected,
+.plane.selected {
+  box-shadow:
+    0 0 0 2px var(--ground),
+    0 0 0 4px var(--accent);
+}
+.node.added {
+  box-shadow: 0 0 0 2px var(--accent);
+  background-color: color-mix(in srgb, var(--accent) 16%, var(--surface));
+}
+
+.plane {
+  position: absolute;
+  box-sizing: border-box;
+  border: 1px solid;
+  border-radius: 8px;
+}
+.plane .bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 32px;
+  padding: 0 10px;
+  box-sizing: border-box;
+  border-bottom: 1px solid;
+}
+.plane .bar svg {
+  width: 16px;
+  height: 16px;
+  flex: none;
+}
+.plane .name {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink);
+  white-space: nowrap;
+}
+.plane .type {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+
+.edges {
+  position: absolute;
+  left: 0;
+  top: 0;
+  overflow: visible;
+}
+.edge {
+  fill: none;
+  stroke: var(--edge);
+  stroke-width: 1.5;
+  stroke-linejoin: round;
+}
+.head {
+  fill: var(--edge);
+}
+.edge.accent {
+  stroke: var(--accent);
+  stroke-width: 2;
+}
+.head.accent {
+  fill: var(--accent);
+}
+
+.chip {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 18px;
+  padding: 0 6px;
+  box-sizing: border-box;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--surface);
+  font-size: 11px;
+  line-height: 1;
+  white-space: nowrap;
+}
+.chip .t {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--ink-2);
+}
+.chip .dot {
+  color: var(--ink-3);
+}
+.chip .l {
+  color: var(--ink);
+}
+.chip.accent {
+  border-color: var(--accent);
+}
+
+/* Agent-touched badge (canvas.css `.arch-badge`). */
+.badge {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+.badge svg {
+  width: 10px;
+  height: 10px;
+}
+
+/* ---------------------------------------------------------------- Windows */
+
+.window {
+  position: absolute;
+  box-sizing: border-box;
+  overflow: hidden;
+  border: 1px solid var(--line-2);
+  border-radius: 14px;
+  background: var(--code-bg);
+  box-shadow:
+    0 40px 120px rgba(0, 0, 0, 0.6),
+    0 2px 8px rgba(0, 0, 0, 0.5);
+}
+.window .titlebar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 56px;
+  padding: 0 22px;
+  box-sizing: border-box;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface);
+  font-family: var(--mono);
+  font-size: 20px;
+  color: var(--ink-2);
+}
+.window .lights {
+  display: flex;
+  gap: 9px;
+  margin-right: 10px;
+}
+.window .lights i {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+}
+
+/* ---------------------------------------------------------------- Code */
+
+.code {
+  font-family: var(--mono);
+  color: var(--code-fg);
+  white-space: pre;
+}
+.code .ln {
+  position: relative;
+  display: block;
+  box-sizing: border-box;
+  border-left: 3px solid transparent;
+}
+.code .gut {
+  display: inline-block;
+  color: var(--code-gutter);
+  text-align: right;
+  user-select: none;
+}
+.code .flash {
+  position: absolute;
+  inset: 0 0 0 -3px;
+  border-left: 3px solid var(--accent);
+  background: var(--accent-soft);
+  opacity: 0;
+}
+.tok-kw {
+  color: var(--tok-kw);
+}
+.tok-string {
+  color: var(--tok-string);
+}
+.tok-type {
+  color: var(--tok-type);
+}
+.tok-arrow {
+  color: var(--tok-arrow);
+}
+.tok-num {
+  color: var(--tok-num);
+}
+.tok-comment {
+  color: var(--tok-comment);
+}
+.tok-fence {
+  color: var(--tok-fence);
+}
+.tok-payload {
+  color: var(--tok-payload);
+}
+.tok-version {
+  color: var(--tok-version);
+}
+
+.caret {
+  display: inline-block;
+  width: 0.6em;
+  margin-right: -0.6em;
+  background: var(--code-caret, #f5f4f1);
+  vertical-align: top;
+}
+
+/* ---------------------------------------------------------------- Pointer */
+
+.pointer {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 40px;
+  height: 40px;
+  z-index: 50;
+  filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.5));
+}
+.ripple {
+  position: absolute;
+  width: 56px;
+  height: 56px;
+  margin: -28px 0 0 -28px;
+  border: 3px solid var(--accent);
+  border-radius: 50%;
+  opacity: 0;
+}
+
+/* ---------------------------------------------------------------- Misc UI */
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  height: 44px;
+  padding: 0 18px;
+  box-sizing: border-box;
+  border-radius: 8px;
+  font-size: 20px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.pill svg {
+  width: 20px;
+  height: 20px;
+}
+.pill.primary {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+.pill.secondary {
+  background: var(--surface);
+  border: 1px solid var(--line-2);
+  color: var(--ink);
+}
+
+/* Diamond joints where the landing page's rules cross (landing.css). */
+.joint {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  margin: -6px 0 0 -6px;
+  box-sizing: border-box;
+  transform: rotate(45deg);
+  border: 1.5px solid var(--line-2);
+  background: var(--black);
+}
+.rule {
+  position: absolute;
+  background: var(--line-2);
+}
