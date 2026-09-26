@@ -165,12 +165,16 @@ The full language specification is at the end of this guide. Key habits:
 - **Type tags are optional.** An unknown tag is only a warning (renders as a
   generic box); prefer catalog/custom tags when a good one exists.
 - **Shapes.** A component is drawn as a box unless its body says otherwise
-  with \`shape <name>\`: \`cylinder\` for a store, \`cloud\` for an outside
-  service, \`person\` for a user, \`robot\` for an AI agent, \`queue\`,
-  \`server\`, \`browser\`, \`phone\` and more (spec §3.3, or \`list_types\`).
-  The type still picks the icon and color inside the shape. Shapes make a
-  diagram readable at a glance: use them where they say something, and leave
-  the rest as boxes:
+  with \`shape <name>\`: \`cylinder\` for a database, \`memory\` for a
+  cache, \`queue\` for a queue or stream, \`cloud\` for an outside service,
+  \`globe\` for the internet, \`person\` and \`people\` for users and teams,
+  \`robot\` for an AI agent, \`brain\` for a model, \`gear\` for a worker,
+  \`clock\` for a scheduler, \`lock\` for auth, \`browser\`, \`phone\` and
+  \`terminal\` for clients, flowchart shapes (\`pill\`, \`diamond\`,
+  \`parallelogram\`) and many more (spec §3.3, or \`list_types\`). The type
+  still picks the icon and color inside the shape. Shapes make a diagram
+  readable at a glance: use them where they say something, and leave the rest
+  as boxes:
 
       component orders "Orders" @postgres {
         shape cylinder

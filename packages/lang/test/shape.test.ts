@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   SHAPES,
+  SHAPE_GROUPS,
   SHAPE_INFO,
   addComponent,
   compileForAgent,
@@ -128,6 +129,26 @@ describe("shape field", () => {
     expect([...diagnostics, ...validate(doc)]).toEqual([]);
     expect(Object.keys(SHAPE_INFO).sort()).toEqual([...SHAPES].sort());
     expect(SHAPES[0]).toBe("box");
+    for (const s of SHAPES) expect(s, s).toMatch(/^[a-z][a-z0-9_]*$/);
+  });
+
+  it("lists the shapes group by group, in the groups' order", () => {
+    // Pickers walk SHAPES and start a new section whenever the group changes.
+    const runs = SHAPES.map((s) => SHAPE_INFO[s].group).filter((g, i, all) => g !== all[i - 1]);
+    expect(runs).toEqual(SHAPE_GROUPS.map((g) => g.id));
+    expect(new Set(SHAPE_GROUPS.map((g) => g.name)).size).toBe(SHAPE_GROUPS.length);
+    expect(SHAPE_INFO.box.group).toBe("basic");
+  });
+
+  it("reads shape names that are also payload formats as shapes", () => {
+    // `table` is a payload format too; only a fence after it makes a payload.
+    const { doc, diagnostics } = parse(
+      `${HEADER}component t {\n  shape table\n  rows table ${FENCE}\n  | a |\n  | - |\n  | 1 |\n  ${FENCE}\n}`,
+    );
+    expect(diagnostics).toEqual([]);
+    expect(doc.components[0]!.shape).toBe("table");
+    expect(doc.components[0]!.payloads.map((p) => [p.name, p.format])).toEqual([["rows", "table"]]);
+    expect(format(doc)).toContain("  shape table\n  rows table");
   });
 
   it("setComponentMeta sets and clears shape", () => {

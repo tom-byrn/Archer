@@ -5,7 +5,7 @@ import { CATALOG, type CatalogType } from "@archer/catalog";
 import { SHAPES, SHAPE_INFO, type Shape } from "@archer/lang";
 import type { CustomType, UserLibrary } from "@/lib/userLibrary";
 import { Glyph, GlyphSwatch } from "./nodes";
-import { ShapeIcon, shapeTitle } from "./ShapePicker";
+import { SHAPE_SECTIONS, ShapeIcon, shapeRank, shapeTitle } from "./ShapePicker";
 import { Button, IconButton, Icon, Input, Kbd, cx } from "./ui";
 
 export const DND_MIME = "application/archer-type";
@@ -15,13 +15,11 @@ export const DND_SHAPE_MIME = "application/archer-shape";
 /** The shapes the palette puts down; the box is "Plain component". */
 export const PALETTE_SHAPES = SHAPES.filter((s): s is Exclude<Shape, "box"> => s !== "box");
 
-/** Search rank of a shape, by its name or what it's for (see matchRank). */
-export const shapeRank = (shape: Shape, q: string): number => {
-  if (q === "") return 1;
-  const { name, use } = SHAPE_INFO[shape];
-  if (name.toLowerCase().startsWith(q)) return 0;
-  return name.toLowerCase().includes(q) || use.toLowerCase().includes(q) ? 1 : -1;
-};
+/** The palette's shapes by group, for browsing. */
+const PALETTE_SECTIONS = SHAPE_SECTIONS.map((group) => ({
+  ...group,
+  shapes: group.shapes.filter((s): s is Exclude<Shape, "box"> => s !== "box"),
+}));
 
 /** Friendly group names for catalog namespaces. */
 export const NAMESPACE_LABELS: Record<string, string> = {
@@ -160,10 +158,10 @@ function ShapeItem({
         "cursor-grab rounded-md text-ink-2 transition-colors duration-75 hover:bg-surface-2 hover:text-ink active:cursor-grabbing",
         row
           ? "flex h-7 w-full items-center gap-2 px-1.5 text-left"
-          : "flex h-9 items-center justify-center",
+          : "flex h-8 items-center justify-center",
       )}
     >
-      <ShapeIcon shape={shape} width={row ? 20 : 26} />
+      <ShapeIcon shape={shape} width={row ? 20 : 24} />
       {row && <span className="min-w-0 flex-1 truncate text-sm text-ink">{SHAPE_INFO[shape].name}</span>}
     </button>
   );
@@ -472,13 +470,27 @@ export function Palette({
               open={shapesOpen}
               onToggle={() => toggle("shapes")}
             />
-            {shapesOpen && (
-              <div className={cx("pb-1", !searching && "grid grid-cols-5 gap-0.5 px-0.5")}>
-                {shapes.map((s) => (
-                  <ShapeItem key={s} shape={s} row={searching} onAdd={(shape) => onAdd(undefined, shape)} />
-                ))}
-              </div>
-            )}
+            {shapesOpen &&
+              (searching ? (
+                <div className="pb-1">
+                  {shapes.map((s) => (
+                    <ShapeItem key={s} shape={s} row onAdd={(shape) => onAdd(undefined, shape)} />
+                  ))}
+                </div>
+              ) : (
+                <div className="pb-1">
+                  {PALETTE_SECTIONS.map((group) => (
+                    <div key={group.id} role="group" aria-label={`${group.name} shapes`}>
+                      <div className="px-1 pb-0.5 pt-1 text-xs text-ink-3">{group.name}</div>
+                      <div className="grid grid-cols-6 gap-0.5 px-0.5">
+                        {group.shapes.map((s) => (
+                          <ShapeItem key={s} shape={s} row={false} onAdd={(shape) => onAdd(undefined, shape)} />
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ))}
           </div>
         )}
 
