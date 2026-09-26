@@ -280,12 +280,12 @@ const EFFECTS: Record<CueKind, Sfx> = {
   pop: { render: pop, level: -5, room: 0.2 },
   whoosh: { render: whoosh, level: -5, room: 0.15 },
   click: { render: click, level: -4, room: 0.05 },
-  key: { render: key, level: -12, room: 0 },
+  key: { render: key, level: -10, room: 0 },
   draw: { render: draw, level: -12, room: 0.15 },
   snap: { render: snap, level: -10, room: 0.12 },
   error: { render: error, level: -7, room: 0.1 },
-  success: { render: success, level: -11, room: 0.3 },
-  tick: { render: tick, level: -10, room: 0.05 },
+  success: { render: success, level: -12, room: 0.3 },
+  tick: { render: tick, level: -7, room: 0.05 },
   impact: { render: impact, level: 6, room: 0.3 },
 };
 

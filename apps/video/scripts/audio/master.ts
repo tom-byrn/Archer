@@ -9,7 +9,7 @@ import { integratedLoudness } from "./loudness";
 
 export const TARGET_LUFS = -14;
 /** The limiter's ceiling, a little under the −1 dBTP spec so other meters agree. */
-export const CEILING_DBTP = -1.3;
+export const CEILING_DBTP = -1.5;
 /** The final fade: the tail has all but decayed by then; this makes the last sample exactly 0. */
 const FADE = 0.8;
 
