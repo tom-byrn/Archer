@@ -62,7 +62,7 @@ function formatComponent(c: ComponentNode, depth: number): string {
   const body: string[] = [];
   if (c.shape !== undefined) body.push(`${INDENT.repeat(depth + 1)}shape ${c.shape}`);
   if (c.desc !== undefined) body.push(formatDesc(c.desc, depth + 1));
-  if (c.src !== undefined) body.push(`${INDENT.repeat(depth + 1)}src ${quote(c.src)}`);
+  for (const src of c.src ?? []) body.push(`${INDENT.repeat(depth + 1)}src ${quote(src)}`);
   for (const p of c.payloads) body.push(formatPayload(p, depth + 1));
   body.push(...formatItems(scopeOf(c), undefined, depth + 1));
 
@@ -127,7 +127,7 @@ function formatLayoutEntry(e: LayoutEntry): string {
 }
 
 export interface FormatOptions {
-  /** Omit the layout block entirely (used by the agent export). */
+  /** Omit the layout block entirely (used for repository files). */
   stripLayout?: boolean;
 }
 

@@ -343,8 +343,9 @@ api -> db @sql
 #
 # How to read it:
 …
-# - If you write Archer back, follow the grammar above and NEVER emit a
-#   \`layout\` block — layout is machine-managed presentation, not architecture.
+# - If you write Archer back, follow the grammar above and leave the \`layout\`
+#   block out: Archer keeps every surviving component where it was and places
+#   new ones itself. Only write layout when asked to arrange the diagram.
 
 arch "Shop" v0.2
 
@@ -362,9 +363,18 @@ component stripe "Stripe" @stripe
 api -> db @sql
 api -> stripe @http : "charges"
 web -> api @http
+
+layout {
+  api: { at: [1, 2], size: [4, 3] }
+  backend: { at: [7, 0], size: [13, 7] }
+  db: { at: [8, 2], size: [4, 3] }
+  stripe: { at: [0, 9], size: [4, 3] }
+  web: { at: [0, 2], size: [4, 3] }
+}
 `,
     notes: [
       "Pass `source` or `project_id`. The output is what the editor's **Copy for agent** puts on the clipboard.",
+      "The layout block is always complete: every component has the position and size the canvas draws it at, so the agent sees the diagram as the author laid it out.",
       "A document with errors is refused: the error result is `{ message, errors }`, with the diagnostics.",
     ],
   },
@@ -412,8 +422,8 @@ layout {
       connection_types: ["http", "grpc", "ws", "sql", "queue", "event", "…"],
       shapes: [
         { shape: "box", name: "Box", use: "anything (the default)" },
-        { shape: "cylinder", name: "Cylinder", use: "databases and other stores" },
-        { shape: "cloud", name: "Cloud", use: "cloud providers, external services, the internet" },
+        { shape: "pill", name: "Pill", use: "starts, ends and states" },
+        { shape: "circle", name: "Circle", use: "events, triggers and endpoints" },
         "…",
       ],
       glyphs_for_custom_types: ["box", "circle", "database", "table", "…"],

@@ -54,7 +54,7 @@ one component in another by dropping it there, and double-click any component to
 it and work on its parts. Every edit rewrites the `.arch` file
 (debounced), and the code view updates live; edits in the code view re-render the
 canvas (auto-layouting anything without a layout entry). When ready: **Copy for
-agent** (canonical code, layout stripped, spec header prepended) and **Export PNG**
+agent** (canonical code with its layout, spec header prepended) and **Export PNG**
 (current view), paste both into Claude Code / Cursor.
 
 ## Key screens & components
@@ -62,9 +62,9 @@ agent** (canonical code, layout stripped, spec header prepended) and **Export PN
 1. **Canvas** — React Flow: custom node types (components drawn in their shape with
    the type's icon, and a count badge when they hold components; planes as titled
    regions with their type's icon in the title bar), custom edge with type chip +
-   label (shown while the edge or a component it connects is hovered, or the edge is
-   selected), grid snap, pan/zoom, drill-in navigation (breadcrumb trail inside a
-   component, with the outside components it connects to along the sides).
+   label (shown while the edge or a component it connects is hovered or selected),
+   grid snap, pan/zoom, drill-in navigation (breadcrumb trail inside a component,
+   with the outside components it connects to along the sides).
 2. **Palette** — curated catalog grouped by namespace (AWS, Vercel, databases, …),
    search, plus "My components"; drag-to-place.
 3. **Detail panel** (right side) — display name, id (read-only), type picker,

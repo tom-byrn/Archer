@@ -36,6 +36,7 @@ import {
   reparentComponent,
   resizeComponent,
   scopeAt,
+  setComponentMeta,
   setConnectionEndpoints,
   setPlane,
   type ArchDoc,
@@ -154,22 +155,6 @@ const EMPTY_DOC = (like: ArchDoc): ArchDoc => ({
   connections: [],
   layout: [],
 });
-
-/** Return a component tree with `src` set on the node at `path`. */
-function setSrc(
-  items: ArchDoc["components"],
-  path: readonly string[],
-  src: string,
-): ArchDoc["components"] {
-  const [head, ...rest] = path;
-  return items.map((c) =>
-    c.id !== head
-      ? c
-      : rest.length === 0
-        ? { ...c, src }
-        : { ...c, children: setSrc(c.children, rest, src) },
-  );
-}
 
 /**
  * Delete components and planes (a plane with everything on it). Something
@@ -351,6 +336,8 @@ function EditorView({ initialSource, library, session }: EditorProps) {
    * reading.
    */
   const [editingId, setEditingId] = useState<string | null>(null);
+  /** "Change shape…": the component whose shape list the form opens on. */
+  const [shapeFor, setShapeFor] = useState<string | null>(null);
   const [focus, setFocus] = useState<string[]>([]);
   const [codeOpen, setCodeOpen] = useState(false);
   // The component palette (left sidebar) starts closed every time the editor
@@ -442,7 +429,7 @@ function EditorView({ initialSource, library, session }: EditorProps) {
       if (!diff && touched.has(path)) m.touched = true;
       const f = activity.driftByPath.get(path);
       if (f && (f.status === "missing" || f.status === "changed")) m.drift = f.status;
-      if (item.kind === "component" && item.src) m.src = item.src;
+      if (item.kind === "component" && item.src?.length) m.src = item.src;
       return Object.keys(m).length > 0 ? m : undefined;
     },
     [diff, touched, activity.driftByPath],
@@ -643,7 +630,9 @@ function EditorView({ initialSource, library, session }: EditorProps) {
   // Once something else is selected the form stays closed, so coming back reads first.
   useEffect(() => {
     if (editingId !== null && editingId !== selectedId) setEditingId(null);
-  }, [editingId, selectedId]);
+    if (shapeFor !== null && shapeFor !== selectedId) setShapeFor(null);
+  }, [editingId, shapeFor, selectedId]);
+  const shapeListOpened = useCallback(() => setShapeFor(null), []);
 
   /** Select a component that was just made, its form open to name it. */
   const selectNew = useCallback((path: string) => {
@@ -851,9 +840,7 @@ function EditorView({ initialSource, library, session }: EditorProps) {
   const addFromDrift = (name: string, src?: string) =>
     mutate((d) => {
       const { doc: next, path } = addComponent(d, liveFocus, { name });
-      return src
-        ? { ...next, components: setSrc(next.components, path, src) }
-        : next;
+      return src ? setComponentMeta(next, path, { src: [src] }) : next;
     });
   const openPanel = (tab: ActivityTab) => {
     setPanel(tab);
@@ -1210,6 +1197,7 @@ function EditorView({ initialSource, library, session }: EditorProps) {
           onSelect: () => {
             setSel(only(t.path));
             setEditingId(t.path);
+            setShapeFor(t.path);
           },
         },
         ...(inside > 0
@@ -1247,7 +1235,7 @@ function EditorView({ initialSource, library, session }: EditorProps) {
     {
       label: "Copy for agent",
       hint: derived.valid
-        ? "Layout stripped, language guide prepended"
+        ? "Layout included, language guide prepended"
         : "Fix validation errors first",
       icon: <Icon.Sparkle />,
       disabled: !derived.valid,
@@ -1789,6 +1777,8 @@ function EditorView({ initialSource, library, session }: EditorProps) {
             onDrillIn={callbacks.onDrillIn}
             library={library}
             repo={repo}
+            shapeFor={shapeFor}
+            onShapeListOpened={shapeListOpened}
           />
         )}
       </div>

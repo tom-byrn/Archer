@@ -365,6 +365,13 @@ function CanvasInner({
       ? selNodes[0]
       : undefined;
 
+  // The connections of every component drawn as selected (`selectedPath`
+  // too) show their label chips.
+  const selectedEnds = useMemo(
+    () => (selectedPath ? new Set([...selNodeSet, selectedPath]) : selNodeSet),
+    [selNodeSet, selectedPath],
+  );
+
   const styledNodes = useMemo(
     () =>
       nodes.map((n) => {
@@ -386,13 +393,16 @@ function CanvasInner({
     () =>
       edges.map((e) => {
         const on = lit === null ? undefined : lit.edges.has(e.id);
+        const ends = selectedEnds.has(e.source) || selectedEnds.has(e.target);
         return {
           ...e,
-          ...(e.data && on !== e.data.lit ? { data: { ...e.data, lit: on } } : {}),
+          ...(e.data && (on !== e.data.lit || ends !== !!e.data.endSelected)
+            ? { data: { ...e.data, lit: on, endSelected: ends } }
+            : {}),
           className: joinCls(on === false && "dim"),
         };
       }),
-    [edges, lit],
+    [edges, lit, selectedEnds],
   );
 
   /** Report where dragged nodes landed: absolute position in this view, center, and grid size. */

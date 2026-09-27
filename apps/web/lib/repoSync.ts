@@ -166,7 +166,7 @@ export const changeCount = (s: DiffSummary): number =>
 
 const FIELD_WORDS: Record<string, string> = {
   desc: "description",
-  src: "source path",
+  src: "sources",
   payloads: "payloads",
   name: "name",
   type: "type",

@@ -39,7 +39,7 @@ fails, call \`get_workspace_info\` and relay what it reports.
 1. \`list_projects\` → pick the project id.
 2. \`get_project\` → the full source plus current diagnostics.
 3. To hand the architecture to another model or use it as an implementation
-   spec: \`compile_for_agent\` (strips layout, prepends a reading guide).
+   spec: \`compile_for_agent\` (keeps the layout for context, prepends a reading guide).
 
 ### Modify an existing architecture
 1. **Always \`get_project\` first** and base your edit on the returned source —
@@ -102,9 +102,10 @@ that branch, is the source of truth:
 
 ### Link components to code
 - The \`src "…"\` field inside a component body records where it lives:
-  a repo-relative path (\`src "apps/api/src/billing"\`) or a URL. Set it
-  whenever you know the location — humans jump to it from the canvas, and
-  drift checks start there. Keep it up to date when you move code.
+  a repo-relative path to a file or a folder (\`src "apps/api/src/billing"\`)
+  or a URL. A component that spans several places gets one \`src\` line for
+  each. Set it whenever you know the location — humans jump to it from the
+  canvas, and drift checks start there. Keep it up to date when you move code.
 
 ### Drift check (does the code still match the architecture?)
 0. If \`get_project\` returns a \`repository\`, that repo at that branch is
@@ -192,12 +193,16 @@ The full language specification is at the end of this guide. Key habits:
 - **Type tags are optional.** An unknown tag is only a warning (renders as a
   generic box); prefer catalog/custom tags when a good one exists.
 - **Shapes.** A component is drawn as a box unless its body says otherwise
-  with \`shape <name>\`: \`cylinder\` for a store, \`cloud\` for an outside
-  service, \`person\` for a user, \`robot\` for an AI agent, \`queue\`,
-  \`server\`, \`browser\`, \`phone\` and more (spec §3.3, or \`list_types\`).
-  The type still picks the icon and color inside the shape. Shapes make a
-  diagram readable at a glance: use them where they say something, and leave
-  the rest as boxes:
+  with \`shape <name>\`: \`cylinder\` for a database, \`memory\` for a
+  cache, \`queue\` for a queue or stream, \`cloud\` for an outside service,
+  \`globe\` for the internet, \`person\` and \`people\` for users and teams,
+  \`robot\` for an AI agent, \`brain\` for a model, \`gear\` for a worker,
+  \`clock\` for a scheduler, \`lock\` for auth, \`browser\`, \`phone\` and
+  \`terminal\` for clients, flowchart shapes (\`pill\`, \`diamond\`,
+  \`parallelogram\`) and many more (spec §3.3, or \`list_types\`). The type
+  still picks the icon and color inside the shape. Shapes make a diagram
+  readable at a glance: use them where they say something, and leave the rest
+  as boxes:
 
       component orders "Orders" @postgres {
         shape cylinder
@@ -234,7 +239,7 @@ The full language specification is at the end of this guide. Key habits:
 | E001 | Syntax error | Follow the message; check fences and quotes |
 | E002 | Duplicate id in one scope (components and planes share ids) | Rename one of them |
 | E003 | Duplicate payload name on one component or connection | Rename one payload |
-| E004 | More than one \`src\` or \`shape\` on a component | Keep one |
+| E004 | More than one \`shape\` on a component | Keep one |
 | E101 | Connection endpoint doesn't resolve, or is a plane | Declare the component, fix the path, or connect a component on the plane |
 | E201 | json/yaml/table payload doesn't parse | Fix the payload content |
 | W301 | Unknown type tag (warning) | Optional: use a catalog tag or create a custom type |

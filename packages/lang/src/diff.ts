@@ -75,6 +75,13 @@ export function connectionKey(c: ConnectionNode): string {
   ].join("|");
 }
 
+/** Same `src` list: the same places in the same order (absent and empty alike). */
+export const sameSources = (a: readonly string[] | undefined, b: readonly string[] | undefined): boolean => {
+  const x = a ?? [];
+  const y = b ?? [];
+  return x.length === y.length && x.every((s, i) => s === y[i]);
+};
+
 interface Placed<T> {
   node: T;
   /** Id of the plane it sits on, resolved (see PlaneTree). */
@@ -116,8 +123,9 @@ const payloadsEqual = (
 
 const changedFields = (a: Placed<ComponentNode>, b: Placed<ComponentNode>): string[] => {
   const fields: string[] = [];
-  for (const f of ["name", "type", "shape", "desc", "src"] as const)
+  for (const f of ["name", "type", "shape", "desc"] as const)
     if (a.node[f] !== b.node[f]) fields.push(f);
+  if (!sameSources(a.node.src, b.node.src)) fields.push("src");
   if (!payloadsEqual(a.node, b.node)) fields.push("payloads");
   if (a.plane !== b.plane) fields.push("plane");
   return fields;

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { CATALOG } from "@archer/catalog";
-import { SHAPE_INFO, type Shape } from "@archer/lang";
+import { SHAPE_GROUPS, SHAPE_INFO, type Shape } from "@archer/lang";
 import type { UserLibrary } from "@/lib/userLibrary";
 import { GlyphSwatch } from "./nodes";
 import { ShapeIcon } from "./ShapePicker";
@@ -46,9 +46,10 @@ interface Entry {
   namespace: string;
   color?: string;
   glyph?: string;
-  /** An untyped component drawn as this shape, and what the shape is for (also searched). */
+  /** An untyped component drawn as this shape, what the shape is for and its group (also searched). */
   shape?: Shape;
   use?: string;
+  group?: string;
   /** Not a component: a plane. */
   plane?: true;
 }
@@ -60,6 +61,7 @@ const SHAPE_ENTRIES: Entry[] = PALETTE_SHAPES.map((s) => ({
   namespace: "shapes",
   shape: s,
   use: SHAPE_INFO[s].use,
+  group: SHAPE_GROUPS.find((g) => g.id === SHAPE_INFO[s].group)?.name,
 }));
 
 type Row =
@@ -184,7 +186,7 @@ export function CommandPalette({
         ...CATALOG,
       ];
       const scored = entries
-        .map((e, order) => ({ e, s: best(q, e.name, e.tag ?? e.use), order }))
+        .map((e, order) => ({ e, s: best(q, e.name, e.tag ?? e.use, e.group), order }))
         .filter(({ s }) => s >= 0);
       if (q !== "") scored.sort((a, b) => a.s - b.s || a.order - b.order);
       const byNs = new Map<string, { e: Entry; s: number }[]>();

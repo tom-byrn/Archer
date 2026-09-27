@@ -1,11 +1,13 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
+import type { CSSProperties } from "react";
 import { ImageResponse } from "next/og";
-import { autoLayout, canvasAt, layoutMap, parse, pathToString } from "@archer/lang";
+import { autoLayout, canvasAt, layoutMap, parse, pathToString, shapeOf } from "@archer/lang";
 import { GLYPHS, GLYPH_VIEWBOX, lookupType } from "@archer/catalog";
 import { HEADLINE, LEDE } from "@/lib/landingCopy";
 import { LANDING_SAMPLE } from "@/lib/landingSample";
-import { displayColor } from "@/lib/svg";
+import { labelLayout, shapeGeometry, type LabelLayout, type ShapeGeometry } from "@/lib/shapes";
+import { displayColor, mix } from "@/lib/svg";
 
 /**
  * The link preview: the landing page's first screen. Same words, same faces
@@ -60,6 +62,10 @@ const loadFonts = async () => {
 
 // The sandbox fits its 40px grid to the viewport; here one cell is 28px.
 const CELL = 28;
+// Shapes are worked out at the canvas's own cell and scaled down, so the
+// outline and what the label shows are exactly the canvas's.
+const CANVAS_CELL = 40;
+const SCALE = CELL / CANVAS_CELL;
 const ARROW = 5; // half-width of an arrowhead
 const RADIUS = 6; // corner radius of a stepped connector
 
@@ -73,6 +79,8 @@ interface Box {
   h: number;
   color: string;
   glyph: string;
+  /** Drawn as a shape (lib/shapes.ts, at canvas size) instead of the card. */
+  shape?: { geo: ShapeGeometry; label: LabelLayout; stroke: string; fill: string };
 }
 /** A plane: a titled region drawn behind the boxes on it. */
 interface Region {
@@ -166,6 +174,10 @@ const diagram = () => {
     const [ax, ay] = canvasAt(doc, [c.id], layout);
     const [sw, sh] = layout.get(c.id)?.size ?? [4, 3];
     const type = lookupType(c.type);
+    const typed = c.type !== undefined;
+    const color = displayColor(type?.color ?? "#8a8479", true);
+    const shape = shapeOf(c);
+    const geo = shape === "box" ? undefined : shapeGeometry(shape, sw * CANVAS_CELL, sh * CANVAS_CELL);
     return {
       id: c.id,
       name: c.name ?? c.id,
@@ -174,8 +186,18 @@ const diagram = () => {
       y: ay * CELL,
       w: sw * CELL,
       h: sh * CELL,
-      color: displayColor(type?.color ?? "#8a8479", true),
+      color,
       glyph: type?.glyph ?? "box",
+      ...(geo && {
+        shape: {
+          geo,
+          // The type tag is the only line under the name here: nothing is drawn collapsed.
+          label: labelLayout(geo.content, typed, typed),
+          // Tinted by a type that resolves, as on the canvas (canvas.css `.arch-shape-typed`).
+          stroke: type ? mix(color, LINE_2, 0.45) : LINE_2,
+          fill: type ? mix(color, SURFACE, 0.05) : SURFACE,
+        },
+      }),
     };
   });
   const byId = new Map(boxes.map((b) => [b.id, b]));
@@ -203,7 +225,29 @@ const glyphSrc = (key: string, color: string): string => {
   return `data:image/svg+xml;base64,${Buffer.from(svg).toString("base64")}`;
 };
 
+// A component's name, and its type tag under it.
+const NAME: CSSProperties = {
+  fontFamily: INTER,
+  fontWeight: 600,
+  fontSize: 11.5,
+  lineHeight: 1.15,
+  color: INK,
+  whiteSpace: "nowrap",
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+};
+const TAG: CSSProperties = {
+  fontFamily: MONO,
+  fontSize: 9,
+  lineHeight: 1.15,
+  color: INK_3,
+  whiteSpace: "nowrap",
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+};
+
 function Node({ box }: { box: Box }) {
+  if (box.shape) return <ShapeNode box={box} shape={box.shape} />;
   return (
     <div
       style={{
@@ -237,33 +281,57 @@ function Node({ box }: { box: Box }) {
       </div>
       {/* Explicit width: Satori truncates text only inside a sized box. */}
       <div style={{ display: "flex", flexDirection: "column", width: box.w - 50, gap: 2 }}>
-        <div
-          style={{
-            fontFamily: INTER,
-            fontWeight: 600,
-            fontSize: 11.5,
-            lineHeight: 1.15,
-            color: INK,
-            whiteSpace: "nowrap",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-          }}
-        >
-          {box.name}
+        <div style={NAME}>{box.name}</div>
+        <div style={TAG}>{box.type}</div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * A component with a shape (components/nodes.tsx ArchShapeNode): the outline
+ * fills the box, and the label sits centered in the shape's roomy middle, with
+ * as much of glyph, name and tag as the canvas finds room for.
+ */
+function ShapeNode({ box, shape }: { box: Box; shape: NonNullable<Box["shape"]> }) {
+  const { geo, label, stroke, fill } = shape;
+  const c = geo.content;
+  const width = c.w * SCALE;
+  const glyph = (size: number) => <img src={glyphSrc(box.glyph, box.color)} width={size} height={size} alt="" />;
+  return (
+    <div style={{ position: "absolute", left: box.x, top: box.y, width: box.w, height: box.h, display: "flex" }}>
+      {/* Canvas-size geometry, scaled down; the stroke stays 1px. */}
+      <svg
+        width={box.w}
+        height={box.h}
+        viewBox={`0 0 ${(box.w / CELL) * CANVAS_CELL} ${(box.h / CELL) * CANVAS_CELL}`}
+        style={{ position: "absolute", left: 0, top: 0 }}
+      >
+        {geo.parts.map((d, i) => (
+          <path key={i} d={d} fill={fill} stroke={stroke} strokeWidth={1 / SCALE} strokeLinejoin="round" />
+        ))}
+        {geo.details && <path d={geo.details} fill="none" stroke={stroke} strokeWidth={1 / SCALE} />}
+        {geo.dots && <path d={geo.dots} fill={stroke} />}
+      </svg>
+      <div
+        style={{
+          position: "absolute",
+          left: c.x * SCALE,
+          top: c.y * SCALE,
+          width,
+          height: c.h * SCALE,
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        {label.glyph === "above" && <div style={{ display: "flex", marginBottom: 3 }}>{glyph(15)}</div>}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 5, width }}>
+          {label.glyph === "inline" && glyph(12)}
+          <div style={{ ...NAME, maxWidth: label.glyph === "inline" ? width - 17 : width }}>{box.name}</div>
         </div>
-        <div
-          style={{
-            fontFamily: MONO,
-            fontSize: 9,
-            lineHeight: 1.15,
-            color: INK_3,
-            whiteSpace: "nowrap",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-          }}
-        >
-          {box.type}
-        </div>
+        {label.sub && <div style={{ ...TAG, maxWidth: width, marginTop: 2 }}>{box.type}</div>}
       </div>
     </div>
   );

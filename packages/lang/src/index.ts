@@ -1,6 +1,6 @@
 export * from "./types";
-export { SHAPES, SHAPE_INFO, DEFAULT_SHAPE, isShape, shapeOf } from "./shapes";
-export type { Shape } from "./shapes";
+export { SHAPES, SHAPE_INFO, SHAPE_GROUPS, DEFAULT_SHAPE, isShape, shapeOf } from "./shapes";
+export type { Shape, ShapeGroup } from "./shapes";
 export { parse, CURRENT_VERSION } from "./parser";
 export { lex, dedent } from "./lexer";
 export type { Token, TokenType } from "./lexer";

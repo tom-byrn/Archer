@@ -178,19 +178,30 @@ component svc {
 });
 
 describe("compileForAgent", () => {
-  it("strips layout and prepends the preamble", () => {
-    const out = compileForAgent(parse(fixture("acme.arch")).doc);
+  it("keeps the layout block and prepends the preamble", () => {
+    const doc = parse(fixture("acme.arch")).doc;
+    const out = compileForAgent(doc);
     expect(out).toContain("Archer architecture document");
-    expect(out).not.toContain("layout {");
     expect(out).toContain('arch "Acme SaaS" v0.2');
+    // Positions the author set come through unchanged; auto-layout adds the rest.
+    const set = format(doc).slice(format(doc).indexOf("layout {")).split("\n").filter((l) => l.includes("at: ["));
+    expect(set.length).toBeGreaterThan(0);
+    for (const line of set) expect(out).toContain(line);
   });
 
   it("output parses cleanly (preamble is all comments)", () => {
     const out = compileForAgent(parse(fixture("acme.arch")).doc);
     const { doc, diagnostics } = parse(out);
     expect(diagnostics).toEqual([]);
-    expect(doc.layout).toEqual([]);
     expect(doc.components).toHaveLength(6);
     expect(doc.planes.map((p) => p.id)).toEqual(["backend"]);
+  });
+
+  it("places every component, even one the source never positioned", () => {
+    const out = compileForAgent(
+      parse('arch "X" v0.2\ncomponent api {\n  component db\n}\ncomponent web\nweb -> api.db').doc,
+    );
+    const placed = parse(out).doc.layout.map((e) => e.path.join("."));
+    expect(placed.sort()).toEqual(["api", "api.db", "web"]);
   });
 });

@@ -104,7 +104,7 @@ dashboard -> api @http
     slug: "shapes",
     title: "Support Desk",
     summary:
-      "A `shape` in a component's body draws it as what it is: a person for the customer, a robot for the agent, a cloud for the model provider, a cylinder for the database. The type still picks the icon and color inside the outline, and anything without a shape stays a box. Shapes are for readers; an agent implementing the document can ignore them.",
+      "A `shape` in a component's body draws it as what it is: a person for the customer, people for the support team, a robot for the agent, a cloud for the model provider, a book for the help center, a cylinder for the database. The type still picks the icon and color inside the outline, and anything without a shape stays a box. Shapes are for readers; an agent implementing the document can ignore them.",
     features: ["shapes"],
     source: `arch "Support Desk" v0.2
 
@@ -126,7 +126,7 @@ component claude "Claude" @anthropic {
 }
 
 component articles "Help Articles" @knowledge_base {
-  shape document
+  shape book
 }
 
 component orders "Orders" @postgres {
@@ -138,7 +138,7 @@ component handoffs "Handoffs" @queue {
 }
 
 component team "Support Team" @user {
-  shape person
+  shape people
 }
 
 agent -> articles @reads : "search"

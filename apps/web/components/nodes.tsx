@@ -236,8 +236,11 @@ function Badges({ marks }: { marks: NodeMarks | undefined }) {
   );
 }
 
-const SrcHint = ({ src }: { src: string | undefined }) =>
-  src ? <Icon.Link className="ml-1 inline h-[10px] w-[10px] align-[-1px] text-ink-3" /> : null;
+const SrcHint = ({ src }: { src: readonly string[] | undefined }) =>
+  src?.length ? <Icon.Link className="ml-1 inline h-[10px] w-[10px] align-[-1px] text-ink-3" /> : null;
+
+/** Hover text for a node's sources: one per line. */
+const srcTitle = (src: readonly string[] | undefined): string | undefined => src?.join("\n");
 
 /**
  * A component with a shape: the outline fills the box, and the label sits
@@ -298,7 +301,7 @@ function ArchShapeNode({ id, data, width, height, shape }: NodeProps<ArchNode> &
           {!layout.sub && <SrcHint src={marks?.src} />}
         </div>
         {layout.sub && (
-          <div className="mt-0.5 max-w-full truncate text-xs leading-tight text-ink-3" title={marks?.src}>
+          <div className="mt-0.5 max-w-full truncate text-xs leading-tight text-ink-3" title={srcTitle(marks?.src)}>
             <span className={typed ? "mono" : undefined}>{sub}</span>
             <SrcHint src={marks?.src} />
           </div>
@@ -357,7 +360,7 @@ function ArchCardNode({ id, data, width, height }: NodeProps<ArchNode>) {
         <div className="arch-node-label truncate text-base font-semibold leading-tight text-ink">
           {data.label}
         </div>
-        <div className="truncate text-xs leading-tight text-ink-3" title={marks?.src}>
+        <div className="truncate text-xs leading-tight text-ink-3" title={srcTitle(marks?.src)}>
           <span className={data.typeTag ? "mono" : undefined}>
             {data.typeTag ?? "component"}
           </span>
@@ -489,8 +492,8 @@ export function ArchEdgeComponent({
   const payloads = data?.payloadCount ?? 0;
   const hasLabel = data?.protocol !== undefined || data?.label !== undefined || payloads > 0;
   // The chip stays hidden (and out of the pointer's way) until the edge, or a
-  // component it connects, is hovered, or the edge is selected.
-  const showLabel = selected || data?.lit === true;
+  // component it connects, is hovered or selected.
+  const showLabel = selected || data?.endSelected === true || data?.lit === true;
   // Chips of connections sharing this path stack, one row each.
   const [slot, of] = data?.stack ?? [0, 1];
   const chipY = labelY + (slot - (of - 1) / 2) * 22;

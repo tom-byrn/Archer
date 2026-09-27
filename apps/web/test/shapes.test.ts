@@ -9,7 +9,7 @@ function points(d: string): [number, number][] {
   const out: [number, number][] = [];
   let x = 0;
   let y = 0;
-  for (const [, cmd, args] of d.matchAll(/([MLHVAQZ])([^MLHVAQZ]*)/g)) {
+  for (const [, cmd, args] of d.matchAll(/([MLHVAQCZ])([^MLHVAQCZ]*)/g)) {
     const n = (args!.match(/-?\d*\.?\d+/g) ?? []).map(Number);
     if (cmd === "H") x = n[0]!;
     else if (cmd === "V") y = n[0]!;
@@ -17,6 +17,9 @@ function points(d: string): [number, number][] {
     else if (cmd === "Q") {
       out.push([n[0]!, n[1]!]);
       [x, y] = [n[2]!, n[3]!];
+    } else if (cmd === "C") {
+      out.push([n[0]!, n[1]!], [n[2]!, n[3]!]);
+      [x, y] = [n[4]!, n[5]!];
     } else if (cmd === "M" || cmd === "L") [x, y] = [n[0]!, n[1]!];
     out.push([x, y]);
   }
@@ -65,6 +68,31 @@ describe("shape geometry", () => {
     expect(bucket.l).toBeGreaterThan(4);
     expect(bucket.l).toBe(bucket.r);
     expect(shapeGeometry("cylinder", 160, 120).anchors).toEqual({ t: 1, r: 1, b: 1, l: 1 });
+  });
+
+  it("ends edges on the part of a shape that's there at each side's middle", () => {
+    const at = (shape: (typeof SHAPES)[number]) => shapeGeometry(shape, 160, 120).anchors;
+    // Into a chevron's notch, onto its point.
+    expect(at("chevron").l).toBeGreaterThan(20);
+    expect(at("chevron").r).toBe(1);
+    // A laptop's lid and an archive box are narrower than their base and lid.
+    for (const shape of ["laptop", "archive", "building", "parallelogram", "funnel", "bell"] as const) {
+      expect(at(shape).l, shape).toBeGreaterThan(4);
+      expect(at(shape).l, shape).toBeCloseTo(at(shape).r, 5);
+    }
+    // A module's tabs leave its left side clear at mid-height; a chip's pins leave every middle clear.
+    expect(at("module").l).toBeGreaterThan(4);
+    expect(new Set(Object.values(at("chip"))).size).toBe(1);
+    expect(at("chip").t).toBeGreaterThan(4);
+    // A speech bubble's tail and a memory module's contacts are off to the side of the bottom middle.
+    expect(at("chat").b).toBeGreaterThan(4);
+    expect(at("memory").b).toBeGreaterThan(4);
+    // A brain's hemispheres meet in a notch, top and bottom.
+    expect(at("brain").t).toBeGreaterThan(4);
+    expect(at("brain").b).toBeGreaterThan(4);
+    // Knobs, crowns and peaks reach the box.
+    for (const shape of ["puzzle", "clock", "building", "lock", "gauge", "cube"] as const) expect(at(shape).t, shape).toBe(1);
+    expect(at("puzzle").r).toBe(1);
   });
 });
 

@@ -54,8 +54,8 @@ export interface NodeMarks {
   touched?: boolean;
   /** Latest drift report says the code is out of sync with this component. */
   drift?: "missing" | "changed";
-  /** `src` field is set (renders a link affordance). */
-  src?: string;
+  /** The component's `src` entries, when it has any (renders a link affordance). */
+  src?: readonly string[];
 }
 
 export interface ArchNodeData extends Record<string, unknown> {
@@ -124,6 +124,8 @@ export interface ArchEdgeData extends Record<string, unknown> {
    * each other.
    */
   stack?: [number, number];
+  /** Set by the canvas while a component it connects is selected: its label chip shows. */
+  endSelected?: boolean;
 }
 
 export type ArchEdge = Edge<ArchEdgeData>;

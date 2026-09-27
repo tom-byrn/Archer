@@ -2,8 +2,8 @@ export const LANGUAGE_SPEC = `# Archer — Language Specification
 
 Archer is a textual language for describing software architecture. An \`.arch\` file is
 the **single source of truth** for an architecture document: the canvas renders it, edits
-on the canvas compile back into it, and a stripped form of it is handed to coding agents
-as an implementation spec.
+on the canvas compile back into it, and it is handed to coding agents, with a short
+reading guide, as an implementation spec.
 
 ## 1. Design principles
 
@@ -13,13 +13,15 @@ as an implementation spec.
    skimmable.
 2. **The file is the truth.** The canvas is a view. Every canvas edit is a file edit.
 3. **Semantics and presentation are quarantined from each other.** Everything an agent
-   needs lives in the semantic sections. Everything about pixels lives in the \`layout\`
-   block, which is machine-managed and stripped from agent exports. Agents MUST ignore
-   \`layout\` when reading and MUST NOT write it. Two things outside it are there for
-   readers, but belong to the document in every view, so agents write them like any
-   other field: a component's \`shape\` (§3.3) says what a thing *is* at a glance (a
-   cylinder is a store, a person is a user), and planes (§3.4) say which things belong
-   together (a frontend and a backend, a cloud account, a network).
+   needs to build lives in the semantic sections. Everything about pixels lives in the
+   \`layout\` block, which is machine-managed. Agent exports include it so the agent sees
+   the diagram the author drew, but it is never architecture: agents MAY read it for
+   context, MUST NOT implement anything from it, and SHOULD NOT write it unless asked
+   to arrange the diagram. Two things outside it are there for readers, but belong to
+   the document in every view, so agents write them like any other field: a
+   component's \`shape\` (§3.3) says what a thing *is* at a glance (a cylinder is a
+   store, a person is a user), and planes (§3.4) say which things belong together (a
+   frontend and a backend, a cloud account, a network).
 4. **Strict references, permissive semantics.** Every reference must resolve — a
    connection to an undeclared component is a validation error, never an auto-created
    node (deliberately the opposite of Eraser's parser). But the language imposes no
@@ -78,10 +80,11 @@ component <id> ["Display Name"] [@<type>] [{ <body> }]
     Without one, a component is a box.
   - \`desc "..."\` — human-readable description (shown in the detail view). One per
     component. Multiline via triple quotes: \`desc """ ... """\`.
-  - \`src "..."\` — where the component lives in code: a repo-relative path
-    (\`apps/api/src/billing\`) or a URL. Single-line string only, at most one per
-    component (a second one is error \`E004\`). Agents start here when implementing
-    or verifying the component; the app renders it as a link.
+  - \`src "..."\` — where the component lives in code: a repo-relative path to a
+    file or a folder (\`apps/api/src/billing\`, \`apps/api/src/billing/invoices.ts\`)
+    or a URL. Single-line string only. A component that lives in several places
+    has one \`src\` line for each, kept in the order written. Agents start here when
+    implementing or verifying the component; the app renders each one as a link.
   - Child \`component\` declarations — any component can hold components, arbitrarily
     deep, with JSON-object nesting semantics (§3.1).
   - Child \`plane\` declarations — regions on the component's own canvas (§3.4).
@@ -155,26 +158,63 @@ component db "Orders" @postgres {
 component support "Support Agent" @agent {
   shape robot
 }
+
+component nightly "Nightly Export" @worker {
+  shape clock
+}
 \`\`\`
 
-| shape      | usually stands for                               |
-| ---------- | ------------------------------------------------ |
-| \`box\`      | anything (the default)                           |
-| \`cylinder\` | databases and other stores                       |
-| \`cloud\`    | cloud providers, external services, the internet |
-| \`server\`   | servers, hosts and VMs                           |
-| \`robot\`    | AI agents, bots and automations                  |
-| \`person\`   | users, customers and teams                       |
-| \`queue\`    | queues, streams and logs                         |
-| \`bucket\`   | object storage and blobs                         |
-| \`browser\`  | web apps and sites                               |
-| \`phone\`    | mobile apps and devices                          |
-| \`document\` | files, reports and specs                         |
-| \`folder\`   | file shares and directories                      |
-| \`stack\`    | replicas, pools and fleets                       |
-| \`hexagon\`  | services and processing steps                    |
-| \`circle\`   | events, triggers and endpoints                   |
-| \`diamond\`  | decisions and routing                            |
+The shapes, in the groups the editor's pickers show them in:
+
+| group                  | shape           | usually stands for                               |
+| ---------------------- | --------------- | ------------------------------------------------ |
+| Basic                  | \`box\`           | anything (the default)                           |
+|                        | \`pill\`          | starts, ends and states                          |
+|                        | \`circle\`        | events, triggers and endpoints                   |
+|                        | \`diamond\`       | decisions and routing                            |
+|                        | \`hexagon\`       | services and processing steps                    |
+|                        | \`parallelogram\` | inputs, outputs and data                         |
+|                        | \`chevron\`       | steps and pipeline stages                        |
+|                        | \`subroutine\`    | functions and subprocesses                       |
+|                        | \`note\`          | notes and annotations                            |
+| People                 | \`person\`        | users, customers and roles                       |
+|                        | \`people\`        | teams, groups and audiences                      |
+|                        | \`robot\`         | AI agents, bots and automations                  |
+|                        | \`building\`      | companies, partners and on-prem sites            |
+| Apps & devices         | \`browser\`       | web apps and sites                               |
+|                        | \`phone\`         | mobile apps, tablets and devices                 |
+|                        | \`desktop\`       | desktop apps, consoles and workstations          |
+|                        | \`laptop\`        | laptops and developer machines                   |
+|                        | \`terminal\`      | CLIs, shells and scripts                         |
+|                        | \`chip\`          | hardware, IoT and embedded devices               |
+| Network & security     | \`cloud\`         | cloud providers, external services, the internet |
+|                        | \`globe\`         | the web, DNS, CDNs and regions                   |
+|                        | \`firewall\`      | firewalls, WAFs and network boundaries           |
+|                        | \`shield\`        | security, guardrails and policies                |
+|                        | \`lock\`          | auth, secrets and encryption                     |
+| Compute                | \`server\`        | servers, hosts and VMs                           |
+|                        | \`stack\`         | replicas, pools and fleets                       |
+|                        | \`cube\`          | containers, pods and build artifacts             |
+|                        | \`module\`        | modules, libraries and packages                  |
+|                        | \`gear\`          | workers, jobs and background tasks               |
+|                        | \`clock\`         | schedulers, cron jobs and timers                 |
+|                        | \`puzzle\`        | plugins, extensions and integrations             |
+|                        | \`brain\`         | AI models, LLMs and ML                           |
+| Data & storage         | \`cylinder\`      | databases and other stores                       |
+|                        | \`bucket\`        | object storage and blobs                         |
+|                        | \`table\`         | tables, datasets and spreadsheets                |
+|                        | \`memory\`        | caches and in-memory stores                      |
+|                        | \`archive\`       | backups, archives and cold storage               |
+|                        | \`document\`      | files, reports and specs                         |
+|                        | \`folder\`        | file shares and directories                      |
+|                        | \`book\`          | docs, wikis and knowledge bases                  |
+|                        | \`search\`        | search engines and indexes                       |
+|                        | \`funnel\`        | filters, pipelines and ETL                       |
+| Messaging & monitoring | \`queue\`         | queues, streams and logs                         |
+|                        | \`envelope\`      | email, inboxes and messages                      |
+|                        | \`chat\`          | chat, SMS and conversations                      |
+|                        | \`bell\`          | alerts, notifications and on-call                |
+|                        | \`gauge\`         | metrics, monitoring and SLOs                     |
 
 - A shape is independent of the type: the type still picks the icon and color drawn
   inside it, and any shape goes with any type (or none).
@@ -363,14 +403,16 @@ layout {
   canvas, or to the plane the item sits on — moving a plane moves what's on it.
 - Grid-based: all positions are integer grid cells, matching the app's snap-to-grid
   canvas (React Flow).
-- **Machine-managed.** The canvas writes it; humans and agents never do. A component or
-  plane with no layout entry — e.g. in a file an agent wrote or that was pasted in — is
-  positioned by the auto-layout engine on load, and its computed position is then
-  written back. A plane grows to hold what's on it.
+- **Machine-managed.** The canvas writes it; agents only when asked to arrange the
+  diagram. A component or plane with no layout entry — e.g. in a file an agent wrote or
+  that was pasted in — is positioned by the auto-layout engine on load, and its
+  computed position is then written back. A plane grows to hold what's on it.
 - Layout is always optional, never load-bearing: deleting the entire block yields the
   same architecture, auto-laid-out.
-- Agent guidance (stated in docs and in the export header): ignore \`layout\` when
-  reading; never emit it when writing.
+- Agent guidance (stated in docs and in the export header): read \`layout\` as the
+  author's arrangement — context for how they see the system, never something to
+  implement; leave it out when writing (surviving components keep their positions,
+  new ones are auto-placed) unless asked to arrange the diagram.
 
 ## 8. Validation
 
@@ -381,7 +423,7 @@ A document is **valid** when:
 | \`E001\` | file parses (header, declarations, fences)                       | error    |
 | \`E002\` | ids unique within their scope, components and planes together    | error    |
 | \`E003\` | payload names unique per component / per connection              | error    |
-| \`E004\` | at most one \`src\` and one \`shape\` per component                  | error    |
+| \`E004\` | at most one \`shape\` per component                                | error    |
 | \`E101\` | every connection endpoint resolves to a declared component       | error    |
 | \`E201\` | \`json\` / \`yaml\` / \`table\` payloads parse in their format         | error    |
 | \`W301\` | type tag resolves in the catalog                                 | warning  |
@@ -399,10 +441,10 @@ a dangling connection is never created in the first place.
 
 1. **Canonical form** — the formatter output the app always saves: fixed section order,
    sorted connections, normalized whitespace. Ensures clean diffs.
-2. **Agent export ("copy as prompt")** — canonical form with the \`layout\` block
-   stripped, prefixed by a short fixed header telling the agent what Archer is, how to
-   read it, and that this document is the implementation spec. One click, ends up on the
-   clipboard.
+2. **Agent export ("copy as prompt")** — canonical form with a complete \`layout\` block
+   (every component placed, as the canvas draws it), prefixed by a short fixed header
+   telling the agent what Archer is, how to read it (layout included), and that this
+   document is the implementation spec. One click, ends up on the clipboard.
 3. **Image export** — PNG of the current canvas view, for pasting alongside the code.
 
 ## 10. Full example
@@ -413,6 +455,7 @@ arch "Acme SaaS" v0.2
 component web "Next.js App" @vercel.nextjs {
   desc "App shell + marketing. RSC, deployed on Vercel."
   src "apps/web"
+  src "packages/ui"
 }
 
 plane backend "Backend" @vercel {

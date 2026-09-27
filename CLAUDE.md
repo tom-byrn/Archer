@@ -153,14 +153,19 @@ Router + React Flow + Convex).
   loads after first paint.
 - Shapes: a component's `shape` (spec §3.3; `shape cylinder` in its body) is,
   with planes, a visual field outside `layout`, so agents and repo files carry it.
-  The names live in `packages/lang/src/shapes.ts` (`SHAPES`, `SHAPE_INFO`;
-  add freely, never rename or remove one — documents store them; an unknown
-  one is `W304` and draws as a box). How each looks is
-  `apps/web/lib/shapes.ts`: pure geometry for any box size (outline paths,
-  label area, edge-anchor insets), shared by the canvas (`ArchShapeNode` in
-  `components/nodes.tsx`), `lib/svg.ts` and the pickers
-  (`components/ShapePicker.tsx`), so all of them draw the same thing. A
-  component with nested components keeps its shape; planes have none.
+  The names live in `packages/lang/src/shapes.ts` (`SHAPES`, `SHAPE_INFO`,
+  `SHAPE_GROUPS`; add freely, never rename or remove one — documents store
+  them; an unknown one is `W304` and draws as a box). `SHAPES` is in picker
+  order, group by group (basic, people, apps & devices, network & security,
+  compute, data & storage, messaging & monitoring), and the spec's §3.3 table
+  lists them the same way (`packages/mcp/test/languageSpec.test.ts` fails
+  until it does). How each looks is `apps/web/lib/shapes.ts`: pure geometry
+  for any box size (outline paths, label area, edge-anchor insets), shared by
+  the canvas (`ArchShapeNode` in `components/nodes.tsx`), `lib/svg.ts` and
+  the pickers (`components/ShapePicker.tsx`: the inspector's dropdown, which
+  "Change shape…" opens directly, and the palette's Shapes group), so all of
+  them draw the same thing. A component with nested components keeps its
+  shape; planes have none.
 - Planes and nesting (spec §3.1, §3.4, language v0.2): a `plane` is a titled
   region of a canvas, for readers only. It is transparent to paths (`api` on
   plane `backend` is still `api`), never a connection endpoint (`E101`), and
@@ -209,7 +214,9 @@ Router + React Flow + Convex).
   marked's tokens straight to React, never an HTML string. React Flow chrome
   lives in `components/canvas.css`.
 - Language/product specs live in `docs/`; keep `docs/language-spec.md` in
-  sync with `packages/*/src/languageSpec.ts` copies when the grammar changes.
+  sync with its copies (`packages/mcp/src/languageSpec.ts`,
+  `apps/web/lib/languageSpec.ts`) when the grammar changes — tests fail until
+  they match it exactly.
 - Auto-layout: `autoLayout` (`packages/lang/src/layout.ts`) arranges a doc
   with no positions (or `{ reset: true }`) with the layered engine in
   `layered.ts` (solver: `simplex.ts`); otherwise it keeps positions and places
