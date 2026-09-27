@@ -174,8 +174,9 @@ Router + React Flow + Convex).
   an item sits on (`canvasAt` adds them up). A drop onto a component nests,
   onto a plane puts it there (`lib/dropTarget.ts`). Planes never collapse:
   there is no plane-to-component conversion (a component with parts can become a
-  plane, not the reverse), so keep the two concepts apart. v0.1 files still parse:
-  `display` is dropped and the file is written back as v0.2.
+  plane, not the reverse), so keep the two concepts apart. There is no
+  support for older language versions: there are no users yet, so change the
+  grammar freely.
 - Brand kit: `/branding` (signed-in only, deliberately linked from nowhere —
   keep it that way) shows the logo, colors, type, radii, icons and ui.tsx
   primitives. Values are parsed from `app/globals.css` at build time

@@ -171,47 +171,6 @@ component c`);
   });
 });
 
-describe("parse: v0.1 documents", () => {
-  const OLD = `arch "X" v0.1
-component p { component x }
-component q { component y }
-component r
-layout {
-  p: { at: [0, 0], size: [12, 8], display: plane }
-  p.x: { at: [1, 2], size: [4, 3] }
-  q: { at: [14, 0], size: [4, 3], display: icon }
-  r: { at: [20, 0], size: [5, 3] }
-}`;
-
-  it("reads them as v0.2", () => {
-    const { doc, diagnostics } = parse(OLD);
-    expect(diagnostics).toEqual([]);
-    expect(doc.version).toBe("0.2");
-  });
-
-  it("gives a component v0.1 drew as a plane a box's size, and keeps the rest", () => {
-    const { doc } = parse(OLD);
-    const entry = (p: string) => doc.layout.find((e) => e.path.join(".") === p)!;
-    expect(entry("p").at).toEqual([0, 0]);
-    expect(entry("p").size).toBeUndefined(); // it was a 12×8 plane
-    expect(entry("q").size).toEqual([4, 3]); // it was already an icon
-    expect(entry("r").size).toEqual([5, 3]);
-    expect(entry("p.x").at).toEqual([1, 2]);
-    expect(Object.keys(entry("p"))).not.toContain("display");
-  });
-
-  it("counts a container without a display as a plane, as v0.1 drew it", () => {
-    const { doc } = parse(OLD.replace(", display: plane", ""));
-    expect(doc.layout.find((e) => e.path.join(".") === "p")!.size).toBeUndefined();
-  });
-
-  it("ignores a display in a v0.2 layout", () => {
-    const { doc, diagnostics } = parse(OLD.replace("v0.1", "v0.2"));
-    expect(diagnostics).toEqual([]);
-    expect(doc.layout.find((e) => e.path.join(".") === "p")!.size).toEqual([12, 8]);
-  });
-});
-
 describe("parse: edge cases", () => {
   it("handles a minimal document", () => {
     const { doc, diagnostics } = parse('arch "X" v0.2');

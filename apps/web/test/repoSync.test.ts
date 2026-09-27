@@ -49,16 +49,6 @@ describe("file source", () => {
     expect(sameArchitecture(FILE, edit(FILE, '"Orders"', '"Orders v2"'))).toBe(false);
   });
 
-  it("reads a v0.1 file as the same architecture, so an older file isn't a change", () => {
-    const old = FILE.replace("v0.2", "v0.1");
-    expect(sameArchitecture(old, DRAFT)).toBe(true);
-    expect(syncStatus({ path: "a.arch", base: { commit: "c", blob: "b", source: old, at: 0 } } as StoredFile, DRAFT)).toEqual({
-      kind: "synced",
-    });
-    // Publishing writes the current version.
-    expect(fileSource(old)).toBe(FILE);
-  });
-
   it("counts a plane as architecture", () => {
     const planed = edit(FILE, 'component api "API" {\n  desc "Orders"\n}', 'plane back "Back" {\n  component api "API" {\n    desc "Orders"\n  }\n}');
     expect(sameArchitecture(FILE, planed)).toBe(false);

@@ -1,5 +1,4 @@
 import { lex, type Token, type TokenType } from "./lexer";
-import { forEachScope } from "./scope";
 import { SHAPES } from "./shapes";
 import {
   PAYLOAD_FORMATS,
@@ -64,8 +63,6 @@ export function parse(source: string): ParseResult {
     connections: [],
     layout: [],
   };
-  /** `display` values from a v0.1 layout block (see upgradeV01). */
-  const legacyDisplay = new Map<string, string>();
 
   // --- header ---------------------------------------------------------------
   if (at("ident", "arch")) {
@@ -370,11 +367,6 @@ export function parse(source: string): ParseResult {
             const b = expect("number", "a number");
             expect("rbracket", "']'");
             entry[key.value] = [parseInt(a.value, 10), parseInt(b.value, 10)];
-          } else if (key.value === "display") {
-            // v0.1 drew a container as a plane or an icon. Components are
-            // always boxes now, so the value only matters to upgradeV01.
-            const v = expect("ident", "'icon' or 'plane'");
-            legacyDisplay.set(path.join("."), v.value);
           } else {
             fail(`Unknown layout property '${key.value}'.`, key.span);
           }
@@ -436,28 +428,7 @@ export function parse(source: string): ParseResult {
     }
   }
 
-  if (doc.version === "0.1") upgradeV01(doc, legacyDisplay);
   return { doc, diagnostics };
-}
-
-/**
- * Read a v0.1 document as v0.2. Its text means the same thing (v0.2 only
- * adds planes), but its layout was written for a canvas that drew every
- * component with nested components as a plane around them, unless the
- * layout said `display: icon`. v0.2 draws such a component as a box you open
- * to see inside, so the size it had as a plane goes and it gets a box's.
- * Positions stay: its children keep their arrangement inside it.
- */
-function upgradeV01(doc: ArchDoc, display: ReadonlyMap<string, string>): void {
-  const wasPlane = new Set<string>();
-  forEachScope(doc, (path, scope) => {
-    for (const c of scope.components) {
-      const key = [...path, c.id].join(".");
-      if (c.children.length > 0 && display.get(key) !== "icon") wasPlane.add(key);
-    }
-  });
-  for (const entry of doc.layout) if (wasPlane.has(entry.path.join("."))) delete entry.size;
-  doc.version = CURRENT_VERSION;
 }
 
 function describe(t: Token): string {

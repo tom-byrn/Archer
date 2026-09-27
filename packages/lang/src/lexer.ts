@@ -207,7 +207,7 @@ export function lex(source: string): { tokens: Token[]; diagnostics: Diagnostic[
       continue;
     }
 
-    // Version literal (`v0.1`) before identifiers.
+    // Version literal (`v0.2`) before identifiers.
     if (c === "v" && isDigit(peek(1))) {
       const m = /^v(\d+\.\d+)/.exec(source.slice(offset));
       if (m) {

@@ -61,13 +61,6 @@ arch "Acme Platform" v0.2
 \`v0.2\` is the **spec version** the file targets. Parsers refuse files with a major
 version they don't understand.
 
-A \`v0.1\` file still reads, as \`v0.2\`: its text means the same (planes are new in
-\`v0.2\`). What changes is how a component with nested components is drawn. \`v0.1\` drew it
-as a region around its children unless its layout entry said \`display: icon\`; \`v0.2\`
-draws every component as a box you open (§3.1). So the parser drops \`display\`, and the
-size such a component had as a region, and the canonical form writes the file back as
-\`v0.2\`. To keep a region, turn the component into a plane (§3.4).
-
 ## 3. Components
 
 \`\`\`
