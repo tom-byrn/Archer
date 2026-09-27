@@ -135,20 +135,24 @@ component users`);
     expect(doc.planes[0]).toMatchObject({ id: "empty", name: "Nothing yet", type: "network" });
   });
 
-  it("keeps plane usable as a component id and a payload name", () => {
+  it("keeps plane usable as a component id", () => {
     const { doc, diagnostics } = src(`component plane
-component api {
-  plane json \`\`\`
-  {"a": 1}
-  \`\`\`
-}
+component api
 plane -> api
 plane.x -> api`);
     expect(diagnostics).toEqual([]);
     expect(doc.planes).toEqual([]);
     expect(doc.components.map((c) => c.id)).toEqual(["plane", "api"]);
-    expect(doc.components[1]!.payloads.map((p) => p.name)).toEqual(["plane"]);
     expect(doc.connections.map((c) => c.source.join("."))).toEqual(["plane", "plane.x"]);
+  });
+
+  it("reserves plane in a body: a payload can't be named plane", () => {
+    const { diagnostics } = src(`component api {
+  plane json \`\`\`
+  {"a": 1}
+  \`\`\`
+}`);
+    expect(diagnostics.map((d) => d.code)).toContain("E001");
   });
 
   it("rejects what a plane can't hold and keeps going", () => {

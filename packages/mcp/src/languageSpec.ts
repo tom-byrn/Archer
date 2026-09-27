@@ -185,8 +185,6 @@ component support "Support Agent" @agent {
   is, and agents implementing a document may ignore it.
 - A name the language doesn't know is a warning (\`W304\`), not an error, and the component
   is drawn as a box, so files stay readable by tools that predate a newer shape.
-- A payload may still be named \`shape\`: a \`shape\` line followed by a format and a fenced
-  body is read as a payload, as it was before \`shape\` was a keyword.
 
 ### 3.4 Planes
 
@@ -247,8 +245,9 @@ Payloads attach structured or freeform data to a component — or to a connectio
 \`\`\`\`
 
 - \`<name>\` — snake_case identifier, unique per owner (\`schema\`, \`env\`, \`endpoints\`,
-  \`notes\`, \`message\`, …). Names are free; they exist so agents and the detail view can
-  refer to a payload by role.
+  \`notes\`, \`message\`, …). Names are free, except the body keywords (\`component\`,
+  \`plane\`, \`desc\`, \`src\`, \`shape\`); they exist so agents and the detail view can refer
+  to a payload by role.
 - \`<format>\` — one of:
 
   | format     | validation                                        |

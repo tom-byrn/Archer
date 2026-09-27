@@ -159,7 +159,7 @@ export function parse(source: string): ParseResult {
               });
             }
             node.src = value;
-          } else if (at("ident", "shape") && !startsPayload()) {
+          } else if (at("ident", "shape")) {
             const kwTok = next();
             const t = peek();
             if (t.type !== "ident") {
@@ -200,18 +200,10 @@ export function parse(source: string): ParseResult {
   };
 
   /**
-   * `<name> <format> ```…```` ahead: a payload, even one named like a body
-   * keyword (`shape json ```…````, from before `shape` was one).
-   */
-  const startsPayload = (): boolean =>
-    peek(1).type === "ident" && peek(2).type === "fence";
-
-  /**
    * `plane <id>` ahead. Checking for the id keeps `plane` usable as a
-   * component id in connections (`plane -> db`) and as a payload name.
+   * component id in connections (`plane -> db`).
    */
-  const startsPlane = (): boolean =>
-    at("ident", "plane") && peek(1).type === "ident" && !startsPayload();
+  const startsPlane = (): boolean => at("ident", "plane") && peek(1).type === "ident";
 
   /**
    * `plane <id> ["Name"] [@type] [{ desc, components, planes }]`. Its
