@@ -28,7 +28,6 @@ import {
   parse,
   planePathOf,
   planePaths,
-  planeToComponent,
   planeTree,
   relayoutComponents,
   removeComponent,
@@ -1011,16 +1010,6 @@ function EditorView({ initialSource, library, session }: EditorProps) {
       notify("Converted to a plane: what was inside is on it now");
     }
   };
-  const convertToComponent = (path: string) => {
-    const comp = mutateWith((d) => {
-      const r = planeToComponent(d, path.split("."));
-      return { doc: r.doc, value: r.path.join(".") };
-    });
-    if (comp) {
-      setSel(only(comp));
-      notify("Converted to a component: open it to see what was on the plane");
-    }
-  };
   /** Remove a plane, leaving what was on it where it is. */
   const ungroup = (path: string) => {
     mutate((d) => removePlane(d, path.split("."), { keepContents: true }));
@@ -1193,12 +1182,6 @@ function EditorView({ initialSource, library, session }: EditorProps) {
           },
         },
         "separator",
-        {
-          label: "Convert to component",
-          hint: "What's on it goes inside",
-          icon: <Icon.Nested />,
-          onSelect: () => convertToComponent(t.path),
-        },
         { label: "Ungroup", hint: "Remove the plane, keep what's on it", icon: <Icon.Ungroup />, onSelect: () => ungroup(t.path) },
         "separator",
         ...selectionActions(true).map((a) =>

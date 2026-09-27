@@ -65,7 +65,6 @@ export {
   groupInPlane,
   nestInComponent,
   componentToPlane,
-  planeToComponent,
   relayoutComponents,
   duplicateComponents,
   outermostItems,

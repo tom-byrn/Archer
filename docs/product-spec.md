@@ -97,10 +97,10 @@ agent** (canonical code, layout stripped, spec header prepended) and **Export PN
 - Structure: ⌘G puts the selection on a new plane sized around it, and "Nest in a
   new component" wraps it in a component instead; dropping components on a component
   nests them in it, "Move out" lifts them back out; "Add nested component" opens any
-  component with a new one inside; a plane and a component convert into each other;
-  dragging either end of a selected connection re-points it; the selected component
-  resizes from its handles (planes from the right and bottom, so what's on them
-  stays put).
+  component with a new one inside; a component with parts can become a plane, but a
+  plane never collapses into a component: it stays an open region; dragging either
+  end of a selected connection re-points it; the selected component resizes from
+  its handles (planes from the right and bottom, so what's on them stays put).
 - Right-click menus on components, connections and empty canvas; ⌘K runs commands,
   finds components and adds new ones; ⌘F finds a component anywhere in the document
   and brings it into view, opening the components it's inside as needed.

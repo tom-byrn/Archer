@@ -8,7 +8,6 @@ import {
   findPlane,
   isShape,
   pathToString,
-  planeToComponent,
   planeTree,
   removeComponent,
   removeConnection,
@@ -945,15 +944,6 @@ function PlaneInspector({
   const actions: (MenuItem | "separator")[] = readOnly
     ? []
     : [
-        {
-          label: "Convert to component",
-          hint: "What's on it goes inside",
-          icon: <Icon.Nested />,
-          onSelect: () => {
-            mutate((d) => planeToComponent(d, segments).doc);
-            onSelect({ kind: "component", path });
-          },
-        },
         {
           label: "Ungroup",
           hint: "Remove the plane, keep what's on it",

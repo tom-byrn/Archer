@@ -12,7 +12,6 @@ import {
   layoutMap,
   nestInComponent,
   parse,
-  planeToComponent,
   relayoutComponents,
   setConnectionEndpoints,
   validate,
@@ -307,49 +306,6 @@ api.db -> db`);
       /connections of its own/,
     );
     expect(() => componentToPlane(doc(`component b {\n  src "x"\n}`), ["b"])).toThrow(/src/);
-  });
-});
-
-describe("planeToComponent", () => {
-  it("nests what's on a plane in a new component, with longer paths", () => {
-    const d0 = doc(SAMPLE);
-    const { doc: d1, path } = planeToComponent(d0, ["p"]);
-    expect(path).toEqual(["p"]);
-    expect(d1.planes).toEqual([]);
-    expect(d1.components.map((c) => c.id)).toEqual(["web", "api", "p"]);
-    expect(findComponent(d1, ["p"])!.children.map((c) => [c.id, c.plane])).toEqual([
-      ["db", undefined],
-      ["cache", undefined],
-    ]);
-    expect(conns(d1)).toEqual(["api -> p.cache", "api -> p.db", "web -> api"]);
-    expect(at(d1, "p")).toEqual([12, 0]);
-    expect(size(d1, "p")).toEqual([4, 3]);
-    expect(at(d1, "p.db")).toEqual([1, 2]);
-    expect(validate(d1)).toEqual([]);
-  });
-
-  it("brings planes that were on it along, onto its inside", () => {
-    const d0 = doc(`plane outer {
-  plane inner {
-    component x
-  }
-  component y
-}`);
-    const { doc: d1 } = planeToComponent(d0, ["outer"]);
-    const outer = findComponent(d1, ["outer"])!;
-    expect(outer.planes.map((p) => [p.id, p.plane])).toEqual([["inner", undefined]]);
-    expect(outer.children.map((c) => [c.id, c.plane])).toEqual([
-      ["x", "inner"],
-      ["y", undefined],
-    ]);
-    expect(validate(d1)).toEqual([]);
-  });
-
-  it("round-trips with componentToPlane", () => {
-    const d0 = autoLayout(doc(SAMPLE));
-    const there = planeToComponent(d0, ["p"]).doc;
-    const back = componentToPlane(there, ["p"]).doc;
-    expect(format(back, { stripLayout: true })).toBe(format(d0, { stripLayout: true }));
   });
 });
 
