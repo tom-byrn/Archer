@@ -52,7 +52,7 @@ the draft (`planSync` in `apps/web/lib/repoSync.ts`):
 | head is base (or only formatting/comments changed) | nothing to do |
 | head already has the draft's architecture (e.g. your pull request merged) | base moves; the draft is published |
 | no draft | the document becomes head (positions kept, new components auto-placed) |
-| draft and head changed different things | merged automatically (`mergeDocs` in `packages/lang`: components match by path, payloads by name, connections by identity) |
+| draft and head changed different things | merged automatically (`mergeDocs` in `packages/lang`: components and planes match by path, payloads by name, connections by identity) |
 | both changed the same thing | **conflict**: the canvas shows who changed what; *Review* diffs the repository's version against your draft; *Keep mine* / *Keep theirs* settles it (the other side's non-conflicting changes stay either way) |
 | head doesn't validate, or the file was deleted | **sync problem**: the last good version stays until the file is fixed |
 

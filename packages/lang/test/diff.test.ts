@@ -11,7 +11,7 @@ import {
   validate,
 } from "../src/index";
 
-const HEADER = 'arch "X" v0.1\n';
+const HEADER = 'arch "X" v0.2\n';
 const doc = (src: string) => parse(src).doc;
 
 const BASE = doc(
@@ -35,7 +35,7 @@ backend.api -> stripe @http : "checkout"
 
 layout {
   web: { at: [0, 0], size: [4, 3] }
-  backend: { at: [6, 0], size: [12, 8], display: plane }
+  backend: { at: [6, 0], size: [4, 3] }
   backend.api: { at: [1, 2], size: [4, 3] }
   backend.db: { at: [7, 2], size: [4, 3] }
   stripe: { at: [20, 0], size: [4, 3] }
@@ -98,6 +98,9 @@ backend.api -> backend.cache @redis`,
       connectionsAdded: 2,
       connectionsRemoved: 2,
       connectionsChanged: 0,
+      planesAdded: 0,
+      planesRemoved: 0,
+      planesChanged: 0,
     });
   });
 
@@ -134,6 +137,46 @@ backend.api -> backend.cache @redis`,
       { path: "web", kind: "changed", fields: ["desc"] },
       { path: "backend.db", kind: "changed", fields: ["type"] },
     ]);
+  });
+
+  it("counts planes, what they're called, and which plane things sit on", () => {
+    const base = doc(`${HEADER}plane front "Front" {
+  component web
+}
+plane back "Back" {
+  component api
+}
+plane old "Old"
+component db`);
+    const next = doc(`${HEADER}plane front "Frontend" {
+  component web
+  component api
+}
+plane back "Back" {
+  plane data "Data" {
+    component db
+  }
+}`);
+    const d = diffDocs(base, next);
+    expect(d.planes).toEqual([
+      { path: "front", kind: "changed", fields: ["name"] },
+      { path: "data", kind: "added" },
+      { path: "old", kind: "removed" },
+    ]);
+    expect(d.components).toEqual([
+      { path: "api", kind: "changed", fields: ["plane"] },
+      { path: "db", kind: "changed", fields: ["plane"] },
+    ]);
+    expect(summarizeDiff(d)).toMatchObject({ changed: 2, planesAdded: 1, planesRemoved: 1, planesChanged: 1 });
+    expect(isEmptyDiff(diffDocs(base, doc(format(base))))).toBe(true);
+  });
+
+  it("sees a plane added with nothing else changed", () => {
+    const base = doc(`${HEADER}component a\ncomponent b`);
+    const next = doc(`${HEADER}plane p {\n  component a\n  component b\n}`);
+    const d = diffDocs(base, next);
+    expect(isEmptyDiff(d)).toBe(false);
+    expect(d.planes).toEqual([{ path: "p", kind: "added" }]);
   });
 
   it("connectionKey ignores position but not label/type/arrow", () => {
@@ -177,7 +220,6 @@ layout {
     // Layout entries come from base for removed paths.
     const lm = layoutMap(merged);
     expect(lm.get("backend")!.at).toEqual([6, 0]);
-    expect(lm.get("backend")!.display).toBe("plane");
     expect(lm.get("backend.db")!.at).toEqual([7, 2]);
     expect(lm.get("web")!.at).toEqual([0, 0]);
 
@@ -191,6 +233,42 @@ layout {
     expect(validate(merged).filter((d) => d.severity === "error")).toEqual([]);
     // The merged doc is a real document: it formats and re-parses cleanly.
     expect(parse(format(merged)).diagnostics).toEqual([]);
+  });
+
+  it("puts a removed plane back, with what was on it", () => {
+    const base = doc(`${HEADER}plane back "Back" {
+  component api
+  component db
+}
+component web
+web -> api
+layout {
+  back: { at: [6, 0], size: [12, 6] }
+  api: { at: [1, 2], size: [4, 3] }
+  db: { at: [7, 2], size: [4, 3] }
+  web: { at: [0, 0], size: [4, 3] }
+}`);
+    const next = doc(`${HEADER}component web\ncomponent api\nweb -> api`);
+    const { doc: merged, components, planes } = mergeForDiff(base, next);
+    expect(planes.get("back")).toBe("removed");
+    expect(components.get("db")).toBe("removed");
+    expect(components.get("api")).toBe("changed");
+    expect(merged.planes.map((p) => p.id)).toEqual(["back"]);
+    // db goes back on its plane; api (still there, now on no plane) stays put.
+    expect(merged.components.find((c) => c.id === "db")!.plane).toBe("back");
+    expect(merged.components.find((c) => c.id === "api")!.plane).toBeUndefined();
+    expect(layoutMap(merged).get("back")!.at).toEqual([6, 0]);
+    expect(validate(merged).filter((x) => x.severity === "error")).toEqual([]);
+  });
+
+  it("doesn't put back a plane whose id something else now has", () => {
+    const base = doc(`${HEADER}plane back {\n  component api\n}`);
+    const next = doc(`${HEADER}component back {\n  component api\n}`);
+    const { doc: merged, planes, components } = mergeForDiff(base, next);
+    expect(planes.has("back")).toBe(false);
+    expect(merged.planes).toEqual([]);
+    expect(components.get("back")).toBe("added");
+    expect(components.get("api")).toBe("removed");
   });
 
   it("keeps next's layout for surviving components and marks changed ones", () => {

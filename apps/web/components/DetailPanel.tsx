@@ -3,21 +3,25 @@
 import { useMemo, useRef, useState, type ReactNode } from "react";
 import {
   checkPayload,
-  effectiveDisplay,
+  componentToPlane,
   findComponent,
+  findPlane,
   isShape,
-  layoutMap,
   pathToString,
+  planeTree,
   removeComponent,
   removeConnection,
   removeConnectionPayload,
   removePayload,
+  removePlane,
   renameComponent,
+  renamePlane,
+  scopeAt,
   setComponentMeta,
   setConnectionMeta,
   setConnectionPayload,
-  setDisplay,
   setPayload,
+  setPlaneMeta,
   shapeOf,
   SHAPE_INFO,
   type ArchDoc,
@@ -26,6 +30,7 @@ import {
   type ConnectionNode,
   type PayloadFormat,
   type PayloadNode,
+  type PlaneNode,
 } from "@archer/lang";
 import { lookupType } from "@archer/catalog";
 import { EditorView } from "@codemirror/view";
@@ -62,6 +67,7 @@ import {
 
 export type Selection =
   | { kind: "component"; path: string }
+  | { kind: "plane"; path: string }
   | { kind: "connection"; key: string }
   | null;
 
@@ -425,7 +431,7 @@ export function ComponentDetails({
   library?: UserLibrary;
   /** Linked repository: turns relative `src` paths into GitHub links. */
   repo: RepoLink | null;
-  /** Show what's inside a container. */
+  /** Open it, to show what's nested in it. */
   onOpen?: () => void;
 }) {
   const custom = library?.items.find((t) => t.tag === node.type);
@@ -495,7 +501,7 @@ export function ComponentDetails({
             </ReadRow>
           )}
           {inside > 0 && (
-            <ReadRow label="Contains">
+            <ReadRow label="Inside">
               <span className="flex items-center gap-2">
                 {inside} component{inside === 1 ? "" : "s"}
                 {onOpen && (
@@ -515,6 +521,90 @@ export function ComponentDetails({
       </Section>
       <PayloadReadouts payloads={node.payloads} />
     </>
+  );
+}
+
+/**
+ * A plane as it reads: what it's called and for, and what's on it. The
+ * inspector shows this until "Edit"; the read-only viewer shows only this.
+ */
+export function PlaneDetails({
+  doc,
+  path,
+  plane,
+  library,
+  onSelect,
+}: {
+  doc: ArchDoc;
+  path: string;
+  plane: PlaneNode;
+  library?: UserLibrary;
+  /** Select something on it (unset: the list isn't clickable). */
+  onSelect?: (s: Selection) => void;
+}) {
+  const custom = library?.items.find((t) => t.tag === plane.type);
+  const typeName = custom?.name ?? lookupType(plane.type)?.name;
+  const scopePath = path.split(".").slice(0, -1);
+  const scope = scopeAt(doc, scopePath);
+  const on = scope ? planeTree(scope).itemsOn(planeTree(scope).plane(plane.id)) : [];
+  return (
+    <Section title="Plane">
+      <dl>
+        <ReadRow label="Type">
+          {plane.type === undefined ? (
+            <span className="text-ink-3">Untyped</span>
+          ) : (
+            <span className="flex min-w-0 items-center gap-1.5">
+              <Glyph tag={plane.type} color={custom?.color} glyph={custom?.glyph} size={14} className="shrink-0" />
+              {typeName && <span className="truncate">{typeName}</span>}
+              <span className="mono truncate text-xs text-ink-3">@{plane.type}</span>
+            </span>
+          )}
+        </ReadRow>
+        <ReadRow label="Description">
+          {plane.desc ? (
+            <p className="whitespace-pre-wrap break-words">{plane.desc}</p>
+          ) : (
+            <span className="text-ink-3">No description</span>
+          )}
+        </ReadRow>
+        <ReadRow label="On it">
+          {on.length === 0 ? (
+            <span className="text-ink-3">Nothing yet: drag components onto it</span>
+          ) : (
+            <span className="flex flex-col items-start gap-0.5">
+              {on.map((item) => {
+                const itemPath = [...scopePath, item.id].join(".");
+                const label = (
+                  <>
+                    {item.kind === "plane" ? (
+                      <Icon.Plane className="h-3.5 w-3.5 shrink-0 text-ink-3" />
+                    ) : (
+                      <Glyph tag={item.type} size={14} className="shrink-0" />
+                    )}
+                    <span className="truncate">{item.name ?? item.id}</span>
+                  </>
+                );
+                return onSelect ? (
+                  <button
+                    key={itemPath}
+                    type="button"
+                    onClick={() => onSelect({ kind: item.kind, path: itemPath })}
+                    className="flex max-w-full items-center gap-1.5 text-left hover:underline"
+                  >
+                    {label}
+                  </button>
+                ) : (
+                  <span key={itemPath} className="flex max-w-full items-center gap-1.5">
+                    {label}
+                  </span>
+                );
+              })}
+            </span>
+          )}
+        </ReadRow>
+      </dl>
+    </Section>
   );
 }
 
@@ -652,30 +742,51 @@ function ComponentInspector({
   const segments = path.split(".");
   const node = findComponent(doc, segments);
   if (!node) return null;
-  const entry = layoutMap(doc).get(path);
-  const display = effectiveDisplay(node, entry);
-  const isContainer = node.children.length > 0;
+  const inside = node.children.length;
   const custom = library.items.find((t) => t.tag === node.type);
   const accent = displayColor(custom?.color ?? lookupType(node.type)?.color, isDark) ?? "#64748b";
-  const openInside = isContainer && onDrillIn ? () => onDrillIn(path) : undefined;
+  // Any component opens, to show (or start) what's nested in it; the
+  // read-only views have nothing to show in an empty one.
+  const openInside = onDrillIn && (inside > 0 || !readOnly) ? () => onDrillIn(path) : undefined;
+  const ownConnections = doc.connections.some(
+    (c) => pathToString(c.source) === path || pathToString(c.target) === path,
+  );
+  const planeBlocker = ownConnections
+    ? "It has connections of its own"
+    : node.payloads.length > 0
+      ? "It has payloads"
+      : node.src !== undefined
+        ? "It has a source link"
+        : null;
   const actions: (MenuItem | "separator")[] = [
     ...(openInside
-      ? [{ label: "Open", hint: "Show what's inside", icon: <Icon.ChevronRight />, onSelect: openInside }]
+      ? [
+          {
+            label: "Open",
+            hint: inside > 0 ? `${inside} inside` : "Put components inside it",
+            icon: <Icon.Open />,
+            onSelect: openInside,
+          },
+        ]
       : []),
     ...(readOnly
       ? []
       : [
-          ...(isContainer
+          ...(inside > 0
             ? [
                 {
-                  label: display === "plane" ? "Collapse to icon" : "Expand to plane",
-                  icon: <Icon.Layout />,
-                  onSelect: () =>
-                    mutate((d) => setDisplay(d, segments, display === "plane" ? "icon" : "plane")),
+                  label: "Convert to plane",
+                  hint: planeBlocker ?? "What's inside goes on it",
+                  icon: <Icon.Plane />,
+                  disabled: planeBlocker !== null,
+                  onSelect: () => {
+                    mutate((d) => componentToPlane(d, segments).doc);
+                    onSelect({ kind: "plane", path });
+                  },
                 },
-                "separator" as const,
               ]
             : []),
+          "separator" as const,
           {
             label: "Delete component",
             icon: <Icon.Trash />,
@@ -725,7 +836,6 @@ function ComponentInspector({
           <ComponentForm
             node={node}
             path={path}
-            plane={isContainer && display === "plane"}
             mutate={mutate}
             onSelect={onSelect}
             library={library}
@@ -745,7 +855,6 @@ function ComponentInspector({
 function ComponentForm({
   node,
   path,
-  plane,
   mutate,
   onSelect,
   library,
@@ -755,8 +864,6 @@ function ComponentForm({
 }: {
   node: ComponentNode;
   path: string;
-  /** Drawn as a plane right now (an expanded container). */
-  plane: boolean;
   mutate: (fn: (d: ArchDoc) => ArchDoc) => void;
   onSelect: (s: Selection) => void;
   library: UserLibrary;
@@ -803,7 +910,6 @@ function ComponentForm({
         <PropertyRow label="Shape" align="start">
           <ShapePicker
             value={node.shape}
-            plane={plane}
             onChange={(shape) => mutate((d) => setComponentMeta(d, segments, { shape }))}
             autoOpen={openShapes}
             onAutoOpened={onShapeListOpened}
@@ -843,6 +949,170 @@ function ComponentForm({
         onRemove={(name) => mutate((d) => removePayload(d, segments, name))}
       />
     </>
+  );
+}
+
+/* ----------------------------------------------------------------- Plane */
+
+function PlaneInspector({
+  doc,
+  path,
+  editing,
+  onEditingChange,
+  readOnly,
+  mutate,
+  onSelect,
+  onClose,
+  library,
+}: {
+  doc: ArchDoc;
+  path: string;
+  editing: boolean;
+  onEditingChange: (editing: boolean) => void;
+  readOnly: boolean;
+  mutate: (fn: (d: ArchDoc) => ArchDoc) => void;
+  onSelect: (s: Selection) => void;
+  onClose: () => void;
+  library: UserLibrary;
+}) {
+  const isDark = useIsDark();
+  const segments = path.split(".");
+  const plane = findPlane(doc, segments);
+  if (!plane) return null;
+  const custom = library.items.find((t) => t.tag === plane.type);
+  const accent = displayColor(custom?.color ?? lookupType(plane.type)?.color, isDark) ?? "#64748b";
+  const actions: (MenuItem | "separator")[] = readOnly
+    ? []
+    : [
+        {
+          label: "Ungroup",
+          hint: "Remove the plane, keep what's on it",
+          icon: <Icon.Ungroup />,
+          onSelect: () => {
+            mutate((d) => removePlane(d, segments, { keepContents: true }));
+            onClose();
+          },
+        },
+        "separator",
+        {
+          label: "Delete plane and contents",
+          icon: <Icon.Trash />,
+          danger: true,
+          onSelect: () => {
+            mutate((d) => removePlane(d, segments));
+            onClose();
+          },
+        },
+      ];
+
+  return (
+    <div className="flex h-full flex-col">
+      <div className="flex h-11 shrink-0 items-center gap-2.5 border-b border-line px-3">
+        {plane.type === undefined ? (
+          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-sm bg-surface-2 text-ink-2">
+            <Icon.Plane className="h-3.5 w-3.5" />
+          </span>
+        ) : (
+          <GlyphSwatch
+            tag={plane.type}
+            color={custom?.color}
+            glyph={custom?.glyph}
+            box={24}
+            size={15}
+            background={`${accent}1a`}
+            className="rounded-sm"
+          />
+        )}
+        <div className="min-w-0 flex-1 leading-tight" title={plane.name ?? plane.id}>
+          <div className="truncate text-base font-semibold">{plane.name ?? plane.id}</div>
+          <div className="mono truncate text-xs text-ink-3">plane · {path}</div>
+        </div>
+        {!readOnly && <EditToggle editing={editing} onChange={onEditingChange} />}
+        {actions.length > 0 && (
+          <Menu
+            trigger={({ open, toggle }) => (
+              <IconButton label="More" active={open} onClick={toggle}>
+                <Icon.More />
+              </IconButton>
+            )}
+            items={actions}
+          />
+        )}
+        <IconButton label="Close" onClick={onClose}>
+          <Icon.Close />
+        </IconButton>
+      </div>
+
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        {editing ? (
+          <PlaneForm plane={plane} path={path} mutate={mutate} onSelect={onSelect} library={library} />
+        ) : (
+          <PlaneDetails doc={doc} path={path} plane={plane} library={library} onSelect={onSelect} />
+        )}
+      </div>
+    </div>
+  );
+}
+
+/** The plane's form: each field commits as you leave it. */
+function PlaneForm({
+  plane,
+  path,
+  mutate,
+  onSelect,
+  library,
+}: {
+  plane: PlaneNode;
+  path: string;
+  mutate: (fn: (d: ArchDoc) => ArchDoc) => void;
+  onSelect: (s: Selection) => void;
+  library: UserLibrary;
+}) {
+  const segments = path.split(".");
+  return (
+    <Section title="Plane" className="pb-5">
+      <PropertyRow label="Name">
+        <CommitInput
+          defaultValue={plane.name ?? ""}
+          placeholder={plane.id}
+          onCommit={(v) => mutate((d) => setPlaneMeta(d, segments, { name: v === "" ? null : v }))}
+        />
+      </PropertyRow>
+      <PropertyRow label="ID" align="start">
+        <CommitInput
+          mono
+          defaultValue={plane.id}
+          validate={(v) => (ID_RE.test(v) ? null : "snake_case required")}
+          onCommit={(v) => {
+            mutate((d) => renamePlane(d, segments, v));
+            onSelect({ kind: "plane", path: [...segments.slice(0, -1), v].join(".") });
+          }}
+        />
+      </PropertyRow>
+      <PropertyRow label="Type">
+        <TypeCombobox
+          value={plane.type}
+          library={library}
+          onChange={(tag) => mutate((d) => setPlaneMeta(d, segments, { type: tag ?? null }))}
+        />
+      </PropertyRow>
+      <PropertyRow label="Description" align="start">
+        <TextArea
+          key={`${path}-desc`}
+          defaultValue={plane.desc ?? ""}
+          placeholder="What does this plane group?"
+          rows={4}
+          onBlur={(e) => {
+            const v = e.target.value;
+            if (v === (plane.desc ?? "")) return;
+            mutate((d) => setPlaneMeta(d, segments, { desc: v === "" ? null : v }));
+          }}
+        />
+      </PropertyRow>
+      <p className="pl-[100px] text-xs text-ink-3">
+        A plane groups what's on it for readers. It isn't part of paths, and connections never end on it.
+      </p>
+    </Section>
   );
 }
 
@@ -1004,7 +1274,8 @@ function ConnectionForm({
 
 /** Several things selected at once: what they are, and what can be done to all of them. */
 export interface MultiSelection {
-  components: { path: string; name: string; type?: string }[];
+  /** Selected components and planes. */
+  components: { path: string; name: string; type?: string; plane?: boolean }[];
   connections: number;
   actions: (MenuItem | "separator")[];
 }
@@ -1018,9 +1289,11 @@ function MultiInspector({
   onSelect: (s: Selection) => void;
   onClose: () => void;
 }) {
+  const planes = multi.components.filter((c) => c.plane).length;
+  const components = multi.components.length - planes;
   const parts = [
-    multi.components.length > 0 &&
-      `${multi.components.length} component${multi.components.length === 1 ? "" : "s"}`,
+    components > 0 && `${components} component${components === 1 ? "" : "s"}`,
+    planes > 0 && `${planes} plane${planes === 1 ? "" : "s"}`,
     multi.connections > 0 && `${multi.connections} connection${multi.connections === 1 ? "" : "s"}`,
   ].filter(Boolean);
   return (
@@ -1061,17 +1334,21 @@ function MultiInspector({
           </div>
         </Section>
         {multi.components.length > 0 && (
-          <Section title="Components">
+          <Section title={planes > 0 ? "Selected" : "Components"}>
             <div className="flex flex-col">
               {multi.components.map((c) => (
                 <button
                   key={c.path}
                   type="button"
                   title="Select only this one"
-                  onClick={() => onSelect({ kind: "component", path: c.path })}
+                  onClick={() => onSelect({ kind: c.plane ? "plane" : "component", path: c.path })}
                   className="flex h-8 w-full items-center gap-2 rounded-md px-2 text-left transition-colors duration-75 hover:bg-surface-2"
                 >
-                  <Glyph tag={c.type} size={14} />
+                  {c.plane && c.type === undefined ? (
+                    <Icon.Plane className="h-3.5 w-3.5 shrink-0 text-ink-3" />
+                  ) : (
+                    <Glyph tag={c.type} size={14} />
+                  )}
                   <span className="min-w-0 flex-1 truncate text-sm text-ink">{c.name}</span>
                   <span className="mono shrink-0 truncate text-xs text-ink-3">{c.path}</span>
                 </button>
@@ -1115,7 +1392,7 @@ export function DetailPanel({
   readOnly?: boolean;
   mutate: (fn: (d: ArchDoc) => ArchDoc) => void;
   onSelect: (s: Selection) => void;
-  /** Focus the canvas on a container's children (the touch stand-in for double-click). */
+  /** Open a component on the canvas, to show what's nested in it (the touch stand-in for double-click). */
   onDrillIn?: (path: string) => void;
   library: UserLibrary;
   /** Linked repository: turns relative `src` paths into GitHub links. */
@@ -1131,6 +1408,19 @@ export function DetailPanel({
     <SidePanel resizable defaultWidth={480}>
       {selection === null ? (
         <MultiInspector multi={multi!} onSelect={onSelect} onClose={() => onSelect(null)} />
+      ) : selection.kind === "plane" ? (
+        <PlaneInspector
+          key={selection.path}
+          doc={doc}
+          path={selection.path}
+          editing={form}
+          onEditingChange={onEditingChange}
+          readOnly={readOnly}
+          mutate={mutate}
+          onSelect={onSelect}
+          onClose={() => onSelect(null)}
+          library={library}
+        />
       ) : selection.kind === "component" ? (
         <ComponentInspector
           key={selection.path}

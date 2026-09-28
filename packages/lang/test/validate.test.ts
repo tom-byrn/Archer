@@ -5,7 +5,7 @@ const doc = (src: string) => parse(src).doc;
 const codes = (src: string, opts?: Parameters<typeof validate>[1]) =>
   validate(doc(src), opts).map((d) => d.code);
 
-const HEADER = 'arch "X" v0.1\n';
+const HEADER = 'arch "X" v0.2\n';
 
 describe("validate", () => {
   it("accepts a valid document", () => {
@@ -116,5 +116,49 @@ describe("validate", () => {
     const normalized = normalizeLayout(doc(src));
     expect(normalized.layout).toHaveLength(1);
     expect(normalized.layout[0]!.at).toEqual([5, 5]);
+  });
+});
+
+describe("validate: planes", () => {
+  it("accepts components on planes, connected across them by their own paths", () => {
+    expect(
+      codes(HEADER + "plane front {\n  component web\n}\nplane back {\n  component api { component x }\n}\nweb -> api.x"),
+    ).toEqual([]);
+  });
+
+  it("E002: a plane shares its scope's ids with the components in it", () => {
+    const clash = validate(doc(HEADER + "plane api\ncomponent api"));
+    expect(clash.map((d) => d.code)).toEqual(["E002"]);
+    expect(clash[0]!.message).toMatch(/component and a plane/);
+    // Across planes of one scope too: planes don't add a level.
+    expect(codes(HEADER + "plane p {\n  component x\n}\nplane q {\n  component x\n}")).toEqual(["E002"]);
+    expect(codes(HEADER + "plane p\nplane p")).toEqual(["E002"]);
+    // A component's inside is its own scope.
+    expect(codes(HEADER + "plane p\ncomponent a { plane p\ncomponent p_2 }")).toEqual([]);
+  });
+
+  it("E101: a connection can't end on a plane", () => {
+    const d = validate(doc(HEADER + "plane back {\n  component api\n}\ncomponent web\nweb -> back"));
+    expect(d.map((x) => x.code)).toEqual(["E101"]);
+    expect(d[0]!.message).toMatch(/'back' is a plane/);
+  });
+
+  it("E101: points out a path written through a plane", () => {
+    const d = validate(doc(HEADER + "plane back {\n  component api { component x }\n}\ncomponent web\nweb -> back.api.x"));
+    expect(d.map((x) => x.code)).toEqual(["E101"]);
+    expect(d[0]!.message).toMatch(/did you mean 'api.x'/);
+  });
+
+  it("W301 on a plane's unknown type", () => {
+    const d = validate(doc(HEADER + "plane p @nope\nplane q @aws"), { knownTypes: new Set(["aws"]) });
+    expect(d.map((x) => x.code)).toEqual(["W301"]);
+    expect(d[0]!.message).toMatch(/plane 'p'/);
+  });
+
+  it("W303 knows planes' layout entries, top-level and inside components", () => {
+    const src =
+      HEADER + "plane p\ncomponent c { plane q }\nlayout {\n  p: { at: [0, 0] }\n  c.q: { at: [1, 1] }\n  c.r: { at: [1, 1] }\n}";
+    expect(codes(src)).toEqual(["W303"]);
+    expect(normalizeLayout(doc(src)).layout.map((l) => l.path.join("."))).toEqual(["p", "c.q"]);
   });
 });

@@ -1,13 +1,16 @@
 import {
   autoLayout,
+  forEachScope,
   format,
   layoutMap,
   normalizeLayout,
   parse,
   pathToString,
+  planeTree,
   validate,
   type ArchDoc,
   type Diagnostic,
+  type LayoutEntry,
 } from "@archer/lang";
 import { knownConnectionTypes, knownTypes } from "@archer/catalog";
 
@@ -45,16 +48,36 @@ export function analyzeSource(source: string, types: Set<string>): Analysis {
   };
 }
 
+/** The plane each component and plane sits on, by path ("" for none). */
+function planesOf(doc: ArchDoc): Map<string, string> {
+  const out = new Map<string, string>();
+  forEachScope(doc, (path, scope) => {
+    const tree = planeTree(scope);
+    for (const x of [...scope.components, ...scope.planes])
+      out.set([...path, x.id].join("."), tree.planeOf(x)?.id ?? "");
+  });
+  return out;
+}
+
 /**
  * Carry the previous document's layout over to a new revision: any component
- * that still exists and has no explicit entry in the new source keeps its old
- * position/size/display. Then auto-layout completes whatever is left.
+ * or plane that still exists and has no explicit entry in the new source keeps
+ * its old position and size. An `at` is relative to the plane an item sits on,
+ * so one that moved onto another plane (or off one) keeps only its size and is
+ * placed afresh. Then auto-layout completes whatever is left.
  */
 export function mergeLayout(previous: ArchDoc, next: ArchDoc): ArchDoc {
   const nextEntries = new Set(next.layout.map((e) => pathToString(e.path)));
-  const inherited = [...layoutMap(normalizeLayout(previous)).values()].filter(
-    (e) => !nextEntries.has(pathToString(e.path)),
-  );
+  const before = planesOf(previous);
+  const after = planesOf(next);
+  const inherited = [...layoutMap(normalizeLayout(previous)).values()]
+    .filter((e) => !nextEntries.has(pathToString(e.path)))
+    .map((e): LayoutEntry => {
+      const key = pathToString(e.path);
+      if (!after.has(key) || before.get(key) === after.get(key)) return e;
+      const { at: _moved, ...rest } = e;
+      return rest;
+    });
   return autoLayout({ ...next, layout: [...next.layout, ...inherited] });
 }
 

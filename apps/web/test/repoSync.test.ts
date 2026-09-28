@@ -13,7 +13,7 @@ import {
   type StoredFile,
 } from "../lib/repoSync";
 
-const FILE = `arch "Shop" v0.1
+const FILE = `arch "Shop" v0.2
 
 component web "Web" {
   desc "Storefront"
@@ -47,6 +47,12 @@ describe("file source", () => {
     expect(sameArchitecture(FILE, DRAFT)).toBe(true);
     expect(sameArchitecture(FILE, `${FILE}\n# a comment\n`)).toBe(true);
     expect(sameArchitecture(FILE, edit(FILE, '"Orders"', '"Orders v2"'))).toBe(false);
+  });
+
+  it("counts a plane as architecture", () => {
+    const planed = edit(FILE, 'component api "API" {\n  desc "Orders"\n}', 'plane back "Back" {\n  component api "API" {\n    desc "Orders"\n  }\n}');
+    expect(sameArchitecture(FILE, planed)).toBe(false);
+    expect(fileSource(planed)).toContain('plane back "Back" {');
   });
 });
 
@@ -90,8 +96,8 @@ describe("planSync", () => {
   });
 
   it("merges against an empty base when the document never had the file", () => {
-    const draft = format(parse('arch "Shop" v0.1\n\ncomponent web "Web"\n').doc);
-    const head = 'arch "Shop" v0.1\n\ncomponent api "API"\n';
+    const draft = format(parse('arch "Shop" v0.2\n\ncomponent web "Web"\n').doc);
+    const head = 'arch "Shop" v0.2\n\ncomponent api "API"\n';
     const plan = planSync({ base: null, draft, head });
     expect(plan.action).toBe("merge");
     if (plan.action === "merge") expect(parse(plan.source).doc.components.map((c) => c.id)).toEqual(["api", "web"]);
@@ -160,8 +166,12 @@ describe("publish text", () => {
   });
 
   it("describes summaries and conflicts in words", () => {
-    expect(describeChanges({ added: 1, removed: 0, changed: 2, connectionsAdded: 1, connectionsRemoved: 0, connectionsChanged: 0 })).toBe(
+    const none = { planesAdded: 0, planesRemoved: 0, planesChanged: 0 };
+    expect(describeChanges({ added: 1, removed: 0, changed: 2, connectionsAdded: 1, connectionsRemoved: 0, connectionsChanged: 0, ...none })).toBe(
       "1 component added, 2 components changed, connection 1 added",
+    );
+    expect(describeChanges({ added: 0, removed: 0, changed: 1, connectionsAdded: 0, connectionsRemoved: 0, connectionsChanged: 0, ...none, planesAdded: 2 })).toBe(
+      "1 component changed, 2 planes added",
     );
     expect(conflictLine({ kind: "connection", path: "web|->|api|http|", reason: "removed on one side, changed on the other" })).toBe(
       "web -> api: removed on one side, changed on the other",

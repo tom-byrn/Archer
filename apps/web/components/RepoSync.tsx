@@ -31,9 +31,17 @@ import {
   type StoredFile,
   type SyncStatus,
 } from "@/lib/repoSync";
-import { findComponent, parse } from "@archer/lang";
+import { findItem, parse } from "@archer/lang";
 
-const FIELD_LABEL: Record<string, string> = { desc: "description", src: "source path", type: "type", name: "name", payloads: "payloads" };
+const FIELD_LABEL: Record<string, string> = {
+  desc: "description",
+  src: "source path",
+  type: "type",
+  name: "name",
+  payloads: "payloads",
+  shape: "shape",
+  plane: "plane",
+};
 import {
   Button,
   Chip,
@@ -388,9 +396,9 @@ export function PublishDialog({
 
   const current = parse(sync.source).doc;
   const previous = file.base ? parse(file.base.source).doc : null;
-  const componentLabel = (path: string) => {
+  const itemLabel = (path: string) => {
     const segs = path.split(".");
-    const node = findComponent(current, segs) ?? (previous ? findComponent(previous, segs) : undefined);
+    const node = findItem(current, segs) ?? (previous ? findItem(previous, segs) : undefined);
     return node?.name && node.name !== node.id ? `${node.name} (${path})` : path;
   };
 
@@ -411,11 +419,12 @@ export function PublishDialog({
   const rows = diff
     ? [
         ...(diff.title ? [{ key: "title", tone: "warn" as const, mark: "~", text: `Title → "${diff.title.to}"` }] : []),
-        ...diff.components.map((c) => ({
-          key: c.path,
+        // A component turned into a plane is removed under the same path the plane is added at.
+        ...[...diff.components, ...diff.planes.map((p) => ({ ...p, isPlane: true }))].map((c) => ({
+          key: `${"isPlane" in c ? "plane" : "component"}:${c.path}`,
           tone: c.kind === "added" ? ("accent" as const) : c.kind === "removed" ? ("danger" as const) : ("warn" as const),
           mark: c.kind === "added" ? "+" : c.kind === "removed" ? "−" : "~",
-          text: `${componentLabel(c.path)}${c.kind === "changed" ? ` · ${c.fields?.map((f) => FIELD_LABEL[f] ?? f).join(", ")}` : ""}`,
+          text: `${"isPlane" in c ? "Plane " : ""}${itemLabel(c.path)}${c.kind === "changed" ? ` · ${c.fields?.map((f) => FIELD_LABEL[f] ?? f).join(", ")}` : ""}`,
         })),
         ...diff.connections.map((c) => ({
           key: c.key,

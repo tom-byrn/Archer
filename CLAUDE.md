@@ -45,7 +45,7 @@ Router + React Flow + Convex).
   server-only service credential `svc_<ARCHER_SERVICE_SECRET>.<userId>` passed
   in the functions' `apiKey` argument (legacy name; `convex/access.ts` →
   `effectiveUser`); the same secret must be set on the Convex deployment and
-  in the web env. `registerArcherTools(server)` registers 26 tools. The CLI
+  in the web env. `registerArcherTools(server)` registers 25 tools. The CLI
   (`archer login`) runs the same OAuth flow as any MCP client (DCR + PKCE +
   localhost redirect, client name "Archer CLI"), stores the session in
   `~/.archer/auth.json`, and calls the tools; the JSON shapes it reads are
@@ -110,10 +110,11 @@ Router + React Flow + Convex).
   `useLocalLibrary`, and leaving the page discards every edit. Anything new
   that saves, shares or exports goes behind `stored` in the editor so the
   sandbox never gets it; everything else reaches the sandbox automatically.
-  The editor owns the canvas selection (component paths + connection keys) and
-  `ArchCanvas` mirrors it onto React Flow's `selected` flags; edits that span
-  several components (copy/paste fragments, duplicate, group, partial
-  re-layout, re-pointing an edge) are pure transforms in `packages/lang`
+  The editor owns the canvas selection (component and plane paths + connection
+  keys) and `ArchCanvas` mirrors it onto React Flow's `selected` flags; edits
+  that span several components (copy/paste fragments, duplicate, group on a
+  plane, nest, partial re-layout, re-pointing an edge) are pure transforms in
+  `packages/lang`
   (`transform.ts`), run through `useArchDoc`'s `mutate`/`mutateWith`. The
   clipboard format is plain `.arch` text (`extractFragment`/`insertFragment`).
 - Samples: "From sample" on the dashboard opens `components/SampleDialog.tsx`,
@@ -150,8 +151,8 @@ Router + React Flow + Convex).
   sandbox and the OG image keep glyphs (`test/logos.test.ts`), custom types
   never get logos, and the logo chunk (~190 KB gzipped, mostly AWS's PNGs)
   loads after first paint.
-- Shapes: a component's `shape` (spec §3.3; `shape cylinder` in its body) is
-  the one visual field outside `layout`, so agents and repo files carry it.
+- Shapes: a component's `shape` (spec §3.3; `shape cylinder` in its body) is,
+  with planes, a visual field outside `layout`, so agents and repo files carry it.
   The names live in `packages/lang/src/shapes.ts` (`SHAPES`, `SHAPE_INFO`,
   `SHAPE_GROUPS`; add freely, never rename or remove one — documents store
   them; an unknown one is `W304` and draws as a box). `SHAPES` is in picker
@@ -163,8 +164,24 @@ Router + React Flow + Convex).
   the canvas (`ArchShapeNode` in `components/nodes.tsx`), `lib/svg.ts` and
   the pickers (`components/ShapePicker.tsx`: the inspector's dropdown, which
   "Change shape…" opens directly, and the palette's Shapes group), so all of
-  them draw the same thing. A plane stays a plane; its shape shows once it's
-  collapsed to an icon.
+  them draw the same thing. A component with nested components keeps its
+  shape; planes have none.
+- Planes and nesting (spec §3.1, §3.4, language v0.2): a `plane` is a titled
+  region of a canvas, for readers only. It is transparent to paths (`api` on
+  plane `backend` is still `api`), never a connection endpoint (`E101`), and
+  shares its scope's ids with the components. The AST keeps components flat per
+  scope with `plane?: string`; `planeTree(scope)` (`packages/lang/src/scope.ts`)
+  resolves membership and the canonical order. Any component can hold
+  components: its canvas draws it as a box with a count badge, and opening it
+  (double-click; the editor's `focus`) shows its own canvas, with the outside
+  components its parts connect to as context nodes (`ctx:<path>`,
+  `lib/toFlow.ts`). Layout is per canvas and an `at` is relative to the plane
+  an item sits on (`canvasAt` adds them up). A drop onto a component nests,
+  onto a plane puts it there (`lib/dropTarget.ts`). Planes never collapse:
+  there is no plane-to-component conversion (a component with parts can become a
+  plane, not the reverse), so keep the two concepts apart. There is no
+  support for older language versions: there are no users yet, so change the
+  grammar freely.
 - Brand kit: `/branding` (signed-in only, deliberately linked from nowhere —
   keep it that way) shows the logo, colors, type, radii, icons and ui.tsx
   primitives. Values are parsed from `app/globals.css` at build time

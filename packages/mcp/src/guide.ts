@@ -1,6 +1,6 @@
 import { LANGUAGE_SPEC } from "./languageSpec";
 
-export const BRIEF = `Archer is an architecture-design tool: a drag-and-drop canvas for humans and a strict text language (".arch" documents) for agents, compiling losslessly into each other. Through this MCP server you can do everything a human can do in the app: create/read/update/delete projects, design systems (components, connections, nested containers, validated schema payloads), define custom component types, and control presentation.`;
+export const BRIEF = `Archer is an architecture-design tool: a drag-and-drop canvas for humans and a strict text language (".arch" documents) for agents, compiling losslessly into each other. Through this MCP server you can do everything a human can do in the app: create/read/update/delete projects, design systems (components nested to any depth, planes that group them, connections, validated schema payloads), define custom component types, and control presentation.`;
 
 export const GUIDE = `# Archer MCP Server — Agent Guide
 
@@ -14,8 +14,9 @@ ${BRIEF}
 2. **Everything semantic is in the source; everything visual is in the
    \`layout\` block** at the end of the document. You normally never write
    \`layout\` — the server auto-completes it and preserves the human's manual
-   arrangement when you update (see "Layout rules" below). The one visual
-   field you do write is a component's \`shape\` (see "Shapes" below).
+   arrangement when you update (see "Layout rules" below). What you do write
+   for readers is a component's \`shape\` and the planes that group
+   components (see "Shapes" and "Group with planes" below).
 3. **The language is strict.** Writes are rejected while the document has
    errors (unresolved connection endpoints, invalid payloads, duplicate ids).
    The workflow is: write → get diagnostics → fix → retry. Diagnostics carry
@@ -75,8 +76,8 @@ fails, call \`get_workspace_info\` and relay what it reports.
 ### Review what changed
 1. \`get_history\` lists revisions newest-first with who saved (the human, or an
    agent by its client name), when, their one-line summary, and counts of
-   components/connections added, removed and changed (a connection counts as
-   changed when only its payloads differ).
+   components, planes and connections added, removed and changed (a
+   connection counts as changed when only its payloads differ).
 2. \`diff_project\` returns the structured diff — by default the latest change
    (current document vs. the revision before it); pass revision ids for any
    two points. \`get_revision\` fetches a past source; to roll back, send it to
@@ -130,7 +131,8 @@ The full language specification is at the end of this guide. Key habits:
 
 - **Ids** are snake_case and unique per scope; display names go in quotes:
   \`component api_gw "API Gateway" @aws.api_gateway\`.
-- **Reference by dot-path** from the root: \`backend.api -> backend.db @sql\`.
+- **Reference by dot-path** from the root: \`orders.api -> orders.db @sql\`.
+  Planes are not part of paths.
 - **Never point a connection at an undeclared component** — that is error
   E101 and blocks the write. Declare every endpoint.
 - **Put real detail in payloads.** A Postgres component should carry its
@@ -151,7 +153,7 @@ The full language specification is at the end of this guide. Key habits:
   request/response shape on an \`@http\` call, the event names on an
   \`@event\` bus. That is where the next agent looks for the interface:
 
-      backend.api -> orders_queue @queue : "order placed" {
+      orders.api -> order_events @queue : "order placed" {
         message json \`\`\`
         { "order_id": "uuid", "total_cents": "int" }
         \`\`\`
@@ -161,8 +163,33 @@ The full language specification is at the end of this guide. Key habits:
   the detail panel and what agents rely on when implementing.
 - **Add \`src\` when you know where a component lives in code** — it is how
   the next agent (or you, later) finds the implementation.
-- **Nest for containment** ("runs inside / belongs to"), connect for
-  communication. Both are allowed across any depth.
+- **Nest the parts inside the thing they belong to**: a service's API and
+  database, a cluster's services, an agent's tools. Any component can hold
+  components, at any depth. The human sees it as one box and opens it to
+  see its parts, so nesting is how a big system stays readable. Connect
+  across any depth, to a part (\`web -> orders.api\`) or to the whole
+  component (\`web -> orders\`), whichever is true.
+- **Group with planes, not wrapper components.** A \`plane\` is a titled
+  region of the canvas (a frontend and a backend, a cloud account, a VPC)
+  and nothing more: the components declared in its body sit on it and keep
+  their paths (\`api\`, not \`backend.api\`), and a connection can never
+  name a plane (E101). Planes nest, take a \`@type\` and a \`desc\`, and can
+  go inside a component too:
+
+      plane frontend "Frontend" {
+        component web "Web App" @vercel.nextjs
+      }
+
+      plane backend "Backend" @aws {
+        component api "API" @aws.api_gateway
+        component db "Postgres" @aws.rds
+      }
+
+      api -> db @sql
+      web -> api @http
+
+  Use a plane when the group is only where things are; nest when the parts
+  make up one thing that others talk to.
 - **Type tags are optional.** An unknown tag is only a warning (renders as a
   generic box); prefer catalog/custom tags when a good one exists.
 - **Shapes.** A component is drawn as a box unless its body says otherwise
@@ -192,27 +219,28 @@ The full language specification is at the end of this guide. Key habits:
 
 ## Layout rules (presentation)
 
-- The machine-managed \`layout\` block holds grid positions/sizes and whether a
-  container renders expanded (\`plane\`) or collapsed (\`icon\`).
+- The machine-managed \`layout\` block holds grid positions and sizes of
+  components and planes. The top level and every component's inside each
+  have their own grid.
 - **Omit layout entirely when writing.** On save, the server keeps the
   existing positions of every component that still exists and auto-places
   only new ones. Humans' hand-arranged canvases survive your edits.
 - You MAY include a layout block if you have an explicit reason (e.g. the user
   asks you to arrange the diagram); entries are \`path: { at: [col, row],
-  size: [w, h], display: icon|plane }\` on an integer grid.
-- To collapse or expand a container without touching the source, use the
-  \`set_display\` tool. To re-arrange everything from scratch,
-  \`auto_layout_project\` with \`reset: true\`.
+  size: [w, h] }\` on an integer grid, with \`at\` relative to the item's
+  canvas, or to the plane it sits on.
+- To re-arrange everything from scratch, \`auto_layout_project\` with
+  \`reset: true\`.
 
 ## Error reference (what blocks a write)
 
 | Code | Meaning | Fix |
 | ---- | ------- | --- |
 | E001 | Syntax error | Follow the message; check fences and quotes |
-| E002 | Duplicate component id in one scope | Rename one of them |
+| E002 | Duplicate id in one scope (components and planes share ids) | Rename one of them |
 | E003 | Duplicate payload name on one component or connection | Rename one payload |
 | E004 | More than one \`shape\` on a component | Keep one |
-| E101 | Connection endpoint doesn't resolve | Declare the component or fix the path |
+| E101 | Connection endpoint doesn't resolve, or is a plane | Declare the component, fix the path, or connect a component on the plane |
 | E201 | json/yaml/table payload doesn't parse | Fix the payload content |
 | W301 | Unknown type tag (warning) | Optional: use a catalog tag or create a custom type |
 | W302 | Duplicate connection (warning) | Optional: remove one |
@@ -223,10 +251,10 @@ The full language specification is at the end of this guide. Key habits:
 
 Everything a human can do in the app maps to a tool: browse projects
 (\`list_projects\`/\`get_project\`), create/delete projects, edit anything —
-components, connections, descriptions, shapes, payloads, nesting — (\`update_project\`
-with full source), manage the custom component library
+components, connections, descriptions, shapes, payloads, nesting, planes —
+(\`update_project\` with full source), manage the custom component library
 (\`create_custom_type\`/\`delete_custom_type\`), arrange the canvas
-(\`auto_layout_project\`, \`set_display\`, or explicit layout entries), review history
+(\`auto_layout_project\`, or explicit layout entries), review history
 (\`get_history\`/\`get_revision\`/\`diff_project\`), report drift (\`report_drift\`/\`get_drift\`), switch workspaces
 (\`get_workspace_info\`, \`list_workspaces\`/\`use_workspace\`), read the docs' worked
 examples (\`list_examples\`/\`get_example\`), and export the agent spec
@@ -235,6 +263,6 @@ point users at the Export menu in the editor.
 
 ---
 
-# Archer language specification (v0.1)
+# Archer language specification (v0.2)
 
 ${LANGUAGE_SPEC}`;

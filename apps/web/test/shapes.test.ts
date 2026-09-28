@@ -117,7 +117,7 @@ describe("labelLayout", () => {
 });
 
 describe("shapes in the renderers", () => {
-  const SRC = `arch "S" v0.1
+  const SRC = `arch "S" v0.2
 
 component api "API" @service
 
@@ -130,30 +130,38 @@ component ring "Ring" @service {
   component inside "Inside"
 }
 
+plane zone "Zone" @network
+
 api -> files
 
 layout {
   api: { at: [0, 0], size: [4, 3] }
   files: { at: [0, 6], size: [4, 3] }
-  ring: { at: [8, 0], size: [8, 6], display: plane }
-  ring.inside: { at: [1, 2], size: [4, 3] }
+  ring: { at: [8, 0], size: [4, 3] }
+  ring.inside: { at: [0, 0], size: [4, 3] }
+  zone: { at: [0, 12], size: [10, 6] }
 }
 `;
 
-  it("carries the shape onto canvas nodes, but never onto a plane", () => {
+  it("carries the shape onto canvas nodes, nested components or not, and planes have none", () => {
     const { nodes } = toFlow(autoLayout(parse(SRC).doc));
-    const shape = (id: string) => nodes.find((n) => n.id === id)?.data.shape;
-    expect(shape("files")).toBe("folder");
-    expect(shape("api")).toBeUndefined();
-    expect(shape("ring")).toBeUndefined();
-    const collapsed = SRC.replace("display: plane", "display: icon");
-    expect(toFlow(autoLayout(parse(collapsed).doc)).nodes.find((n) => n.id === "ring")?.data.shape).toBe("circle");
+    const node = (id: string) => nodes.find((n) => n.id === id);
+    expect(node("files")?.data.shape).toBe("folder");
+    expect(node("api")?.data.shape).toBeUndefined();
+    // A component with components nested in it is still drawn as its shape.
+    expect(node("ring")?.data.shape).toBe("circle");
+    expect(node("ring")?.data.childCount).toBe(1);
+    expect(node("zone")?.type).toBe("archPlane");
+    expect(node("zone")?.data.shape).toBeUndefined();
+    // What's nested isn't on the top-level canvas; opening ring shows it.
+    expect(node("ring.inside")).toBeUndefined();
+    expect(toFlow(autoLayout(parse(SRC).doc), { focus: ["ring"] }).nodes.map((n) => n.id)).toEqual(["ring.inside"]);
   });
 
   it("tints a shape by its type, but not by a type it can't resolve", () => {
     const outline = (src: string) =>
       /<path d="[^"]+" fill="(#[0-9a-f]{6})" stroke="(#[0-9a-f]{6})" stroke-linejoin="round"\/>/.exec(
-        renderArchSvg(`arch "T" v0.1\n\n${src}\n`, { showTitle: false }),
+        renderArchSvg(`arch "T" v0.2\n\n${src}\n`, { showTitle: false }),
       )!.slice(1);
     expect(outline("component a { shape cloud }")).toEqual(["#ffffff", "#d2ccc3"]);
     expect(outline("component a @nope.thing { shape cloud }")).toEqual(["#ffffff", "#d2ccc3"]);
@@ -164,7 +172,7 @@ layout {
 
   it("wraps a long name onto two lines when the shape has room", () => {
     const svg = renderArchSvg(
-      `arch "T" v0.1\n\ncomponent h "A very long component name that wraps" @service {\n  shape circle\n}\n\nlayout {\n  h: { at: [0, 0], size: [5, 4] }\n}\n`,
+      `arch "T" v0.2\n\ncomponent h "A very long component name that wraps" @service {\n  shape circle\n}\n\nlayout {\n  h: { at: [0, 0], size: [5, 4] }\n}\n`,
       { showTitle: false },
     );
     const names = [...svg.matchAll(/font-size="13" font-weight="600" fill="[^"]+">([^<]+)</g)].map((m) => m[1]!);

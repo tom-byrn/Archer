@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { CSSProperties } from "react";
 import { ImageResponse } from "next/og";
-import { autoLayout, layoutMap, parse, pathToString, shapeOf } from "@archer/lang";
+import { autoLayout, canvasAt, layoutMap, parse, pathToString, shapeOf } from "@archer/lang";
 import { GLYPHS, GLYPH_VIEWBOX, lookupType } from "@archer/catalog";
 import { HEADLINE, LEDE } from "@/lib/landingCopy";
 import { LANDING_SAMPLE } from "@/lib/landingSample";
@@ -27,6 +27,8 @@ const INK_2 = "#a5a19a";
 const INK_3 = "#6d6963";
 const LINE = "#26292d";
 const LINE_2 = "#383c42";
+// An untyped plane: --surface-2 at half strength over the canvas ground.
+const PLANE = "#17181b";
 // Connectors read as ink on the landing canvas (`.landing-canvas` in landing.css).
 const EDGE = INK;
 
@@ -79,6 +81,15 @@ interface Box {
   glyph: string;
   /** Drawn as a shape (lib/shapes.ts, at canvas size) instead of the card. */
   shape?: { geo: ShapeGeometry; label: LabelLayout; stroke: string; fill: string };
+}
+/** A plane: a titled region drawn behind the boxes on it. */
+interface Region {
+  id: string;
+  name: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
 }
 interface Edge {
   d: string;
@@ -149,14 +160,19 @@ const route = (s: Box, t: Box): { d: string; head: string; mid: [number, number]
   return { d: parts.join(""), head, mid: [(p1.x + p2.x) / 2, (p1.y + p2.y) / 2] };
 };
 
-/** The landing sample's boxes and connectors in diagram pixels (origin at the top-left box). */
+/** The landing sample's planes, boxes and connectors in diagram pixels (origin at the top-left). */
 const diagram = () => {
   const doc = autoLayout(parse(LANDING_SAMPLE).doc);
   const layout = layoutMap(doc);
+  // An `at` is relative to the plane an item sits on; canvasAt adds those up.
+  const regions: Region[] = doc.planes.map((p) => {
+    const [ax, ay] = canvasAt(doc, [p.id], layout);
+    const [sw, sh] = layout.get(p.id)?.size ?? [10, 6];
+    return { id: p.id, name: p.name ?? p.id, x: ax * CELL, y: ay * CELL, w: sw * CELL, h: sh * CELL };
+  });
   const boxes: Box[] = doc.components.map((c) => {
-    const entry = layout.get(c.id);
-    const [ax, ay] = entry?.at ?? [0, 0];
-    const [sw, sh] = entry?.size ?? [4, 3];
+    const [ax, ay] = canvasAt(doc, [c.id], layout);
+    const [sw, sh] = layout.get(c.id)?.size ?? [4, 3];
     const type = lookupType(c.type);
     const typed = c.type !== undefined;
     const color = displayColor(type?.color ?? "#8a8479", true);
@@ -197,9 +213,10 @@ const diagram = () => {
         : null;
     edges.push({ d, head, chip });
   }
-  const width = Math.max(...boxes.map((b) => b.x + b.w));
-  const height = Math.max(...boxes.map((b) => b.y + b.h));
-  return { boxes, edges, width, height };
+  const all = [...regions, ...boxes];
+  const width = Math.max(...all.map((b) => b.x + b.w));
+  const height = Math.max(...all.map((b) => b.y + b.h));
+  return { regions, boxes, edges, width, height };
 };
 
 const glyphSrc = (key: string, color: string): string => {
@@ -320,6 +337,42 @@ function ShapeNode({ box, shape }: { box: Box; shape: NonNullable<Box["shape"]> 
   );
 }
 
+/** An untyped plane as the canvas draws it: a faint region with a title bar. */
+function Plane({ region }: { region: Region }) {
+  return (
+    <div
+      style={{
+        position: "absolute",
+        left: region.x,
+        top: region.y,
+        width: region.w,
+        height: region.h,
+        display: "flex",
+        flexDirection: "column",
+        borderRadius: 8,
+        border: `1px solid ${LINE_2}`,
+        background: PLANE,
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          height: 26,
+          padding: "0 9px",
+          borderBottom: `1px solid ${LINE}`,
+          fontFamily: INTER,
+          fontWeight: 600,
+          fontSize: 11.5,
+          color: INK,
+        }}
+      >
+        {region.name}
+      </div>
+    </div>
+  );
+}
+
 function Chip({ chip }: { chip: NonNullable<Edge["chip"]> }) {
   // A wide, centred flex box puts the auto-width chip on the path's midpoint.
   return (
@@ -363,7 +416,7 @@ function Chip({ chip }: { chip: NonNullable<Edge["chip"]> }) {
 
 /** The sandbox panel: file name header over the canvas. */
 function Sandbox({ width, height }: { width: number; height: number }) {
-  const { boxes, edges, width: dw, height: dh } = diagram();
+  const { regions, boxes, edges, width: dw, height: dh } = diagram();
   const header = 32;
   const ox = Math.round((width - dw) / 2);
   const oy = Math.round((height - header - dh) / 2);
@@ -402,6 +455,9 @@ function Sandbox({ width, height }: { width: number; height: number }) {
         }}
       >
         <div style={{ position: "absolute", left: ox, top: oy, width: dw, height: dh, display: "flex" }}>
+          {regions.map((p) => (
+            <Plane key={p.id} region={p} />
+          ))}
           {boxes.map((b) => (
             <Node key={b.id} box={b} />
           ))}

@@ -398,7 +398,7 @@ export async function publishDocument(
       "invalid",
     );
   const content = fileSource(doc.source);
-  const empty = format({ kind: "doc", title: doc.title, version: CURRENT_VERSION, components: [], connections: [], layout: [] });
+  const empty = format({ kind: "doc", title: doc.title, version: CURRENT_VERSION, components: [], planes: [], connections: [], layout: [] });
   const diff = draftDiff(f.base?.source ?? empty, doc.source);
   if (f.base && isEmptyDiff(diff))
     throw new SyncError(`Nothing to publish: ${f.path} already has this architecture.`, 409, "nothing");
@@ -532,7 +532,7 @@ export async function createFromRepo(
     return { id, imported: true };
   }
   const title = titleFromRepo(ref.name);
-  const blank = format({ kind: "doc", title, version: CURRENT_VERSION, components: [], connections: [], layout: [] });
+  const blank = format({ kind: "doc", title, version: CURRENT_VERSION, components: [], planes: [], connections: [], layout: [] });
   const id = await convex().mutation(api.repoSync.create, {
     workspaceId,
     apiKey: actAs(actor.userId),

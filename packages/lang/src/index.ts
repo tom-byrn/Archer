@@ -5,6 +5,16 @@ export { parse, CURRENT_VERSION } from "./parser";
 export { lex, dedent } from "./lexer";
 export type { Token, TokenType } from "./lexer";
 export {
+  findItem,
+  findPlane,
+  forEachScope,
+  planePaths,
+  planeTree,
+  scopeAt,
+  scopeOf,
+} from "./scope";
+export type { PlaneTree, Scope } from "./scope";
+export {
   validate,
   validateTable,
   checkPayload,
@@ -19,8 +29,10 @@ export type { FormatOptions } from "./format";
 export { compileForAgent } from "./agentExport";
 export {
   autoLayout,
+  canvasAt,
   layoutMap,
-  effectiveDisplay,
+  planePathOf,
+  EMPTY_PLANE_SIZE,
   LEAF_SIZE,
   PLANE_INNER_ORIGIN,
   PLANE_INNER_MARGIN,
@@ -28,16 +40,20 @@ export {
 export type { AutoLayoutOptions } from "./layout";
 export {
   addComponent,
+  addPlane,
   removeComponent,
+  removePlane,
   renameComponent,
+  renamePlane,
   setComponentMeta,
+  setPlaneMeta,
   setPayload,
   removePayload,
   setConnectionPayload,
   removeConnectionPayload,
   moveComponent,
   resizeComponent,
-  setDisplay,
+  setPlane,
   addConnection,
   removeConnection,
   setConnectionMeta,
@@ -46,13 +62,19 @@ export {
   setConnectionEndpoints,
   extractFragment,
   insertFragment,
-  groupComponents,
+  groupInPlane,
+  nestInComponent,
+  componentToPlane,
   relayoutComponents,
   duplicateComponents,
+  outermostItems,
 } from "./transform";
 export type {
   AddComponentOptions,
+  AddPlaneOptions,
   ComponentMeta,
+  PlaneMeta,
+  RemovePlaneOptions,
   ConnectionOptions,
   ConnectionMeta,
   GroupOptions,
@@ -67,6 +89,7 @@ export {
 export type {
   ChangeKind,
   ComponentChange,
+  PlaneChange,
   ConnectionChange,
   DocDiff,
   DiffSummary,

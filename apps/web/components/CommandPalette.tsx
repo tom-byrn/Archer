@@ -28,13 +28,15 @@ export interface PaletteCommand {
   run: () => void;
 }
 
-/** A component already in the document, for find / go to. */
+/** A component (or plane) already in the document, for find / go to. */
 export interface PaletteComponent {
   path: string;
   name: string;
   type?: string;
   color?: string;
   glyph?: string;
+  /** It's a plane. */
+  plane?: boolean;
 }
 
 interface Entry {
@@ -48,6 +50,8 @@ interface Entry {
   shape?: Shape;
   use?: string;
   group?: string;
+  /** Not a component: a plane. */
+  plane?: true;
 }
 
 /** Shapes to put down, first in the add list (the palette's Shapes group). */
@@ -66,6 +70,13 @@ type Row =
   | { kind: "add"; key: string; entry: Entry };
 
 const PLAIN: Entry = { tag: undefined, name: "Plain component", namespace: "generic" };
+const PLANE: Entry = {
+  tag: undefined,
+  name: "Plane",
+  namespace: "generic",
+  plane: true,
+  use: "a region to put components on",
+};
 
 /** Subsequence fuzzy score: lower is better, -1 = no match. */
 const fuzzy = (hay: string, q: string): number => {
@@ -101,6 +112,7 @@ export function CommandPalette({
   mode = "all",
   onClose,
   onAdd,
+  onAddPlane,
   library,
   commands = [],
   components = [],
@@ -110,6 +122,8 @@ export function CommandPalette({
   mode?: PaletteMode;
   onClose: () => void;
   onAdd: (tag: string | undefined, shape?: Shape) => void;
+  /** Add a plane; without it the palette offers none. */
+  onAddPlane?: () => void;
   library: UserLibrary;
   commands?: PaletteCommand[];
   components?: PaletteComponent[];
@@ -167,6 +181,7 @@ export function CommandPalette({
       const entries: Entry[] = [
         ...SHAPE_ENTRIES,
         PLAIN,
+        ...(onAddPlane ? [PLANE] : []),
         ...library.items.map((t) => ({ ...t, namespace: "custom" })),
         ...CATALOG,
       ];
@@ -190,7 +205,7 @@ export function CommandPalette({
           order: 2 + i,
           rows: items.map(({ e }) => ({
             kind: "add",
-            key: e.shape ? `add:shape:${e.shape}` : `add:${e.tag ?? "__plain"}`,
+            key: e.shape ? `add:shape:${e.shape}` : e.plane ? "add:__plane" : `add:${e.tag ?? "__plain"}`,
             entry: e,
           })),
         });
@@ -199,7 +214,7 @@ export function CommandPalette({
 
     // With a query, the best match leads whichever kind it is; ties keep the order above.
     return out.sort((a, b) => a.rank - b.rank || a.order - b.order);
-  }, [mode, commands, components, library.items, q]);
+  }, [mode, commands, components, library.items, q, onAddPlane]);
 
   const flat = useMemo(() => groups.flatMap((g) => g.rows), [groups]);
 
@@ -217,6 +232,7 @@ export function CommandPalette({
     onClose();
     if (row.kind === "command") row.command.run();
     else if (row.kind === "goto") onGoTo?.(row.component.path);
+    else if (row.entry.plane) onAddPlane?.();
     else onAdd(row.entry.tag, row.entry.shape);
   };
 
@@ -345,13 +361,31 @@ function RowBody({ row }: { row: Row }) {
     const c = row.component;
     return (
       <>
-        <Swatch color={c.color} glyph={c.glyph} tag={c.type} />
+        {c.plane && c.type === undefined ? (
+          <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-sm bg-surface-2 text-ink-2">
+            <Icon.Plane className="h-3.5 w-3.5" />
+          </span>
+        ) : (
+          <Swatch color={c.color} glyph={c.glyph} tag={c.type} />
+        )}
         <span className="min-w-0 flex-1 truncate text-base text-ink">{c.name}</span>
-        <span className="mono shrink-0 truncate text-xs text-ink-3">{c.path}</span>
+        <span className="mono shrink-0 truncate text-xs text-ink-3">
+          {c.plane ? `plane · ${c.path}` : c.path}
+        </span>
       </>
     );
   }
   const e = row.entry;
+  if (e.plane)
+    return (
+      <>
+        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-sm bg-surface-2 text-ink-2">
+          <Icon.Plane className="h-3.5 w-3.5" />
+        </span>
+        <span className="min-w-0 flex-1 truncate text-base text-ink">{e.name}</span>
+        <span className="hidden min-w-0 shrink truncate text-xs text-ink-3 md:inline">{e.use}</span>
+      </>
+    );
   if (e.shape)
     return (
       <>

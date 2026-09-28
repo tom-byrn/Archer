@@ -1,14 +1,18 @@
 /** The document the landing-page sandbox starts from: small enough to read at a glance. */
-const BODY = `arch "Acme" v0.1
+const BODY = `arch "Acme" v0.2
 
 component web "Web app" @vercel.nextjs {
   shape browser
 }
-component api "API" @vercel.functions
 component auth "Auth" @clerk
-component db "Postgres" @supabase.postgres {
-  shape cylinder
+
+plane backend "Backend" {
+  component api "API" @vercel.functions
+  component db "Postgres" @supabase.postgres {
+    shape cylinder
+  }
 }
+
 component billing "Billing" @stripe
 
 web -> api @http
@@ -17,22 +21,25 @@ api -> db @sql
 api -> billing @http : "checkout"
 `;
 
+// API and Postgres sit on the Backend plane, so their `at` is relative to it.
 const WIDE = `layout {
   web: { at: [0, 3], size: [4, 3] }
   auth: { at: [0, 9], size: [4, 3] }
-  api: { at: [7, 3], size: [4, 3] }
-  db: { at: [14, 0], size: [4, 3] }
-  billing: { at: [14, 6], size: [4, 3] }
+  backend: { at: [6, 1], size: [12, 6] }
+  api: { at: [1, 2], size: [4, 3] }
+  db: { at: [7, 2], size: [4, 3] }
+  billing: { at: [7, 9], size: [4, 3] }
 }
 `;
 
 // Two columns, so the boxes stay a readable size on a phone.
 const NARROW = `layout {
-  web: { at: [0, 0], size: [4, 3] }
-  auth: { at: [7, 0], size: [4, 3] }
-  api: { at: [0, 5], size: [4, 3] }
-  billing: { at: [7, 5], size: [4, 3] }
-  db: { at: [0, 10], size: [4, 3] }
+  web: { at: [1, 0], size: [4, 3] }
+  auth: { at: [8, 0], size: [4, 3] }
+  backend: { at: [0, 5], size: [6, 11] }
+  api: { at: [1, 2], size: [4, 3] }
+  db: { at: [1, 7], size: [4, 3] }
+  billing: { at: [8, 7], size: [4, 3] }
 }
 `;
 

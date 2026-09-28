@@ -4,7 +4,7 @@ import { compileForAgent, diffDocs, format, mergeDocs, parse, setComponentMeta }
 const stripSpans = (value: unknown): unknown =>
   JSON.parse(JSON.stringify(value, (key, v) => (key === "span" ? undefined : v)));
 
-const HEADER = 'arch "X" v0.1\n';
+const HEADER = 'arch "X" v0.2\n';
 
 describe("src field", () => {
   it("parses src alongside desc, payloads and children", () => {

@@ -225,7 +225,7 @@ async function github(input: string | URL | Request, init?: RequestInit): Promis
 
 // ------------------------------------------------------------------ fixtures
 
-const FILE = `arch "Shop" v0.1
+const FILE = `arch "Shop" v0.2
 
 component web "Web" {
   desc "Storefront"
@@ -438,9 +438,9 @@ describe("publish", () => {
 
   it("creates the file of a document moved to GitHub", async () => {
     const { id } = await createFromRepo(ME, WS, { ...REF, path: "docs/system.arch" });
-    userEdit(id, 'arch "Shop" v0.1\n', 'arch "Shop" v0.1\n\ncomponent web "Web"\n');
+    userEdit(id, 'arch "Shop" v0.2\n', 'arch "Shop" v0.2\n\ncomponent web "Web"\n');
     await publishDocument(ME, WS, id, { mode: "commit" });
-    expect(repo.file("main", "docs/system.arch")).toBe('arch "Shop" v0.1\n\ncomponent web "Web"\n');
+    expect(repo.file("main", "docs/system.arch")).toBe('arch "Shop" v0.2\n\ncomponent web "Web"\n');
     // Moving onto a file that exists: the document becomes a draft that replaces it.
     const other = id;
     const { existed } = await linkFile(ME, WS, other, REF);

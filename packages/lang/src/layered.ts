@@ -1,12 +1,12 @@
-import type { ComponentNode, ConnectionNode } from "./types";
+import type { ConnectionNode } from "./types";
 import { networkSimplex, type Constraint } from "./simplex";
 
 /**
- * Hierarchical layered layout — how `autoLayout` arranges components that have
- * no position yet. Sugiyama-style, adapted to Archer's model of planes:
+ * Hierarchical layered layout — how `autoLayout` arranges a canvas that has
+ * no positions yet. Sugiyama-style, adapted to Archer's planes:
  *
- * 1. Layers, top-down. Connections flow left → right. Each scope (the root or
- *    a plane's interior) is layered on its own with network simplex. Cycles
+ * 1. Layers, top-down. Connections flow left → right. Each scope (the canvas,
+ *    or a plane's interior) is layered on its own with network simplex. Cycles
  *    are broken by DFS from each entry point in turn, keeping whichever
  *    layering has the shortest edges. A plane's children also feel their
  *    connections to the outside: a service that talks to the storage plane on
@@ -27,7 +27,7 @@ import { networkSimplex, type Constraint } from "./simplex";
  * Output is integer grid cells and fully deterministic.
  */
 
-/** Default footprint of a leaf / icon-collapsed component, in grid cells. */
+/** Default footprint of a component, in grid cells. */
 export const LEAF_SIZE: [number, number] = [4, 3];
 /** Children of a plane start at this inner offset (room for the icon + title row). */
 export const PLANE_INNER_ORIGIN: [number, number] = [1, 2];
@@ -53,11 +53,14 @@ const STRAIGHT = 4000;
 const COMPACT = 1000;
 const tieBreak = (i: number) => 1 + ((i * 37) % 97);
 
-export interface LayeredOptions {
-  /** Drawn as an expanded plane (children inside) rather than a box. */
-  isPlane: (path: string, c: ComponentNode) => boolean;
-  /** Footprint of a box (leaf or collapsed container). */
-  boxSize: (path: string, c: ComponentNode) => [number, number];
+/** What to arrange: a component's box, or a plane with what sits on it. */
+export interface LayerItem {
+  /** Its layout key. */
+  path: string;
+  /** Set on a plane: what sits on it. A plane is sized around them. */
+  items?: readonly LayerItem[];
+  /** A box's footprint (ignored for planes). */
+  size: [number, number];
 }
 
 export interface Placement {
@@ -112,7 +115,7 @@ interface Ext {
   side: -1 | 1;
 }
 
-/** Connections merged per pair of visible endpoints. */
+/** Connections merged per pair of boxes. */
 interface Link {
   s: Node;
   t: Node;
@@ -129,26 +132,22 @@ function chipCells(c: ConnectionNode): number {
   return Math.ceil((px + 24) / CELL_PX);
 }
 
-const isUnder = (path: string, prefix: string) =>
-  prefix === "" || path === prefix || path.startsWith(prefix + ".");
-
 /**
- * Lay out a forest: the document's components, or a collapsed container's
- * interior. Returns a placement for every component drawn in it — top-level
- * ones relative to the forest's origin (the first row and column are 0),
- * nested ones relative to their plane. The interiors of collapsed containers
- * are not included; lay those out as forests of their own.
+ * Lay out a forest: a canvas's components and planes, or what sits on one
+ * plane. Returns a placement for every item — top-level ones relative to the
+ * forest's origin (the first row and column are 0), ones on a plane relative
+ * to it. `endpoint` names the box a connection's end is drawn as (a nested
+ * component is drawn as the box it's inside), or undefined when that end
+ * isn't in the forest.
  */
 export function layeredLayout(
-  items: readonly ComponentNode[],
-  prefix: string,
+  items: readonly LayerItem[],
   connections: readonly ConnectionNode[],
-  opts: LayeredOptions,
+  endpoint: (path: readonly string[]) => string | undefined,
 ): Map<string, Placement> {
   // ---------------------------------------------------------------- model
   const scopes: Scope[] = []; // preorder: parents before children
   const visible = new Map<string, Node>();
-  const hiddenIn = new Map<string, Node>();
   let decl = 0;
 
   const newScope = (owner: Node | null): Scope => {
@@ -165,22 +164,14 @@ export function layeredLayout(
     scopes.push(s);
     return s;
   };
-  const hide = (comps: readonly ComponentNode[], pre: string, box: Node) => {
-    for (const c of comps) {
-      const path = `${pre}.${c.id}`;
-      if (!hiddenIn.has(path)) hiddenIn.set(path, box);
-      hide(c.children, path, box);
-    }
-  };
-  const build = (comps: readonly ComponentNode[], pre: string, owner: Node | null) => {
+  const build = (list: readonly LayerItem[], owner: Node | null) => {
     const scope = newScope(owner);
-    for (const c of comps) {
-      const path = pre === "" ? c.id : `${pre}.${c.id}`;
-      if (visible.has(path)) continue; // duplicate id (invalid doc)
-      const plane = c.children.length > 0 && opts.isPlane(path, c);
-      const [w, h] = plane ? [0, 0] : opts.boxSize(path, c);
+    for (const item of list) {
+      if (visible.has(item.path)) continue; // duplicate id (invalid doc)
+      const plane = item.items !== undefined;
+      const [w, h] = plane ? [0, 0] : item.size;
       const node: Node = {
-        path,
+        path: item.path,
         decl: decl++,
         scope,
         inner: null,
@@ -192,14 +183,13 @@ export function layeredLayout(
         x: 0,
         y: 0,
       };
-      visible.set(path, node);
+      visible.set(item.path, node);
       scope.nodes.push(node);
-      if (plane) node.inner = build(c.children, path, node);
-      else hide(c.children, path, node);
+      if (plane) node.inner = build(item.items!, node);
     }
     return scope;
   };
-  const root = build(items, prefix, null);
+  const root = build(items, null);
   if (visible.size === 0) return new Map();
 
   const chainUp = (n: Node): Scope[] => {
@@ -219,17 +209,15 @@ export function layeredLayout(
     return x;
   };
 
-  // Merge connections per visible (source, target) pair; drop ones internal to
-  // a collapsed box or joining a plane to its own descendant.
+  // Merge connections per pair of boxes; drop ones inside one box.
   const linkMap = new Map<string, Link>();
   for (const c of connections) {
-    const sp = c.source.join(".");
-    const tp = c.target.join(".");
-    if (!isUnder(sp, prefix) || !isUnder(tp, prefix)) continue;
-    const s = visible.get(sp) ?? hiddenIn.get(sp);
-    const t = visible.get(tp) ?? hiddenIn.get(tp);
-    if (!s || !t || s === t) continue;
-    if (isUnder(s.path, t.path) || isUnder(t.path, s.path)) continue;
+    const sp = endpoint(c.source);
+    const tp = endpoint(c.target);
+    if (sp === undefined || tp === undefined) continue;
+    const s = visible.get(sp);
+    const t = visible.get(tp);
+    if (!s || !t || s === t || s.inner || t.inner) continue;
     const undirected = c.arrow === "--";
     const key = `${s.path}|${t.path}|${undirected}`;
     const chip = chipCells(c);

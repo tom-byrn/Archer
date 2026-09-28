@@ -8,8 +8,13 @@ const PREAMBLE = `# This is an Archer architecture document — a complete, mach
 #
 # How to read it:
 # - \`component <id> "Display Name" @type { ... }\` declares a part of the system.
-#   Components nest; a child lives inside its parent. \`@type\` tags a real
-#   technology (e.g. @aws.s3, @postgres); untyped components are logical parts.
+#   Components nest: one declared inside another is part of it (the canvas
+#   shows it when you open its parent). \`@type\` tags a real technology (e.g.
+#   @aws.s3, @postgres); untyped components are logical parts.
+# - \`plane <id> "Name" @type { ... }\` groups the components declared in it:
+#   a tier (frontend, backend), a network, a team's area. It organizes the
+#   picture and isn't itself a part to build: paths skip planes, and no
+#   connection ends on one.
 # - \`desc\` is the author's human-readable intent for that component.
 # - \`src\` points at where the component lives in code: a repo path (a file or
 #   a folder) or a URL, one \`src\` line per place when it spans several.
@@ -21,17 +26,18 @@ const PREAMBLE = `# This is an Archer architecture document — a complete, mach
 #   such as schemas, endpoint lists, or env vars. json/yaml/table payloads are
 #   syntactically validated — trust them as authored data.
 # - \`a.b -> c.d @type : "label"\` declares a connection between two components,
-#   referenced by dot-path. \`->\` directed, \`<->\` bidirectional, \`--\` undirected.
+#   referenced by dot-path through the components they're nested in.
+#   \`->\` directed, \`<->\` bidirectional, \`--\` undirected.
 #   A connection may carry its own payload blocks in a \`{ ... }\` body — the
 #   message schema on a queue, the request shape on an API call. Implement the
 #   edge exactly as those payloads describe it.
-# - The closing \`layout { ... }\` block is where each component sits on the
-#   author's canvas: \`path: { at: [col, row], size: [w, h] }\` on an integer
-#   grid, nested components relative to their parent, and \`display: plane\`
-#   (drawn open, children visible) or \`display: icon\` (collapsed) for
-#   containers. It is presentation, not architecture — nothing to implement —
-#   but it shows how the author sees the system: what sits side by side, what
-#   flows left to right, what they kept open or tucked away.
+# - The closing \`layout { ... }\` block is where each component and plane
+#   sits on the author's canvas: \`path: { at: [col, row], size: [w, h] }\` on
+#   an integer grid. The top level and the inside of each component are
+#   separate canvases, and an \`at\` is relative to the plane the item sits
+#   on. It is presentation, not architecture — nothing to implement — but it
+#   shows how the author sees the system: what sits side by side, what flows
+#   left to right, what they grouped together.
 # - When implementing, honor every component, connection, and payload. Ask about
 #   gaps rather than inventing architecture that contradicts this document.
 # - If you write Archer back, follow the grammar above and leave the \`layout\`

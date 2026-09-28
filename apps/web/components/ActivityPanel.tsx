@@ -138,6 +138,8 @@ function ChangeChips({ summary }: { summary: DiffSummary | null }) {
   if (summary.added > 0) chips.push(<Chip key="a" tone="accent">+{summary.added}</Chip>);
   if (summary.removed > 0) chips.push(<Chip key="r" tone="danger">−{summary.removed}</Chip>);
   if (summary.changed > 0) chips.push(<Chip key="c" tone="warn">~{summary.changed}</Chip>);
+  const planes = summary.planesAdded + summary.planesRemoved + summary.planesChanged;
+  if (planes > 0) chips.push(<Chip key="p">{planes} plane{planes === 1 ? "" : "s"}</Chip>);
   if (conn > 0) chips.push(<Chip key="n">{conn} conn</Chip>);
   if (chips.length === 0) chips.push(<Chip key="0">No component changes</Chip>);
   return <span className="flex flex-wrap gap-1">{chips}</span>;

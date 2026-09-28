@@ -50,6 +50,9 @@ Drop a component onto a plane to nest it (AST move, path rewrite of connections)
 toggle container display icon ↔ plane; double-click an icon container to drill in
 (breadcrumb navigation, per-level canvas); child layout relative to parent grid.
 Cross-boundary edges render at the highest visible level. Browser-verified.
+Reworked with language v0.2: planes became titled canvas regions of their own
+(`plane` declarations, transparent to paths), and every component with nested
+components is a box you open (`language-spec.md` §3.1, §3.4).
 
 ## v0.8 — Catalog depth & custom components
 Curated catalog to ~50 types across aws / gcp / vercel / databases / queues / saas /

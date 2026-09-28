@@ -1,12 +1,12 @@
 const FENCE = "```";
 
-export const ACME_SAAS = `arch "Acme SaaS" v0.1
+export const ACME_SAAS = `arch "Acme SaaS" v0.2
 
 component web "Next.js App" @vercel.nextjs {
   desc "App shell + marketing. RSC, deployed on Vercel."
 }
 
-component backend "Backend" @vercel {
+plane backend "Backend" @vercel {
   desc "Everything server-side lives on Vercel."
   component api "API" @vercel.functions {
     desc "Route handlers. Auth via session cookie."
@@ -36,10 +36,9 @@ component cognito "Cognito" @aws.cognito
 
 component stripe "Stripe" @stripe
 
-auth -> cognito @http
-backend.api -> backend.db @sql
+api -> db @sql
 
-backend.api -> stripe @http : "checkout sessions" {
+api -> stripe @http : "checkout sessions" {
   request json ${FENCE}
   {
     "price_id": "string",
@@ -49,15 +48,16 @@ backend.api -> stripe @http : "checkout sessions" {
   ${FENCE}
 }
 
+auth -> cognito @http
+web -> api @http
 web -> auth @http : "login"
-web -> backend.api @http
 
 layout {
+  api: { at: [1, 2], size: [4, 3] }
   auth: { at: [0, 8], size: [4, 3] }
-  backend: { at: [6, 0], size: [13, 6], display: plane }
-  backend.api: { at: [1, 2], size: [4, 3] }
-  backend.db: { at: [8, 2], size: [4, 3] }
+  backend: { at: [6, 0], size: [13, 6] }
   cognito: { at: [0, 13], size: [4, 3] }
+  db: { at: [8, 2], size: [4, 3] }
   stripe: { at: [7, 9], size: [4, 3] }
   web: { at: [0, 3], size: [4, 3] }
 }

@@ -1,34 +1,43 @@
 import { connectionKey, sameSources } from "./diff";
+import { PLANE_INNER_ORIGIN, canvasAt, layoutMap, planeChainOf } from "./layout";
+import { componentPaths, planePaths, scopeOf, type Scope } from "./scope";
 import {
   pathToString,
   type ArchDoc,
   type ComponentNode,
   type ConnectionNode,
+  type LayoutEntry,
   type PayloadNode,
+  type PlaneNode,
 } from "./types";
 
 /**
  * Three-way semantic merge: combine the changes `ours` and `theirs` each made
- * to a common `base`. Components are matched by dot-path, payloads by name and
- * connections by `connectionKey`, so edits to different components (or to
- * different fields of one component) always merge. The same edit on both sides
- * is not a conflict.
+ * to a common `base`. Components and planes are matched by path, payloads by
+ * name and connections by `connectionKey`, so edits to different components
+ * (or to different fields of one component) always merge. The same edit on
+ * both sides is not a conflict.
  *
- * Conflicts: a field both sides changed differently, a component (or
- * connection) one side removed while the other changed it, the same component
- * added twice with different content, and a connection left pointing at a
- * component the other side removed. The returned document still resolves every
- * conflict (in favor of `ours`) and is always well-formed, but callers should
- * only apply it automatically when `conflicts` is empty.
+ * Conflicts: a field both sides changed differently (which plane something
+ * sits on is a field), a component, plane or connection one side removed
+ * while the other changed it, the same one added twice with different
+ * content, a component and a plane added with one id, a connection left
+ * pointing at a component the other side removed, something left on a
+ * plane the other side removed, and planes each side put on the other. The
+ * returned document still resolves every conflict (in favor of `ours`) and is
+ * always well-formed, but callers should only apply it automatically when
+ * `conflicts` is empty.
  *
  * Layout is presentation, never merged: the result keeps `ours`'s entries for
- * the components that survive, and anything new from `theirs` is left for
- * auto-layout to place.
+ * what survives, and anything new from `theirs` is left for auto-layout to
+ * place. An `at` is relative to the plane something sits on, so what the
+ * merge moves onto another plane (or off one) keeps its place on the canvas
+ * when it can, and is otherwise left for auto-layout too.
  */
 
 export interface MergeConflict {
-  kind: "title" | "component" | "connection";
-  /** Dotted component path, connectionKey(), or "title". */
+  kind: "title" | "component" | "plane" | "connection";
+  /** Dotted component or plane path, connectionKey(), or "title". */
   path: string;
   /** Human-readable, e.g. "changed desc on both sides". */
   reason: string;
@@ -68,19 +77,31 @@ const samePayloads = (a: PayloadNode[], b: PayloadNode[]): boolean => {
 };
 
 /** Own fields holding one string each; `src`, a list, merges beside them. */
-const OWN_FIELDS = ["name", "type", "shape", "desc"] as const;
+const OWN_FIELDS = ["name", "type", "shape", "desc", "plane"] as const;
+const PLANE_FIELDS = ["name", "type", "desc", "plane"] as const;
 
-/** Same component, own fields and whole subtree, ignoring child order. */
+const samePlane = (a: PlaneNode, b: PlaneNode): boolean =>
+  PLANE_FIELDS.every((f) => a[f] === b[f]);
+
+/** Same scope, everything in it compared, ignoring order. */
+function sameScope(a: Scope, b: Scope): boolean {
+  if (a.components.length !== b.components.length || a.planes.length !== b.planes.length)
+    return false;
+  const planes = new Map(b.planes.map((p) => [p.id, p]));
+  if (!a.planes.every((p) => planes.has(p.id) && samePlane(p, planes.get(p.id)!))) return false;
+  const other = new Map(b.components.map((c) => [c.id, c]));
+  return a.components.every((c) => {
+    const o = other.get(c.id);
+    return o !== undefined && sameTree(c, o);
+  });
+}
+
+/** Same component, own fields and everything nested in it. */
 function sameTree(a: ComponentNode, b: ComponentNode): boolean {
   for (const field of OWN_FIELDS) if (a[field] !== b[field]) return false;
   if (!sameSources(a.src, b.src)) return false;
   if (!samePayloads(a.payloads, b.payloads)) return false;
-  if (a.children.length !== b.children.length) return false;
-  const other = new Map(b.children.map((c) => [c.id, c]));
-  return a.children.every((c) => {
-    const o = other.get(c.id);
-    return o !== undefined && sameTree(c, o);
-  });
+  return sameScope(scopeOf(a), scopeOf(b));
 }
 
 /** Keys of `theirs` in its order, then keys only `ours` has, in its order. */
@@ -145,7 +166,9 @@ function mergeComponent(
     merged.payloads = mergePayloads(b?.payloads, o.payloads, t.payloads, (name) =>
       conflicts.add("component", path, `changed payload ${name} on both sides`),
     );
-    merged.children = mergeChildren(b?.children, o.children, t.children, path, conflicts);
+    const inside = mergeScope(b && scopeOf(b), scopeOf(o), scopeOf(t), path, conflicts);
+    merged.children = inside.components;
+    merged.planes = inside.planes;
     return merged;
   }
   if (o) {
@@ -163,22 +186,139 @@ function mergeComponent(
   return null; // removed on both sides
 }
 
-function mergeChildren(
-  base: ComponentNode[] | undefined,
-  ours: ComponentNode[],
-  theirs: ComponentNode[],
+function mergePlane(
+  b: PlaneNode | undefined,
+  o: PlaneNode | undefined,
+  t: PlaneNode | undefined,
+  path: string,
+  conflicts: Conflicts,
+): PlaneNode | null {
+  if (o && t) {
+    const merged: PlaneNode = { ...o };
+    for (const field of PLANE_FIELDS) {
+      const r = merge3(b?.[field], o[field], t[field], sameValue);
+      if (r.conflict) conflicts.add("plane", path, `changed ${field} on both sides`);
+      if (r.value === undefined) delete merged[field];
+      else merged[field] = r.value;
+    }
+    return merged;
+  }
+  if (o) {
+    if (!b) return o;
+    if (samePlane(b, o)) return null;
+    conflicts.add("plane", path, "removed on one side, changed on the other");
+    return o;
+  }
+  if (t) {
+    if (!b) return t;
+    if (samePlane(b, t)) return null;
+    conflicts.add("plane", path, "removed on one side, changed on the other");
+    return null;
+  }
+  return null;
+}
+
+/** Merge one canvas: its components and its planes. */
+function mergeScope(
+  base: Scope | undefined,
+  ours: Scope,
+  theirs: Scope,
   prefix: string,
   conflicts: Conflicts,
-): ComponentNode[] {
-  const b = new Map((base ?? []).map((c) => [c.id, c]));
-  const o = new Map(ours.map((c) => [c.id, c]));
-  const t = new Map(theirs.map((c) => [c.id, c]));
-  const out: ComponentNode[] = [];
-  for (const id of unionOrder(theirs.map((c) => c.id), ours.map((c) => c.id))) {
-    const node = mergeComponent(b.get(id), o.get(id), t.get(id), prefix ? `${prefix}.${id}` : id, conflicts);
-    if (node) out.push(node);
+): Scope {
+  const at = (id: string) => (prefix ? `${prefix}.${id}` : id);
+
+  const bc = new Map((base?.components ?? []).map((c) => [c.id, c]));
+  const oc = new Map(ours.components.map((c) => [c.id, c]));
+  const tc = new Map(theirs.components.map((c) => [c.id, c]));
+  const components: ComponentNode[] = [];
+  for (const id of unionOrder(theirs.components.map((c) => c.id), ours.components.map((c) => c.id))) {
+    const node = mergeComponent(bc.get(id), oc.get(id), tc.get(id), at(id), conflicts);
+    if (node) components.push(node);
   }
-  return out;
+
+  const bp = new Map((base?.planes ?? []).map((p) => [p.id, p]));
+  const op = new Map(ours.planes.map((p) => [p.id, p]));
+  const tp = new Map(theirs.planes.map((p) => [p.id, p]));
+  let planes: PlaneNode[] = [];
+  for (const id of unionOrder(theirs.planes.map((p) => p.id), ours.planes.map((p) => p.id))) {
+    const node = mergePlane(bp.get(id), op.get(id), tp.get(id), at(id), conflicts);
+    if (node) planes.push(node);
+  }
+
+  // One id, a component on one side and a plane on the other: keep ours.
+  const componentIds = new Set(components.map((c) => c.id));
+  const clashing = planes.filter((p) => componentIds.has(p.id));
+  for (const p of clashing) conflicts.add("plane", at(p.id), "a component and a plane were added with this id");
+  const keepPlane = (p: PlaneNode) => op.has(p.id) && !oc.has(p.id);
+  planes = planes.filter((p) => !componentIds.has(p.id) || keepPlane(p));
+  const kept = components.filter((c) => !clashing.some((p) => p.id === c.id && keepPlane(p)));
+
+  // Something left on a plane the other side removed goes on no plane.
+  const planeIds = new Set(planes.map((p) => p.id));
+  const unplace = <T extends ComponentNode | PlaneNode>(item: T): T => {
+    if (item.plane === undefined || planeIds.has(item.plane)) return item;
+    conflicts.add(item.kind, at(item.id), "sits on a plane the other side removed");
+    const copy = { ...item };
+    delete copy.plane;
+    return copy;
+  };
+  const placed = planes.map(unplace);
+
+  // Each side put a plane on one the other side put on it: the links can't
+  // all hold, so the planes go back where `ours` has them.
+  const byId = new Map(placed.map((p) => [p.id, p]));
+  const inLoop = (p: PlaneNode): boolean => {
+    const seen = new Set<string>();
+    let up = p.plane;
+    while (up !== undefined && up !== p.id && !seen.has(up)) {
+      seen.add(up);
+      up = byId.get(up)?.plane;
+    }
+    return up === p.id;
+  };
+  const loop = new Set(placed.filter(inLoop));
+  const untangled = placed.map((p) => {
+    if (!loop.has(p)) return p;
+    conflicts.add("plane", at(p.id), "each side put it on a plane the other side put on it");
+    const mine = op.get(p.id)?.plane;
+    if (p.plane === mine) return p;
+    const copy = { ...p };
+    if (mine !== undefined && byId.has(mine)) copy.plane = mine;
+    else delete copy.plane;
+    return copy;
+  });
+  return { components: kept.map(unplace), planes: untangled };
+}
+
+/**
+ * `ours`'s layout entries for what survives in `merged`. Something now on
+ * another plane keeps its canvas position, rebased on that plane, when the
+ * plane stayed where `ours` had it and the spot is inside it; otherwise it
+ * loses its `at` and auto-layout places it.
+ */
+function carryLayout(ours: ArchDoc, merged: ArchDoc): LayoutEntry[] {
+  const paths = componentPaths(merged);
+  const planes = planePaths(merged);
+  const layout = layoutMap(ours);
+  const chain = (doc: ArchDoc, path: readonly string[]) =>
+    planeChainOf(doc, path).map(pathToString).join(" ");
+  return ours.layout.flatMap((e): LayoutEntry[] => {
+    const key = pathToString(e.path);
+    if (!paths.has(key) && !planes.has(key)) return [];
+    if (!e.at || chain(ours, e.path) === chain(merged, e.path)) return [e];
+    const { at: _old, ...rest } = e;
+    const onPlanes = planeChainOf(merged, e.path);
+    const placed = onPlanes.every(
+      (p) => layout.get(pathToString(p))?.at && chain(ours, p) === chain(merged, p),
+    );
+    if (!placed) return [rest];
+    const [x, y] = canvasAt(ours, e.path, layout);
+    if (onPlanes.length === 0) return [{ ...rest, at: [x, y] }];
+    const [px, py] = canvasAt(ours, onPlanes[0]!, layout);
+    const at: [number, number] = [x - px, y - py];
+    return at[0] >= PLANE_INNER_ORIGIN[0] && at[1] >= PLANE_INNER_ORIGIN[1] ? [{ ...rest, at }] : [rest];
+  });
 }
 
 function mergeConnections(
@@ -217,43 +357,40 @@ function mergeConnections(
   return out;
 }
 
-const collectPaths = (nodes: ComponentNode[], prefix = "", into = new Set<string>()): Set<string> => {
-  for (const n of nodes) {
-    const p = prefix ? `${prefix}.${n.id}` : n.id;
-    into.add(p);
-    collectPaths(n.children, p, into);
-  }
-  return into;
-};
-
 export function mergeDocs(base: ArchDoc, ours: ArchDoc, theirs: ArchDoc): MergeResult {
   const conflicts = new Conflicts();
 
   const title = merge3(base.title, ours.title, theirs.title, sameValue);
   if (title.conflict) conflicts.add("title", "title", "renamed on both sides");
 
-  const components = mergeChildren(base.components, ours.components, theirs.components, "", conflicts);
-  const paths = collectPaths(components);
+  const top = mergeScope(
+    { components: base.components, planes: base.planes },
+    { components: ours.components, planes: ours.planes },
+    { components: theirs.components, planes: theirs.planes },
+    "",
+    conflicts,
+  );
+  const merged: ArchDoc = {
+    kind: "doc",
+    title: title.value ?? ours.title,
+    version: ours.version,
+    components: top.components,
+    planes: top.planes,
+    connections: [],
+    layout: [],
+  };
+  const paths = componentPaths(merged);
 
   // A connection is only as good as its endpoints: one side may have removed
   // a component the other side's new connection points at.
-  const connections = mergeConnections(base.connections, ours.connections, theirs.connections, conflicts).filter(
+  merged.connections = mergeConnections(base.connections, ours.connections, theirs.connections, conflicts).filter(
     (c) => {
       const ok = paths.has(pathToString(c.source)) && paths.has(pathToString(c.target));
       if (!ok) conflicts.add("connection", connectionKey(c), "points at a component the other side removed");
       return ok;
     },
   );
+  merged.layout = carryLayout(ours, merged);
 
-  return {
-    doc: {
-      kind: "doc",
-      title: title.value ?? ours.title,
-      version: ours.version,
-      components,
-      connections,
-      layout: ours.layout.filter((e) => paths.has(pathToString(e.path))),
-    },
-    conflicts: conflicts.list(),
-  };
+  return { doc: merged, conflicts: conflicts.list() };
 }

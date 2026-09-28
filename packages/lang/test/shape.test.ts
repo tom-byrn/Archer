@@ -17,7 +17,7 @@ import {
 const stripSpans = (value: unknown): unknown =>
   JSON.parse(JSON.stringify(value, (key, v) => (key === "span" ? undefined : v)));
 
-const HEADER = 'arch "X" v0.1\n';
+const HEADER = 'arch "X" v0.2\n';
 const FENCE = "```";
 
 describe("shape field", () => {
@@ -75,14 +75,9 @@ describe("shape field", () => {
     expect(doc.components[0]!.shape).toBe("server");
   });
 
-  it("still reads a payload named shape as a payload", () => {
+  it("reserves shape: a payload can't be named shape", () => {
     const src = `${HEADER}\ncomponent api {\n  shape json ${FENCE}\n  { "id": "uuid" }\n  ${FENCE}\n}\n`;
-    const { doc, diagnostics } = parse(src);
-    expect(diagnostics).toEqual([]);
-    const api = doc.components[0]!;
-    expect(api.shape).toBeUndefined();
-    expect(api.payloads.map((p) => [p.name, p.format])).toEqual([["shape", "json"]]);
-    expect(format(doc)).toBe(src);
+    expect(parse(src).diagnostics.map((d) => d.code)).toContain("E001");
   });
 
   it("tells a shape from a payload that follows it", () => {

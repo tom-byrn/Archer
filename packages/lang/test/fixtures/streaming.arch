@@ -1,4 +1,4 @@
-arch "Music Streaming" v0.1
+arch "Music Streaming" v0.2
 
 component apps "Listener Apps" {
   desc "Every client talks to one API and streams from one CDN."
@@ -12,16 +12,16 @@ component auth "Accounts" @auth0 {
   desc "Email, Apple and Google sign-in. Issues the JWT every API call carries."
 }
 
-component gateway "API Gateway" @aws.api_gateway {
-  desc "The only public API. Checks the JWT, rate-limits per account, routes to services."
-}
-
-component sync "Device Sync" {
-  desc "WebSocket hub: move playback between devices, or use a phone as the remote for a speaker."
-}
-
-component cdn "Audio CDN" @aws.cloudfront {
-  desc "Caches encrypted audio at the edge and serves only URLs that Playback signed."
+plane edge "Edge" @aws {
+  component gateway "API Gateway" @aws.api_gateway {
+    desc "The only public API. Checks the JWT, rate-limits per account, routes to services."
+  }
+  component sync "Device Sync" {
+    desc "WebSocket hub: move playback between devices, or use a phone as the remote for a speaker."
+  }
+  component cdn "Audio CDN" @aws.cloudfront {
+    desc "Caches encrypted audio at the edge and serves only URLs that Playback signed."
+  }
 }
 
 component services "Services" @aws.eks {
@@ -65,7 +65,7 @@ component services "Services" @aws.eks {
   }
 }
 
-component storage "Storage" {
+plane storage "Storage" {
   component catalog_db "Catalog DB" @aws.rds {
     desc "Postgres. The source of truth for metadata."
     schema json ```
@@ -88,7 +88,7 @@ component storage "Storage" {
   component accounts_db "Accounts DB" @aws.rds
 }
 
-component content "Content Ingestion" {
+plane content "Content Ingestion" {
   component inbox "Delivery Inbox" @aws.s3 {
     desc "Labels drop DDEX packages here: XML metadata, lossless masters and artwork."
   }
@@ -103,7 +103,7 @@ component content "Content Ingestion" {
   }
 }
 
-component analytics "Analytics" {
+plane analytics "Analytics" {
   component warehouse "Warehouse" @snowflake
   component royalties "Royalties" {
     desc "Monthly job that splits each market's revenue across rights holders by share of streams."
@@ -122,9 +122,19 @@ component labels "Record Labels" @external
 
 component stripe "Stripe" @stripe
 
-analytics.royalties -> analytics.warehouse @reads
+apps -> auth @auth : "sign in"
+apps -> cdn @http : "audio"
+apps -> gateway @http
+apps <-> sync @ws : "remote control"
+cdn -> audio @reads : "origin"
+events -> warehouse @stream
+gateway -> services @http : "routes"
+inbox -> pipeline @event
+labels -> inbox @writes : "DDEX"
+pipeline -> services.catalog @grpc : "publish"
+pipeline -> transcoder @queue : "encode"
 
-analytics.royalties -> labels : "statements" {
+royalties -> labels : "statements" {
   statement table ```
   | column       | type | notes            |
   | ------------ | ---- | ---------------- |
@@ -135,36 +145,25 @@ analytics.royalties -> labels : "statements" {
   ```
 }
 
-analytics.training -> analytics.warehouse @reads
-analytics.training -> storage.embeddings @writes : "nightly"
-apps -> auth @auth : "sign in"
-apps -> cdn @http : "audio"
-apps -> gateway @http
-apps <-> sync @ws : "remote control"
-cdn -> content.audio @reads : "origin"
-content.inbox -> content.pipeline @event
-content.pipeline -> content.transcoder @queue : "encode"
-content.pipeline -> services.catalog @grpc : "publish"
-content.transcoder -> content.audio @writes
-gateway -> services @http : "routes"
-labels -> content.inbox @writes : "DDEX"
-services.catalog -> storage.catalog_db @sql
-services.catalog -> storage.index @writes : "reindex"
-services.library -> storage.playlists
+royalties -> warehouse @reads
+services.catalog -> catalog_db @sql
+services.catalog -> index @writes : "reindex"
+services.library -> playlists
 services.playback -- cdn : "signed URLs"
-services.playback -> services.catalog @grpc : "availability"
-services.playback -> services.subscriptions @grpc : "entitlements"
 
-services.playback -> storage.events @event : "track played" {
+services.playback -> events @event : "track played" {
   message json ```
   { "listener_id": "uuid", "track_id": "uuid", "ms_played": "int", "market": "text", "played_at": "timestamp" }
   ```
 }
 
-services.playback -> storage.sessions @writes : "active streams"
-services.recs -> storage.embeddings @reads
-services.search -> storage.index @reads
-services.subscriptions -> storage.accounts_db @sql
+services.playback -> services.catalog @grpc : "availability"
+services.playback -> services.subscriptions @grpc : "entitlements"
+services.playback -> sessions @writes : "active streams"
+services.recs -> embeddings @reads
+services.search -> index @reads
+services.subscriptions -> accounts_db @sql
 services.subscriptions <-> stripe @http : "billing"
-storage.events -> analytics.warehouse @stream
-
+training -> embeddings @writes : "nightly"
+training -> warehouse @reads
+transcoder -> audio @writes

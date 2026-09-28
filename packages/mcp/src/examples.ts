@@ -26,7 +26,7 @@ export const EXAMPLES: readonly Example[] = [
     summary:
       "The smallest useful document: a header, a few typed components and the connections between them. A `@type` picks the icon and color, a `shape` the outline; a label says what travels on an arrow.",
     features: ["components", "types", "connections", "labels"],
-    source: `arch "Link Shortener" v0.1
+    source: `arch "Link Shortener" v0.2
 
 component browser "Browser" @browser {
   shape browser
@@ -56,7 +56,7 @@ browser -> app @http
     summary:
       "A component body holds a `desc`, a `src` pointer into the codebase, and named payloads. `json`, `yaml` and `table` payloads are validated; `markdown` is freeform. The editor shows them in the detail panel, and agents read them as the spec.",
     features: ["descriptions", "source links", "payloads"],
-    source: `arch "Billing Service" v0.1
+    source: `arch "Billing Service" v0.2
 
 component dashboard "Dashboard" @vercel.nextjs {
   shape browser
@@ -106,7 +106,7 @@ dashboard -> api @http
     summary:
       "A `shape` in a component's body draws it as what it is: a person for the customer, people for the support team, a robot for the agent, a cloud for the model provider, a book for the help center, a cylinder for the database. The type still picks the icon and color inside the outline, and anything without a shape stays a box. Shapes are for readers; an agent implementing the document can ignore them.",
     features: ["shapes"],
-    source: `arch "Support Desk" v0.1
+    source: `arch "Support Desk" v0.2
 
 component customer "Customer" @user {
   shape person
@@ -151,12 +151,117 @@ widget -> agent @ws : "chat"
 `,
   },
   {
+    slug: "planes",
+    title: "Photo Sharing",
+    summary:
+      "A `plane` is a titled region of the canvas, a background you put components on: the user's devices on one, the AWS account on another, and a VPC inside that. Planes are only for the reader. They don't change a component's path (`api`, not `cloud.api`), connections never attach to them, and like a component a plane can take a `@type` and a `desc`.",
+    features: ["planes", "planes inside planes"],
+    source: `arch "Photo Sharing" v0.2
+
+component user "User" @user {
+  shape person
+}
+
+plane frontend "Frontend" {
+  desc "Everything that runs on the user's device."
+  component web "Web App" @vercel.nextjs {
+    shape browser
+  }
+  component mobile "Mobile App" @mobile {
+    shape phone
+  }
+}
+
+plane cloud "AWS" @aws {
+  desc "One account, one region."
+  component api "API" @aws.api_gateway
+  component photos "Photos" @aws.s3 {
+    shape bucket
+    desc "Originals and resized copies, served through signed URLs."
+  }
+  plane vpc "VPC" @aws.vpc {
+    component uploads "Uploads" @aws.lambda {
+      desc "Hands out upload URLs, then resizes what lands in Photos."
+    }
+    component db "Metadata" @aws.rds {
+      shape cylinder
+    }
+  }
+}
+
+api -> db @sql : "feeds"
+api -> uploads @http : "presign"
+mobile -> api @http
+uploads -> db @writes
+uploads -> photos @writes
+user -> mobile
+user -> web
+web -> api @http
+`,
+  },
+  {
+    slug: "nesting",
+    title: "Food Delivery",
+    summary:
+      "Any component can hold components. Orders owns its API, checkout, tracker and database: on the canvas it's one box with a count of what's inside, and opening it shows those parts, with whatever outside they connect to along the edges. A path reaches a nested component (`orders.checkout`), and a connection can join one or the whole component (`app -> orders`).",
+    features: ["nesting", "paths", "opening a component"],
+    source: `arch "Food Delivery" v0.2
+
+component app "Customer App" @mobile {
+  shape phone
+}
+
+component orders "Orders" @service {
+  desc "Takes an order from basket to doorstep: the API, checkout, live tracking and its own database."
+  src "services/orders"
+  component api "Orders API" @service {
+    endpoints table ${FENCE}
+    | method | path        | purpose        |
+    | ------ | ----------- | -------------- |
+    | POST   | /orders     | place an order |
+    | GET    | /orders/:id | status and ETA |
+    ${FENCE}
+  }
+  component checkout "Checkout" @worker {
+    desc "Charges the card, then tells Dispatch the order is paid."
+  }
+  component tracker "Tracker" @service {
+    desc "Takes each courier's position and streams it to the customer's map."
+  }
+  component db "Orders DB" @postgres {
+    shape cylinder
+  }
+}
+
+component dispatch "Dispatch" @service {
+  desc "Offers each paid order to the nearest free courier."
+}
+
+component courier "Courier App" @mobile {
+  shape phone
+}
+
+component stripe "Stripe" @stripe {
+  shape cloud
+}
+
+app -> orders @http : "place order"
+courier -> dispatch @http : "accept job"
+courier -> orders.tracker @ws : "position"
+orders.api -> orders.checkout @queue
+orders.api -> orders.db @sql
+orders.checkout -> dispatch @event : "paid"
+orders.checkout -> stripe @http : "charge"
+orders.tracker -> orders.db @writes
+`,
+  },
+  {
     slug: "music-streaming",
     title: "Music Streaming",
     summary:
-      "A whole product in one file: listener apps, the edge, six services on Kubernetes with their storage, analytics, and the pipeline that turns a label's delivery into playable audio. Connections can attach to a whole plane (`gateway -> services`), and all three arrow kinds appear: `->`, `<->` for the remote-control socket, and `--` for the signed URLs Playback and the CDN agree on. It was laid out by hand, so it ends with the `layout` block the canvas writes when you drag and resize; agents ignore that block and never write it.",
-    features: ["nesting", "arrow kinds", "connection payloads", "the layout block"],
-    source: `arch "Music Streaming" v0.1
+      "A whole product in one file: listener apps, the edge, six services in one Kubernetes cluster, their storage, analytics, and the pipeline that turns a label's delivery into playable audio. Planes mark out the regions, while the cluster and the apps nest their parts, so the top level stays readable and opening Services shows all six. All three arrow kinds appear: `->`, `<->` for the remote-control socket, and `--` for the signed URLs Playback and the CDN agree on. It was laid out by hand, so it ends with the `layout` block the canvas writes when you drag and resize; agents ignore that block and never write it.",
+    features: ["planes and nesting together", "arrow kinds", "connection payloads", "the layout block"],
+    source: `arch "Music Streaming" v0.2
 
 component apps "Listener Apps" {
   desc "Every client talks to one API and streams from one CDN."
@@ -174,16 +279,16 @@ component auth "Accounts" @auth0 {
   desc "Email, Apple and Google sign-in. Issues the JWT every API call carries."
 }
 
-component gateway "API Gateway" @aws.api_gateway {
-  desc "The only public API. Checks the JWT, rate-limits per account, routes to services."
-}
-
-component sync "Device Sync" {
-  desc "WebSocket hub: move playback between devices, or use a phone as the remote for a speaker."
-}
-
-component cdn "Audio CDN" @aws.cloudfront {
-  desc "Caches encrypted audio at the edge and serves only URLs that Playback signed."
+plane edge "Edge" @aws {
+  component gateway "API Gateway" @aws.api_gateway {
+    desc "The only public API. Checks the JWT, rate-limits per account, routes to services."
+  }
+  component sync "Device Sync" {
+    desc "WebSocket hub: move playback between devices, or use a phone as the remote for a speaker."
+  }
+  component cdn "Audio CDN" @aws.cloudfront {
+    desc "Caches encrypted audio at the edge and serves only URLs that Playback signed."
+  }
 }
 
 component services "Services" @aws.eks {
@@ -227,7 +332,7 @@ component services "Services" @aws.eks {
   }
 }
 
-component storage "Storage" {
+plane storage "Storage" {
   component catalog_db "Catalog DB" @aws.rds {
     shape cylinder
     desc "Postgres. The source of truth for metadata."
@@ -261,7 +366,7 @@ component storage "Storage" {
   }
 }
 
-component content "Content Ingestion" {
+plane content "Content Ingestion" {
   component inbox "Delivery Inbox" @aws.s3 {
     shape bucket
     desc "Labels drop DDEX packages here: XML metadata, lossless masters and artwork."
@@ -279,7 +384,7 @@ component content "Content Ingestion" {
   }
 }
 
-component analytics "Analytics" {
+plane analytics "Analytics" {
   component warehouse "Warehouse" @snowflake {
     shape cylinder
   }
@@ -304,9 +409,19 @@ component stripe "Stripe" @stripe {
   shape cloud
 }
 
-analytics.royalties -> analytics.warehouse @reads
+apps -> auth @auth : "sign in"
+apps -> cdn @http : "audio"
+apps -> gateway @http
+apps <-> sync @ws : "remote control"
+cdn -> audio @reads : "origin"
+events -> warehouse @stream
+gateway -> services @http : "routes"
+inbox -> pipeline @event
+labels -> inbox @writes : "DDEX"
+pipeline -> services.catalog @grpc : "publish"
+pipeline -> transcoder @queue : "encode"
 
-analytics.royalties -> labels : "statements" {
+royalties -> labels : "statements" {
   statement table ${FENCE}
   | column       | type | notes            |
   | ------------ | ---- | ---------------- |
@@ -317,73 +432,64 @@ analytics.royalties -> labels : "statements" {
   ${FENCE}
 }
 
-analytics.training -> analytics.warehouse @reads
-analytics.training -> storage.embeddings @writes : "nightly"
-apps -> auth @auth : "sign in"
-apps -> cdn @http : "audio"
-apps -> gateway @http
-apps <-> sync @ws : "remote control"
-cdn -> content.audio @reads : "origin"
-content.inbox -> content.pipeline @event
-content.pipeline -> content.transcoder @queue : "encode"
-content.pipeline -> services.catalog @grpc : "publish"
-content.transcoder -> content.audio @writes
-gateway -> services @http : "routes"
-labels -> content.inbox @writes : "DDEX"
-services.catalog -> storage.catalog_db @sql
-services.catalog -> storage.index @writes : "reindex"
-services.library -> storage.playlists
+royalties -> warehouse @reads
+services.catalog -> catalog_db @sql
+services.catalog -> index @writes : "reindex"
+services.library -> playlists
 services.playback -- cdn : "signed URLs"
-services.playback -> services.catalog @grpc : "availability"
-services.playback -> services.subscriptions @grpc : "entitlements"
 
-services.playback -> storage.events @event : "track played" {
+services.playback -> events @event : "track played" {
   message json ${FENCE}
   { "listener_id": "uuid", "track_id": "uuid", "ms_played": "int", "market": "text", "played_at": "timestamp" }
   ${FENCE}
 }
 
-services.playback -> storage.sessions @writes : "active streams"
-services.recs -> storage.embeddings @reads
-services.search -> storage.index @reads
-services.subscriptions -> storage.accounts_db @sql
+services.playback -> services.catalog @grpc : "availability"
+services.playback -> services.subscriptions @grpc : "entitlements"
+services.playback -> sessions @writes : "active streams"
+services.recs -> embeddings @reads
+services.search -> index @reads
+services.subscriptions -> accounts_db @sql
 services.subscriptions <-> stripe @http : "billing"
-storage.events -> analytics.warehouse @stream
+training -> embeddings @writes : "nightly"
+training -> warehouse @reads
+transcoder -> audio @writes
 
 layout {
-  analytics: { at: [45, 15], size: [6, 19], display: plane }
-  analytics.royalties: { at: [1, 15], size: [4, 3] }
-  analytics.training: { at: [1, 2], size: [4, 3] }
-  analytics.warehouse: { at: [1, 8], size: [4, 3] }
-  apps: { at: [0, 17], size: [6, 11], display: plane }
-  apps.mobile: { at: [1, 7], size: [4, 3] }
-  apps.web: { at: [1, 2], size: [4, 3] }
-  auth: { at: [1, 12], size: [4, 3] }
-  cdn: { at: [10, 24], size: [4, 3] }
-  content: { at: [9, 40], size: [29, 6], display: plane }
-  content.audio: { at: [1, 2], size: [4, 3] }
-  content.inbox: { at: [24, 2], size: [4, 3] }
-  content.pipeline: { at: [17, 2], size: [4, 3] }
-  content.transcoder: { at: [9, 2], size: [4, 3] }
-  gateway: { at: [10, 18], size: [4, 3] }
-  labels: { at: [46, 42], size: [4, 3] }
-  services: { at: [18, 0], size: [13, 39], display: plane }
-  services.catalog: { at: [8, 26], size: [4, 3] }
-  services.library: { at: [8, 2], size: [4, 3] }
-  services.playback: { at: [8, 19], size: [4, 3] }
-  services.recs: { at: [8, 7], size: [4, 3] }
-  services.search: { at: [1, 35], size: [4, 3] }
-  services.subscriptions: { at: [8, 12], size: [4, 3] }
-  storage: { at: [35, 0], size: [6, 39], display: plane }
-  storage.accounts_db: { at: [1, 12], size: [4, 3] }
-  storage.catalog_db: { at: [1, 29], size: [4, 3] }
-  storage.embeddings: { at: [1, 7], size: [4, 3] }
-  storage.events: { at: [1, 23], size: [4, 3] }
-  storage.index: { at: [1, 35], size: [4, 3] }
-  storage.playlists: { at: [1, 2], size: [4, 3] }
-  storage.sessions: { at: [1, 17], size: [4, 3] }
-  stripe: { at: [10, 12], size: [4, 3] }
-  sync: { at: [1, 30], size: [4, 3] }
+  accounts_db: { at: [1, 17], size: [4, 3] }
+  analytics: { at: [45, 7], size: [13, 11] }
+  apps: { at: [0, 10], size: [4, 3] }
+  apps.mobile: { at: [0, 5], size: [4, 3] }
+  apps.web: { at: [0, 0], size: [4, 3] }
+  audio: { at: [1, 2], size: [4, 3] }
+  auth: { at: [0, 3], size: [4, 3] }
+  catalog_db: { at: [1, 2], size: [4, 3] }
+  cdn: { at: [1, 12], size: [4, 3] }
+  content: { at: [9, 25], size: [27, 6] }
+  edge: { at: [9, 3], size: [6, 16] }
+  embeddings: { at: [7, 14], size: [4, 3] }
+  events: { at: [7, 9], size: [4, 3] }
+  gateway: { at: [1, 7], size: [4, 3] }
+  inbox: { at: [22, 2], size: [4, 3] }
+  index: { at: [1, 7], size: [4, 3] }
+  labels: { at: [53, 27], size: [4, 3] }
+  pipeline: { at: [15, 2], size: [4, 3] }
+  playlists: { at: [1, 12], size: [4, 3] }
+  royalties: { at: [8, 2], size: [4, 3] }
+  services: { at: [20, 10], size: [4, 3] }
+  services.catalog: { at: [0, 5], size: [4, 3] }
+  services.library: { at: [0, 20], size: [4, 3] }
+  services.playback: { at: [0, 10], size: [4, 3] }
+  services.recs: { at: [0, 25], size: [4, 3] }
+  services.search: { at: [0, 0], size: [4, 3] }
+  services.subscriptions: { at: [0, 15], size: [4, 3] }
+  sessions: { at: [7, 4], size: [4, 3] }
+  storage: { at: [30, 0], size: [12, 21] }
+  stripe: { at: [20, 3], size: [4, 3] }
+  sync: { at: [1, 2], size: [4, 3] }
+  training: { at: [1, 7], size: [4, 3] }
+  transcoder: { at: [8, 2], size: [4, 3] }
+  warehouse: { at: [1, 2], size: [4, 3] }
 }
 `,
   },

@@ -1,10 +1,10 @@
-import { autoLayout, layoutMap, parse, type ArchDoc } from "@archer/lang";
+import { autoLayout, layoutMap, parse, planeTree, type ArchDoc } from "@archer/lang";
 
 /**
- * Components on the clipboard travel as plain `.arch` text (from
+ * Components and planes on the clipboard travel as plain `.arch` text (from
  * `extractFragment`), so a copy pastes into another document, the code pane,
  * or straight into an agent. Reading it back accepts any Archer text with at
- * least one component, header or not.
+ * least one component or plane, header or not.
  */
 export function parseFragment(text: string): ArchDoc | null {
   const t = text.trim();
@@ -12,17 +12,18 @@ export function parseFragment(text: string): ArchDoc | null {
   const attempt = (src: string): ArchDoc | null => {
     const r = parse(src);
     if (r.diagnostics.some((d) => d.code === "E001")) return null;
-    return r.doc.components.length > 0 ? r.doc : null;
+    return r.doc.components.length > 0 || r.doc.planes.length > 0 ? r.doc : null;
   };
-  return attempt(t) ?? (/^arch\s/.test(t) ? null : attempt(`arch "Pasted" v0.1\n${t}`));
+  return attempt(t) ?? (/^arch\s/.test(t) ? null : attempt(`arch "Pasted" v0.2\n${t}`));
 }
 
-/** Grid size of a fragment's top-level components, for centering a paste on the pointer. */
+/** Grid size of what a fragment has at its top level, for centering a paste on the pointer. */
 export function fragmentSize(fragment: ArchDoc): [number, number] {
   const laid = autoLayout(fragment);
   const layout = layoutMap(laid);
-  const rects = laid.components
-    .map((c) => layout.get(c.id))
+  const rects = planeTree(laid)
+    .itemsOn(undefined)
+    .map((x) => layout.get(x.id))
     .filter((e) => e?.at && e.size)
     .map((e) => ({ at: e!.at!, size: e!.size! }));
   if (rects.length === 0) return [4, 3];

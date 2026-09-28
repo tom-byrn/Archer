@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
 const TOKEN =
-  /(#.*$)|("(?:[^"\\]|\\.)*")|(@[\w.-]+)|(->)|\b(arch|component|layout|desc|shape|at|size|display)\b|\b(v\d[\d.]*)\b|(-?\b\d+\b)|(```)/g;
+  /(#.*$)|("(?:[^"\\]|\\.)*")|(@[\w.-]+)|(->)|\b(arch|component|plane|layout|desc|shape|at|size)\b|\b(v\d[\d.]*)\b|(-?\b\d+\b)|(```)/g;
 const CLASSES = ["tok-comment", "tok-string", "tok-type", "tok-arrow", "tok-kw", "tok-version", "tok-num", "tok-fence"];
 
 /** One line of Archer source as token-colored spans. */

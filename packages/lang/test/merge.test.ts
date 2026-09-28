@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { diffDocs, format, isEmptyDiff, mergeDocs, parse, validate } from "../src/index";
 
-const doc = (body: string, title = "Shop") => parse(`arch "${title}" v0.1\n\n${body}`).doc;
+const doc = (body: string, title = "Shop") => parse(`arch "${title}" v0.2\n\n${body}`).doc;
 const semantic = (d: Parameters<typeof format>[0]) => format(d, { stripLayout: true });
 
 const BASE = doc(`component web "Web" @vercel.nextjs {
@@ -137,5 +137,127 @@ describe("mergeDocs", () => {
     expect(mergeDocs(BASE, ours, theirs).conflicts).toEqual([
       { kind: "title", path: "title", reason: "renamed on both sides" },
     ]);
+  });
+});
+
+describe("mergeDocs: planes", () => {
+  const PLANES = doc(`plane front "Front" {
+  component web
+}
+plane back "Back" {
+  component api
+  component db
+}
+web -> api`);
+  const change = (fn: (src: string) => string) => parse(fn(format(PLANES))).doc;
+
+  it("merges planes by id: a new plane on one side, a renamed one on the other", () => {
+    const ours = change((s) => s.replace('plane front "Front"', 'plane front "Frontend"'));
+    const theirs = change((s) => s.replace("component web\n}", "component web\n}\n\nplane ops \"Ops\""));
+    const r = mergeDocs(PLANES, ours, theirs);
+    expect(r.conflicts).toEqual([]);
+    // In theirs' order, where ops went in after front.
+    expect(r.doc.planes.map((p) => [p.id, p.name])).toEqual([
+      ["front", "Frontend"],
+      ["ops", "Ops"],
+      ["back", "Back"],
+    ]);
+  });
+
+  it("merges moving a component between planes with a change to it", () => {
+    const ours = change((s) => s.replace("  component db\n", "").replace("component web\n", "component web\n  component db\n"));
+    const theirs = change((s) => s.replace("component db", 'component db "Orders DB"'));
+    const r = mergeDocs(PLANES, ours, theirs);
+    expect(r.conflicts).toEqual([]);
+    const db = r.doc.components.find((c) => c.id === "db")!;
+    expect([db.plane, db.name]).toEqual(["front", "Orders DB"]);
+  });
+
+  it("conflicts when both sides put a component on different planes", () => {
+    const ours = change((s) => s.replace("  component db\n", "").replace("component web\n", "component web\n  component db\n"));
+    const theirs = change((s) => s.replace("  component db\n", "") + "\nplane data {\n  component db\n}\n");
+    const r = mergeDocs(PLANES, ours, theirs);
+    expect(r.conflicts).toEqual([{ kind: "component", path: "db", reason: "changed plane on both sides" }]);
+    expect(r.doc.components.find((c) => c.id === "db")!.plane).toBe("front");
+  });
+
+  it("takes a component off a plane the other side removed, and says so", () => {
+    // Ours adds a cache on back; theirs removes back (and what was on it).
+    const ours = change((s) => s.replace("component db\n", "component db\n  component cache\n"));
+    const theirs = change((s) =>
+      s.replace(/plane back "Back" \{[^}]*\}\n/, "component api\ncomponent db\n"),
+    );
+    const r = mergeDocs(PLANES, ours, theirs);
+    expect(r.doc.planes.map((p) => p.id)).toEqual(["front"]);
+    expect(r.conflicts).toEqual([
+      { kind: "component", path: "cache", reason: "sits on a plane the other side removed" },
+    ]);
+    expect(r.doc.components.find((c) => c.id === "cache")!.plane).toBeUndefined();
+    expect(validate(r.doc).filter((d) => d.severity === "error")).toEqual([]);
+  });
+
+  it("conflicts when one side adds a component and the other a plane with one id", () => {
+    const ours = change((s) => s + "\ncomponent ops\n");
+    const theirs = change((s) => s + "\nplane ops\n");
+    const r = mergeDocs(PLANES, ours, theirs);
+    expect(r.conflicts).toEqual([
+      { kind: "plane", path: "ops", reason: "a component and a plane were added with this id" },
+    ]);
+    expect(r.doc.components.some((c) => c.id === "ops")).toBe(true);
+    expect(r.doc.planes.some((p) => p.id === "ops")).toBe(false);
+  });
+
+  it("merges planes inside components", () => {
+    const base = doc("component api {\n  component x\n}");
+    const ours = parse(format(base).replace("component x", "plane jobs {\n    component x\n  }")).doc;
+    const theirs = parse(format(base).replace("component x", 'component x "X"')).doc;
+    const r = mergeDocs(base, ours, theirs);
+    expect(r.conflicts).toEqual([]);
+    const api = r.doc.components[0]!;
+    expect(api.planes.map((p) => p.id)).toEqual(["jobs"]);
+    expect([api.children[0]!.plane, api.children[0]!.name]).toEqual(["jobs", "X"]);
+  });
+});
+
+describe("mergeDocs: plane moves", () => {
+  it("reports planes each side put on the other, and keeps ours's", () => {
+    const base = doc("plane a\n\nplane b\n\ncomponent x");
+    const ours = doc("plane b {\n  plane a\n}\n\ncomponent x");
+    const theirs = doc("plane a {\n  plane b\n}\n\ncomponent x");
+    const r = mergeDocs(base, ours, theirs);
+    expect(r.conflicts.map((c) => [c.kind, c.path])).toEqual([
+      ["plane", "a"],
+      ["plane", "b"],
+    ]);
+    expect(r.doc.planes.map((p) => [p.id, p.plane])).toEqual([
+      ["a", "b"],
+      ["b", undefined],
+    ]);
+  });
+
+  it("keeps what the other side took off a removed plane where it was on the canvas", () => {
+    const base = doc("plane back {\n  component api\n  component db\n}\n\ncomponent web");
+    const ours = doc(`plane back {
+  component api
+  component db
+}
+
+component web
+
+layout {
+  api: { at: [1, 2], size: [4, 3] }
+  back: { at: [20, 0], size: [14, 12] }
+  db: { at: [1, 7], size: [4, 3] }
+  web: { at: [0, 4], size: [4, 3] }
+}`);
+    // The repository file (no layout): the plane is gone, and web is on a new one.
+    const theirs = doc("component api\n\ncomponent db\n\nplane edge {\n  component web\n}");
+    const r = mergeDocs(base, ours, theirs);
+    expect(r.conflicts).toEqual([]);
+    const at = new Map(r.doc.layout.map((e) => [e.path.join("."), e.at]));
+    expect(at.get("api")).toEqual([21, 2]);
+    expect(at.get("db")).toEqual([21, 7]);
+    // Its spot was relative to the canvas, and the new plane has none yet: auto-layout places it.
+    expect(at.get("web")).toBeUndefined();
   });
 });

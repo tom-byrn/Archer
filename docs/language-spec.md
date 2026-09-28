@@ -17,10 +17,11 @@ reading guide, as an implementation spec.
    `layout` block, which is machine-managed. Agent exports include it so the agent sees
    the diagram the author drew, but it is never architecture: agents MAY read it for
    context, MUST NOT implement anything from it, and SHOULD NOT write it unless asked
-   to arrange the diagram. The one visual property outside it is a
-   component's `shape` (§3.3): it says what a thing *is* at a glance (a cylinder is a
-   store, a person is a user), belongs to the component in every view, and agents write
-   it like any other field.
+   to arrange the diagram. Two things outside it are there for readers, but belong to
+   the document in every view, so agents write them like any other field: a
+   component's `shape` (§3.3) says what a thing *is* at a glance (a cylinder is a
+   store, a person is a user), and planes (§3.4) say which things belong together (a
+   frontend and a backend, a cloud account, a network).
 4. **Strict references, permissive semantics.** Every reference must resolve — a
    connection to an undeclared component is a validation error, never an auto-created
    node (deliberately the opposite of Eraser's parser). But the language imposes no
@@ -36,9 +37,10 @@ reading guide, as an implementation spec.
 An `.arch` file has up to four sections, in this order:
 
 ```
-arch "Title" v0.1          # 1. header (required)
+arch "Title" v0.2          # 1. header (required)
 
-component ...              # 2. component declarations (the tree)
+component ...              # 2. declarations: components and planes (the tree)
+plane ...
 
 a -> b ...                 # 3. connection declarations
 
@@ -54,10 +56,10 @@ layout { ... }             # 4. presentation (machine-managed, optional)
 ### 2.1 Header
 
 ```
-arch "Acme Platform" v0.1
+arch "Acme Platform" v0.2
 ```
 
-`v0.1` is the **spec version** the file targets. Parsers refuse files with a major
+`v0.2` is the **spec version** the file targets. Parsers refuse files with a major
 version they don't understand.
 
 ## 3. Components
@@ -83,8 +85,9 @@ component <id> ["Display Name"] [@<type>] [{ <body> }]
     or a URL. Single-line string only. A component that lives in several places
     has one `src` line for each, kept in the order written. Agents start here when
     implementing or verifying the component; the app renders each one as a link.
-  - Child `component` declarations — components nest arbitrarily deep, with JSON-object
-    nesting semantics.
+  - Child `component` declarations — any component can hold components, arbitrarily
+    deep, with JSON-object nesting semantics (§3.1).
+  - Child `plane` declarations — regions on the component's own canvas (§3.4).
   - Payload blocks (§4).
 
 ### 3.1 Nesting and paths
@@ -92,18 +95,34 @@ component <id> ["Display Name"] [@<type>] [{ <body> }]
 Components form a tree. A component is referenced by its **dot-path from the root**:
 
 ```
-component backend "Backend" @vercel {
-  component api "API" @vercel.functions
-  component db "Postgres" @supabase.postgres
+component orders "Orders" @service {
+  component api "Orders API" @service
+  component db "Orders DB" @postgres
 }
 
-backend.api -> backend.db @sql
+component web "Web App" @vercel.nextjs
+
+web -> orders.api @http
+orders.api -> orders.db @sql
 ```
 
-Nesting is purely semantic containment ("this lives inside that"). Whether a container
-renders as a **plane** (an area with its icon in the corner and children laid out
-inside it) or as a collapsed **icon** you click into is presentation, and lives in
-`layout` (§7) — the same file renders either way.
+Nesting is containment: the nested components are parts of the one that holds them.
+Any component can hold components, at any depth, and each one's inside is a canvas of
+its own:
+
+- On the canvas where it sits, a component with nested components is one box, with a
+  count of what's inside. **Opening** it (drilling down) shows its parts on a canvas of
+  their own, with the outside components they connect to drawn along the sides.
+- A connection is drawn on every canvas that shows both ends. Where a nested end isn't
+  visible, the arrow goes to the component that holds it: at the top level above,
+  `web -> orders.api` is an arrow from Web App into Orders.
+- A connection can join a nested component (`orders.api`) or the whole component
+  (`web -> orders`) — say whichever is true.
+
+Nesting is for parts that belong to a thing: a service's API and database, a cluster's
+services. To group things only to show where they are (a frontend and a backend, a
+cloud account, a network), use a plane (§3.4): it draws a region around them, keeps
+them all on one canvas and doesn't change their paths.
 
 ### 3.2 Example
 
@@ -199,14 +218,60 @@ The shapes, in the groups the editor's pickers show them in:
 
 - A shape is independent of the type: the type still picks the icon and color drawn
   inside it, and any shape goes with any type (or none).
-- The shape fills the component's box, whatever its size. A container drawn as a plane
-  stays a plane; its shape shows when it's collapsed to an icon.
+- The shape fills the component's box, whatever its size, and a component with nested
+  components keeps its shape. Planes have no shape.
 - A shape is a hint for readers, never a requirement: it doesn't change what a component
   is, and agents implementing a document may ignore it.
 - A name the language doesn't know is a warning (`W304`), not an error, and the component
   is drawn as a box, so files stay readable by tools that predate a newer shape.
-- A payload may still be named `shape`: a `shape` line followed by a format and a fenced
-  body is read as a payload, as it was before `shape` was a keyword.
+
+### 3.4 Planes
+
+```
+plane <id> ["Display Name"] [@<type>] [{ <body> }]
+```
+
+A plane is a titled region of a canvas: a background drawn behind the components
+declared in its body. It's there for readers, to show at a glance what belongs
+together:
+
+```
+plane frontend "Frontend" {
+  component web "Web App" @vercel.nextjs
+  component mobile "Mobile App" @mobile
+}
+
+plane cloud "AWS" @aws {
+  desc "One account, one region."
+  component api "API" @aws.api_gateway
+  plane vpc "VPC" @aws.vpc {
+    component db "Postgres" @aws.rds
+  }
+}
+
+api -> db @sql
+mobile -> api @http
+web -> api @http
+```
+
+- The body holds, in any mix: a `desc`, `component` declarations (the components on the
+  plane) and `plane` declarations (regions inside it, like the VPC above). No `shape`,
+  `src` or payloads. An empty plane is valid.
+- A `@type` resolves against the catalog like a component's (§5) and is drawn in the
+  plane's title bar: a cloud account, a region, a network, a cluster.
+- **Transparent to paths.** A component on a plane keeps its path — `api` and `db`
+  above, not `cloud.api` — so moving a component onto a plane, off it or to another one
+  never changes a connection. A plane's own path is its scope's path plus its id
+  (`vpc`), which layout entries and tools use; plane ids share their scope with
+  component ids (`E002`).
+- **Never an endpoint.** Connections join components; one that names a plane is `E101`.
+  Connect the components on it or, if the group really is one thing other things talk
+  to, make it a component and nest its parts (§3.1).
+- **Every canvas can have planes.** A plane in a component's body is a region on that
+  component's own canvas, and the components on it are still that component's children
+  (`orders.api` when `api` sits on a plane inside `orders`).
+- The canonical form keeps components in the order they were declared, and writes each
+  plane where its first component comes, with the components on it in its body.
 
 ## 4. Payload blocks
 
@@ -219,8 +284,9 @@ Payloads attach structured or freeform data to a component — or to a connectio
 ````
 
 - `<name>` — snake_case identifier, unique per owner (`schema`, `env`, `endpoints`,
-  `notes`, `message`, …). Names are free; they exist so agents and the detail view can
-  refer to a payload by role.
+  `notes`, `message`, …). Names are free, except the body keywords (`component`,
+  `plane`, `desc`, `src`, `shape`); they exist so agents and the detail view can refer
+  to a payload by role.
 - `<format>` — one of:
 
   | format     | validation                                        |
@@ -235,11 +301,11 @@ Payloads attach structured or freeform data to a component — or to a connectio
 - Validation failures in `json` / `yaml` / `table` payloads are **errors**: the document
   still renders, but is marked invalid and won't compile to an agent export until fixed.
 - Later versions add per-technology validation (e.g. `sql` format checked as real DDL);
-  v0.1 deliberately does not.
+  this one deliberately does not.
 
 ## 5. Types
 
-A type tag connects a component or connection to the **catalog** — the curated library
+A type tag connects a component, plane or connection to the **catalog** — the curated library
 of vendor-neutral building blocks (`@load_balancer`, `@rate_limiter`, `@cdn`, `@queue`,
 `@database`, …) and real technologies, plus the user's saved custom types.
 
@@ -249,13 +315,12 @@ of vendor-neutral building blocks (`@load_balancer`, `@rate_limiter`, `@cdn`, `@
   templates. An **unresolved type is a warning, not an error** — the component renders
   generic, and the file still compiles. This keeps files portable between workspaces
   with different custom libraries.
-- Types carry no compatibility rules in v0.1: nothing constrains what may connect to
-  what.
+- Types carry no compatibility rules: nothing constrains what may connect to what.
 - Abstract and concrete components mix freely — `component auth "Auth Service"` (your
   own code, untyped or typed with something like `@service`) can sit beside
   `component cognito @aws.cognito`.
 - Custom types are defined in the app (component library UI) and referenced from files
-  by tag; v0.1 has no in-file type definitions.
+  by tag; there are no in-file type definitions yet.
 
 ### 5.1 Initial connection-type library
 
@@ -282,12 +347,12 @@ Arrows:
 Examples:
 
 ````
-web -> backend.api @http : "REST, cookie session"
-backend.api -> backend.db @sql
-backend.api <-> cache @redis_protocol
+web -> orders.api @http : "REST, cookie session"
+orders.api -> orders.db @sql
+orders.api <-> cache @redis_protocol
 billing -- stripe
 
-backend.api -> orders_queue @queue : "order placed" {
+orders.api -> order_events @queue : "order placed" {
   message json ```
   { "order_id": "uuid", "total_cents": "int", "placed_at": "timestamp" }
   ```
@@ -297,7 +362,8 @@ backend.api -> orders_queue @queue : "order placed" {
 Rules:
 
 - **Both endpoints MUST resolve to declared components.** An unresolved endpoint is a
-  hard validation error (`E101`). Nothing is ever auto-created.
+  hard validation error (`E101`), and so is a plane (§3.4). Nothing is ever
+  auto-created.
 - `@type` and label are optional and independent.
 - **Connection payloads.** An optional `{ … }` body holds payload blocks (§4) describing
   what travels on the edge: a message schema on a `@queue`, a request/response shape on
@@ -309,7 +375,8 @@ Rules:
   Payloads are not part of a connection's identity: two connections that differ only in
   payloads are still duplicates.
 - Connections between any two components in the tree are allowed, including across
-  nesting boundaries and between a parent and its own descendant.
+  nesting boundaries and between a parent and its own descendant. Planes don't affect
+  them.
 - Canonical form sorts connections by source path, then target path — so compiled
   output is deterministic and diffs are clean. Connections carry no sequence/ordering
   semantics. A connection with payloads is written as a multi-line block separated from
@@ -322,21 +389,24 @@ Everything presentational, in one machine-managed section at the end of the file
 ```
 layout {
   web: { at: [0, 4], size: [4, 3] }
-  backend: { at: [6, 0], size: [10, 12], display: plane }
-  backend.api: { at: [1, 1], size: [4, 3] }
-  backend.db: { at: [6, 1], size: [4, 3], display: icon }
+  backend: { at: [6, 0], size: [12, 6] }
+  api: { at: [1, 2], size: [4, 3] }
+  api.checkout: { at: [0, 0], size: [4, 3] }
+  db: { at: [7, 2], size: [4, 3] }
 }
 ```
 
-- Keys are component dot-paths. Values: `at` (grid cell, `[col, row]`, relative to the
-  parent plane's grid for nested components), `size` (grid cells), `display`
-  (`icon` | `plane`) for components with children.
+- Keys are the paths of components and planes. Values: `at` (grid cell, `[col, row]`)
+  and `size` (grid cells).
+- Every canvas has its own grid: the top level, and the inside of each component
+  (`api.checkout` above is placed inside API, not beside it). `at` is relative to its
+  canvas, or to the plane the item sits on — moving a plane moves what's on it.
 - Grid-based: all positions are integer grid cells, matching the app's snap-to-grid
   canvas (React Flow).
 - **Machine-managed.** The canvas writes it; agents only when asked to arrange the
-  diagram. A component with no layout entry — e.g. in a file an agent wrote or that was pasted in — is
-  positioned by the auto-layout engine on load, and its computed position is then
-  written back.
+  diagram. A component or plane with no layout entry — e.g. in a file an agent wrote or
+  that was pasted in — is positioned by the auto-layout engine on load, and its
+  computed position is then written back. A plane grows to hold what's on it.
 - Layout is always optional, never load-bearing: deleting the entire block yields the
   same architecture, auto-laid-out.
 - Agent guidance (stated in docs and in the export header): read `layout` as the
@@ -348,18 +418,18 @@ layout {
 
 A document is **valid** when:
 
-| code   | rule                                                            | severity |
-| ------ | --------------------------------------------------------------- | -------- |
-| `E001` | file parses (header, declarations, fences)                      | error    |
-| `E002` | component ids unique within their scope                         | error    |
-| `E003` | payload names unique per component / per connection             | error    |
-| `E004` | at most one `shape` per component                               | error    |
-| `E101` | every connection endpoint resolves to a declared component      | error    |
-| `E201` | `json` / `yaml` / `table` payloads parse in their format        | error    |
-| `W301` | type tag resolves in the catalog                                | warning  |
-| `W302` | duplicate connection                                            | warning  |
-| `W303` | layout entry references a declared component                    | warning (entry dropped) |
-| `W304` | shape is one the language knows (§3.3)                          | warning (drawn as a box) |
+| code   | rule                                                             | severity |
+| ------ | ---------------------------------------------------------------- | -------- |
+| `E001` | file parses (header, declarations, fences)                       | error    |
+| `E002` | ids unique within their scope, components and planes together    | error    |
+| `E003` | payload names unique per component / per connection              | error    |
+| `E004` | at most one `shape` per component                                | error    |
+| `E101` | every connection endpoint resolves to a declared component       | error    |
+| `E201` | `json` / `yaml` / `table` payloads parse in their format         | error    |
+| `W301` | type tag resolves in the catalog                                 | warning  |
+| `W302` | duplicate connection                                             | warning  |
+| `W303` | layout entry references a declared component or plane            | warning (entry dropped) |
+| `W304` | shape is one the language knows (§3.3)                           | warning (drawn as a box) |
 
 Errors block agent export ("copy as prompt") and mark the document invalid in the UI;
 the canvas still renders as much as it can. Warnings never block anything.
@@ -380,7 +450,7 @@ a dangling connection is never created in the first place.
 ## 10. Full example
 
 ````
-arch "Acme SaaS" v0.1
+arch "Acme SaaS" v0.2
 
 component web "Next.js App" @vercel.nextjs {
   desc "App shell + marketing. RSC, deployed on Vercel."
@@ -388,7 +458,7 @@ component web "Next.js App" @vercel.nextjs {
   src "packages/ui"
 }
 
-component backend "Backend" @vercel {
+plane backend "Backend" @vercel {
   desc "Everything server-side lives on Vercel."
 
   component api "API" @vercel.functions {
@@ -399,6 +469,11 @@ component backend "Backend" @vercel {
     | POST   | /api/checkout   | create session     |
     | GET    | /api/projects   | list projects      |
     ```
+
+    component checkout "Checkout" {
+      desc "Creates Stripe checkout sessions."
+    }
+    component projects "Projects"
   }
 
   component db "Postgres" @supabase.postgres {
@@ -421,11 +496,12 @@ component cognito "Cognito" @aws.cognito
 component stripe "Stripe" @stripe
 
 web -> auth @http : "login"
-web -> backend.api @http
+web -> api @http
 auth -> cognito @http
-backend.api -> backend.db @sql
+api -> db @sql
+api.projects -> db @sql
 
-backend.api -> stripe @http : "checkout sessions" {
+api.checkout -> stripe @http : "checkout sessions" {
   request json ```
   {
     "price_id": "string",
@@ -438,9 +514,9 @@ backend.api -> stripe @http : "checkout sessions" {
 layout {
   web: { at: [0, 3], size: [4, 3] }
   auth: { at: [0, 8], size: [4, 3] }
-  backend: { at: [6, 0], size: [12, 10], display: plane }
-  backend.api: { at: [1, 1], size: [4, 3] }
-  backend.db: { at: [7, 1], size: [4, 3], display: icon }
+  backend: { at: [6, 0], size: [12, 6] }
+  api: { at: [1, 2], size: [4, 3] }
+  db: { at: [7, 2], size: [4, 3] }
   cognito: { at: [0, 13], size: [3, 3] }
   stripe: { at: [20, 3], size: [3, 3] }
 }
@@ -449,10 +525,13 @@ layout {
 ## 11. Grammar sketch (EBNF-ish)
 
 ```
-file        = header { component | connection } [ layout ] ;
+file        = header { declaration | connection } [ layout ] ;
 header      = "arch" string version ;
+declaration = component | plane ;
 component   = "component" id [ string ] [ type ] [ "{" { bodyitem } "}" ] ;
-bodyitem    = shape | desc | src | component | payload ;
+bodyitem    = shape | desc | src | declaration | payload ;
+plane       = "plane" id [ string ] [ type ] [ "{" { planeitem } "}" ] ;
+planeitem   = desc | declaration ;
 shape       = "shape" id ;
 desc        = "desc" ( string | tripleString ) ;
 src         = "src" string ;
@@ -465,7 +544,7 @@ path        = id { "." id } ;
 layout      = "layout" "{" { path ":" layoutval } "}" ;
 ```
 
-## 12. Open questions (deferred, not blocking v0.1)
+## 12. Open questions (deferred)
 
 - Multi-file / import (`use "./billing.arch"`) — v1 is one file per document.
 - In-file custom type definitions for portability.

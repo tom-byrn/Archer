@@ -8,7 +8,6 @@ import {
   format,
   isEmptyDiff,
   parse,
-  setDisplay,
   summarizeDiff,
   SHAPES,
   SHAPE_INFO,
@@ -129,6 +128,9 @@ const describeSummary = (s: DiffSummary): string => {
   if (s.added) parts.push(`+${s.added} component${s.added === 1 ? "" : "s"}`);
   if (s.removed) parts.push(`−${s.removed} removed`);
   if (s.changed) parts.push(`~${s.changed} changed`);
+  if (s.planesAdded) parts.push(`+${s.planesAdded} plane${s.planesAdded === 1 ? "" : "s"}`);
+  if (s.planesRemoved) parts.push(`−${s.planesRemoved} plane${s.planesRemoved === 1 ? "" : "s"}`);
+  if (s.planesChanged) parts.push(`~${s.planesChanged} plane${s.planesChanged === 1 ? "" : "s"} changed`);
   if (s.connectionsAdded) parts.push(`+${s.connectionsAdded} connection${s.connectionsAdded === 1 ? "" : "s"}`);
   if (s.connectionsRemoved) parts.push(`−${s.connectionsRemoved} connection${s.connectionsRemoved === 1 ? "" : "s"}`);
   if (s.connectionsChanged) parts.push(`~${s.connectionsChanged} connection${s.connectionsChanged === 1 ? "" : "s"} changed`);
@@ -138,7 +140,7 @@ const describeSummary = (s: DiffSummary): string => {
 const revisionView = (r: RevisionRow, previous: ArchDoc | null) => {
   const doc = parse(r.source).doc;
   const summary = summarizeDiff(
-    diffDocs(previous ?? { kind: "doc", title: doc.title, version: doc.version, components: [], connections: [], layout: [] }, doc),
+    diffDocs(previous ?? { kind: "doc", title: doc.title, version: doc.version, components: [], planes: [], connections: [], layout: [] }, doc),
   );
   return {
     revision_id: r._id,
@@ -251,7 +253,7 @@ export function registerArcherTools(server: McpServer): void {
     {
       title: "Read a worked example",
       description:
-        "Return one of the docs' worked examples in full: its list_examples entry plus the complete source, in the canonical form the app saves. Read one to see idiomatic Archer before writing (ids, type tags, desc and src, payloads, nesting, labeled connections), to show the user how something is done, or to give them an editable copy by passing the source to create_project. An example that ends in a layout block was arranged by hand on the canvas: that block is presentation, so leave it out of documents you write.",
+        "Return one of the docs' worked examples in full: its list_examples entry plus the complete source, in the canonical form the app saves. Read one to see idiomatic Archer before writing (ids, type tags, desc and src, payloads, planes, nested components, labeled connections), to show the user how something is done, or to give them an editable copy by passing the source to create_project. An example that ends in a layout block was arranged by hand on the canvas: that block is presentation, so leave it out of documents you write.",
       inputSchema: {
         slug: z
           .enum(EXAMPLES.map((e) => e.slug) as [string, ...string[]])
@@ -330,7 +332,7 @@ export function registerArcherTools(server: McpServer): void {
     {
       title: "Auto-layout Archer source",
       description:
-        "Complete or rebuild the layout block of a raw Archer document (no saving). A document with no positions is arranged by the layered auto-layout (connections flow left to right with few crossings and straight edges, planes wrap their children); otherwise existing positions are kept and new components are placed next to what they connect to. reset=true discards every position (collapsed/expanded state is kept) and arranges from scratch. You rarely need this — create_project/update_project auto-layout for you — but it's useful to preview canonical output or fully re-arrange.",
+        "Complete or rebuild the layout block of a raw Archer document (no saving). Each canvas (the top level, and the inside of every component with nested components) is laid out on its own. A canvas with no positions is arranged by the layered auto-layout (connections flow left to right with few crossings and straight edges, planes wrap what's on them); otherwise existing positions are kept and new components are placed next to what they connect to. reset=true discards every position and size and arranges everything from scratch. You rarely need this — create_project/update_project auto-layout for you — but it's useful to preview canonical output or fully re-arrange.",
       inputSchema: {
         source: z.string().describe("Full Archer document text"),
         reset: z.boolean().optional().describe("Discard existing positions and re-place everything (default false)"),
@@ -524,7 +526,7 @@ export function registerArcherTools(server: McpServer): void {
     {
       title: "Create a project",
       description:
-        "Create a new Archer project from source. The document is validated first: any ERROR (syntax, unresolved connection endpoint, invalid payload, duplicate id) REJECTS the write and returns the diagnostics — fix and retry. On success the source is auto-laid-out, canonicalized, saved, and the result includes the id and an editor URL to share with the user. Write semantic content only; omit the layout block. Minimum viable document: 'arch \"Title\" v0.1'.",
+        "Create a new Archer project from source. The document is validated first: any ERROR (syntax, unresolved connection endpoint, invalid payload, duplicate id) REJECTS the write and returns the diagnostics — fix and retry. On success the source is auto-laid-out, canonicalized, saved, and the result includes the id and an editor URL to share with the user. Write semantic content only; omit the layout block. Minimum viable document: 'arch \"Title\" v0.2'.",
       inputSchema: {
         source: z.string().describe("Full Archer document text (see get_guide for the language)"),
         summary: z.string().max(200).optional().describe("One line describing what you changed, shown in the human's activity feed next to your name. Always provide it."),
@@ -613,37 +615,11 @@ export function registerArcherTools(server: McpServer): void {
   // --- presentation -----------------------------------------------------------
 
   server.registerTool(
-    "set_display",
-    {
-      title: "Collapse/expand a container",
-      description:
-        "Set how a container component renders on the canvas, like a human using the detail panel: 'plane' shows it as an area with its children laid out inside; 'icon' collapses it to a single box (children hidden, their connections re-routed to the container). Semantic content is untouched. Saves immediately.",
-      inputSchema: {
-        project_id: z.string(),
-        path: z.string().describe("Dot-path of the container, e.g. 'backend' or 'backend.api'"),
-        display: z.enum(["plane", "icon"]),
-      },
-    },
-    wrap(async ({ project_id, path, display }) => {
-      const ws = await requireWorkspace();
-      const existing = await db.getProject(ws, project_id);
-      if (!existing) throw new Error(`No project with id ${project_id}.`);
-      const doc = parse(existing.source).doc;
-      const next = format(autoLayout(setDisplay(doc, path.split("."), display)));
-      await db.updateProject(
-        ws, project_id, doc.title, next,
-        `${display === "icon" ? "Collapsed" : "Expanded"} ${path} to ${display}`,
-      );
-      return text({ id: project_id, path, display, saved: true });
-    }),
-  );
-
-  server.registerTool(
     "auto_layout_project",
     {
       title: "Re-arrange a project's canvas",
       description:
-        "Run the auto-layout on a stored project and save. With reset=false (default) only components missing positions are placed, next to what they connect to; with reset=true ALL manual positioning is discarded and the whole canvas is re-arranged (collapsed/expanded state is kept) — only do that when the user asks for a tidy-up, since it destroys their hand arrangement.",
+        "Run the auto-layout on a stored project and save. With reset=false (default) only components and planes missing positions are placed, next to what they connect to; with reset=true ALL manual positioning is discarded and every canvas (the top level and the inside of each component) is re-arranged — only do that when the user asks for a tidy-up, since it destroys their hand arrangement.",
       inputSchema: {
         project_id: z.string(),
         reset: z.boolean().optional(),
@@ -670,7 +646,7 @@ export function registerArcherTools(server: McpServer): void {
     {
       title: "Project history",
       description:
-        "List a project's revisions, newest first: who saved (the human, or an agent by client name), when, their one-line summary, and a count of components/connections added, removed and changed versus the previous revision. Humans see this same feed in the app, which is why every write you make should carry a `summary`. Use it to understand what happened since you last looked, to find a revision id for get_revision/diff_project, or to explain a document's evolution to the user.",
+        "List a project's revisions, newest first: who saved (the human, or an agent by client name), when, their one-line summary, and a count of components, planes and connections added, removed and changed versus the previous revision. Humans see this same feed in the app, which is why every write you make should carry a `summary`. Use it to understand what happened since you last looked, to find a revision id for get_revision/diff_project, or to explain a document's evolution to the user.",
       inputSchema: {
         project_id: z.string(),
         limit: z.number().int().min(1).max(200).optional().describe("Max revisions to return (default 20)"),
@@ -720,7 +696,7 @@ export function registerArcherTools(server: McpServer): void {
     {
       title: "Diff two revisions",
       description:
-        "Structured architecture diff between two points in a project's history: components added/removed/changed (with which fields), connections added/removed, title changes. Layout moves never count. Defaults compare the latest change (the current document vs. the revision before it) — the fastest way to answer 'what did you / the human just change?'. Pass revision ids from get_history to compare arbitrary points.",
+        "Structured architecture diff between two points in a project's history: components and planes added/removed/changed (with which fields; moving a component onto another plane changes its `plane`), connections added/removed, title changes. Layout moves never count. Defaults compare the latest change (the current document vs. the revision before it) — the fastest way to answer 'what did you / the human just change?'. Pass revision ids from get_history to compare arbitrary points.",
       inputSchema: {
         project_id: z.string(),
         from_revision_id: z.string().optional().describe("Older revision (default: the one just before `to`)"),
@@ -763,7 +739,7 @@ export function registerArcherTools(server: McpServer): void {
         const prev = revisions[toIndex + 1];
         if (!prev) {
           fromLabel = "empty";
-          fromSource = `arch "${parse(toSource).doc.title}" v0.1\n`;
+          fromSource = `arch "${parse(toSource).doc.title}" v0.2\n`;
         } else {
           fromLabel = prev._id;
           fromSource = prev.source;

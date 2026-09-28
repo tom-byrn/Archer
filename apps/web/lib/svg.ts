@@ -1,18 +1,22 @@
 /**
  * Pure SVG renderer for an Archer document — no React, no DOM. Powers the
  * public embed endpoint (`/share/<slug>/image.svg`) so a README can show a live
- * architecture diagram. Mirrors the canvas look in `components/nodes.tsx`.
+ * architecture diagram. Mirrors the canvas look in `components/nodes.tsx`:
+ * the document's top level, planes as regions, and each component as a box
+ * (one with components nested in it says how many).
  */
 
 import {
+  EMPTY_PLANE_SIZE,
+  LEAF_SIZE,
   autoLayout,
-  effectiveDisplay,
   layoutMap,
   parse,
-  pathToString,
+  planeTree,
   shapeOf,
   type ArchDoc,
   type ComponentNode,
+  type PlaneNode,
 } from "@archer/lang";
 import { GLYPHS, GLYPH_VIEWBOX, lookupType, type Logo } from "@archer/catalog";
 import { LABEL, labelLayout, shapeGeometry, type ShapeGeometry } from "./shapes";
@@ -170,18 +174,36 @@ const iconSvg = (b: Box, size: number, x: number, y: number, dark: boolean): str
 
 interface Box {
   path: string;
-  node: ComponentNode;
+  node: ComponentNode | PlaneNode;
   x: number;
   y: number;
   w: number;
   h: number;
   plane: boolean;
+  /** The planes it sits on, innermost first. */
+  on: string[];
   color: string;
   glyph: string;
   logo: Logo | undefined;
   /** Drawn as a shape (lib/shapes.ts) instead of the card. */
   shape?: ShapeGeometry;
 }
+
+/**
+ * How many components are nested in one, in its bottom-right corner (mirrors
+ * nodes.tsx NestedBadge): a stack glyph and the count.
+ */
+const nestedBadge = (x: number, y: number, w: number, h: number, count: number, P: Palette): string => {
+  const text = String(count);
+  const pw = 4 + 11 + 3 + text.length * 6.5 + 5;
+  const px = x + w - 5 - pw;
+  const py = y + h - 5 - 16;
+  return (
+    `<rect x="${px}" y="${py}" width="${pw}" height="16" rx="4" fill="${P.surface2}"/>` +
+    glyphSvg("stack", 11, P.ink3, px + 4, py + 2.5) +
+    `<text x="${px + 18}" y="${py + 11.5}" font-family='${SANS}' font-size="11" fill="${P.ink3}">${text}</text>`
+  );
+};
 
 /** How far in from each side of a box its edges end: a shape's outline, or the card's border. */
 const NO_INSET = { t: 0, r: 0, b: 0, l: 0 };
@@ -205,49 +227,38 @@ export function renderArchSvg(source: string, opts: RenderOptions = {}): string 
 
   const layout = layoutMap(doc);
   const boxes: Box[] = [];
-  const visibleAncestor = new Map<string, string>();
+  const tree = planeTree({ components: doc.components, planes: doc.planes });
 
-  const walk = (
-    items: ComponentNode[],
-    prefix: string,
-    visible: boolean,
-    collapsed: string | null,
-    origin: [number, number],
-  ) => {
-    for (const c of items) {
-      const path = prefix === "" ? c.id : `${prefix}.${c.id}`;
+  const walk = (on: PlaneNode | undefined, origin: [number, number], chain: string[]) => {
+    for (const item of tree.itemsOn(on)) {
+      const path = item.id;
       const entry = layout.get(path);
-      const display = effectiveDisplay(c, entry);
-      const isVisible = visible && collapsed === null;
-      visibleAncestor.set(path, collapsed ?? path);
       const at = entry?.at ?? [0, 0];
-      const size = entry?.size ?? [4, 3];
+      const plane = item.kind === "plane";
+      const size = entry?.size ?? (plane ? EMPTY_PLANE_SIZE : LEAF_SIZE);
       const abs: [number, number] = [origin[0] + at[0] * CELL, origin[1] + at[1] * CELL];
-      if (isVisible) {
-        const type = c.type ? lookupType(c.type) : undefined;
-        const plane = display === "plane" && c.children.length > 0;
-        const shape = shapeOf(c);
-        const w = size[0] * CELL;
-        const h = size[1] * CELL;
-        boxes.push({
-          path,
-          node: c,
-          x: abs[0],
-          y: abs[1],
-          w,
-          h,
-          plane,
-          color: displayColor(type?.color ?? P.fallback, dark),
-          glyph: type?.glyph ?? "box",
-          logo: type?.logo === undefined ? undefined : opts.logos?.[type.logo],
-          ...(!plane && shape !== "box" ? { shape: shapeGeometry(shape, w, h) } : {}),
-        });
-      }
-      const childCollapsed = collapsed ?? (display === "icon" && c.children.length > 0 ? path : null);
-      walk(c.children, path, isVisible, childCollapsed, abs);
+      const type = item.type ? lookupType(item.type) : undefined;
+      const shape = item.kind === "component" ? shapeOf(item) : "box";
+      const w = size[0] * CELL;
+      const h = size[1] * CELL;
+      boxes.push({
+        path,
+        node: item,
+        x: abs[0],
+        y: abs[1],
+        w,
+        h,
+        plane,
+        on: chain,
+        color: displayColor(type?.color ?? P.fallback, dark),
+        glyph: type?.glyph ?? "box",
+        logo: type?.logo === undefined ? undefined : opts.logos?.[type.logo],
+        ...(shape !== "box" ? { shape: shapeGeometry(shape, w, h) } : {}),
+      });
+      if (item.kind === "plane") walk(item, abs, [path, ...chain]);
     }
   };
-  walk(doc.components, "", true, null, [0, 0]);
+  walk(undefined, [0, 0], []);
 
   if (boxes.length === 0) return emptySvg(P, doc.title, showTitle, background);
 
@@ -288,8 +299,8 @@ export function renderArchSvg(source: string, opts: RenderOptions = {}): string 
     } else if (b.shape) {
       out.push(shapeSvg(b, x, y, P, dark));
     } else {
-      const collapsedCount = b.node.children.length;
-      const sub = (b.node.type ?? "component") + (collapsedCount > 0 ? ` · ${collapsedCount} inside` : "");
+      const nested = b.node.kind === "component" ? b.node.children.length : 0;
+      const sub = b.node.type ?? "component";
       const tileX = x + 12;
       const tileY = y + (b.h - 32) / 2;
       const textX = x + 12 + 32 + 10;
@@ -297,6 +308,10 @@ export function renderArchSvg(source: string, opts: RenderOptions = {}): string 
       const midY = y + b.h / 2;
       out.push(
         `<g>` +
+          // A second card behind it, like a stack, when components are nested in it.
+          (nested > 0
+            ? `<rect x="${x + 3}" y="${y + 3}" width="${b.w}" height="${b.h}" rx="6" fill="${P.surface}" stroke="${P.line2}"/>`
+            : "") +
           `<rect x="${x}" y="${y}" width="${b.w}" height="${b.h}" rx="6" fill="${P.surface}" stroke="${P.line2}"/>` +
           // A vendor's square icon (AWS) takes the tinted tile's place.
           (b.logo?.kind === "tile"
@@ -305,6 +320,7 @@ export function renderArchSvg(source: string, opts: RenderOptions = {}): string 
               iconSvg(b, 18, tileX + 7, tileY + 7, dark)) +
           `<text x="${textX}" y="${midY - 2}" font-family='${SANS}' font-size="13" font-weight="600" fill="${P.ink}">${esc(fit(name, textW, 6.8))}</text>` +
           `<text x="${textX}" y="${midY + 12}" font-family='${MONO}' font-size="10" fill="${P.ink3}">${esc(fit(sub, textW, 6.2))}</text>` +
+          (nested > 0 ? nestedBadge(x, y, b.w, b.h, nested, P) : "") +
           `</g>`,
       );
     }
@@ -324,6 +340,7 @@ export function renderArchSvg(source: string, opts: RenderOptions = {}): string 
   // boxes and plane title bars, and around unrelated planes when possible.
   const obstaclesFor = (source: string, target: string): Obstacle[] => {
     const list: Obstacle[] = [];
+    const related = new Set([...(byPath.get(source)?.on ?? []), ...(byPath.get(target)?.on ?? [])]);
     for (const b of boxes) {
       if (b.path === source || b.path === target) continue;
       const r = { x: b.x + dx, y: b.y + dy, w: b.w, h: b.h };
@@ -332,15 +349,19 @@ export function renderArchSvg(source: string, opts: RenderOptions = {}): string 
         continue;
       }
       list.push({ ...r, h: PLANE_TITLE, cost: BOX_COST / 4 });
-      if (!source.startsWith(b.path + ".") && !target.startsWith(b.path + "."))
-        list.push({ ...r, cost: BOX_COST / 20 });
+      if (!related.has(b.path)) list.push({ ...r, cost: BOX_COST / 20 });
     }
     return list;
   };
+  // A connection to something nested in a component is drawn to that component.
+  const boxFor = (path: readonly string[]) => {
+    const b = byPath.get(path[0] ?? "");
+    return b && !b.plane ? b : undefined;
+  };
   const routed: (RoutedEdge & { c: ArchDoc["connections"][number] })[] = [];
   for (const c of doc.connections) {
-    const s = byPath.get(visibleAncestor.get(pathToString(c.source)) ?? "");
-    const t = byPath.get(visibleAncestor.get(pathToString(c.target)) ?? "");
+    const s = boxFor(c.source);
+    const t = boxFor(c.target);
     if (!s || !t || s === t) continue;
     const sr = { x: s.x + dx, y: s.y + dy, w: s.w, h: s.h };
     const tr = { x: t.x + dx, y: t.y + dy, w: t.w, h: t.h };
@@ -356,7 +377,22 @@ export function renderArchSvg(source: string, opts: RenderOptions = {}): string 
   // Untangle shared handles, then keep parallel bends from merging.
   untangle(routed, obstaclesFor);
   separateBends(routed.map((e) => bendOf(e.route, e.s, e.t, e.source, e.target)));
+  // Edges from one side of a box to several others (a component whose
+  // nested parts connect out, say) share a trunk, so a chip on it can't say
+  // which branch it labels: those chips go on their own branch first.
+  const partners = new Map<string, Set<string>>();
+  const meet = (box: string, side: string, other: string) => {
+    const k = `${box}:${side}`;
+    partners.set(k, (partners.get(k) ?? new Set()).add(other));
+  };
+  for (const e of routed) {
+    meet(e.source, e.route.from, e.target);
+    meet(e.target, e.route.to, e.source);
+  }
+  const fanned = (box: string, side: string) => (partners.get(`${box}:${side}`)?.size ?? 0) > 1;
   for (const { c, source, target, s: sr, t: tr, route } of routed) {
+    const fanOut = fanned(source, route.from) && !fanned(target, route.to);
+    const fanIn = fanned(target, route.to) && !fanned(source, route.from);
     // Edges end where a shape's outline crosses the middle of the side.
     const si = insets(byPath.get(source)!);
     const ti = insets(byPath.get(target)!);
@@ -364,8 +400,9 @@ export function renderArchSvg(source: string, opts: RenderOptions = {}): string 
     let p2: { x: number; y: number };
     let d: string;
     // Candidate positions for the label chip: the bend first, then the
-    // near-source and near-target segments. The first one that overlaps no
-    // leaf node and no earlier chip wins.
+    // near-source and near-target segments (a fan's own branch before its
+    // shared trunk). The first one that overlaps no leaf node and no earlier
+    // chip wins.
     const candidates: { x: number; y: number }[] = [];
     if (route.corner) {
       const right = route.from === "r";
@@ -373,10 +410,11 @@ export function renderArchSvg(source: string, opts: RenderOptions = {}): string 
       p1 = { x: right ? sr.x + sr.w - si.r : sr.x + si.l, y: sr.y + sr.h / 2 };
       p2 = { x: tr.x + tr.w / 2, y: down ? tr.y + ti.t : tr.y + tr.h - ti.b };
       d = `M${p1.x} ${p1.y}H${p2.x}V${p2.y}`;
-      candidates.push(
+      const legs = [
         { x: (p1.x + p2.x) / 2, y: p1.y },
         { x: p2.x, y: (p1.y + p2.y) / 2 },
-      );
+      ];
+      candidates.push(...(fanOut ? legs.reverse() : legs));
     } else if (route.horizontal) {
       const right = route.from === "r";
       const sign = right ? 1 : -1;
@@ -384,10 +422,11 @@ export function renderArchSvg(source: string, opts: RenderOptions = {}): string 
       p2 = { x: right ? tr.x + ti.l : tr.x + tr.w - ti.r, y: tr.y + tr.h / 2 };
       const mx = route.mid;
       d = `M${p1.x} ${p1.y}H${mx}V${p2.y}H${p2.x}`;
+      const bend = { x: mx, y: (p1.y + p2.y) / 2 };
+      const near = { x: (p1.x + mx) / 2, y: p1.y };
+      const far = { x: (mx + p2.x) / 2, y: p2.y };
       candidates.push(
-        { x: mx, y: (p1.y + p2.y) / 2 },
-        { x: (p1.x + mx) / 2, y: p1.y },
-        { x: (mx + p2.x) / 2, y: p2.y },
+        ...(fanOut ? [far, bend, near] : fanIn ? [near, bend, far] : [bend, near, far]),
         { x: p1.x + sign * 60, y: p1.y },
       );
     } else {
@@ -396,10 +435,11 @@ export function renderArchSvg(source: string, opts: RenderOptions = {}): string 
       p2 = { x: tr.x + tr.w / 2, y: down ? tr.y + ti.t : tr.y + tr.h - ti.b };
       const my = route.mid;
       d = `M${p1.x} ${p1.y}V${my}H${p2.x}V${p2.y}`;
+      const bend = { x: (p1.x + p2.x) / 2, y: my };
+      const near = { x: p1.x, y: (p1.y + my) / 2 };
+      const far = { x: p2.x, y: (my + p2.y) / 2 };
       candidates.push(
-        { x: (p1.x + p2.x) / 2, y: my },
-        { x: p1.x, y: (p1.y + my) / 2 },
-        { x: p2.x, y: (my + p2.y) / 2 },
+        ...(fanOut ? [far, bend, near] : fanIn ? [near, bend, far] : [bend, near, far]),
       );
     }
     const markerEnd = c.arrow !== "--" ? ` marker-end="url(#arrow-end)"` : "";
@@ -492,8 +532,8 @@ function shapeSvg(b: Box, x: number, y: number, P: Palette, dark: boolean): stri
   const tinted = lookupType(b.node.type) !== undefined;
   const stroke = tinted ? mix(b.color, P.line2, 0.45) : P.line2;
   const fill = tinted ? mix(b.color, P.surface, 0.05) : P.surface;
-  const inside = b.node.children.length;
-  const sub = [b.node.type, inside > 0 ? `${inside} inside` : undefined].filter(Boolean).join(" · ");
+  const inside = b.node.kind === "component" ? b.node.children.length : 0;
+  const sub = b.node.type ?? "";
   const c = g.content;
   const layout = labelLayout(c, typed, sub !== "");
   const inline = layout.glyph === "inline" ? 14 + 6 : 0;
@@ -528,6 +568,7 @@ function shapeSvg(b: Box, x: number, y: number, P: Palette, dark: boolean): stri
   top += lines.length * LABEL.nameLine;
   if (layout.sub)
     svg += `<text x="${mid}" y="${top + LABEL.subGap + 10}" text-anchor="middle" font-family='${typed ? MONO : SANS}' font-size="10" fill="${P.ink3}">${esc(fit(sub, c.w, 6.2))}</text>`;
+  if (inside > 0) svg += nestedBadge(x, y, b.w, b.h, inside, P);
   return `<g>${svg}</g>`;
 }
 

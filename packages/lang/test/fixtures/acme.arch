@@ -1,10 +1,11 @@
-arch "Acme SaaS" v0.1
+arch "Acme SaaS" v0.2
 
 component web "Next.js App" @vercel.nextjs {
   desc "App shell + marketing. RSC, deployed on Vercel."
+  src "apps/web"
 }
 
-component backend "Backend" @vercel {
+plane backend "Backend" @vercel {
   desc "Everything server-side lives on Vercel."
 
   component api "API" @vercel.functions {
@@ -15,9 +16,15 @@ component backend "Backend" @vercel {
     | POST   | /api/checkout   | create session     |
     | GET    | /api/projects   | list projects      |
     ```
+
+    component checkout "Checkout" {
+      desc "Creates Stripe checkout sessions."
+    }
+    component projects "Projects"
   }
 
   component db "Postgres" @supabase.postgres {
+    shape cylinder
     desc "Primary datastore."
     schema json ```
     {
@@ -36,11 +43,12 @@ component cognito "Cognito" @aws.cognito
 component stripe "Stripe" @stripe
 
 web -> auth @http : "login"
-web -> backend.api @http
+web -> api @http
 auth -> cognito @http
-backend.api -> backend.db @sql
+api -> db @sql
+api.projects -> db @sql
 
-backend.api -> stripe @http : "checkout sessions" {
+api.checkout -> stripe @http : "checkout sessions" {
   request json ```
   {
     "price_id": "string",
@@ -53,9 +61,9 @@ backend.api -> stripe @http : "checkout sessions" {
 layout {
   web: { at: [0, 3], size: [4, 3] }
   auth: { at: [0, 8], size: [4, 3] }
-  backend: { at: [6, 0], size: [12, 10], display: plane }
-  backend.api: { at: [1, 1], size: [4, 3] }
-  backend.db: { at: [7, 1], size: [4, 3], display: icon }
+  backend: { at: [6, 0], size: [12, 6] }
+  api: { at: [1, 2], size: [4, 3] }
+  db: { at: [7, 2], size: [4, 3] }
   cognito: { at: [0, 13], size: [3, 3] }
   stripe: { at: [20, 3], size: [3, 3] }
 }

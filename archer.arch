@@ -1,4 +1,4 @@
-arch "Archer-Codebase" v0.1
+arch "Archer-Codebase" v0.2
 
 component dev "Developer" @user {
   shape person
@@ -25,7 +25,7 @@ component web "Web App" @vercel.nextjs {
   }
   component canvas "Canvas" {
     shape document
-    desc "React Flow: components drawn as their shape with their product logo or glyph, nested planes, drag/connect/reparent, drill-down focus with breadcrumbs, snap-back for dangling arrows (E101 is unrepresentable from the UI), connection labels on hover or selection, PNG export."
+    desc "React Flow: components drawn as their shape with their product logo or glyph, planes as titled regions that stay open, drag/connect/nest, opening any component to its own canvas with breadcrumbs, snap-back for dangling arrows (E101 is unrepresentable from the UI), connection labels on hover or selection, PNG export."
     src "apps/web/components/ArchCanvas.tsx"
     src "apps/web/components/nodes.tsx"
     src "apps/web/lib/toFlow.ts"
@@ -76,7 +76,7 @@ component lang "Language Core" {
   }
   component layouter "Auto-layout" {
     shape hexagon
-    desc "Layered engine (network simplex): connections flow left to right with few crossings, long edges get lanes of their own, planes wrap their children. Existing positions are kept and new components land next to what they connect to; Re-layout starts over."
+    desc "Layered engine (network simplex): connections flow left to right with few crossings, long edges get lanes of their own, planes wrap what sits on them, and each component's inside is a canvas of its own. Existing positions are kept and new components land next to what they connect to; Re-layout starts over."
     src "packages/lang/src/layout.ts"
     src "packages/lang/src/layered.ts"
     src "packages/lang/src/simplex.ts"
@@ -88,7 +88,7 @@ component lang "Language Core" {
   }
   component transforms "Transforms" {
     shape hexagon
-    desc "Pure AST edits behind every canvas gesture: add/move/resize/reparent/rename components, connections, payloads, shapes, display modes, copy/paste fragments, grouping."
+    desc "Pure AST edits behind every canvas gesture: add/move/resize/nest/rename components and planes, connections, payloads, shapes, copy/paste fragments, grouping on planes."
     src "packages/lang/src/transform.ts"
   }
   component merge "Diff & Merge" {
@@ -106,7 +106,7 @@ component catalog "Catalog" {
 
 component mcp "MCP Server" @mcp {
   shape hexagon
-  desc "@archer/mcp — human-parity agent access, served by the web app at /mcp (Streamable HTTP, OAuth sign-in, no API keys): 26 tools plus the archer://guide and worked-example resources. Writes are validation-gated (errors reject, diagnostics returned) and layout-preserving (surviving components keep their canvas positions); every save is a revision attributed to the agent."
+  desc "@archer/mcp — human-parity agent access, served by the web app at /mcp (Streamable HTTP, OAuth sign-in, no API keys): 25 tools plus the archer://guide and worked-example resources. Writes are validation-gated (errors reject, diagnostics returned) and layout-preserving (surviving components keep their canvas positions); every save is a revision attributed to the agent."
   src "packages/mcp"
   src "apps/web/app/mcp/route.ts"
   tools table ```
@@ -116,7 +116,7 @@ component mcp "MCP Server" @mcp {
   | language   | validate_source, format_source, compile_for_agent, auto_layout_source       |
   | catalog    | list_types, create_custom_type, delete_custom_type                          |
   | projects   | list_projects, get_project, create_project, update_project, delete_project  |
-  | canvas     | set_display, auto_layout_project                                            |
+  | canvas     | auto_layout_project                                                         |
   | history    | get_history, get_revision, diff_project                                     |
   | drift      | link_repository, report_drift, get_drift                                    |
   | workspace  | get_workspace_info, list_workspaces, use_workspace                          |

@@ -60,7 +60,7 @@ export function conflictLine(c: MergeConflict): string {
 export function planSync({ base, draft, head }: { base: string | null; draft: string; head: string }): SyncPlan {
   if (sameArchitecture(head, draft)) return { action: "adopt" }; // e.g. our own pull request merged
   if (base !== null && sameArchitecture(head, base)) return { action: "adopt" }; // only formatting/comments changed
-  const baseDoc = base !== null ? parse(base).doc : { ...parse(draft).doc, components: [], connections: [], layout: [] };
+  const baseDoc = base !== null ? parse(base).doc : { ...parse(draft).doc, components: [], planes: [], connections: [], layout: [] };
   const draftDoc = parse(draft).doc;
   if (base !== null && isEmptyDiff(diffDocs(baseDoc, draftDoc))) return { action: "fast-forward", source: head };
   const merged = mergeDocs(baseDoc, draftDoc, parse(head).doc);
@@ -85,7 +85,7 @@ export function resolveMerge({
 }): string {
   const draftDoc = parse(draft).doc;
   const headDoc = parse(head).doc;
-  const baseDoc = base !== null ? parse(base).doc : { ...draftDoc, components: [], connections: [], layout: [] };
+  const baseDoc = base !== null ? parse(base).doc : { ...draftDoc, components: [], planes: [], connections: [], layout: [] };
   const merged = prefer === "draft" ? mergeDocs(baseDoc, draftDoc, headDoc) : mergeDocs(baseDoc, headDoc, draftDoc);
   return format(merged.doc);
 }
@@ -132,12 +132,15 @@ export function syncStatus(file: StoredFile, source: string): SyncStatus {
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
 
-/** "2 components added, 1 changed, 1 connection removed" */
+/** "2 components added, 1 changed, 1 plane added, 1 connection removed" */
 export function describeChanges(s: DiffSummary): string {
   const parts: string[] = [];
   if (s.added) parts.push(`${plural(s.added, "component")} added`);
   if (s.removed) parts.push(`${plural(s.removed, "component")} removed`);
   if (s.changed) parts.push(`${plural(s.changed, "component")} changed`);
+  if (s.planesAdded) parts.push(`${plural(s.planesAdded, "plane")} added`);
+  if (s.planesRemoved) parts.push(`${plural(s.planesRemoved, "plane")} removed`);
+  if (s.planesChanged) parts.push(`${plural(s.planesChanged, "plane")} changed`);
   const conns: string[] = [];
   if (s.connectionsAdded) conns.push(`${s.connectionsAdded} added`);
   if (s.connectionsRemoved) conns.push(`${s.connectionsRemoved} removed`);
@@ -149,11 +152,26 @@ export function describeChanges(s: DiffSummary): string {
   return parts.length ? parts.join(", ") : "no architectural changes";
 }
 
-/** Total number of changed components and connections. */
+/** Total number of changed components, planes and connections. */
 export const changeCount = (s: DiffSummary): number =>
-  s.added + s.removed + s.changed + s.connectionsAdded + s.connectionsRemoved + s.connectionsChanged;
+  s.added +
+  s.removed +
+  s.changed +
+  s.planesAdded +
+  s.planesRemoved +
+  s.planesChanged +
+  s.connectionsAdded +
+  s.connectionsRemoved +
+  s.connectionsChanged;
 
-const FIELD_WORDS: Record<string, string> = { desc: "description", src: "sources", payloads: "payloads", name: "name", type: "type" };
+const FIELD_WORDS: Record<string, string> = {
+  desc: "description",
+  src: "sources",
+  payloads: "payloads",
+  name: "name",
+  type: "type",
+  plane: "plane",
+};
 
 /** Default commit message / pull request title for publishing `diff`. */
 export function publishTitle(diff: DocDiff, path: string): string {
@@ -182,6 +200,12 @@ export function publishBody(diff: DocDiff, editorUrl: string): string {
       c.kind === "changed"
         ? `- \`${c.path}\`: changed ${c.fields?.join(", ")}`
         : `- \`${c.path}\`: ${c.kind}`,
+    );
+  for (const p of diff.planes)
+    lines.push(
+      p.kind === "changed"
+        ? `- plane \`${p.path}\`: changed ${p.fields?.join(", ")}`
+        : `- plane \`${p.path}\`: ${p.kind}`,
     );
   for (const c of diff.connections) {
     const conn = c.connection;

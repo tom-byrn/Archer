@@ -2,7 +2,17 @@
 
 import { useCallback, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { compileForAgent, componentPaths, findComponent, format } from "@archer/lang";
+import {
+  compileForAgent,
+  componentPaths,
+  findComponent,
+  findPlane,
+  format,
+  planePaths,
+  type ArchDoc,
+  type ComponentNode,
+  type PlaneNode,
+} from "@archer/lang";
 import { lookupType } from "@archer/catalog";
 import { archLanguage } from "@/lib/archLanguage";
 import type { RepoLink } from "@/lib/github";
@@ -11,7 +21,7 @@ import { deriveDoc } from "@/lib/useArchDoc";
 import { displayColor, useIsDark } from "@/lib/useIsDark";
 import { ArchCanvas, type CanvasCallbacks } from "./ArchCanvas";
 import { CodeEditor } from "./CodeMirror";
-import { ComponentDetails } from "./DetailPanel";
+import { ComponentDetails, PlaneDetails } from "./DetailPanel";
 import { LogoProvider } from "./logos";
 import { GlyphSwatch } from "./nodes";
 import { Button, Chip, Icon, IconButton, Kbd, Menu, SidePanel, cx, relativeTime } from "./ui";
@@ -73,7 +83,9 @@ function DocumentView({
     [focus, derived],
   );
   const selectedPath =
-    selected && componentPaths(derived.doc).has(selected) ? selected : null;
+    selected && (componentPaths(derived.doc).has(selected) || planePaths(derived.doc).has(selected))
+      ? selected
+      : null;
 
   const flow = useMemo(
     () =>
@@ -81,7 +93,7 @@ function DocumentView({
         focus: liveFocus,
         resolveType,
         isDark,
-        marks: (_p, c) => (c.src?.length ? { src: c.src } : undefined),
+        marks: (_p, c) => (c.kind === "component" && c.src?.length ? { src: c.src } : undefined),
       }),
     [derived, liveFocus, isDark],
   );
@@ -95,6 +107,11 @@ function DocumentView({
           setFocus(path.split("."));
           setSelected(null);
         }
+      },
+      // A component outside this one: open the canvas it's on, selected.
+      onOpenContext: (path) => {
+        setFocus(path.split(".").slice(0, -1));
+        setSelected(path);
       },
       onSelectNode: (path) => setSelected(path),
       onSelectEdge: () => setSelected(null),
@@ -117,7 +134,9 @@ function DocumentView({
     );
   };
 
-  const node = selectedPath ? findComponent(derived.doc, selectedPath.split(".")) : null;
+  const node = selectedPath
+    ? (findComponent(derived.doc, selectedPath.split(".")) ?? findPlane(derived.doc, selectedPath.split(".")))
+    : null;
 
   return (
     <div className="flex h-dvh flex-col overscroll-none bg-bg">
@@ -224,13 +243,14 @@ function DocumentView({
                   <Icon.ChevronRight className="h-3 w-3 text-ink-3" />
                   <button
                     type="button"
+                    title={liveFocus.slice(0, i + 1).join(".")}
                     onClick={() => setFocus(liveFocus.slice(0, i + 1))}
                     className={cx(
                       "rounded-sm px-1.5 py-0.5 transition-colors hover:bg-surface-2",
                       i === liveFocus.length - 1 ? "font-medium text-ink" : "text-ink-2 hover:text-ink",
                     )}
                   >
-                    {seg}
+                    {findComponent(derived.doc, liveFocus.slice(0, i + 1))?.name ?? seg}
                   </button>
                 </span>
               ))}
@@ -268,7 +288,21 @@ function DocumentView({
           </div>
         </main>
         {node && selectedPath && (
-          <Details path={selectedPath} node={node} onClose={() => setSelected(null)} repo={repo} />
+          <Details
+            doc={derived.doc}
+            path={selectedPath}
+            node={node}
+            onClose={() => setSelected(null)}
+            onOpen={
+              node.kind === "component" && node.children.length > 0
+                ? () => {
+                    setFocus(selectedPath.split("."));
+                    setSelected(null);
+                  }
+                : undefined
+            }
+            repo={repo}
+          />
         )}
       </div>
     </div>
@@ -276,14 +310,18 @@ function DocumentView({
 }
 
 function Details({
+  doc,
   path,
   node,
   onClose,
+  onOpen,
   repo,
 }: {
+  doc: ArchDoc;
   path: string;
-  node: NonNullable<ReturnType<typeof findComponent>>;
+  node: ComponentNode | PlaneNode;
   onClose: () => void;
+  onOpen?: () => void;
   repo: RepoLink | null;
 }) {
   const isDark = useIsDark();
@@ -294,14 +332,20 @@ function Details({
         <GlyphSwatch tag={node.type} box={24} size={14} background={`${accent}24`} className="rounded-md" />
         <div className="min-w-0 flex-1">
           <div className="truncate text-base font-semibold text-ink">{node.name ?? node.id}</div>
-          <div className="mono truncate text-xs text-ink-3">{path}</div>
+          <div className="mono truncate text-xs text-ink-3">
+            {node.kind === "plane" ? `plane · ${path}` : path}
+          </div>
         </div>
         <IconButton label="Close" onClick={onClose}>
           <Icon.Close />
         </IconButton>
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto">
-        <ComponentDetails node={node} repo={repo} />
+        {node.kind === "plane" ? (
+          <PlaneDetails doc={doc} path={path} plane={node} />
+        ) : (
+          <ComponentDetails node={node} repo={repo} onOpen={onOpen} />
+        )}
       </div>
     </SidePanel>
   );

@@ -167,7 +167,7 @@ export const COLOR_GROUPS: TokenGroup[] = [
     title: "Syntax",
     note: "Highlighting for Archer source, in the editor and the docs.",
     tokens: [
-      { token: "tok-kw", role: "Keywords: arch, component, layout" },
+      { token: "tok-kw", role: "Keywords: arch, component, plane, layout" },
       { token: "tok-string", role: "Strings" },
       { token: "tok-type", role: "Types: @aws.lambda" },
       { token: "tok-arrow", role: "Connection arrows" },
@@ -175,7 +175,7 @@ export const COLOR_GROUPS: TokenGroup[] = [
       { token: "tok-comment", role: "Comments" },
       { token: "tok-fence", role: "Payload fences" },
       { token: "tok-payload", role: "Fenced payloads" },
-      { token: "tok-version", role: "Versions: v0.1" },
+      { token: "tok-version", role: "Versions: v0.2" },
     ],
   },
   {
@@ -211,7 +211,7 @@ const FENCE = "```";
 
 /** The brand page's code specimen: short, but touches every syntax token. */
 export const BRAND_CODE_SAMPLE = `# Payments, in brief
-arch "Billing" v0.1
+arch "Billing" v0.2
 
 component api "Billing API" @vercel.functions {
   env yaml ${FENCE}

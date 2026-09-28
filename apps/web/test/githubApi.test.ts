@@ -13,7 +13,7 @@ afterEach(() => {
 
 describe("GitHub client", () => {
   it("reads a file as UTF-8, and treats a missing one as null", async () => {
-    const text = 'arch "Café ☕" v0.1\n';
+    const text = 'arch "Café ☕" v0.2\n';
     const fetch = vi.fn(async (url: string) =>
       url.includes("missing")
         ? respond(404, { message: "Not Found" })

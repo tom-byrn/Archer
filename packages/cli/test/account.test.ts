@@ -77,7 +77,7 @@ async function login() {
   return { code: await exited, out, err, callback, page, forgedStatus };
 }
 
-const SHOP = `arch "Shop" v0.1
+const SHOP = `arch "Shop" v0.2
 
 component web "Web" @vercel.nextjs
 component db "DB" @postgres
@@ -166,7 +166,7 @@ describe("signed in", () => {
   });
 
   it("push rejects invalid files with file:line:col diagnostics and saves nothing", async () => {
-    write("bad.arch", 'arch "Bad" v0.1\ncomponent a "A"\ncomponent a "Dup"\na -> ghost @http\n');
+    write("bad.arch", 'arch "Bad" v0.2\ncomponent a "A"\ncomponent a "Dup"\na -> ghost @http\n');
     const before = host.convex.docs.size;
     const r = await run(["push", "bad.arch"]);
     expect(r.code).toBe(1);
@@ -207,7 +207,7 @@ describe("signed in", () => {
     expect(r.out).toContain("Now using Acme (editor)");
     expect(host.convex.prefs.get(USER)).toBe(TEAM);
 
-    write("team.arch", 'arch "Team" v0.1\ncomponent api\n');
+    write("team.arch", 'arch "Team" v0.2\ncomponent api\n');
     expect((await run(["push", "team.arch"])).code).toBe(0);
     const listed = JSON.parse((await run(["list", "--json"])).out) as { id: string; title: string }[];
     expect(listed.map((p) => p.title)).toEqual(["Team"]);
@@ -222,7 +222,7 @@ describe("signed in", () => {
   it("check knows the workspace's custom types", async () => {
     host.convex.library.set(USER, [{ tag: "custom.billing", name: "Billing", color: "#6366f1", glyph: "box" }]);
     try {
-      write("c.arch", 'arch "C" v0.1\ncomponent b "Billing" @custom.billing\n');
+      write("c.arch", 'arch "C" v0.2\ncomponent b "Billing" @custom.billing\n');
       expect((await run(["check", "c.arch"])).out).not.toContain("W301");
       expect((await run(["check", "--offline", "c.arch"])).out).toContain("W301");
     } finally {
@@ -266,7 +266,7 @@ describe("signed in", () => {
     await client.connect(transport);
     try {
       const names = (await client.listTools()).tools.map((t) => t.name);
-      expect(names).toHaveLength(26);
+      expect(names).toHaveLength(25);
       expect(names).toContain("use_workspace");
       const res = await client.callTool({ name: "get_workspace_info", arguments: {} });
       const info = JSON.parse((res.content as { text: string }[])[0]!.text);
