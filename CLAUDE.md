@@ -166,6 +166,14 @@ Router + React Flow + Convex).
   "Change shape…" opens directly, and the palette's Shapes group), so all of
   them draw the same thing. A component with nested components keeps its
   shape; planes have none.
+- Icons: a component's `icon` (spec §3.3; `icon shopping_cart` in its body)
+  replaces its type's glyph or logo; an untyped component without one shows
+  no icon. The names are the glyph keys plus ~380 more Phosphor icons in
+  snake case, grouped for the picker (`ICON_GROUP_SOURCES` in
+  `packages/catalog/scripts/glyphs.ts`, generated into
+  `@archer/catalog/icons`; add freely, never rename or remove one). The
+  language keeps any name as written; validators pass `knownIcons` for `W305`.
+  The inspector's picker is `components/IconPicker.tsx` ("Change icon…" opens it).
 - Planes and nesting (spec §3.1, §3.4, language v0.2): a `plane` is a titled
   region of a canvas, for readers only. It is transparent to paths (`api` on
   plane `backend` is still `api`), never a connection endpoint (`E101`), and

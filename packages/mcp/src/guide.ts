@@ -208,6 +208,12 @@ The full language specification is at the end of this guide. Key habits:
         shape cylinder
         desc "Every order and its line items."
       }
+- **Icons.** A component shows its type's icon, and an untyped one shows
+  none, unless its body names one with \`icon <name>\`: a Phosphor icon in
+  snake case (\`icon shopping_cart\`, \`icon credit_card\`,
+  \`icon user_circle\`) or a catalog icon (\`database\`, \`server\`,
+  \`queue\`). \`list_types\` lists every icon by group. Give an untyped
+  component an icon when one says what it is; a typed one rarely needs one.
 - **AI systems have their own building blocks:** \`@llm\`, \`@agent\`, \`@mcp\`
   (an MCP server), \`@tool\`, \`@rag\`, \`@embeddings\`, \`@vector_db\`,
   \`@memory\`, \`@guardrails\`, \`@evals\` and more (\`list_types\` with search
@@ -239,19 +245,20 @@ The full language specification is at the end of this guide. Key habits:
 | E001 | Syntax error | Follow the message; check fences and quotes |
 | E002 | Duplicate id in one scope (components and planes share ids) | Rename one of them |
 | E003 | Duplicate payload name on one component or connection | Rename one payload |
-| E004 | More than one \`shape\` on a component | Keep one |
+| E004 | More than one \`shape\` or \`icon\` on a component | Keep one |
 | E101 | Connection endpoint doesn't resolve, or is a plane | Declare the component, fix the path, or connect a component on the plane |
 | E201 | json/yaml/table payload doesn't parse | Fix the payload content |
 | W301 | Unknown type tag (warning) | Optional: use a catalog tag or create a custom type |
 | W302 | Duplicate connection (warning) | Optional: remove one |
 | W303 | Layout entry for unknown path (warning) | Ignored; entry is dropped |
 | W304 | Unknown shape (warning) | Optional: use one of the shapes the message lists |
+| W305 | Unknown icon (warning) | Optional: use an icon \`list_types\` lists |
 
 ## Capability map (vs. the human app)
 
 Everything a human can do in the app maps to a tool: browse projects
 (\`list_projects\`/\`get_project\`), create/delete projects, edit anything —
-components, connections, descriptions, shapes, payloads, nesting, planes —
+components, connections, descriptions, shapes, icons, payloads, nesting, planes —
 (\`update_project\` with full source), manage the custom component library
 (\`create_custom_type\`/\`delete_custom_type\`), arrange the canvas
 (\`auto_layout_project\`, or explicit layout entries), review history

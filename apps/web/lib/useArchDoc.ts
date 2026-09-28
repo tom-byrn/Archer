@@ -10,6 +10,7 @@ import {
   type Diagnostic,
 } from "@archer/lang";
 import { knownConnectionTypes, knownTypes } from "@archer/catalog";
+import { ICON_NAMES } from "@archer/catalog/icons";
 
 const KNOWN_TYPES = knownTypes();
 const KNOWN_CONNECTION_TYPES = knownConnectionTypes();
@@ -128,6 +129,7 @@ export function deriveDoc(source: string, extraTypes?: ReadonlySet<string>): Der
     ...validate(parsed.doc, {
       knownTypes,
       knownConnectionTypes: KNOWN_CONNECTION_TYPES,
+      knownIcons: ICON_NAMES,
     }),
   ];
   return {

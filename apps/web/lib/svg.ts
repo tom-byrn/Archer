@@ -19,6 +19,7 @@ import {
   type PlaneNode,
 } from "@archer/lang";
 import { GLYPHS, GLYPH_VIEWBOX, lookupType, type Logo } from "@archer/catalog";
+import { iconMarkup } from "@archer/catalog/icons";
 import { LABEL, labelLayout, shapeGeometry, type ShapeGeometry } from "./shapes";
 import {
   BOX_COST,
@@ -159,8 +160,11 @@ export const displayColor = (hex: string, dark: boolean): string => {
   return lum >= 0.22 ? hex : towardWhite(hex, 0.55 - lum);
 };
 
+const markupSvg = (body: string, size: number, color: string, x: number, y: number): string =>
+  `<svg x="${x}" y="${y}" width="${size}" height="${size}" viewBox="${GLYPH_VIEWBOX}" style="color:${color}">${body}</svg>`;
+
 const glyphSvg = (key: string, size: number, color: string, x: number, y: number): string =>
-  `<svg x="${x}" y="${y}" width="${size}" height="${size}" viewBox="${GLYPH_VIEWBOX}" style="color:${color}">${GLYPHS[key] ?? GLYPHS.box!}</svg>`;
+  markupSvg(GLYPHS[key] ?? GLYPHS.box!, size, color, x, y);
 
 /** A logo like components/logos.tsx draws it: a mark in its brand color, or artwork as it is. */
 const logoSvg = (logo: Logo, size: number, x: number, y: number, dark: boolean): string =>
@@ -168,9 +172,16 @@ const logoSvg = (logo: Logo, size: number, x: number, y: number, dark: boolean):
   (logo.kind === "mono" ? ` style="color:${displayColor(logo.color!, dark)}"` : "") +
   `>${logo.body}</svg>`;
 
-/** A box's icon: its logo when it has one, its glyph otherwise. */
+/** A box's icon: the one it picked, else its logo when it has one, else its glyph. */
 const iconSvg = (b: Box, size: number, x: number, y: number, dark: boolean): string =>
-  b.logo ? logoSvg(b.logo, size, x, y, dark) : glyphSvg(b.glyph, size, b.color, x, y);
+  b.icon
+    ? markupSvg(b.icon, size, b.color, x, y)
+    : b.logo
+      ? logoSvg(b.logo, size, x, y, dark)
+      : glyphSvg(b.glyph, size, b.color, x, y);
+
+/** Whether a component shows an icon (mirrors nodes.tsx): its own, or its type's. */
+const hasIcon = (b: Box): boolean => b.icon !== undefined || b.node.type !== undefined;
 
 interface Box {
   path: string;
@@ -185,6 +196,8 @@ interface Box {
   color: string;
   glyph: string;
   logo: Logo | undefined;
+  /** Markup of the icon the component picked (`icon <name>`), drawn instead of glyph or logo. */
+  icon?: string;
   /** Drawn as a shape (lib/shapes.ts) instead of the card. */
   shape?: ShapeGeometry;
 }
@@ -239,6 +252,7 @@ export function renderArchSvg(source: string, opts: RenderOptions = {}): string 
       const abs: [number, number] = [origin[0] + at[0] * CELL, origin[1] + at[1] * CELL];
       const type = item.type ? lookupType(item.type) : undefined;
       const shape = item.kind === "component" ? shapeOf(item) : "box";
+      const icon = item.kind === "component" ? iconMarkup(item.icon) : undefined;
       const w = size[0] * CELL;
       const h = size[1] * CELL;
       boxes.push({
@@ -253,6 +267,7 @@ export function renderArchSvg(source: string, opts: RenderOptions = {}): string 
         color: displayColor(type?.color ?? P.fallback, dark),
         glyph: type?.glyph ?? "box",
         logo: type?.logo === undefined ? undefined : opts.logos?.[type.logo],
+        ...(icon !== undefined ? { icon } : {}),
         ...(shape !== "box" ? { shape: shapeGeometry(shape, w, h) } : {}),
       });
       if (item.kind === "plane") walk(item, abs, [path, ...chain]);
@@ -303,7 +318,8 @@ export function renderArchSvg(source: string, opts: RenderOptions = {}): string 
       const sub = b.node.type ?? "component";
       const tileX = x + 12;
       const tileY = y + (b.h - 32) / 2;
-      const textX = x + 12 + 32 + 10;
+      const tile = hasIcon(b);
+      const textX = tile ? x + 12 + 32 + 10 : x + 12;
       const textW = b.w - (textX - x) - 10;
       const midY = y + b.h / 2;
       out.push(
@@ -314,10 +330,12 @@ export function renderArchSvg(source: string, opts: RenderOptions = {}): string 
             : "") +
           `<rect x="${x}" y="${y}" width="${b.w}" height="${b.h}" rx="6" fill="${P.surface}" stroke="${P.line2}"/>` +
           // A vendor's square icon (AWS) takes the tinted tile's place.
-          (b.logo?.kind === "tile"
-            ? logoSvg(b.logo, 32, tileX, tileY, dark)
-            : `<rect x="${tileX}" y="${tileY}" width="32" height="32" rx="6" fill="${alpha(b.color, 0.14)}"/>` +
-              iconSvg(b, 18, tileX + 7, tileY + 7, dark)) +
+          (!tile
+            ? ""
+            : b.logo?.kind === "tile" && !b.icon
+              ? logoSvg(b.logo, 32, tileX, tileY, dark)
+              : `<rect x="${tileX}" y="${tileY}" width="32" height="32" rx="6" fill="${alpha(b.color, 0.14)}"/>` +
+                iconSvg(b, 18, tileX + 7, tileY + 7, dark)) +
           `<text x="${textX}" y="${midY - 2}" font-family='${SANS}' font-size="13" font-weight="600" fill="${P.ink}">${esc(fit(name, textW, 6.8))}</text>` +
           `<text x="${textX}" y="${midY + 12}" font-family='${MONO}' font-size="10" fill="${P.ink3}">${esc(fit(sub, textW, 6.2))}</text>` +
           (nested > 0 ? nestedBadge(x, y, b.w, b.h, nested, P) : "") +
@@ -535,7 +553,7 @@ function shapeSvg(b: Box, x: number, y: number, P: Palette, dark: boolean): stri
   const inside = b.node.kind === "component" ? b.node.children.length : 0;
   const sub = b.node.type ?? "";
   const c = g.content;
-  const layout = labelLayout(c, typed, sub !== "");
+  const layout = labelLayout(c, hasIcon(b), sub !== "");
   const inline = layout.glyph === "inline" ? 14 + 6 : 0;
   const lines = wrap(b.node.name ?? b.node.id, c.w - inline, 6.8, layout.lines);
   const height =

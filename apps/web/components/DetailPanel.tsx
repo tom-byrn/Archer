@@ -33,6 +33,7 @@ import {
   type PlaneNode,
 } from "@archer/lang";
 import { lookupType } from "@archer/catalog";
+import { isIcon } from "@archer/catalog/icons";
 import { EditorView } from "@codemirror/view";
 import type { Extension } from "@codemirror/state";
 import { json } from "@codemirror/lang-json";
@@ -41,11 +42,13 @@ import { markdown } from "@codemirror/lang-markdown";
 import type { UserLibrary } from "@/lib/userLibrary";
 import { githubTreeUrl } from "@/lib/githubApi";
 import type { RepoLink } from "@/lib/github";
+import { iconLabel } from "@/lib/icons";
 import { displayColor, useIsDark } from "@/lib/useIsDark";
 import { CodeEditor } from "./CodeMirror";
 import { Markdown, MarkdownTable, parseTable } from "./Markdown";
 import { Glyph, GlyphSwatch } from "./nodes";
 import { ShapeIcon, ShapePicker } from "./ShapePicker";
+import { IconArt, IconPicker } from "./IconPicker";
 import { TypeCombobox } from "./TypeCombobox";
 import {
   Button,
@@ -64,6 +67,9 @@ import {
   cx,
   type MenuItem,
 } from "./ui";
+
+/** A list the component form can open straight onto ("Change shape…", "Change icon…"). */
+export type Picker = "shape" | "icon";
 
 export type Selection =
   | { kind: "component"; path: string }
@@ -467,6 +473,22 @@ export function ComponentDetails({
               </span>
             </ReadRow>
           )}
+          {node.icon !== undefined && (
+            <ReadRow label="Icon">
+              <span className="flex min-w-0 items-center gap-1.5">
+                {isIcon(node.icon) ? (
+                  <>
+                    <IconArt name={node.icon} size={16} className="text-ink-2" />
+                    <span className="truncate">{iconLabel(node.icon)}</span>
+                  </>
+                ) : (
+                  <span className="truncate text-ink-3">
+                    <span className="mono">{node.icon}</span> (unknown, not drawn)
+                  </span>
+                )}
+              </span>
+            </ReadRow>
+          )}
           <ReadRow label="Description">
             {node.desc ? (
               <p className="whitespace-pre-wrap break-words">{node.desc}</p>
@@ -632,7 +654,14 @@ function Endpoint({
       onClick={() => onSelect({ kind: "component", path: key })}
       className="flex max-w-full items-center gap-1.5 text-left hover:underline"
     >
-      <Glyph tag={node.type} color={custom?.color} glyph={custom?.glyph} size={14} className="shrink-0" />
+      <Glyph
+        tag={node.type}
+        color={custom?.color}
+        glyph={custom?.glyph}
+        icon={node.icon}
+        size={14}
+        className="shrink-0"
+      />
       <span className="truncate">{name}</span>
       {key !== name && <span className="mono truncate text-xs text-ink-3">{key}</span>}
     </button>
@@ -720,8 +749,8 @@ function ComponentInspector({
   onDrillIn,
   library,
   repo,
-  openShapes = false,
-  onShapeListOpened,
+  openPicker,
+  onPickerOpened,
 }: {
   doc: ArchDoc;
   path: string;
@@ -734,9 +763,9 @@ function ComponentInspector({
   onDrillIn?: (path: string) => void;
   library: UserLibrary;
   repo: RepoLink | null;
-  /** Open the form's shape list as soon as it shows. */
-  openShapes?: boolean;
-  onShapeListOpened?: () => void;
+  /** Open the form's shape or icon list as soon as it shows. */
+  openPicker?: Picker;
+  onPickerOpened?: () => void;
 }) {
   const isDark = useIsDark();
   const segments = path.split(".");
@@ -802,15 +831,18 @@ function ComponentInspector({
   return (
     <div className="flex h-full flex-col">
       <div className="flex h-11 shrink-0 items-center gap-2.5 border-b border-line px-3">
-        <GlyphSwatch
-          tag={node.type}
-          color={custom?.color}
-          glyph={custom?.glyph}
-          box={24}
-          size={15}
-          background={`${accent}1a`}
-          className="rounded-sm"
-        />
+        {(node.type !== undefined || isIcon(node.icon)) && (
+          <GlyphSwatch
+            tag={node.type}
+            color={custom?.color}
+            glyph={custom?.glyph}
+            icon={node.icon}
+            box={24}
+            size={15}
+            background={`${accent}1a`}
+            className="rounded-sm"
+          />
+        )}
         <div className="min-w-0 flex-1 leading-tight" title={node.name ?? node.id}>
           <div className="truncate text-base font-semibold">{node.name ?? node.id}</div>
           <div className="mono truncate text-xs text-ink-3">{path}</div>
@@ -840,8 +872,8 @@ function ComponentInspector({
             onSelect={onSelect}
             library={library}
             repo={repo}
-            openShapes={openShapes}
-            onShapeListOpened={onShapeListOpened}
+            openPicker={openPicker}
+            onPickerOpened={onPickerOpened}
           />
         ) : (
           <ComponentDetails node={node} library={library} repo={repo} onOpen={openInside} />
@@ -859,8 +891,8 @@ function ComponentForm({
   onSelect,
   library,
   repo,
-  openShapes,
-  onShapeListOpened,
+  openPicker,
+  onPickerOpened,
 }: {
   node: ComponentNode;
   path: string;
@@ -868,10 +900,11 @@ function ComponentForm({
   onSelect: (s: Selection) => void;
   library: UserLibrary;
   repo: RepoLink | null;
-  openShapes: boolean;
-  onShapeListOpened?: () => void;
+  openPicker?: Picker;
+  onPickerOpened?: () => void;
 }) {
   const segments = path.split(".");
+  const custom = library.items.find((t) => t.tag === node.type);
   return (
     <>
       <Section title="Component" className="pb-5">
@@ -911,8 +944,21 @@ function ComponentForm({
           <ShapePicker
             value={node.shape}
             onChange={(shape) => mutate((d) => setComponentMeta(d, segments, { shape }))}
-            autoOpen={openShapes}
-            onAutoOpened={onShapeListOpened}
+            autoOpen={openPicker === "shape"}
+            onAutoOpened={onPickerOpened}
+          />
+        </PropertyRow>
+        <PropertyRow label="Icon" align="start">
+          <IconPicker
+            value={node.icon}
+            type={
+              node.type === undefined
+                ? undefined
+                : { tag: node.type, color: custom?.color, glyph: custom?.glyph }
+            }
+            onChange={(icon) => mutate((d) => setComponentMeta(d, segments, { icon }))}
+            autoOpen={openPicker === "icon"}
+            onAutoOpened={onPickerOpened}
           />
         </PropertyRow>
         <PropertyRow label="Description" align="start">
@@ -1378,8 +1424,8 @@ export function DetailPanel({
   onDrillIn,
   library,
   repo = null,
-  shapeFor = null,
-  onShapeListOpened,
+  pickerFor = null,
+  onPickerOpened,
 }: {
   doc: ArchDoc;
   selection: Selection;
@@ -1397,9 +1443,9 @@ export function DetailPanel({
   library: UserLibrary;
   /** Linked repository: turns relative `src` paths into GitHub links. */
   repo?: RepoLink | null;
-  /** A component whose form should open straight onto its shape list ("Change shape…"). */
-  shapeFor?: string | null;
-  onShapeListOpened?: () => void;
+  /** A component whose form should open straight onto its shape or icon list ("Change shape…"). */
+  pickerFor?: { path: string; picker: Picker } | null;
+  onPickerOpened?: () => void;
 }) {
   if (selection === null && multi === null) return null;
   const form = editing && !readOnly;
@@ -1435,8 +1481,8 @@ export function DetailPanel({
           onDrillIn={onDrillIn}
           library={library}
           repo={repo}
-          openShapes={shapeFor === selection.path}
-          onShapeListOpened={onShapeListOpened}
+          openPicker={pickerFor?.path === selection.path ? pickerFor.picker : undefined}
+          onPickerOpened={onPickerOpened}
         />
       ) : (
         <ConnectionInspector

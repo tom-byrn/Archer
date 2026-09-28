@@ -426,11 +426,17 @@ layout {
         { shape: "circle", name: "Circle", use: "events, triggers and endpoints" },
         "…",
       ],
+      icons: [
+        { group: "Basic", icons: ["circle", "box", "triangle", "diamond", "…"] },
+        { group: "Commerce & finance", icons: ["shopping_cart", "shopping_bag", "basket", "…"] },
+        "…",
+      ],
       glyphs_for_custom_types: ["box", "circle", "database", "table", "…"],
     },
     notes: [
-      "`search` filters the catalog and custom types only; connection types, shapes and glyphs are always listed in full. Custom types come from the current workspace; if they can't be read, `note` says so.",
+      "`search` filters the catalog and custom types only; connection types, shapes, icons and glyphs are always listed in full. Custom types come from the current workspace; if they can't be read, `note` says so.",
       "A shape goes in a component's body, `shape cylinder`, and draws the component as that outline; the type still picks the icon and color inside it.",
+      "An icon goes in a component's body too, `icon shopping_cart`, and replaces its type's icon; an untyped component shows none without one.",
     ],
   },
   create_custom_type: {

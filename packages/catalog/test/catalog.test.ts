@@ -1,7 +1,9 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { CATALOG, GLYPHS } from "../src/index";
+import { ICON_GROUPS, ICON_KEYWORDS, ICON_NAMES, iconMarkup } from "../src/icons";
 import { LOGOS } from "../src/logos";
-import { buildGlyphs } from "../scripts/glyphs";
+import { buildGlyphs, iconsModule } from "../scripts/glyphs";
 import { NO_LOGO, NO_LOGO_NAMESPACES, VENDOR_NAMESPACES, buildLogos } from "../scripts/logos";
 
 // Consumers never fail loudly on a bad entry: lookupType's Map keeps the last
@@ -21,6 +23,20 @@ describe("catalog", () => {
 
   it("draws every glyph from Phosphor (edit scripts/glyphs.ts, then `pnpm --filter @archer/catalog glyphs`)", () => {
     expect(GLYPHS).toEqual(buildGlyphs());
+  });
+
+  it("generates src/icons.ts from Phosphor (edit scripts/glyphs.ts, then `pnpm --filter @archer/catalog glyphs`)", () => {
+    expect(readFileSync(new URL("../src/icons.ts", import.meta.url), "utf8")).toBe(iconsModule());
+  });
+
+  it("offers every icon name in the picker, once, as a name the language can write", () => {
+    const picked = ICON_GROUPS.flatMap((g) => g.icons);
+    expect(picked.filter((name, i) => picked.indexOf(name) !== i)).toEqual([]);
+    expect(new Set(picked)).toEqual(ICON_NAMES);
+    expect(picked.filter((name) => !/^[a-z][a-z0-9_]*$/.test(name))).toEqual([]);
+    expect(picked.filter((name) => !iconMarkup(name) || !ICON_KEYWORDS[name])).toEqual([]);
+    // Every glyph is an icon too, so a type's glyph can be picked by name.
+    expect(Object.keys(GLYPHS).filter((key) => !ICON_NAMES.has(key))).toEqual([]);
   });
 
   it("uses #rrggbb accent colors", () => {

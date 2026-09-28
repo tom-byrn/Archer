@@ -40,6 +40,7 @@ const FIELD_LABEL: Record<string, string> = {
   name: "name",
   payloads: "payloads",
   shape: "shape",
+  icon: "icon",
   plane: "plane",
 };
 import {

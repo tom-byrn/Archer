@@ -69,6 +69,8 @@ export interface TypeList {
   connection_types: readonly string[];
   /** What `shape <name>` in a component body can name, and what each usually stands for. */
   shapes: { shape: string; name: string; use: string }[];
+  /** What `icon <name>` in a component body can name, grouped as the editor's picker shows them. */
+  icons: { group: string; icons: string[] }[];
   glyphs_for_custom_types: string[];
   note?: string;
 }

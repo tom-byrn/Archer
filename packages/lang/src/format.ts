@@ -61,6 +61,7 @@ function formatComponent(c: ComponentNode, depth: number): string {
 
   const body: string[] = [];
   if (c.shape !== undefined) body.push(`${INDENT.repeat(depth + 1)}shape ${c.shape}`);
+  if (c.icon !== undefined) body.push(`${INDENT.repeat(depth + 1)}icon ${c.icon}`);
   if (c.desc !== undefined) body.push(formatDesc(c.desc, depth + 1));
   for (const src of c.src ?? []) body.push(`${INDENT.repeat(depth + 1)}src ${quote(src)}`);
   for (const p of c.payloads) body.push(formatPayload(p, depth + 1));

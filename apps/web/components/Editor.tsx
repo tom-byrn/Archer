@@ -90,6 +90,7 @@ import {
   DetailPanel,
   connectionKey,
   type MultiSelection,
+  type Picker,
   type Selection,
 } from "./DetailPanel";
 import { LogoProvider } from "./logos";
@@ -336,8 +337,8 @@ function EditorView({ initialSource, library, session }: EditorProps) {
    * reading.
    */
   const [editingId, setEditingId] = useState<string | null>(null);
-  /** "Change shape…": the component whose shape list the form opens on. */
-  const [shapeFor, setShapeFor] = useState<string | null>(null);
+  /** "Change shape…" / "Change icon…": the component whose shape or icon list the form opens on. */
+  const [pickerFor, setPickerFor] = useState<{ path: string; picker: Picker } | null>(null);
   const [focus, setFocus] = useState<string[]>([]);
   const [codeOpen, setCodeOpen] = useState(false);
   // The component palette (left sidebar) starts closed every time the editor
@@ -630,9 +631,9 @@ function EditorView({ initialSource, library, session }: EditorProps) {
   // Once something else is selected the form stays closed, so coming back reads first.
   useEffect(() => {
     if (editingId !== null && editingId !== selectedId) setEditingId(null);
-    if (shapeFor !== null && shapeFor !== selectedId) setShapeFor(null);
-  }, [editingId, shapeFor, selectedId]);
-  const shapeListOpened = useCallback(() => setShapeFor(null), []);
+    if (pickerFor !== null && pickerFor.path !== selectedId) setPickerFor(null);
+  }, [editingId, pickerFor, selectedId]);
+  const pickerOpened = useCallback(() => setPickerFor(null), []);
 
   /** Select a component that was just made, its form open to name it. */
   const selectNew = useCallback((path: string) => {
@@ -1197,7 +1198,16 @@ function EditorView({ initialSource, library, session }: EditorProps) {
           onSelect: () => {
             setSel(only(t.path));
             setEditingId(t.path);
-            setShapeFor(t.path);
+            setPickerFor({ path: t.path, picker: "shape" });
+          },
+        },
+        {
+          label: "Change icon…",
+          icon: <Icon.Icons />,
+          onSelect: () => {
+            setSel(only(t.path));
+            setEditingId(t.path);
+            setPickerFor({ path: t.path, picker: "icon" });
           },
         },
         ...(inside > 0
@@ -1777,8 +1787,8 @@ function EditorView({ initialSource, library, session }: EditorProps) {
             onDrillIn={callbacks.onDrillIn}
             library={library}
             repo={repo}
-            shapeFor={shapeFor}
-            onShapeListOpened={shapeListOpened}
+            pickerFor={pickerFor}
+            onPickerOpened={pickerOpened}
           />
         )}
       </div>

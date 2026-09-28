@@ -16,6 +16,7 @@ import {
   type ResizeParams,
 } from "@xyflow/react";
 import { GLYPHS, GLYPH_VIEWBOX, lookupType } from "@archer/catalog";
+import { iconMarkup } from "@archer/catalog/icons";
 import type { Shape } from "@archer/lang";
 import { LABEL, labelLayout, shapeGeometry, type ShapeGeometry } from "@/lib/shapes";
 import { CELL, type ArchEdge, type ArchNode, type NodeMarks } from "@/lib/toFlow";
@@ -32,24 +33,32 @@ const alpha = (hex: string, a: number): string =>
     .toString(16)
     .padStart(2, "0")}`;
 
+/**
+ * What a component shows: the icon it picked, else its type's logo or glyph.
+ * An untyped component with no icon shows none (`hasIcon`).
+ */
 export function Glyph({
   tag,
   color,
   glyph,
+  icon,
   size = 22,
   className,
 }: {
   tag?: string;
   color?: string;
   glyph?: string;
+  /** The component's own icon (`icon <name>`), drawn in place of its type's. */
+  icon?: string;
   size?: number;
   className?: string;
 }) {
   const isDark = useIsDark();
   const entry = lookupType(tag);
   const logo = useLogo(tag);
-  if (logo) return <LogoArt logo={logo} size={size} className={className} />;
-  const g = GLYPHS[glyph ?? entry?.glyph ?? "box"] ?? GLYPHS.box!;
+  const own = iconMarkup(icon);
+  if (logo && !own) return <LogoArt logo={logo} size={size} className={className} />;
+  const g = own ?? GLYPHS[glyph ?? entry?.glyph ?? "box"] ?? GLYPHS.box!;
   return (
     <svg
       width={size}
@@ -70,6 +79,7 @@ export function GlyphSwatch({
   tag,
   color,
   glyph,
+  icon,
   box,
   size,
   background,
@@ -78,19 +88,21 @@ export function GlyphSwatch({
   tag?: string;
   color?: string;
   glyph?: string;
+  icon?: string;
   box: number;
   size: number;
   background?: string;
   className?: string;
 }) {
   const logo = useLogo(tag);
-  if (logo?.kind === "tile") return <LogoArt logo={logo} size={box} className={cx("shrink-0", className)} />;
+  if (logo?.kind === "tile" && !iconMarkup(icon))
+    return <LogoArt logo={logo} size={box} className={cx("shrink-0", className)} />;
   return (
     <span
       className={cx("flex shrink-0 items-center justify-center", className)}
       style={{ width: box, height: box, backgroundColor: background }}
     >
-      <Glyph tag={tag} color={color} glyph={glyph} size={size} />
+      <Glyph tag={tag} color={color} glyph={glyph} icon={icon} size={size} />
     </span>
   );
 }
@@ -236,6 +248,9 @@ function Badges({ marks }: { marks: NodeMarks | undefined }) {
   );
 }
 
+/** Whether a node shows an icon: one it picked, or its type's. An untyped component shows none. */
+const hasIcon = (data: ArchNode["data"]): boolean => data.icon !== undefined || data.typeTag !== undefined;
+
 const SrcHint = ({ src }: { src: readonly string[] | undefined }) =>
   src?.length ? <Icon.Link className="ml-1 inline h-[10px] w-[10px] align-[-1px] text-ink-3" /> : null;
 
@@ -256,11 +271,18 @@ function ArchShapeNode({ id, data, width, height, shape }: NodeProps<ArchNode> &
   const geo = useMemo(() => shapeGeometry(shape, w, h), [shape, w, h]);
   const typed = data.typeTag !== undefined;
   const sub = data.typeTag ?? "";
-  const layout = labelLayout(geo.content, typed, sub !== "");
+  const layout = labelLayout(geo.content, hasIcon(data), sub !== "");
   const marks = data.marks;
   const c = geo.content;
   const glyph = (size: number) => (
-    <Glyph tag={data.typeTag} color={accent} glyph={data.glyphKey} size={size} className="shrink-0" />
+    <Glyph
+      tag={data.typeTag}
+      color={accent}
+      glyph={data.glyphKey}
+      icon={data.icon}
+      size={size}
+      className="shrink-0"
+    />
   );
   return (
     <div
@@ -347,15 +369,18 @@ function ArchCardNode({ id, data, width, height }: NodeProps<ArchNode>) {
       <EdgeHandles />
       <Badges marks={marks} />
       <NestedBadge path={data.path} count={data.childCount} />
-      <GlyphSwatch
-        tag={data.typeTag}
-        color={accent}
-        glyph={data.glyphKey}
-        box={32}
-        size={18}
-        background={alpha(tile, 0.14)}
-        className="rounded-sm"
-      />
+      {hasIcon(data) && (
+        <GlyphSwatch
+          tag={data.typeTag}
+          color={accent}
+          glyph={data.glyphKey}
+          icon={data.icon}
+          box={32}
+          size={18}
+          background={alpha(tile, 0.14)}
+          className="rounded-sm"
+        />
+      )}
       <div className="min-w-0">
         <div className="arch-node-label truncate text-base font-semibold leading-tight text-ink">
           {data.label}
@@ -423,7 +448,16 @@ export function ArchContextNode({ data, width, height }: NodeProps<ArchNode>) {
       className="arch-node arch-node-context relative flex items-center gap-2 rounded-md border border-dashed px-2"
     >
       <EdgeHandles />
-      <Glyph tag={data.typeTag} color={accent} glyph={data.glyphKey} size={16} className="shrink-0" />
+      {hasIcon(data) && (
+        <Glyph
+          tag={data.typeTag}
+          color={accent}
+          glyph={data.glyphKey}
+          icon={data.icon}
+          size={16}
+          className="shrink-0"
+        />
+      )}
       <div className="min-w-0 leading-tight">
         <div className="truncate text-sm font-semibold text-ink-2">{data.label}</div>
         <div className="mono truncate text-xs text-ink-3">{data.path}</div>

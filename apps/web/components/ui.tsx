@@ -57,6 +57,7 @@ import {
   PencilSimpleIcon,
   PlugIcon,
   PlusIcon,
+  ProhibitIcon,
   RectangleDashedIcon,
   RobotIcon,
   ScissorsIcon,
@@ -64,6 +65,7 @@ import {
   SelectionSlashIcon,
   ShapesIcon,
   SidebarSimpleIcon,
+  SmileyIcon,
   SparkleIcon,
   SquaresFourIcon,
   StackSimpleIcon,
@@ -832,6 +834,10 @@ export const Icon = {
   Swap: (p: IconProps) => <ArrowsLeftRightIcon {...UI} {...p} />,
   Sidebar: (p: IconProps) => <SidebarSimpleIcon {...UI} {...p} />,
   Shapes: (p: IconProps) => <ShapesIcon {...UI} {...p} />,
+  /** A component's icon (the picker, "Change icon…"). */
+  Icons: (p: IconProps) => <SmileyIcon {...UI} {...p} />,
+  /** No icon: an untyped component that picks none. */
+  NoIcon: (p: IconProps) => <ProhibitIcon {...UI} {...p} />,
   /** A plane: a region things sit on. */
   Plane: (p: IconProps) => <RectangleDashedIcon {...UI} {...p} />,
   /** Open a component: see what's nested in it. */

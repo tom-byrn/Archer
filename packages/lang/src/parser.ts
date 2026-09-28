@@ -170,11 +170,27 @@ export function parse(source: string): ParseResult {
               });
             }
             node.shape = value;
+          } else if (at("ident", "icon")) {
+            const kwTok = next();
+            const t = peek();
+            if (t.type !== "ident") {
+              fail(`Expected an icon name after 'icon' (e.g. icon database), got ${describe(t)}.`, t.span);
+            }
+            const value = next().value;
+            if (node.icon !== undefined) {
+              diagnostics.push({
+                code: "E004",
+                severity: "error",
+                message: `Component '${node.id}' has more than one 'icon'.`,
+                span: { start: kwTok.span.start, end: t.span.end },
+              });
+            }
+            node.icon = value;
           } else if (at("ident")) {
             node.payloads.push(parsePayload());
           } else {
             fail(
-              `Expected 'desc', 'src', 'shape', 'component', 'plane', or a payload inside a component body, got ${describe(peek())}.`,
+              `Expected 'desc', 'src', 'shape', 'icon', 'component', 'plane', or a payload inside a component body, got ${describe(peek())}.`,
               peek().span,
             );
           }
@@ -242,7 +258,7 @@ export function parse(source: string): ParseResult {
       } catch (e) {
         if (e instanceof ParseError) {
           diagnostics.push(e.diagnostic);
-          // `src` and `shape` are statement starts elsewhere but not here:
+          // `src`, `shape` and `icon` are statement starts elsewhere but not here:
           // step over one so recovery always moves on.
           if (i === start) next();
           syncBody();
@@ -376,6 +392,7 @@ export function parse(source: string): ParseResult {
       !at("ident", "desc") &&
       !at("ident", "src") &&
       !at("ident", "shape") &&
+      !at("ident", "icon") &&
       !at("ident", "plane") &&
       !at("ident", "layout")
     ) {

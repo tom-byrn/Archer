@@ -13,6 +13,7 @@ import {
   type LayoutEntry,
 } from "@archer/lang";
 import { knownConnectionTypes, knownTypes } from "@archer/catalog";
+import { ICON_NAMES } from "@archer/catalog/icons";
 
 // Validation and write preparation shared by the hosted MCP tools and the CLI,
 // so both report identical diagnostics. Pure: no backend, no filesystem.
@@ -38,7 +39,11 @@ export function analyzeSource(source: string, types: Set<string>): Analysis {
   const parsed = parse(source);
   const diagnostics = [
     ...parsed.diagnostics,
-    ...validate(parsed.doc, { knownTypes: types, knownConnectionTypes: knownConnectionTypes() }),
+    ...validate(parsed.doc, {
+      knownTypes: types,
+      knownConnectionTypes: knownConnectionTypes(),
+      knownIcons: ICON_NAMES,
+    }),
   ];
   return {
     doc: parsed.doc,
