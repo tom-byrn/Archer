@@ -6,15 +6,15 @@ const FAQ: { q: string; a: ReactNode }[] = [
     q: "Do I need an account to try it?",
     a: (
       <>
-        No. The example{" "}
+        No. You can go to the example{" "}
         <Link
           href="/language/examples"
           className="underline underline-offset-2 hover:text-ink"
         >
           sandboxes
         </Link>{" "}
-        are the real canvas, running in your browser. Nothing is saved until you
-        sign in with GitHub.
+        to try it out. But you will need to create an account to connect your
+        agent.
       </>
     ),
   },
