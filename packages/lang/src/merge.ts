@@ -77,7 +77,7 @@ const samePayloads = (a: PayloadNode[], b: PayloadNode[]): boolean => {
 };
 
 /** Own fields holding one string each; `src`, a list, merges beside them. */
-const OWN_FIELDS = ["name", "type", "shape", "desc", "plane"] as const;
+const OWN_FIELDS = ["name", "type", "shape", "icon", "desc", "plane"] as const;
 const PLANE_FIELDS = ["name", "type", "desc", "plane"] as const;
 
 const samePlane = (a: PlaneNode, b: PlaneNode): boolean =>

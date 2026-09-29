@@ -1,13 +1,17 @@
 /**
- * Writes src/glyphs.ts: every component-type glyph is a Phosphor icon
- * (https://phosphoricons.com, MIT) at regular weight, lifted from
- * @phosphor-icons/core. test/catalog.test.ts fails while the file is stale.
+ * Writes src/glyphs.ts and src/icons.ts from Phosphor (https://phosphoricons.com,
+ * MIT) at regular weight, lifted from @phosphor-icons/core:
+ *   - glyphs.ts: every component-type glyph (GLYPH_ICONS);
+ *   - icons.ts: the icons a component can pick for itself (`icon <name>`,
+ *     spec §3.3), in picker groups (ICON_GROUPS), with Phosphor's search tags.
+ * test/catalog.test.ts fails while either file is stale.
  *
  * Usage: pnpm --filter @archer/catalog glyphs
  */
 import { readFileSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
+import { icons as PHOSPHOR } from "@phosphor-icons/core";
 
 /**
  * Glyph key → Phosphor icon name (as on phosphoricons.com). Saved custom types
@@ -179,8 +183,359 @@ ${entries}};
 `;
 }
 
+/**
+ * The icons a component can pick (`icon <name>`), as the picker groups them,
+ * by Phosphor name. Each icon sits in one group. An icon's name in Archer is
+ * its glyph key when GLYPH_ICONS already draws it (so `icon database`,
+ * `icon server`), else the Phosphor name in snake case (`icon shopping_cart`),
+ * else what ICON_RENAMES says. Documents store the names: add icons freely,
+ * never rename or remove one. Every glyph's icon is in some group, so every
+ * glyph key is an icon name too.
+ */
+export const ICON_GROUP_SOURCES: { id: string; name: string; icons: string[] }[] = [
+  {
+    id: "basic",
+    name: "Basic",
+    icons: [
+      "circle", "square", "triangle", "diamond", "hexagon", "octagon", "pentagon", "polygon",
+      "star", "star-four", "sparkle", "asterisk", "heart", "circle-dashed", "circle-half",
+      "circles-three", "circles-four", "squares-four", "grid-four", "shapes", "cube",
+      "cube-transparent", "sphere", "cylinder", "spiral", "infinity", "target", "crosshair",
+      "flag", "flag-checkered", "bookmark-simple", "tag", "push-pin", "seal", "seal-check",
+      "check-circle", "x-circle", "question", "info", "warning", "lightbulb", "lightning",
+      "selection", "square-split-horizontal", "dots-three", "dot-outline",
+    ],
+  },
+  {
+    id: "people",
+    name: "People & teams",
+    icons: [
+      "user", "users", "users-three", "users-four", "user-circle", "user-check", "user-gear",
+      "user-list", "user-plus", "user-switch", "user-focus", "user-sound", "person",
+      "person-arms-spread", "person-simple-walk", "person-simple-run", "student", "detective",
+      "baby", "handshake", "hand-waving", "hand-pointing", "hand-coins", "hand-heart",
+      "identification-badge", "identification-card", "address-book", "chalkboard-teacher",
+      "headset", "smiley", "smiley-sad", "eyes", "footprints", "wheelchair", "crown",
+    ],
+  },
+  {
+    id: "devices",
+    name: "Devices & hardware",
+    icons: [
+      "desktop", "desktop-tower", "computer-tower", "laptop", "device-mobile", "device-tablet",
+      "devices", "watch", "television", "monitor", "monitor-play", "keyboard", "mouse",
+      "printer", "camera", "webcam", "security-camera", "game-controller", "virtual-reality",
+      "headphones", "microphone", "speaker-high", "cpu", "graphics-card", "memory",
+      "hard-drive", "hard-drives", "circuitry", "sim-card", "usb", "plug", "plugs",
+      "plugs-connected", "battery-full", "battery-charging", "power", "scan", "qr-code",
+      "barcode", "drone", "solar-panel",
+    ],
+  },
+  {
+    id: "apps",
+    name: "Apps & interfaces",
+    icons: [
+      "app-window", "browser", "browsers", "terminal-window", "terminal", "layout", "sidebar",
+      "tabs", "cursor-click", "cursor", "hand-tap", "list", "list-checks", "list-numbers",
+      "kanban", "table", "rows", "columns", "cards", "textbox", "toggle-right", "sliders",
+      "faders", "bell", "bell-ringing", "notification", "magnifying-glass", "funnel",
+      "sign-in", "sign-out", "gear", "gear-six", "wrench", "toolbox", "puzzle-piece",
+      "command", "copy", "chat-circle-dots",
+    ],
+  },
+  {
+    id: "code",
+    name: "Code & delivery",
+    icons: [
+      "code", "code-block", "brackets-curly", "brackets-angle", "brackets-square",
+      "brackets-round", "function", "binary", "hash", "git-branch", "git-commit", "git-merge",
+      "git-pull-request", "git-fork", "git-diff", "bug", "bug-beetle", "flask", "test-tube",
+      "rocket", "rocket-launch", "package", "stack", "stack-simple", "tree-structure",
+      "tree-view", "flow-arrow", "path", "recycle", "arrows-clockwise", "repeat", "hammer",
+      "screwdriver", "pipe", "pipe-wrench", "gauge", "speedometer", "spinner",
+    ],
+  },
+  {
+    id: "time",
+    name: "Time & scheduling",
+    icons: [
+      "clock", "clock-clockwise", "clock-counter-clockwise", "clock-countdown", "timer",
+      "alarm", "hourglass", "hourglass-medium", "calendar", "calendar-blank",
+      "calendar-check", "calendar-dots", "calendar-plus", "calendar-x",
+    ],
+  },
+  {
+    id: "network",
+    name: "Network & cloud",
+    icons: [
+      "cloud", "cloud-arrow-up", "cloud-arrow-down", "cloud-check", "cloud-warning",
+      "cloud-slash", "globe-simple", "globe", "globe-hemisphere-west", "globe-hemisphere-east",
+      "network", "share-network", "graph", "broadcast", "cell-tower", "wifi-high", "wifi-slash",
+      "bluetooth", "radio", "link", "link-break", "arrows-left-right", "arrows-split",
+      "arrows-merge", "arrows-down-up", "swap", "arrows-out", "arrows-in", "arrow-right",
+      "arrow-square-out", "share-fat", "signpost", "traffic-signal", "compass", "map-pin",
+      "map-trifold", "navigation-arrow", "upload", "download", "export", "planet", "waves",
+      "wall", "rss", "lighthouse", "castle-turret",
+    ],
+  },
+  {
+    id: "data",
+    name: "Data & files",
+    icons: [
+      "database", "archive", "box-arrow-down", "box-arrow-up", "tray", "tray-arrow-down",
+      "tray-arrow-up", "file", "files", "file-text", "file-code", "file-csv", "file-sql",
+      "file-zip", "file-pdf", "file-image", "file-audio", "file-video", "file-lock",
+      "file-cloud", "file-magnifying-glass", "file-arrow-up", "file-arrow-down", "folder",
+      "folder-open", "folders", "folder-lock", "floppy-disk", "vault", "lockers",
+      "shipping-container", "warehouse", "books", "book", "book-open", "notebook", "note",
+      "note-pencil", "clipboard-text", "scroll", "newspaper", "article", "image", "images",
+      "film-strip", "music-notes", "drop",
+    ],
+  },
+  {
+    id: "messaging",
+    name: "Messaging & events",
+    icons: [
+      "envelope-simple", "envelope", "envelope-open", "mailbox", "paper-plane-tilt",
+      "paper-plane-right", "chat", "chat-circle", "chat-dots", "chat-text", "chats",
+      "chat-teardrop-text", "phone", "phone-call", "video-camera", "video-conference",
+      "megaphone", "queue", "at", "translate", "quotes", "voicemail",
+    ],
+  },
+  {
+    id: "monitoring",
+    name: "Monitoring & analytics",
+    icons: [
+      "chart-bar", "chart-bar-horizontal", "chart-line", "chart-line-up", "chart-line-down",
+      "chart-pie", "chart-pie-slice", "chart-donut", "chart-scatter", "chart-polar",
+      "trend-up", "trend-down", "presentation-chart", "pulse", "heartbeat", "waveform",
+      "wave-sine", "eye", "binoculars", "list-magnifying-glass", "siren", "warning-circle",
+      "percent", "sigma", "calculator", "equalizer", "ranking",
+    ],
+  },
+  {
+    id: "security",
+    name: "Security & identity",
+    icons: [
+      "shield-check", "shield", "shield-warning", "shield-star", "shield-checkered",
+      "shield-slash", "shield-plus", "lock", "lock-open", "lock-key", "lock-simple", "key",
+      "keyhole", "password", "fingerprint", "fingerprint-simple", "certificate", "eye-slash",
+      "prohibit", "warning-octagon", "skull", "biohazard", "fire",
+    ],
+  },
+  {
+    id: "commerce",
+    name: "Commerce & finance",
+    icons: [
+      "shopping-cart", "shopping-bag", "basket", "storefront", "cash-register", "credit-card",
+      "contactless-payment", "wallet", "money", "money-wavy", "coins", "coin",
+      "currency-dollar", "currency-eur", "currency-gbp", "currency-btc", "currency-eth", "bank",
+      "piggy-bank", "receipt", "invoice", "ticket", "gift", "truck", "scales", "gavel",
+    ],
+  },
+  {
+    id: "places",
+    name: "Business & places",
+    icons: [
+      "building", "buildings", "building-office", "building-apartment", "city", "factory",
+      "house", "house-line", "hospital", "briefcase", "office-chair", "desk", "door", "garage",
+      "barn", "graduation-cap", "chalkboard", "exam", "clipboard", "presentation",
+      "projector-screen", "trophy", "medal", "lifebuoy",
+    ],
+  },
+  {
+    id: "ai",
+    name: "AI & science",
+    icons: [
+      "brain", "robot", "head-circuit", "magic-wand", "atom", "dna", "microscope",
+      "lightbulb-filament", "vector-three", "cube-focus", "ear", "virus",
+    ],
+  },
+  {
+    id: "travel",
+    name: "Transport & travel",
+    icons: [
+      "airplane", "airplane-takeoff", "car", "car-profile", "taxi", "bus", "train", "tram",
+      "subway", "van", "bicycle", "scooter", "motorcycle", "boat", "sailboat", "anchor",
+      "gas-pump", "charging-station", "traffic-cone", "road-horizon", "suitcase", "police-car",
+      "ambulance", "fire-truck",
+    ],
+  },
+  {
+    id: "misc",
+    name: "Nature & more",
+    icons: [
+      "sun", "moon", "cloud-rain", "cloud-lightning", "snowflake", "thermometer", "wind",
+      "flame", "leaf", "tree", "tree-evergreen", "plant", "potted-plant", "flower", "mountains",
+      "bird", "cat", "dog", "fish", "paw-print", "windmill", "nuclear-plant", "umbrella",
+      "coffee", "pizza", "fork-knife", "cooking-pot", "first-aid", "pill", "stethoscope",
+      "syringe", "ghost", "alien", "sword", "confetti", "music-note", "palette", "paint-brush",
+      "pen-nib", "pencil", "scissors", "ruler",
+    ],
+  },
+];
+
+/**
+ * Names for Phosphor icons whose snake-case name is already a glyph key that
+ * draws something else (`shield` is shield-check, so plain `shield` is
+ * `shield_plain`).
+ */
+export const ICON_RENAMES: Record<string, string> = {
+  globe: "globe_grid",
+  phone: "telephone",
+  plug: "plug_simple",
+  terminal: "terminal_prompt",
+  cursor: "pointer",
+  bell: "bell_plain",
+  shield: "shield_plain",
+};
+
+export interface IconGroup {
+  id: string;
+  name: string;
+  /** Icon names, in picker order. */
+  icons: string[];
+}
+
+export interface BuiltIcons {
+  groups: IconGroup[];
+  /** Icon name → Phosphor name. */
+  phosphor: Record<string, string>;
+  /** Icon name → words to search it by (its name, Phosphor's name and tags). */
+  keywords: Record<string, string>;
+  /** Markup for the icons that aren't glyphs (glyphs are in GLYPHS). */
+  extra: Record<string, string>;
+  /**
+   * Phosphor's own name (snake case) for an icon that goes by its glyph key,
+   * so `icon hard_drives` works as well as `icon server`: alias → name.
+   */
+  aliases: Record<string, string>;
+}
+
+export function buildIcons(): BuiltIcons {
+  const glyphKeyOf = new Map<string, string>();
+  for (const [key, icon] of Object.entries(GLYPH_ICONS)) if (!glyphKeyOf.has(icon)) glyphKeyOf.set(icon, key);
+  const meta = new Map<string, (typeof PHOSPHOR)[number]>(PHOSPHOR.map((i) => [i.name, i]));
+  const phosphor: Record<string, string> = {};
+  const keywords: Record<string, string> = {};
+  const extra: Record<string, string> = {};
+  const groups = ICON_GROUP_SOURCES.map((g) => ({
+    id: g.id,
+    name: g.name,
+    icons: g.icons.map((icon) => {
+      const m = meta.get(icon);
+      if (!m) throw new Error(`No Phosphor icon '${icon}' (group ${g.id})`);
+      const glyph = glyphKeyOf.get(icon);
+      const name = glyph ?? ICON_RENAMES[icon] ?? icon.replaceAll("-", "_");
+      if (phosphor[name] !== undefined)
+        throw new Error(`Icon '${name}' twice: Phosphor '${phosphor[name]}' and '${icon}'`);
+      if (glyph === undefined && name in GLYPH_ICONS)
+        throw new Error(`Icon '${icon}' would be named '${name}', a glyph that draws ${GLYPH_ICONS[name]}: add it to ICON_RENAMES`);
+      phosphor[name] = icon;
+      const words = new Set([...name.split("_"), ...icon.split("-"), ...m.tags.filter((t) => !t.startsWith("*"))]);
+      keywords[name] = [...words].join(" ").toLowerCase();
+      if (glyph === undefined) extra[name] = markup(icon);
+      return name;
+    }),
+  }));
+  const missing = [...new Set(Object.values(GLYPH_ICONS))].filter((icon) => !(glyphKeyOf.get(icon)! in phosphor));
+  if (missing.length) throw new Error(`Glyph icons missing from ICON_GROUP_SOURCES: ${missing.join(", ")}`);
+  const aliases: Record<string, string> = {};
+  for (const [name, icon] of Object.entries(phosphor)) {
+    const alias = icon.replaceAll("-", "_");
+    // A name taken by another icon (or a glyph key) stays that icon's.
+    if (alias !== name && !(alias in phosphor) && !(alias in GLYPH_ICONS)) aliases[alias] = name;
+  }
+  return { groups, phosphor, keywords, extra, aliases };
+}
+
+/** The source of src/icons.ts. */
+export function iconsModule(): string {
+  const { groups, phosphor, keywords, extra, aliases } = buildIcons();
+  const str = (s: string) => JSON.stringify(s);
+  const groupSrc = groups
+    .map((g) => `  {\n    id: ${str(g.id)},\n    name: ${str(g.name)},\n    icons: [${g.icons.map(str).join(", ")}],\n  },\n`)
+    .join("");
+  const extraSrc = Object.entries(extra)
+    .map(([name, body]) => `  // ${phosphor[name]}\n  ${name}: '${body}',\n`)
+    .join("");
+  const aliasSrc = Object.entries(aliases)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([alias, name]) => `  ${alias}: ${str(name)},\n`)
+    .join("");
+  const keywordSrc = Object.entries(keywords)
+    .map(([name, words]) => `  ${name}: ${str(words)},\n`)
+    .join("");
+  return `// Generated by scripts/glyphs.ts from @phosphor-icons/core. Don't edit by hand:
+// change ICON_GROUP_SOURCES there, then run \`pnpm --filter @archer/catalog glyphs\`.
+
+/**
+ * The icons a component can pick for itself (\`icon <name>\`, spec §3.3):
+ * Phosphor icons (https://phosphoricons.com; MIT, Copyright (c) 2023 Phosphor
+ * Icons) at regular weight, drawn on GLYPH_VIEWBOX like the glyphs. Every
+ * glyph key is an icon name; the rest of the icons are drawn from ICON_EXTRA.
+ * Documents store the names: add freely, never rename or remove one.
+ */
+import { GLYPHS } from "./glyphs";
+
+export interface IconGroup {
+  id: string;
+  name: string;
+  /** Icon names, in picker order. */
+  icons: readonly string[];
+}
+
+/** Every pickable icon, grouped as the picker shows them. */
+export const ICON_GROUPS: readonly IconGroup[] = [
+${groupSrc}];
+
+/** Markup for the icons that aren't glyphs. */
+const ICON_EXTRA: Record<string, string> = {
+${extraSrc}};
+
+/** Words to search each picker icon by: its name, Phosphor's name and tags. */
+export const ICON_KEYWORDS: Readonly<Record<string, string>> = {
+${keywordSrc}};
+
+/**
+ * Phosphor's own names for the icons that go by a glyph key (\`hard_drives\`
+ * is \`server\`): they work anywhere a name does, and the picker writes the key.
+ */
+export const ICON_ALIASES: Readonly<Record<string, string>> = {
+${aliasSrc}};
+
+/**
+ * Every icon name: the picker's icons (every glyph key among them) and their
+ * aliases. Built without the artwork, so validating names never pulls it in.
+ */
+export const ICON_NAMES: ReadonlySet<string> = /* @__PURE__ */ new Set([
+  ...ICON_GROUPS.flatMap((g) => g.icons),
+  ...Object.keys(ICON_ALIASES),
+]);
+
+export const isIcon = (name: string | undefined): name is string =>
+  name !== undefined && ICON_NAMES.has(name);
+
+/** The picker's name for an icon: an alias's glyph key, else the name itself. */
+export const canonicalIcon = (name: string): string =>
+  Object.hasOwn(ICON_ALIASES, name) ? ICON_ALIASES[name]! : name;
+
+/** An icon's SVG inner markup for GLYPH_VIEWBOX, filled with currentColor; undefined when it's unknown. */
+export const iconMarkup = (name: string | undefined): string | undefined => {
+  if (name === undefined) return undefined;
+  const key = canonicalIcon(name);
+  return Object.hasOwn(GLYPHS, key) ? GLYPHS[key] : Object.hasOwn(ICON_EXTRA, key) ? ICON_EXTRA[key] : undefined;
+};
+`;
+}
+
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  const out = new URL("../src/glyphs.ts", import.meta.url);
-  writeFileSync(out, glyphsModule());
-  console.log(`wrote ${fileURLToPath(out)}`);
+  for (const [file, source] of [
+    ["../src/glyphs.ts", glyphsModule()],
+    ["../src/icons.ts", iconsModule()],
+  ] as const) {
+    const out = new URL(file, import.meta.url);
+    writeFileSync(out, source);
+    console.log(`wrote ${fileURLToPath(out)}`);
+  }
 }

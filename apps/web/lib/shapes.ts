@@ -1354,7 +1354,7 @@ export const LABEL = {
 } as const;
 
 export interface LabelLayout {
-  /** The type's glyph: over the name, before it, or left out for room. */
+  /** The icon: over the name, before it, or left out (for room, or when there's none). */
   glyph: "above" | "inline" | "none";
   /** Lines the name may wrap to. */
   lines: 1 | 2;
@@ -1367,16 +1367,17 @@ export interface LabelLayout {
  * the name when there's height for it (else before it), the name on up to
  * two lines, and the type tag under it. What doesn't fit is left out, most
  * dispensable first: the second name line, the tag, then the glyph. Only a
- * typed component has a glyph; the line under the name is `hasSub`.
+ * component with an icon (its own, or its type's) has a glyph; the line under
+ * the name is `hasSub`.
  */
-export function labelLayout(content: Rect, typed: boolean, hasSub: boolean): LabelLayout {
+export function labelLayout(content: Rect, hasIcon: boolean, hasSub: boolean): LabelLayout {
   const { nameLine, subLine, subGap, glyph, gap } = LABEL;
   const fits = (g: LabelLayout["glyph"], lines: number, sub: boolean) =>
     (g === "above" ? glyph + gap : 0) + lines * nameLine + (sub ? subGap + subLine : 0) <= content.h &&
     (g !== "inline" || content.w >= 72);
-  const glyphs: LabelLayout["glyph"][] = typed ? ["above", "inline"] : ["none"];
+  const glyphs: LabelLayout["glyph"][] = hasIcon ? ["above", "inline"] : ["none"];
   for (const sub of hasSub ? [true, false] : [false])
     for (const g of glyphs)
       for (const lines of [2, 1] as const) if (fits(g, lines, sub)) return { glyph: g, lines, sub };
-  return { glyph: typed && content.w >= 72 ? "inline" : "none", lines: 1, sub: false };
+  return { glyph: hasIcon && content.w >= 72 ? "inline" : "none", lines: 1, sub: false };
 }

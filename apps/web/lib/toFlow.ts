@@ -15,6 +15,7 @@ import {
   type PlaneNode,
   type Shape,
 } from "@archer/lang";
+import { isIcon } from "@archer/catalog/icons";
 import {
   BOX_COST,
   bendOf,
@@ -77,6 +78,11 @@ export interface ArchNodeData extends Record<string, unknown> {
   payloadCount: number;
   accent?: string;
   glyphKey?: string;
+  /**
+   * The icon it picked (`icon <name>`, when the name is known), drawn instead
+   * of its type's glyph or logo; components and context only.
+   */
+  icon?: string;
   marks?: NodeMarks;
   /**
    * Smallest size a resize may leave it, in grid cells: a plane must still
@@ -247,6 +253,7 @@ export function toFlow(
             typeTag: item.type,
             desc: item.desc,
             ...(shape !== "box" ? { shape } : {}),
+            ...(isIcon(item.icon) ? { icon: item.icon } : {}),
             childCount: item.children.length,
             payloadCount: item.payloads.length,
             minSize: [...MIN_LEAF_SIZE],
@@ -323,6 +330,7 @@ export function toFlow(
               path: item.far,
               label: node.name ?? node.id,
               typeTag: node.type,
+              ...(isIcon(node.icon) ? { icon: node.icon } : {}),
               side,
               childCount: node.children.length,
               payloadCount: node.payloads.length,

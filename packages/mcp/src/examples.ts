@@ -104,7 +104,7 @@ dashboard -> api @http
     slug: "shapes",
     title: "Support Desk",
     summary:
-      "A `shape` in a component's body draws it as what it is: a person for the customer, people for the support team, a robot for the agent, a cloud for the model provider, a book for the help center, a cylinder for the database. The type still picks the icon and color inside the outline, and anything without a shape stays a box. Shapes are for readers; an agent implementing the document can ignore them.",
+      "A `shape` in a component's body draws it as what it is: a person for the customer, people for the support team, a robot for the agent, a cloud for the model provider, a book for the help center, a cylinder for the database. The type still picks the icon and color inside the outline (an \`icon\` can change the first), and anything without a shape stays a box. Shapes are for readers; an agent implementing the document can ignore them.",
     features: ["shapes"],
     source: `arch "Support Desk" v0.2
 
@@ -148,6 +148,60 @@ agent -> orders @sql : "look up"
 customer -> widget
 handoffs -> team
 widget -> agent @ws : "chat"
+`,
+  },
+  {
+    slug: "icons",
+    title: "Coffee Shop",
+    summary:
+      "An \`icon\` in a component's body picks the icon it shows: any Phosphor icon by its snake-case name (\`coffee\`, \`receipt\`, \`device_tablet\`) or one of the catalog's (\`database\`, \`queue\`). An untyped component shows no icon until it picks one, so an icon is the quickest way to say what something is without a type. On a typed component it replaces the type's icon and keeps its color, like the book on the Postgres menu. Icons are for readers; an agent implementing the document can ignore them. \`list_types\` lists every icon, and the editor's Icon picker searches them.",
+    features: ["icons"],
+    source: `arch "Coffee Shop" v0.2
+
+component customer "Customer" @user {
+  shape person
+}
+
+component kiosk "Order Kiosk" {
+  icon device_tablet
+}
+
+component app "Mobile App" @mobile {
+  shape phone
+}
+
+component orders "Orders" {
+  icon receipt
+  desc "Takes orders from the kiosk and the app, and tracks each drink from paid to picked up."
+}
+
+component payments "Payments" @stripe {
+  shape cloud
+}
+
+component barista "Barista Screen" {
+  icon coffee
+  desc "The queue of drinks to make, oldest first."
+}
+
+component loyalty "Loyalty" {
+  icon gift
+  desc "A stamp per paid order; the tenth drink is free."
+}
+
+component menu "Menu" @postgres {
+  shape cylinder
+  icon book_open
+}
+
+app -> orders @http : "order"
+customer -> app
+customer -> kiosk
+kiosk -> orders @http : "order"
+orders -> barista @ws : "new drink"
+orders -> loyalty @event : "paid"
+orders -> menu @sql : "prices"
+orders -> payments @http : "charge"
 `,
   },
   {
@@ -264,6 +318,7 @@ orders.tracker -> orders.db @writes
     source: `arch "Music Streaming" v0.2
 
 component apps "Listener Apps" {
+  icon devices
   desc "Every client talks to one API and streams from one CDN."
   component web "Web Player" @vercel.nextjs {
     shape browser
@@ -284,6 +339,7 @@ plane edge "Edge" @aws {
     desc "The only public API. Checks the JWT, rate-limits per account, routes to services."
   }
   component sync "Device Sync" {
+    icon broadcast
     desc "WebSocket hub: move playback between devices, or use a phone as the remote for a speaker."
   }
   component cdn "Audio CDN" @aws.cloudfront {
@@ -389,6 +445,7 @@ plane analytics "Analytics" {
     shape cylinder
   }
   component royalties "Royalties" {
+    icon hand_coins
     desc "Monthly job that splits each market's revenue across rights holders by share of streams."
     rules markdown ${FENCE}
     - A stream counts after 30 seconds of play.

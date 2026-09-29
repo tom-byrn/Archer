@@ -17,9 +17,11 @@ plane backend "Backend" {
   desc "A plane groups components on the canvas. It isn't part of their paths."
 
   component api "API" {
+    icon api
     desc "Request handlers. Components nest: open this one to see its parts."
 
     component auth "Auth" {
+      icon key
       desc "Sessions and sign-in."
     }
   }

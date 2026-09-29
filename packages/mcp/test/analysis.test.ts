@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { layoutMap, parse } from "@archer/lang";
-import { prepareSource } from "../src/analysis";
+import { analyzeSource, prepareSource } from "../src/analysis";
 
 // Agents write without a layout block; the previous revision's positions carry over.
 const BEFORE = `arch "Shop" v0.2
@@ -67,5 +67,16 @@ web -> api @http
       web.at![1] < api.at![1] + api.size![1];
     expect(overlap).toBe(false);
     expect(api.size).toEqual([4, 3]);
+  });
+});
+
+describe("icons", () => {
+  it("knows every icon the picker offers, and warns on one it doesn't (W305)", () => {
+    const a = analyzeSource(
+      'arch "X" v0.2\n\ncomponent cart { icon shopping_cart }\ncomponent db { icon database }\ncomponent disk { icon hard_drives }\ncomponent odd { icon blob }\n',
+      new Set(),
+    );
+    expect(a.errors).toEqual([]);
+    expect(a.warnings.map((w) => [w.code, w.message.includes("'blob' on 'odd'")])).toEqual([["W305", true]]);
   });
 });

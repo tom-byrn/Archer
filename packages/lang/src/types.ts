@@ -44,6 +44,13 @@ export interface ComponentNode {
    * a name the language doesn't know is a warning, drawn as a box.
    */
   shape?: string;
+  /**
+   * The icon it shows, by name (a Phosphor icon, `@archer/catalog/icons`),
+   * instead of its type's glyph or logo. Kept as written: a name the tools
+   * don't know is a warning, drawn as if there were none. Without one, an
+   * untyped component shows no icon.
+   */
+  icon?: string;
   desc?: string;
   /**
    * Where this component lives in code, one entry per `src` line in the order

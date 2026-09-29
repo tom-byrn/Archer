@@ -19,8 +19,8 @@ reading guide, as an implementation spec.
    context, MUST NOT implement anything from it, and SHOULD NOT write it unless asked
    to arrange the diagram. Two things outside it are there for readers, but belong to
    the document in every view, so agents write them like any other field: a
-   component's \`shape\` (§3.3) says what a thing *is* at a glance (a cylinder is a
-   store, a person is a user), and planes (§3.4) say which things belong together (a
+   component's \`shape\` and \`icon\` (§3.3) say what a thing *is* at a glance (a cylinder
+   is a store, a person is a user), and planes (§3.4) say which things belong together (a
    frontend and a backend, a cloud account, a network).
 4. **Strict references, permissive semantics.** Every reference must resolve — a
    connection to an undeclared component is a validation error, never an auto-created
@@ -78,6 +78,9 @@ component <id> ["Display Name"] [@<type>] [{ <body> }]
   - \`shape <name>\` — how the canvas draws the component: \`cylinder\`, \`cloud\`, \`person\`,
     \`robot\`, … (§3.3). At most one per component (a second one is error \`E004\`).
     Without one, a component is a box.
+  - \`icon <name>\` — the icon the component shows: \`database\`, \`shopping_cart\`,
+    \`credit_card\`, … (§3.3). At most one per component (a second one is error \`E004\`).
+    Without one, a typed component shows its type's icon and an untyped one shows none.
   - \`desc "..."\` — human-readable description (shown in the detail view). One per
     component. Multiline via triple quotes: \`desc """ ... """\`.
   - \`src "..."\` — where the component lives in code: a repo-relative path to a
@@ -225,6 +228,33 @@ The shapes, in the groups the editor's pickers show them in:
 - A name the language doesn't know is a warning (\`W304\`), not an error, and the component
   is drawn as a box, so files stay readable by tools that predate a newer shape.
 
+#### Icons
+
+A component shows its type's icon (or the product's logo), and an untyped component shows
+none, unless its body names an icon:
+
+\`\`\`
+component cart "Cart" {
+  icon shopping_cart
+}
+
+component ledger "Ledger" @postgres {
+  shape cylinder
+  icon receipt
+}
+\`\`\`
+
+- Icons are [Phosphor](https://phosphoricons.com) icons, by name in snake case
+  (\`shopping_cart\`, \`user_circle\`, \`git_pull_request\`), plus the names of the catalog's own
+  icons (\`database\`, \`server\`, \`queue\`, …). Where a catalog icon is a Phosphor icon under
+  another name, both names work (\`server\` and \`hard_drives\`). The MCP tool \`list_types\`
+  lists every icon, in the groups the editor's picker shows them in.
+- An icon replaces the type's icon (or logo), in the type's color; any icon goes with any
+  type and any shape. Planes have no icon.
+- Like a shape, an icon is a hint for readers: agents implementing a document may ignore it.
+- A name the tools don't know is a warning (\`W305\`), and the component is drawn as if it
+  had no icon.
+
 ### 3.4 Planes
 
 \`\`\`
@@ -256,7 +286,7 @@ web -> api @http
 
 - The body holds, in any mix: a \`desc\`, \`component\` declarations (the components on the
   plane) and \`plane\` declarations (regions inside it, like the VPC above). No \`shape\`,
-  \`src\` or payloads. An empty plane is valid.
+  \`icon\`, \`src\` or payloads. An empty plane is valid.
 - A \`@type\` resolves against the catalog like a component's (§5) and is drawn in the
   plane's title bar: a cloud account, a region, a network, a cluster.
 - **Transparent to paths.** A component on a plane keeps its path — \`api\` and \`db\`
@@ -285,7 +315,7 @@ Payloads attach structured or freeform data to a component — or to a connectio
 
 - \`<name>\` — snake_case identifier, unique per owner (\`schema\`, \`env\`, \`endpoints\`,
   \`notes\`, \`message\`, …). Names are free, except the body keywords (\`component\`,
-  \`plane\`, \`desc\`, \`src\`, \`shape\`); they exist so agents and the detail view can refer
+  \`plane\`, \`desc\`, \`src\`, \`shape\`, \`icon\`); they exist so agents and the detail view can refer
   to a payload by role.
 - \`<format>\` — one of:
 
@@ -423,13 +453,14 @@ A document is **valid** when:
 | \`E001\` | file parses (header, declarations, fences)                       | error    |
 | \`E002\` | ids unique within their scope, components and planes together    | error    |
 | \`E003\` | payload names unique per component / per connection              | error    |
-| \`E004\` | at most one \`shape\` per component                                | error    |
+| \`E004\` | at most one \`shape\` and one \`icon\` per component                 | error    |
 | \`E101\` | every connection endpoint resolves to a declared component       | error    |
 | \`E201\` | \`json\` / \`yaml\` / \`table\` payloads parse in their format         | error    |
 | \`W301\` | type tag resolves in the catalog                                 | warning  |
 | \`W302\` | duplicate connection                                             | warning  |
 | \`W303\` | layout entry references a declared component or plane            | warning (entry dropped) |
 | \`W304\` | shape is one the language knows (§3.3)                           | warning (drawn as a box) |
+| \`W305\` | icon is one the tools know (§3.3)                                | warning (no icon drawn) |
 
 Errors block agent export ("copy as prompt") and mark the document invalid in the UI;
 the canvas still renders as much as it can. Warnings never block anything.
@@ -529,10 +560,11 @@ file        = header { declaration | connection } [ layout ] ;
 header      = "arch" string version ;
 declaration = component | plane ;
 component   = "component" id [ string ] [ type ] [ "{" { bodyitem } "}" ] ;
-bodyitem    = shape | desc | src | declaration | payload ;
+bodyitem    = shape | icon | desc | src | declaration | payload ;
 plane       = "plane" id [ string ] [ type ] [ "{" { planeitem } "}" ] ;
 planeitem   = desc | declaration ;
 shape       = "shape" id ;
+icon        = "icon" id ;
 desc        = "desc" ( string | tripleString ) ;
 src         = "src" string ;
 payload     = id format fence ;

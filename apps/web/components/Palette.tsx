@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { CATALOG, type CatalogType } from "@archer/catalog";
 import { SHAPES, SHAPE_INFO, type Shape } from "@archer/lang";
+import { ALL_ICONS, iconLabel, iconRank } from "@/lib/icons";
 import type { CustomType, UserLibrary } from "@/lib/userLibrary";
 import { Glyph, GlyphSwatch } from "./nodes";
 import { SHAPE_SECTIONS, ShapeIcon, shapeRank, shapeTitle } from "./ShapePicker";
@@ -281,32 +282,6 @@ function GroupHeader({
   );
 }
 
-const GLYPH_CHOICES = [
-  "box", "database", "table", "bucket", "lambda", "server",
-  "api", "gateway", "queue", "bolt", "shield", "globe",
-  "doc", "card", "cloud", "spark", "cube", "user",
-  "phone", "clock", "mail", "chat", "chart", "gear",
-  "search", "flame",
-  // AI & agents
-  "brain", "robot", "plug", "wrench", "puzzle", "memory",
-  "prompt", "assistant", "retrieval", "embedding", "vector", "rank",
-  "books", "graph", "guardrail", "eval", "pulse", "router",
-  "reviewer", "terminal", "cursor", "mic", "speaker", "eye",
-  "image", "gpu", "model", "training", "stack", "sparkle",
-  "link",
-  // System-design building blocks
-  "window", "desktop", "chip", "signpost", "earth", "proxy",
-  "forward", "gauge", "unplug", "mesh", "lock", "hash",
-  "files", "columns", "plot", "folder", "disk", "broadcast",
-  "hub", "waves", "bell", "warehouse", "drop", "merge",
-  "signal", "scroll", "path", "siren", "bug", "wall",
-  "funnel", "key", "vault", "fingerprint", "directory", "handshake",
-  "sliders", "flag", "infinity", "flow", "map", "dashed",
-  "building", "network", "grid", "circles", "swap", "castle",
-  "pin", "ring", "slice", "copy", "flower", "crown",
-  "sequence", "readwrite", "history", "outbox", "skull", "notebook",
-  "sidecar",
-];
 const COLOR_CHOICES = [
   "#64748b", "#ef4444", "#f97316", "#eab308", "#22c55e", "#14b8a6",
   "#3b82f6", "#6366f1", "#a855f7", "#ec4899",
@@ -321,7 +296,19 @@ function NewTypeForm({
 }) {
   const [name, setName] = useState("");
   const [glyph, setGlyph] = useState("box");
+  const [iconQuery, setIconQuery] = useState("");
   const [color, setColor] = useState(COLOR_CHOICES[6]!);
+  const q = iconQuery.trim().toLowerCase();
+  const icons = useMemo(
+    () =>
+      q === ""
+        ? ALL_ICONS
+        : ALL_ICONS.map((name) => ({ name, r: iconRank(name, q) }))
+            .filter(({ r }) => r >= 0)
+            .sort((a, b) => a.r - b.r)
+            .map(({ name }) => name),
+    [q],
+  );
   const tag = name
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "_")
@@ -342,17 +329,25 @@ function NewTypeForm({
       <div className="flex min-h-4 items-center gap-2 px-0.5 pt-1 text-xs text-ink-3">
         {tag !== "" && <span className="mono truncate">@custom.{tag}</span>}
       </div>
+      <Input
+        value={iconQuery}
+        onChange={(e) => setIconQuery(e.target.value)}
+        placeholder="Search icons…"
+        aria-label="Search icons"
+        className="mt-1 h-6.5"
+      />
       {/* Scrolls from halfway down the sixth row, so the form stays short in the
           sidebar and the cut-off row shows there's more. The 1px padding keeps the
           selected glyph's ring inside the scroller. */}
       <div className="-mx-px mt-[5px] max-h-[153px] overflow-y-auto p-px">
+        {icons.length === 0 && <div className="px-1 py-1 text-xs text-ink-3">No icons match.</div>}
         <div className="grid grid-cols-6 gap-1">
-          {GLYPH_CHOICES.map((g) => (
+          {icons.map((g) => (
             <button
               key={g}
               type="button"
               onClick={() => setGlyph(g)}
-              title={g}
+              title={iconLabel(g)}
               className={cx(
                 "flex h-6 items-center justify-center rounded-sm transition-colors duration-75",
                 glyph === g ? "bg-surface-3 ring-1 ring-line-2" : "hover:bg-surface-3",

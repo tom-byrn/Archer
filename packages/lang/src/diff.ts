@@ -23,7 +23,7 @@ export interface ComponentChange {
   /** Dotted path. */
   path: string;
   kind: ChangeKind;
-  /** For "changed": which own fields differ — any of "name" | "type" | "shape" | "desc" | "src" | "payloads" | "plane". */
+  /** For "changed": which own fields differ — any of "name" | "type" | "shape" | "icon" | "desc" | "src" | "payloads" | "plane". */
   fields?: string[];
 }
 
@@ -123,7 +123,7 @@ const payloadsEqual = (
 
 const changedFields = (a: Placed<ComponentNode>, b: Placed<ComponentNode>): string[] => {
   const fields: string[] = [];
-  for (const f of ["name", "type", "shape", "desc"] as const)
+  for (const f of ["name", "type", "shape", "icon", "desc"] as const)
     if (a.node[f] !== b.node[f]) fields.push(f);
   if (!sameSources(a.node.src, b.node.src)) fields.push("src");
   if (!payloadsEqual(a.node, b.node)) fields.push("payloads");
