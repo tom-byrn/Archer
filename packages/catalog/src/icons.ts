@@ -1380,12 +1380,96 @@ export const ICON_KEYWORDS: Readonly<Record<string, string>> = {
   ruler: "ruler measure scale distance",
 };
 
-/** Every icon name: the glyph keys, and the rest of the picker's icons. */
-export const ICON_NAMES: ReadonlySet<string> = new Set([...Object.keys(GLYPHS), ...Object.keys(ICON_EXTRA)]);
+/**
+ * Phosphor's own names for the icons that go by a glyph key (`hard_drives`
+ * is `server`): they work anywhere a name does, and the picker writes the key.
+ */
+export const ICON_ALIASES: Readonly<Record<string, string>> = {
+  address_book: "directory",
+  arrows_down_up: "readwrite",
+  arrows_left_right: "proxy",
+  arrows_merge: "merge",
+  arrows_split: "router",
+  asterisk: "spark",
+  bell_ringing: "bell",
+  brackets_curly: "api",
+  browser: "window",
+  castle_turret: "castle",
+  chart_bar: "chart",
+  chart_line: "plot",
+  chart_pie_slice: "slice",
+  chart_scatter: "embedding",
+  chat_circle_dots: "assistant",
+  circle_dashed: "ring",
+  circles_three: "circles",
+  clock_counter_clockwise: "history",
+  cpu: "chip",
+  credit_card: "card",
+  cursor_click: "cursor",
+  cylinder: "bucket",
+  device_mobile: "phone",
+  envelope_simple: "mail",
+  exam: "eval",
+  file: "doc",
+  file_magnifying_glass: "retrieval",
+  flow_arrow: "flow",
+  function: "lambda",
+  git_branch: "branch",
+  globe_hemisphere_west: "earth",
+  globe_simple: "globe",
+  graduation_cap: "training",
+  graphics_card: "gpu",
+  grid_four: "grid",
+  hard_drive: "disk",
+  hard_drives: "server",
+  head_circuit: "model",
+  lightning: "bolt",
+  list_numbers: "sequence",
+  magnifying_glass: "search",
+  map_pin: "pin",
+  map_trifold: "map",
+  microphone: "mic",
+  note_pencil: "prompt",
+  plugs: "unplug",
+  plugs_connected: "plug",
+  polygon: "mesh",
+  puzzle_piece: "puzzle",
+  ranking: "rank",
+  selection: "dashed",
+  share_fat: "forward",
+  share_network: "hub",
+  shield_check: "shield",
+  shield_warning: "guardrail",
+  speaker_high: "speaker",
+  square: "box",
+  square_split_horizontal: "sidecar",
+  terminal_window: "terminal",
+  tray_arrow_up: "outbox",
+  tree_structure: "gateway",
+  user_check: "reviewer",
+  vector_three: "vector",
+  wave_sine: "signal",
+};
+
+/**
+ * Every icon name: the picker's icons (every glyph key among them) and their
+ * aliases. Built without the artwork, so validating names never pulls it in.
+ */
+export const ICON_NAMES: ReadonlySet<string> = /* @__PURE__ */ new Set([
+  ...ICON_GROUPS.flatMap((g) => g.icons),
+  ...Object.keys(ICON_ALIASES),
+]);
 
 export const isIcon = (name: string | undefined): name is string =>
   name !== undefined && ICON_NAMES.has(name);
 
+/** The picker's name for an icon: an alias's glyph key, else the name itself. */
+export const canonicalIcon = (name: string): string =>
+  Object.hasOwn(ICON_ALIASES, name) ? ICON_ALIASES[name]! : name;
+
 /** An icon's SVG inner markup for GLYPH_VIEWBOX, filled with currentColor; undefined when it's unknown. */
-export const iconMarkup = (name: string | undefined): string | undefined =>
-  name === undefined ? undefined : Object.hasOwn(GLYPHS, name) ? GLYPHS[name] : Object.hasOwn(ICON_EXTRA, name) ? ICON_EXTRA[name] : undefined;
+export const iconMarkup = (name: string | undefined): string | undefined => {
+  if (name === undefined) return undefined;
+  const key = canonicalIcon(name);
+  return Object.hasOwn(GLYPHS, key) ? GLYPHS[key] : Object.hasOwn(ICON_EXTRA, key) ? ICON_EXTRA[key] : undefined;
+};

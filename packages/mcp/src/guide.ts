@@ -68,8 +68,9 @@ fails, call \`get_workspace_info\` and relay what it reports.
 
 ### Add a technology/service that has no type in the catalog
 1. \`list_types\` with a search term to confirm it's missing.
-2. Either use an untyped component (fine, renders generic), or
-   \`create_custom_type\` (name, glyph, color) → it returns a \`@custom.*\` tag
+2. Either use an untyped component (fine; give it an \`icon\` that says what
+   it is), or \`create_custom_type\` (name, glyph — any icon name — and
+   color) → it returns a \`@custom.*\` tag
    usable immediately in any project of this workspace and visible in the
    human's palette.
 
@@ -212,7 +213,8 @@ The full language specification is at the end of this guide. Key habits:
   none, unless its body names one with \`icon <name>\`: a Phosphor icon in
   snake case (\`icon shopping_cart\`, \`icon credit_card\`,
   \`icon user_circle\`) or a catalog icon (\`database\`, \`server\`,
-  \`queue\`). \`list_types\` lists every icon by group. Give an untyped
+  \`queue\`; Phosphor's own name works for those too, \`hard_drives\` for
+  \`server\`). \`list_types\` lists every icon by group. Give an untyped
   component an icon when one says what it is; a typed one rarely needs one.
 - **AI systems have their own building blocks:** \`@llm\`, \`@agent\`, \`@mcp\`
   (an MCP server), \`@tool\`, \`@rag\`, \`@embeddings\`, \`@vector_db\`,

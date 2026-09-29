@@ -14,8 +14,8 @@ import {
   type ArchDoc,
   type DiffSummary,
 } from "@archer/lang";
-import { CATALOG, CONNECTION_TYPES, GLYPHS } from "@archer/catalog";
-import { ICON_GROUPS } from "@archer/catalog/icons";
+import { CATALOG, CONNECTION_TYPES } from "@archer/catalog";
+import { ICON_GROUPS, isIcon } from "@archer/catalog/icons";
 import { formatDiagnostic } from "./analysis";
 import {
   APP_URL,
@@ -352,7 +352,7 @@ export function registerArcherTools(server: McpServer): void {
     {
       title: "List component & connection types",
       description:
-        "List usable type tags: the built-in catalog (~350 types — vendor-neutral building blocks grouped by concern in generic/ai/network/compute/storage/messaging/data/observability/security/platform/topology/patterns, e.g. @load_balancer, @rate_limiter, @cdn, @queue, @database, with `ai` holding the building blocks of AI apps: @llm, @agent, @mcp, @rag, @vector_db, ...; plus real technologies across ai_platforms/aws/gcp/azure/vercel/databases/infra/saas), this workspace's custom types, the standard connection types (@http, @sql, @queue, @mcp, ...), the shapes a component can be drawn as (`shape cylinder`, `cloud`, `person`, `robot`, ... each with what it usually stands for), the icons a component can show (`icon shopping_cart`, `icon database`, ... Phosphor icons in snake case, by group), and the glyph names available when creating custom types. Optional search filters by tag/name/namespace. Type tags are OPTIONAL on components — untyped components are valid and render as generic boxes; unknown tags are only a warning.",
+        "List usable type tags: the built-in catalog (~350 types — vendor-neutral building blocks grouped by concern in generic/ai/network/compute/storage/messaging/data/observability/security/platform/topology/patterns, e.g. @load_balancer, @rate_limiter, @cdn, @queue, @database, with `ai` holding the building blocks of AI apps: @llm, @agent, @mcp, @rag, @vector_db, ...; plus real technologies across ai_platforms/aws/gcp/azure/vercel/databases/infra/saas), this workspace's custom types, the standard connection types (@http, @sql, @queue, @mcp, ...), the shapes a component can be drawn as (`shape cylinder`, `cloud`, `person`, `robot`, ... each with what it usually stands for), and the icons a component can show (`icon shopping_cart`, `icon database`, ... Phosphor icons in snake case, by group, where Phosphor's own name also works for a catalog icon listed under another, e.g. hard_drives for server; a custom type's glyph is one of them too). Optional search filters by tag/name/namespace. Type tags are OPTIONAL on components — untyped components are valid and render as generic boxes; unknown tags are only a warning.",
       inputSchema: {
         search: z.string().optional().describe("Case-insensitive filter on tag, name, or namespace"),
       },
@@ -372,7 +372,6 @@ export function registerArcherTools(server: McpServer): void {
         connection_types: CONNECTION_TYPES,
         shapes: SHAPES.map((shape) => ({ shape, name: SHAPE_INFO[shape].name, use: SHAPE_INFO[shape].use })),
         icons: ICON_GROUPS.map((g) => ({ group: g.name, icons: [...g.icons] })),
-        glyphs_for_custom_types: Object.keys(GLYPHS),
         note: ws
           ? undefined
           : "The backend is unreachable — custom types not listed. See get_workspace_info.",
@@ -385,10 +384,13 @@ export function registerArcherTools(server: McpServer): void {
     {
       title: "Create/update a custom component type",
       description:
-        "Add a reusable component type to this workspace's library — exactly like a human clicking '+' in the app's palette. Use when the catalog lacks a technology or the user has domain-specific building blocks (e.g. 'Billing Engine'). The type gets a @custom.<slug> tag, appears in the human's palette immediately, renders with the chosen glyph/color, and validates cleanly in every project of the workspace. Calling it again with the same tag updates name/glyph/color.",
+        "Add a reusable component type to this workspace's library — exactly like a human clicking '+' in the app's palette. Use when the catalog lacks a technology or the user has domain-specific building blocks (e.g. 'Billing Engine'). The type gets a @custom.<slug> tag, appears in the human's palette immediately, renders with the chosen icon/color, and validates cleanly in every project of the workspace. Calling it again with the same tag updates name/glyph/color.",
       inputSchema: {
         name: z.string().min(1).describe("Display name, e.g. 'Billing Engine'"),
-        glyph: z.string().optional().describe("Glyph key from list_types (default 'box')"),
+        glyph: z
+          .string()
+          .optional()
+          .describe("Its icon: any icon name list_types lists under `icons`, e.g. 'gear', 'shopping_cart' (default 'box')"),
         color: z.string().optional().describe("Hex accent color like #6366f1 (default slate)"),
         tag: z.string().optional().describe("Override tag; 'custom.' prefix is enforced. Default: custom.<slug of name>"),
       },
@@ -396,8 +398,8 @@ export function registerArcherTools(server: McpServer): void {
     wrap(async ({ name, glyph, color, tag }) => {
       const ws = await requireWorkspace();
       const g = glyph ?? "box";
-      if (!(g in GLYPHS))
-        throw new Error(`Unknown glyph '${g}'. Valid: ${Object.keys(GLYPHS).join(", ")}`);
+      if (!isIcon(g))
+        throw new Error(`Unknown icon '${g}'. Use any icon name list_types lists under \`icons\`, e.g. gear, shopping_cart.`);
       const c = color ?? "#64748b";
       if (!/^#[0-9a-fA-F]{6}$/.test(c)) throw new Error(`Color must be #rrggbb, got '${c}'.`);
       const slug = (tag ?? name)

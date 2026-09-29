@@ -405,6 +405,11 @@ export interface BuiltIcons {
   keywords: Record<string, string>;
   /** Markup for the icons that aren't glyphs (glyphs are in GLYPHS). */
   extra: Record<string, string>;
+  /**
+   * Phosphor's own name (snake case) for an icon that goes by its glyph key,
+   * so `icon hard_drives` works as well as `icon server`: alias → name.
+   */
+  aliases: Record<string, string>;
 }
 
 export function buildIcons(): BuiltIcons {
@@ -435,18 +440,28 @@ export function buildIcons(): BuiltIcons {
   }));
   const missing = [...new Set(Object.values(GLYPH_ICONS))].filter((icon) => !(glyphKeyOf.get(icon)! in phosphor));
   if (missing.length) throw new Error(`Glyph icons missing from ICON_GROUP_SOURCES: ${missing.join(", ")}`);
-  return { groups, phosphor, keywords, extra };
+  const aliases: Record<string, string> = {};
+  for (const [name, icon] of Object.entries(phosphor)) {
+    const alias = icon.replaceAll("-", "_");
+    // A name taken by another icon (or a glyph key) stays that icon's.
+    if (alias !== name && !(alias in phosphor) && !(alias in GLYPH_ICONS)) aliases[alias] = name;
+  }
+  return { groups, phosphor, keywords, extra, aliases };
 }
 
 /** The source of src/icons.ts. */
 export function iconsModule(): string {
-  const { groups, phosphor, keywords, extra } = buildIcons();
+  const { groups, phosphor, keywords, extra, aliases } = buildIcons();
   const str = (s: string) => JSON.stringify(s);
   const groupSrc = groups
     .map((g) => `  {\n    id: ${str(g.id)},\n    name: ${str(g.name)},\n    icons: [${g.icons.map(str).join(", ")}],\n  },\n`)
     .join("");
   const extraSrc = Object.entries(extra)
     .map(([name, body]) => `  // ${phosphor[name]}\n  ${name}: '${body}',\n`)
+    .join("");
+  const aliasSrc = Object.entries(aliases)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([alias, name]) => `  ${alias}: ${str(name)},\n`)
     .join("");
   const keywordSrc = Object.entries(keywords)
     .map(([name, words]) => `  ${name}: ${str(words)},\n`)
@@ -482,15 +497,35 @@ ${extraSrc}};
 export const ICON_KEYWORDS: Readonly<Record<string, string>> = {
 ${keywordSrc}};
 
-/** Every icon name: the glyph keys, and the rest of the picker's icons. */
-export const ICON_NAMES: ReadonlySet<string> = new Set([...Object.keys(GLYPHS), ...Object.keys(ICON_EXTRA)]);
+/**
+ * Phosphor's own names for the icons that go by a glyph key (\`hard_drives\`
+ * is \`server\`): they work anywhere a name does, and the picker writes the key.
+ */
+export const ICON_ALIASES: Readonly<Record<string, string>> = {
+${aliasSrc}};
+
+/**
+ * Every icon name: the picker's icons (every glyph key among them) and their
+ * aliases. Built without the artwork, so validating names never pulls it in.
+ */
+export const ICON_NAMES: ReadonlySet<string> = /* @__PURE__ */ new Set([
+  ...ICON_GROUPS.flatMap((g) => g.icons),
+  ...Object.keys(ICON_ALIASES),
+]);
 
 export const isIcon = (name: string | undefined): name is string =>
   name !== undefined && ICON_NAMES.has(name);
 
+/** The picker's name for an icon: an alias's glyph key, else the name itself. */
+export const canonicalIcon = (name: string): string =>
+  Object.hasOwn(ICON_ALIASES, name) ? ICON_ALIASES[name]! : name;
+
 /** An icon's SVG inner markup for GLYPH_VIEWBOX, filled with currentColor; undefined when it's unknown. */
-export const iconMarkup = (name: string | undefined): string | undefined =>
-  name === undefined ? undefined : Object.hasOwn(GLYPHS, name) ? GLYPHS[name] : Object.hasOwn(ICON_EXTRA, name) ? ICON_EXTRA[name] : undefined;
+export const iconMarkup = (name: string | undefined): string | undefined => {
+  if (name === undefined) return undefined;
+  const key = canonicalIcon(name);
+  return Object.hasOwn(GLYPHS, key) ? GLYPHS[key] : Object.hasOwn(ICON_EXTRA, key) ? ICON_EXTRA[key] : undefined;
+};
 `;
 }
 

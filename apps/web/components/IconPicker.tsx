@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { GLYPH_VIEWBOX } from "@archer/catalog";
-import { ICON_GROUPS, iconMarkup, isIcon } from "@archer/catalog/icons";
+import { ICON_GROUPS, canonicalIcon, iconMarkup, isIcon } from "@archer/catalog/icons";
 import { ALL_ICONS, iconLabel, iconRank } from "@/lib/icons";
 import { Glyph } from "./nodes";
 import { Icon, Input, cx } from "./ui";
@@ -49,7 +49,8 @@ export function IconPicker({
   autoOpen?: boolean;
   onAutoOpened?: () => void;
 }) {
-  const current: string | null = value === undefined ? DEFAULT : isIcon(value) ? value : null;
+  // Phosphor's name for a glyph's icon (`hard_drives`) selects the glyph's cell (`server`).
+  const current: string | null = value === undefined ? DEFAULT : isIcon(value) ? canonicalIcon(value) : null;
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [active, setActive] = useState<string | null>(null);

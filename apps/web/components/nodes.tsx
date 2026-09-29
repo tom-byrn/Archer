@@ -58,7 +58,8 @@ export function Glyph({
   const logo = useLogo(tag);
   const own = iconMarkup(icon);
   if (logo && !own) return <LogoArt logo={logo} size={size} className={className} />;
-  const g = own ?? GLYPHS[glyph ?? entry?.glyph ?? "box"] ?? GLYPHS.box!;
+  // A custom type's glyph can be any icon name; the catalog's are glyph keys.
+  const g = own ?? iconMarkup(glyph ?? entry?.glyph ?? "box") ?? GLYPHS.box!;
   return (
     <svg
       width={size}

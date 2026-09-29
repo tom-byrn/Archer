@@ -164,7 +164,7 @@ const markupSvg = (body: string, size: number, color: string, x: number, y: numb
   `<svg x="${x}" y="${y}" width="${size}" height="${size}" viewBox="${GLYPH_VIEWBOX}" style="color:${color}">${body}</svg>`;
 
 const glyphSvg = (key: string, size: number, color: string, x: number, y: number): string =>
-  markupSvg(GLYPHS[key] ?? GLYPHS.box!, size, color, x, y);
+  markupSvg(iconMarkup(key) ?? GLYPHS.box!, size, color, x, y);
 
 /** A logo like components/logos.tsx draws it: a mark in its brand color, or artwork as it is. */
 const logoSvg = (logo: Logo, size: number, x: number, y: number, dark: boolean): string =>

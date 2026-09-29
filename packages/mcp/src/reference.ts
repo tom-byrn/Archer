@@ -431,10 +431,9 @@ layout {
         { group: "Commerce & finance", icons: ["shopping_cart", "shopping_bag", "basket", "…"] },
         "…",
       ],
-      glyphs_for_custom_types: ["box", "circle", "database", "table", "…"],
     },
     notes: [
-      "`search` filters the catalog and custom types only; connection types, shapes, icons and glyphs are always listed in full. Custom types come from the current workspace; if they can't be read, `note` says so.",
+      "`search` filters the catalog and custom types only; connection types, shapes and icons are always listed in full. Custom types come from the current workspace; if they can't be read, `note` says so.",
       "A shape goes in a component's body, `shape cylinder`, and draws the component as that outline; the type still picks the icon and color inside it.",
       "An icon goes in a component's body too, `icon shopping_cart`, and replaces its type's icon; an untyped component shows none without one.",
     ],
@@ -445,7 +444,7 @@ layout {
     result: { created: "custom.fraud_scorer", usage: 'component my_id "Fraud Scorer" @custom.fraud_scorer' },
     notes: [
       "The tag is `custom.` plus the name in snake case, unless you pass `tag`. Calling it again with the same tag updates the name, glyph and color.",
-      "Refused with an unknown glyph (the error lists the valid ones) or a color that isn't `#rrggbb`.",
+      "Refused with an icon name `list_types` doesn't list or a color that isn't `#rrggbb`.",
     ],
   },
   delete_custom_type: {
@@ -625,7 +624,7 @@ api -> db @sql
     },
     notes: [
       "`from` and `to` are revision ids, `current` (the project as it is now) or `empty` (before the first revision). Only the newest 200 revisions can be named.",
-      "A changed component lists its changed `fields`: `name`, `type`, `shape`, `desc`, `src`, `payloads` or `plane` (it sits on a different plane). `planes` lists planes added, removed and changed (`name`, `type`, `desc` or `plane`) the same way. A connection is `changed` when only its payloads differ, and `title` appears when the document was renamed.",
+      "A changed component lists its changed `fields`: `name`, `type`, `shape`, `icon`, `desc`, `src`, `payloads` or `plane` (it sits on a different plane). `planes` lists planes added, removed and changed (`name`, `type`, `desc` or `plane`) the same way. A connection is `changed` when only its payloads differ, and `title` appears when the document was renamed.",
     ],
   },
 

@@ -246,8 +246,9 @@ component ledger "Ledger" @postgres {
 
 - Icons are [Phosphor](https://phosphoricons.com) icons, by name in snake case
   (`shopping_cart`, `user_circle`, `git_pull_request`), plus the names of the catalog's own
-  icons (`database`, `server`, `queue`, …). The MCP tool `list_types` lists every one, in
-  the groups the editor's picker shows them in.
+  icons (`database`, `server`, `queue`, …). Where a catalog icon is a Phosphor icon under
+  another name, both names work (`server` and `hard_drives`). The MCP tool `list_types`
+  lists every icon, in the groups the editor's picker shows them in.
 - An icon replaces the type's icon (or logo), in the type's color; any icon goes with any
   type and any shape. Planes have no icon.
 - Like a shape, an icon is a hint for readers: agents implementing a document may ignore it.

@@ -16,6 +16,7 @@ component web "Web App" @vercel.nextjs {
   src "apps/web"
   component editor "Editor" {
     shape phone
+    icon sliders
     desc "Orchestrator: holds the source + undo/redo history, derives doc/diagnostics/flow-graph per keystroke, routes every mutation through transform -> format -> save. Multi-select, clipboard as .arch text, ⌘K commands and ⌘F find, history and drift, and the GitHub storage button (Synced, or Publish with the number of changes)."
     src "apps/web/components/Editor.tsx"
     src "apps/web/lib/useArchDoc.ts"
@@ -25,7 +26,8 @@ component web "Web App" @vercel.nextjs {
   }
   component canvas "Canvas" {
     shape document
-    desc "React Flow: components drawn as their shape with their product logo or glyph, planes as titled regions that stay open, drag/connect/nest, opening any component to its own canvas with breadcrumbs, snap-back for dangling arrows (E101 is unrepresentable from the UI), connection labels on hover or selection, PNG export."
+    icon flow
+    desc "React Flow: components drawn as their shape with the icon they picked, else their product logo or glyph (an untyped component without an icon shows none), planes as titled regions that stay open, drag/connect/nest, opening any component to its own canvas with breadcrumbs, snap-back for dangling arrows (E101 is unrepresentable from the UI), connection labels on hover or selection, PNG export."
     src "apps/web/components/ArchCanvas.tsx"
     src "apps/web/components/nodes.tsx"
     src "apps/web/lib/toFlow.ts"
@@ -34,19 +36,23 @@ component web "Web App" @vercel.nextjs {
   }
   component palette "Palette" {
     shape document
-    desc "Searchable shapes, curated catalog and this workspace's custom types; drag or click to place. Collapsible, and closed when a document opens."
+    icon grid
+    desc "Searchable shapes, curated catalog and this workspace's custom types (whose icon can be any of the picker's); drag or click to place. Collapsible, and closed when a document opens."
     src "apps/web/components/Palette.tsx"
   }
   component detail "Detail Panel" {
     shape phone
-    desc "Opens read-only on the selection: a component's type, shape, description, sources (each a link: files, folders or URLs) and payloads (markdown and tables rendered), or a connection's ends, direction, type and label. Edit switches to the form: per-component name/id/type/shape/description, a list of sources to add to or remove from, and payload editors with live format validation; per-connection direction/type/label."
+    icon sidebar
+    desc "Opens read-only on the selection: a component's type, shape, icon, description, sources (each a link: files, folders or URLs) and payloads (markdown and tables rendered), or a connection's ends, direction, type and label. Edit switches to the form: per-component name/id/type/shape/icon (a searchable picker of ~500 Phosphor icons)/description, a list of sources to add to or remove from, and payload editors with live format validation; per-connection direction/type/label."
     src "apps/web/components/DetailPanel.tsx"
     src "apps/web/components/Markdown.tsx"
     src "apps/web/components/ShapePicker.tsx"
+    src "apps/web/components/IconPicker.tsx"
     src "apps/web/components/TypeCombobox.tsx"
   }
   component code_view "Code Pane" {
     shape browser
+    icon code
     desc "The raw .arch text with syntax highlighting, collapsible, editable in both directions, with diagnostics (code + line number)."
     src "apps/web/components/CodePane.tsx"
     src "apps/web/components/CodeMirror.tsx"
@@ -55,27 +61,32 @@ component web "Web App" @vercel.nextjs {
 }
 
 component lang "Language Core" {
+  icon brackets_angle
   desc "@archer/lang — the Archer language itself. Pure TypeScript with zero app dependencies, shared verbatim by the web app, the MCP server and the CLI."
   src "packages/lang"
   component parser "Parser" {
     shape hexagon
+    icon tree_structure
     desc "Lexer + recursive descent to a typed AST; positioned E001 diagnostics with statement-level error recovery."
     src "packages/lang/src/lexer.ts"
     src "packages/lang/src/parser.ts"
   }
   component validator "Validator" {
     shape hexagon
-    desc "Spec rules: E002/E003 identity, E004 one src and shape per component, E101 connection resolution (nothing is ever auto-created), E201 payload syntax for json/yaml/table, W301-W304 warnings (W304: an unknown shape draws as a box)."
+    icon shield_check
+    desc "Spec rules: E002/E003 identity, E004 one shape and one icon per component, E101 connection resolution (nothing is ever auto-created), E201 payload syntax for json/yaml/table, W301-W305 warnings (W304: an unknown shape draws as a box; W305: an unknown icon isn't drawn)."
     src "packages/lang/src/validate.ts"
     src "packages/lang/src/shapes.ts"
   }
   component formatter "Formatter" {
     shape hexagon
+    icon list
     desc "Canonical form: fixed section order, sorted connections/layout, smart fences. Idempotent; round-trips with zero diagnostics."
     src "packages/lang/src/format.ts"
   }
   component layouter "Auto-layout" {
     shape hexagon
+    icon grid
     desc "Layered engine (network simplex): connections flow left to right with few crossings, long edges get lanes of their own, planes wrap what sits on them, and each component's inside is a canvas of its own. Existing positions are kept and new components land next to what they connect to; Re-layout starts over."
     src "packages/lang/src/layout.ts"
     src "packages/lang/src/layered.ts"
@@ -83,16 +94,19 @@ component lang "Language Core" {
   }
   component exporter "Agent Export" {
     shape document
+    icon export
     desc "compileForAgent: canonical text with a complete layout block and a reading-guide preamble prepended."
     src "packages/lang/src/agentExport.ts"
   }
   component transforms "Transforms" {
     shape hexagon
-    desc "Pure AST edits behind every canvas gesture: add/move/resize/nest/rename components and planes, connections, payloads, shapes, copy/paste fragments, grouping on planes."
+    icon magic_wand
+    desc "Pure AST edits behind every canvas gesture: add/move/resize/nest/rename components and planes, connections, payloads, shapes, icons, copy/paste fragments, grouping on planes."
     src "packages/lang/src/transform.ts"
   }
   component merge "Diff & Merge" {
     shape hexagon
+    icon merge
     desc "Semantic diff (layout never counts) for history and review, and the three-way merge repo sync uses to combine edits in Archer with commits to the file."
     src "packages/lang/src/diff.ts"
     src "packages/lang/src/merge.ts"
@@ -100,7 +114,8 @@ component lang "Language Core" {
 }
 
 component catalog "Catalog" {
-  desc "@archer/catalog — ~350 component types (vendor-neutral building blocks like load balancers, queues, LLMs and agents, plus real technologies), the connection-type vocabulary, Phosphor glyphs, and product logos (AWS's official icons among them) for about 140 vendor types."
+  icon books
+  desc "@archer/catalog — ~350 component types (vendor-neutral building blocks like load balancers, queues, LLMs and agents, plus real technologies), the connection-type vocabulary, Phosphor glyphs and the ~500 icons a component can pick (grouped and searchable), and product logos (AWS's official icons among them) for about 140 vendor types."
   src "packages/catalog"
 }
 

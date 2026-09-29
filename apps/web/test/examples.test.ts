@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { format, parse, validate } from "@archer/lang";
 import { knownConnectionTypes, knownTypes } from "@archer/catalog";
+import { ICON_NAMES } from "@archer/catalog/icons";
 import { EXAMPLES } from "@archer/mcp/examples";
 import { highlightArch } from "../lib/highlightArch";
 import { renderArchSvg } from "../lib/svg";
@@ -12,7 +13,11 @@ describe("docs examples", () => {
     const { doc, diagnostics } = parse(e.source);
     const all = [
       ...diagnostics,
-      ...validate(doc, { knownTypes: knownTypes(), knownConnectionTypes: knownConnectionTypes() }),
+      ...validate(doc, {
+        knownTypes: knownTypes(),
+        knownConnectionTypes: knownConnectionTypes(),
+        knownIcons: ICON_NAMES,
+      }),
     ];
     expect(all.map((d) => `${d.code} ${d.message}`)).toEqual([]);
     expect(format(doc)).toBe(e.source);

@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { CATALOG, GLYPHS } from "../src/index";
-import { ICON_GROUPS, ICON_KEYWORDS, ICON_NAMES, iconMarkup } from "../src/icons";
+import { ICON_ALIASES, ICON_GROUPS, ICON_KEYWORDS, ICON_NAMES, canonicalIcon, iconMarkup } from "../src/icons";
 import { LOGOS } from "../src/logos";
 import { buildGlyphs, iconsModule } from "../scripts/glyphs";
 import { NO_LOGO, NO_LOGO_NAMESPACES, VENDOR_NAMESPACES, buildLogos } from "../scripts/logos";
@@ -32,11 +32,24 @@ describe("catalog", () => {
   it("offers every icon name in the picker, once, as a name the language can write", () => {
     const picked = ICON_GROUPS.flatMap((g) => g.icons);
     expect(picked.filter((name, i) => picked.indexOf(name) !== i)).toEqual([]);
-    expect(new Set(picked)).toEqual(ICON_NAMES);
+    expect(new Set([...picked, ...Object.keys(ICON_ALIASES)])).toEqual(ICON_NAMES);
     expect(picked.filter((name) => !/^[a-z][a-z0-9_]*$/.test(name))).toEqual([]);
     expect(picked.filter((name) => !iconMarkup(name) || !ICON_KEYWORDS[name])).toEqual([]);
     // Every glyph is an icon too, so a type's glyph can be picked by name.
     expect(Object.keys(GLYPHS).filter((key) => !ICON_NAMES.has(key))).toEqual([]);
+  });
+
+  it("takes Phosphor's own name for an icon that goes by a glyph key", () => {
+    expect(canonicalIcon("hard_drives")).toBe("server");
+    expect(iconMarkup("hard_drives")).toBe(GLYPHS.server);
+    expect(iconMarkup("tree_structure")).toBe(GLYPHS.gateway);
+    // A name another icon already has stays that icon's: plain `shield` is the glyph.
+    expect(ICON_ALIASES.shield).toBeUndefined();
+    const picked = new Set(ICON_GROUPS.flatMap((g) => g.icons));
+    for (const [alias, name] of Object.entries(ICON_ALIASES)) {
+      expect(picked.has(alias), alias).toBe(false);
+      expect(Object.hasOwn(GLYPHS, name), alias).toBe(true);
+    }
   });
 
   it("uses #rrggbb accent colors", () => {
