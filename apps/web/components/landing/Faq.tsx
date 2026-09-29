@@ -1,7 +1,22 @@
-const FAQ: { q: string; a: string }[] = [
+import Link from "next/link";
+import type { ReactNode } from "react";
+
+const FAQ: { q: string; a: ReactNode }[] = [
   {
     q: "Do I need an account to try it?",
-    a: "No. The sandbox on this page is the real canvas, running in your browser. Nothing is saved until you sign in with GitHub.",
+    a: (
+      <>
+        No. You can go to the example{" "}
+        <Link
+          href="/language/examples"
+          className="underline underline-offset-2 hover:text-ink"
+        >
+          sandboxes
+        </Link>{" "}
+        to try it out. But you will need to create an account to connect your
+        agent.
+      </>
+    ),
   },
   {
     q: "Which agents work with it?",
