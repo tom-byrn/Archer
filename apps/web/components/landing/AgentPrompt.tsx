@@ -4,14 +4,15 @@ import { Fragment, useEffect, useRef, useState, type RefObject } from "react";
 import { SITE_URL } from "@/lib/site";
 import { Button, Icon, SwapIcon, cx } from "../ui";
 
-const PROMPT = `Read ${SITE_URL}/language to learn the Archer language.
+const PROMPT = `Set me up with Archer (${SITE_URL}).
 
-Then map this repository's architecture as an Archer document: the components, what runs inside them, and how they connect. Use real names from the code and give each component a one-line desc. Check the result against the spec and save it as architecture.arch.
+1. Install the Archer MCP server: ${SITE_URL}/mcp (Streamable HTTP). The setup for your client is at ${SITE_URL}/docs/mcp.
+2. Connect it: start the sign-in so my browser opens, and wait while I sign in with GitHub. There are no API keys.
+3. Learn Archer: it's an architecture canvas that people and agents share. Each design is an .arch document you read and write through the MCP tools, and I see it as a diagram. Call get_guide once for the language and workflows.
+4. Ask me: if we're in a codebase, should you map its architecture into Archer? If not, should we plan the architecture of a new project?`;
 
-When you're done, tell me to paste it into a new document at ${SITE_URL}.`;
-
-// Links and the output file get terminal colors; everything else stays plain.
-const PARTS = PROMPT.split(/(https?:\/\/\S+?(?=[.,;:]?(?:\s|$))|architecture\.arch)/).filter(Boolean);
+// Links and tool names get terminal colors; everything else stays plain.
+const PARTS = PROMPT.split(/(https?:\/\/\S+?(?=[.,;:)]*(?:\s|$))|get_guide)/).filter(Boolean);
 
 // Typing starts this long after mount: the hero's rise-in, then a beat of
 // idle cursor. A box that scrolls into view later still idles for IDLE_MS.
@@ -40,7 +41,7 @@ function Slice({ from, to }: { from: number; to: number }) {
         </a>
       );
     }
-    if (part === "architecture.arch") {
+    if (part === "get_guide") {
       return (
         <span key={i} className="text-[var(--tok-string)]">
           {text}

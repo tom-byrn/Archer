@@ -166,7 +166,7 @@ export function Landing() {
           Design systems, with your AI agents.
         </h2>
         <p className="max-w-[52ch] pt-5 text-lede text-ink-2">
-          Start on the canvas, or hand your agent the prompt and let it map the codebase you already
+          Start on the canvas, or hand your agent the prompt to connect it and map the codebase you already
           have.
         </p>
         <div className="flex flex-wrap justify-center gap-3 pt-8">
