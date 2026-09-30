@@ -42,7 +42,7 @@ const dateLabel = (ts: number) =>
   new Date(ts).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
 
 const HEIGHT = 168;
-const PAD = { top: 8, right: 4, bottom: 22, left: 40 };
+const PAD = { top: 8, right: 4, bottom: 22 };
 const GAP = 2;
 
 export function DailyChart({
@@ -69,9 +69,11 @@ export function DailyChart({
     return () => ro.disconnect();
   }, []);
 
+  // Duration ticks ("2h 30m") need more room than counts.
+  const left = format === "duration" ? 52 : 36;
   const totals = columns.map((c) => c.values.reduce((a, b) => a + b, 0));
   const max = niceMax(Math.max(0, ...totals), format);
-  const plotW = Math.max(0, width - PAD.left - PAD.right);
+  const plotW = Math.max(0, width - left - PAD.right);
   const plotH = HEIGHT - PAD.top - PAD.bottom;
   const step = columns.length ? plotW / columns.length : 0;
   const barW = Math.max(1, Math.min(28, step - Math.max(2, step * 0.28)));
@@ -108,7 +110,7 @@ export function DailyChart({
             {ticks.map((t) => (
               <g key={t}>
                 <line
-                  x1={PAD.left}
+                  x1={left}
                   x2={width - PAD.right}
                   y1={y(t)}
                   y2={y(t)}
@@ -116,13 +118,13 @@ export function DailyChart({
                   strokeWidth={1}
                   strokeDasharray={t === 0 ? undefined : "2 3"}
                 />
-                <text x={PAD.left - 6} y={y(t)} dy="0.32em" textAnchor="end" className="fill-ink-3 text-[10px] tabular-nums">
+                <text x={left - 6} y={y(t)} dy="0.32em" textAnchor="end" className="fill-ink-3 text-[10px] tabular-nums">
                   {fmt(t, format)}
                 </text>
               </g>
             ))}
             {columns.map((c, i) => {
-              const x = PAD.left + i * step + (step - barW) / 2;
+              const x = left + i * step + (step - barW) / 2;
               let base = 0;
               const segments = c.values.map((v, si) => {
                 if (v <= 0) return null;
@@ -148,7 +150,7 @@ export function DailyChart({
                 <g key={c.ts}>
                   {segments}
                   <rect
-                    x={PAD.left + i * step}
+                    x={left + i * step}
                     y={PAD.top}
                     width={step}
                     height={plotH}
@@ -158,9 +160,9 @@ export function DailyChart({
                   {(i % labelEvery === 0 || i === columns.length - 1) &&
                     (i === columns.length - 1 || columns.length - 1 - i >= labelEvery / 2) && (
                       <text
-                        x={PAD.left + i * step + step / 2}
+                        x={i === columns.length - 1 ? width - PAD.right : left + i * step + step / 2}
                         y={HEIGHT - 6}
-                        textAnchor="middle"
+                        textAnchor={i === columns.length - 1 ? "end" : "middle"}
                         className="fill-ink-3 text-[10px]"
                       >
                         {dateLabel(c.ts)}
@@ -175,7 +177,7 @@ export function DailyChart({
           <div
             className="pointer-events-none absolute top-0 z-10 min-w-32 rounded-md border border-line bg-surface px-2.5 py-2 text-xs shadow-md"
             style={{
-              left: Math.min(Math.max(0, PAD.left + hover * step + step / 2 - 64), Math.max(0, width - 150)),
+              left: Math.min(Math.max(0, left + hover * step + step / 2 - 64), Math.max(0, width - 150)),
             }}
           >
             <div className="pb-1 font-medium text-ink">{dateLabel(h.ts)}</div>

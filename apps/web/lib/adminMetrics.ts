@@ -516,7 +516,9 @@ export function computeMetrics(
     .sort((a, b) => b.sessions - a.sessions);
 
   /* Weekly signup cohorts within the window: who came back each week after. */
-  const weekOf = (ts: number) => Math.floor(ts / WEEK) * WEEK;
+  // Weeks start on Monday (the epoch was a Thursday; Jan 5, 1970 a Monday).
+  const MONDAY = 4 * DAY;
+  const weekOf = (ts: number) => Math.floor((ts - MONDAY) / WEEK) * WEEK + MONDAY;
   const cohortMap = new Map<number, string[]>();
   for (const u of users) {
     if (u.createdAt < since) continue;
