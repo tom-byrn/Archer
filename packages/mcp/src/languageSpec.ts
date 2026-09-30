@@ -89,6 +89,12 @@ component <id> ["Display Name"] [@<type>] [{ <body> }]
     or a URL. Single-line string only. A component that lives in several places
     has one \`src\` line for each, kept in the order written. Agents start here when
     implementing or verifying the component; the app renders each one as a link.
+    Cite only where the component itself is implemented — its entry points, its
+    own folder — not every file it touches: shared helpers, UI primitives (a table
+    or button component), imported libraries and utilities it merely uses are not
+    sources for it. Prefer one folder over listing the files inside it; a few \`src\`
+    lines is normal, a dozen means the component is too broad or the list too
+    detailed.
   - Child \`component\` declarations — any component can hold components, arbitrarily
     deep, with JSON-object nesting semantics (§3.1).
   - Child \`plane\` declarations — regions on the component's own canvas (§3.4).
