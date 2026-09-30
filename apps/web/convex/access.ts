@@ -83,10 +83,12 @@ export function requireServiceUser(serviceKey?: string): string {
 
 /**
  * The bare server credential, `svc_<ARCHER_SERVICE_SECRET>` with no user: the
- * web server acting for itself before it knows which user to act as. Only a
- * GitHub push webhook needs this, to find the documents stored in the pushed
- * repository (`repoSync.documentsForPush`); everything it then changes is
- * done as a user.
+ * web server acting for itself before it knows which user to act as. Two
+ * callers need it: a GitHub push webhook, to find the documents stored in the
+ * pushed repository (`repoSync.documentsForPush`; everything it then changes
+ * is done as a user), and the admin dashboard's reads
+ * (`convex/adminDashboard.ts`), which the web server makes only after checking
+ * the signed-in user is the admin (`lib/server/admin.ts`).
  */
 export function requireServer(serviceKey?: string): void {
   if (!serviceKey?.startsWith(SERVICE_PREFIX) || !isServiceSecret(serviceKey.slice(SERVICE_PREFIX.length)))

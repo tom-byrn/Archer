@@ -7,6 +7,7 @@ import { ConvexProviderWithClerk } from "convex/react-clerk";
 import { api } from "@/convex/_generated/api";
 import { takeLegacyWorkspaceId, LEGACY_KEY } from "@/lib/workspace";
 import { useIsDark } from "@/lib/useIsDark";
+import { UsageBeacon } from "./UsageBeacon";
 
 /** Modest Clerk theming so its sign-in card sits inside our token system. */
 /** Token values from globals.css — Clerk needs literal colors, not CSS vars. */
@@ -141,6 +142,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
     <ClerkProvider publishableKey={clerkKey} appearance={appearance}>
       <ConvexProviderWithClerk client={client} useAuth={useAuth}>
         <LegacyClaim />
+        <UsageBeacon />
         {children}
       </ConvexProviderWithClerk>
     </ClerkProvider>

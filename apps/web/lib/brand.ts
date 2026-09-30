@@ -179,6 +179,16 @@ export const COLOR_GROUPS: TokenGroup[] = [
     ],
   },
   {
+    title: "Charts",
+    note: "Data series on the admin dashboard, always in this order; each has its own step per theme.",
+    prefix: "bg",
+    tokens: [
+      { token: "viz-1", role: "First series: people, signed-in edits" },
+      { token: "viz-2", role: "Second series: agent edits" },
+      { token: "viz-3", role: "Third series: commits from a repository" },
+    ],
+  },
+  {
     title: "Landing",
     note: "The landing page's own background, the dithered fade down its first screen, and the agent prompt's window dots, which don't change with the theme.",
     tokens: [

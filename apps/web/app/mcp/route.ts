@@ -1,6 +1,8 @@
+import { after } from "next/server";
 import { auth, clerkClient } from "@clerk/nextjs/server";
 import { verifyClerkToken } from "@clerk/mcp-tools/next";
 import { handleRemoteRequest } from "@archer/mcp/remote";
+import { recordToolCalls, toolCallsIn } from "@/lib/server/usage";
 
 /**
  * Hosted MCP server: https://<app>/mcp (Streamable HTTP, stateless).
@@ -78,15 +80,24 @@ async function handle(req: Request): Promise<Response> {
   const verified = verifyClerkToken(clerkAuth, token);
   if (!verified) return unauthorized(req, "Invalid or expired access token");
 
-  return withCors(
-    await handleRemoteRequest(req, {
-      token,
-      clientId: verified.clientId,
-      scopes: verified.scopes,
-      userId: verified.extra!.userId as string,
-      agentName: await agentNameFor(verified.clientId),
-    }),
-  );
+  const userId = verified.extra!.userId as string;
+  const agentName = await agentNameFor(verified.clientId);
+  // Usage for the admin dashboard: which tools, for whom, how it went.
+  const calls = req.method === "POST" ? await toolCallsIn(req.clone()) : [];
+  const started = Date.now();
+  const res = await handleRemoteRequest(req, {
+    token,
+    clientId: verified.clientId,
+    scopes: verified.scopes,
+    userId,
+    agentName,
+  });
+  if (calls.length > 0) {
+    const ms = Date.now() - started;
+    const copy = res.clone();
+    after(() => recordToolCalls({ userId, agent: agentName, calls, ms, response: copy }));
+  }
+  return withCors(res);
 }
 
 export const POST = handle;
