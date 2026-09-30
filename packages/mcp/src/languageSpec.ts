@@ -132,6 +132,7 @@ them all on one canvas and doesn't change their paths.
 
 \`\`\`
 component db "Primary Postgres" @postgres {
+  shape cylinder
   desc "Single Postgres instance holding all app data. Row-level security on."
 
   component users_table "users" @postgres.table {
@@ -485,6 +486,7 @@ a dangling connection is never created in the first place.
 arch "Acme SaaS" v0.2
 
 component web "Next.js App" @vercel.nextjs {
+  shape browser
   desc "App shell + marketing. RSC, deployed on Vercel."
   src "apps/web"
   src "packages/ui"
@@ -503,9 +505,12 @@ plane backend "Backend" @vercel {
     \`\`\`
 
     component checkout "Checkout" {
+      icon shopping_cart
       desc "Creates Stripe checkout sessions."
     }
-    component projects "Projects"
+    component projects "Projects" {
+      icon folders
+    }
   }
 
   component db "Postgres" @supabase.postgres {
@@ -521,11 +526,16 @@ plane backend "Backend" @vercel {
 }
 
 component auth "Auth Service" {
+  icon lock_key
   desc "Our own thin wrapper over Cognito — issues sessions."
 }
 
-component cognito "Cognito" @aws.cognito
-component stripe "Stripe" @stripe
+component cognito "Cognito" @aws.cognito {
+  shape cloud
+}
+component stripe "Stripe" @stripe {
+  shape cloud
+}
 
 web -> auth @http : "login"
 web -> api @http
@@ -548,9 +558,11 @@ layout {
   auth: { at: [0, 8], size: [4, 3] }
   backend: { at: [6, 0], size: [12, 6] }
   api: { at: [1, 2], size: [4, 3] }
+  api.checkout: { at: [0, 0], size: [4, 3] }
+  api.projects: { at: [0, 5], size: [4, 3] }
   db: { at: [7, 2], size: [4, 3] }
-  cognito: { at: [0, 13], size: [3, 3] }
-  stripe: { at: [20, 3], size: [3, 3] }
+  cognito: { at: [0, 13], size: [4, 3] }
+  stripe: { at: [20, 3], size: [4, 3] }
 }
 \`\`\`\`
 
