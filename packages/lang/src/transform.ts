@@ -31,6 +31,7 @@ import {
   planeChainOf,
   planePathOf,
 } from "./layout";
+import { isColor } from "./colors";
 
 /**
  * Pure AST transforms — the single mutation path for every canvas edit.
@@ -96,6 +97,10 @@ const checkIcon = (icon: string): void => {
   if (!NAME_RE.test(icon)) throw new Error(`Invalid icon '${icon}' (need snake_case).`);
 };
 
+const checkColor = (color: string): void => {
+  if (!isColor(color)) throw new Error(`Invalid color '${color}' (need a palette name or #rrggbb).`);
+};
+
 const checkPlane = (scope: Scope, plane: string | undefined, where: readonly string[]) => {
   if (plane !== undefined && !scope.planes.some((p) => p.id === plane))
     throw new Error(`No plane '${plane}' in ${where.length === 0 ? "the top level" : `'${where.join(".")}'`}.`);
@@ -113,6 +118,7 @@ export interface AddComponentOptions {
   type?: string;
   shape?: string;
   icon?: string;
+  color?: string;
   /** Put it on this plane of the scope (by id). */
   plane?: string;
   /** Relative to the plane it's put on, else to its canvas. */
@@ -127,6 +133,7 @@ export function addComponent(
 ): { doc: ArchDoc; path: string[] } {
   if (opts.shape !== undefined) checkShape(opts.shape);
   if (opts.icon !== undefined) checkIcon(opts.icon);
+  if (opts.color !== undefined) checkColor(opts.color);
   const next = clone(doc);
   const scope = scopeFor(next, parent);
   checkPlane(scope, opts.plane, parent);
@@ -141,6 +148,7 @@ export function addComponent(
     ...(opts.type !== undefined ? { type: opts.type } : {}),
     ...(opts.shape !== undefined ? { shape: opts.shape } : {}),
     ...(opts.icon !== undefined ? { icon: opts.icon } : {}),
+    ...(opts.color !== undefined ? { color: opts.color } : {}),
     ...(opts.plane !== undefined ? { plane: opts.plane } : {}),
     payloads: [],
     children: [],
@@ -335,6 +343,8 @@ export interface ComponentMeta {
   shape?: string | null;
   /** Clearing it shows the type's glyph again, or no icon on an untyped component. */
   icon?: string | null;
+  /** A palette name or #rrggbb; clearing it takes the type's color again. */
+  color?: string | null;
   desc?: string | null;
   /**
    * Every place the component lives, in order: repo paths (files or folders)
@@ -351,10 +361,11 @@ export function setComponentMeta(
 ): ArchDoc {
   if (typeof meta.shape === "string") checkShape(meta.shape);
   if (typeof meta.icon === "string") checkIcon(meta.icon);
+  if (typeof meta.color === "string") checkColor(meta.color);
   const next = clone(doc);
   const node = findComponent(next, path);
   if (!node) throw new Error(`No component at '${path.join(".")}'`);
-  for (const key of ["name", "type", "shape", "icon", "desc"] as const) {
+  for (const key of ["name", "type", "shape", "icon", "color", "desc"] as const) {
     const v = meta[key];
     if (v === undefined) continue;
     if (v === null) delete node[key];
@@ -1043,7 +1054,7 @@ export function nestInComponent(
  * Turn a component into a plane in its place: what was nested in it comes up
  * a level onto the plane (ids that clash on the way get fresh ones), with
  * new, shorter paths. It must have no connections, payloads or `src` of its
- * own, since a plane can't hold them; its shape and icon go. Returns the plane's path.
+ * own, since a plane can't hold them; its shape, icon and color go. Returns the plane's path.
  */
 export function componentToPlane(
   doc: ArchDoc,

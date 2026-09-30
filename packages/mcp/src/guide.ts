@@ -216,6 +216,12 @@ The full language specification is at the end of this guide. Key habits:
   \`queue\`; Phosphor's own name works for those too, \`hard_drives\` for
   \`server\`). \`list_types\` lists every icon by group. Give an untyped
   component an icon when one says what it is; a typed one rarely needs one.
+- **Colors.** A component is drawn in its type's color unless its body names
+  one with \`color <name>\` (\`red\`, \`orange\`, \`amber\`, \`yellow\`,
+  \`lime\`, \`green\`, \`emerald\`, \`teal\`, \`cyan\`, \`sky\`, \`blue\`,
+  \`indigo\`, \`violet\`, \`purple\`, \`fuchsia\`, \`pink\`, \`rose\`,
+  \`slate\`) or \`color "#rrggbb"\`. Keep colors the human chose; add one
+  only when asked, or to group related components (one team's, the new ones).
 - **AI systems have their own building blocks:** \`@llm\`, \`@agent\`, \`@mcp\`
   (an MCP server), \`@tool\`, \`@rag\`, \`@embeddings\`, \`@vector_db\`,
   \`@memory\`, \`@guardrails\`, \`@evals\` and more (\`list_types\` with search
@@ -247,7 +253,7 @@ The full language specification is at the end of this guide. Key habits:
 | E001 | Syntax error | Follow the message; check fences and quotes |
 | E002 | Duplicate id in one scope (components and planes share ids) | Rename one of them |
 | E003 | Duplicate payload name on one component or connection | Rename one payload |
-| E004 | More than one \`shape\` or \`icon\` on a component | Keep one |
+| E004 | More than one \`shape\`, \`icon\` or \`color\` on a component | Keep one |
 | E101 | Connection endpoint doesn't resolve, or is a plane | Declare the component, fix the path, or connect a component on the plane |
 | E201 | json/yaml/table payload doesn't parse | Fix the payload content |
 | W301 | Unknown type tag (warning) | Optional: use a catalog tag or create a custom type |
@@ -255,12 +261,13 @@ The full language specification is at the end of this guide. Key habits:
 | W303 | Layout entry for unknown path (warning) | Ignored; entry is dropped |
 | W304 | Unknown shape (warning) | Optional: use one of the shapes the message lists |
 | W305 | Unknown icon (warning) | Optional: use an icon \`list_types\` lists |
+| W306 | Unknown color (warning) | Optional: use a color \`list_types\` lists, or \`"#rrggbb"\` |
 
 ## Capability map (vs. the human app)
 
 Everything a human can do in the app maps to a tool: browse projects
 (\`list_projects\`/\`get_project\`), create/delete projects, edit anything —
-components, connections, descriptions, shapes, icons, payloads, nesting, planes —
+components, connections, descriptions, shapes, icons, colors, payloads, nesting, planes —
 (\`update_project\` with full source), manage the custom component library
 (\`create_custom_type\`/\`delete_custom_type\`), arrange the canvas
 (\`auto_layout_project\`, or explicit layout entries), review history

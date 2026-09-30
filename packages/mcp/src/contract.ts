@@ -74,6 +74,8 @@ export interface TypeList {
    * picker shows them; a custom type's glyph is one of these too.
    */
   icons: { group: string; icons: string[] }[];
+  /** What `color <name>` in a component body can name, as #rrggbb; `color "#rrggbb"` takes any other. */
+  colors: { color: string; hex: string }[];
   note?: string;
 }
 

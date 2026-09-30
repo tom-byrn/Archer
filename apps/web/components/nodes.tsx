@@ -266,7 +266,7 @@ const srcTitle = (src: readonly string[] | undefined): string | undefined => src
 function ArchShapeNode({ id, data, width, height, shape }: NodeProps<ArchNode> & { shape: Shape }) {
   const isDark = useIsDark();
   const entry = lookupType(data.typeTag);
-  const accent = displayColor(data.accent ?? entry?.color, isDark);
+  const accent = displayColor(data.color ?? data.accent ?? entry?.color, isDark);
   const w = width ?? CELL * 4;
   const h = height ?? CELL * 3;
   const geo = useMemo(() => shapeGeometry(shape, w, h), [shape, w, h]);
@@ -352,15 +352,18 @@ export function ArchComponentNode(props: NodeProps<ArchNode>) {
 function ArchCardNode({ id, data, width, height }: NodeProps<ArchNode>) {
   const isDark = useIsDark();
   const entry = lookupType(data.typeTag);
-  const accent = displayColor(data.accent ?? entry?.color, isDark);
+  const accent = displayColor(data.color ?? data.accent ?? entry?.color, isDark);
   const tile = accent ?? NEUTRAL;
   const nested = data.childCount > 0;
   const marks = data.marks;
+  // A color it picked tints the whole card, not just its icon's tile.
+  const colored = data.color !== undefined && accent !== undefined;
   return (
     <div
-      style={{ width, height }}
+      style={{ width, height, ...(colored ? { "--card-accent": accent } : {}) } as CSSProperties}
       className={cx(
         "arch-node arch-node-component relative flex items-center gap-2.5 rounded-md border bg-surface px-2.5",
+        colored && "arch-card-colored",
         nested && "arch-node-nested",
         data.dropTarget && "arch-drop-target",
         diffClass(marks),
@@ -441,7 +444,7 @@ export function ArchPlaneNode({ id, data, width, height }: NodeProps<ArchNode>) 
  */
 export function ArchContextNode({ data, width, height }: NodeProps<ArchNode>) {
   const isDark = useIsDark();
-  const accent = displayColor(data.accent ?? lookupType(data.typeTag)?.color, isDark);
+  const accent = displayColor(data.color ?? data.accent ?? lookupType(data.typeTag)?.color, isDark);
   return (
     <div
       style={{ width, height }}
