@@ -70,6 +70,12 @@
   --landing-close: #f0655a;
   --landing-minimize: #f2a33a;
   --landing-zoom: #23c088;
+
+  /* Chart series (the admin dashboard), in this order: a validated
+     categorical set — blue, orange, aqua — stepped per theme. */
+  --viz-1: #2a78d6;
+  --viz-2: #eb6834;
+  --viz-3: #1baf7a;
 }
 
 /* The dark theme. <html> carries data-theme="light" or "dark": the viewer's
@@ -126,6 +132,10 @@
 
   --landing-bg: #000000;
   --landing-fade: #121212;
+
+  --viz-1: #3987e5;
+  --viz-2: #d95926;
+  --viz-3: #199e70;
 }
 
 /* Expose tokens to Tailwind utilities: bg-surface, text-ink-2, border-line,
@@ -149,6 +159,9 @@
   --color-warn: var(--warn);
   --color-warn-soft: var(--warn-soft);
   --color-ground: var(--ground);
+  --color-viz-1: var(--viz-1);
+  --color-viz-2: var(--viz-2);
+  --color-viz-3: var(--viz-3);
 
   --radius-xs: 3px;
   --radius-sm: 4px;

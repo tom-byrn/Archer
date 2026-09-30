@@ -164,6 +164,44 @@ export default defineSchema({
     workspaceId: v.string(),
   }).index("by_user", ["userId"]),
 
+  /**
+   * Time spent in the app: one row per browser tab session, extended by the
+   * signed-in page's heartbeat (`usage.heartbeat`, components/UsageBeacon.tsx)
+   * while the tab is visible and the user is active. Read by the admin
+   * dashboard only.
+   */
+  sessions: defineTable({
+    userId: v.string(),
+    /** Random id the tab generated; a new one after 30 idle minutes. */
+    key: v.string(),
+    startedAt: v.number(),
+    lastSeenAt: v.number(),
+    /** Visible, non-idle time, summed from heartbeats. */
+    activeMs: v.number(),
+    /** Page views: each path change counts one. */
+    pageviews: v.number(),
+    /** Paths visited, in order, consecutive repeats dropped (capped). */
+    paths: v.array(v.string()),
+    /** "Chrome · macOS"; derived in the browser from its user agent. */
+    device: v.optional(v.string()),
+  })
+    .index("by_key", ["key"])
+    .index("by_user", ["userId", "lastSeenAt"])
+    .index("by_last_seen", ["lastSeenAt"]),
+
+  /** One row per MCP tool call (agents and the CLI), recorded by the /mcp route. */
+  toolCalls: defineTable({
+    userId: v.string(),
+    tool: v.string(),
+    /** OAuth client name: "Claude Code", "Cursor", "Archer CLI"… */
+    agent: v.string(),
+    ok: v.boolean(),
+    ms: v.number(),
+    at: v.number(),
+  })
+    .index("by_at", ["at"])
+    .index("by_user", ["userId", "at"]),
+
   libraryTypes: defineTable({
     workspaceId: v.string(),
     tag: v.string(),

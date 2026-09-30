@@ -10,12 +10,14 @@
 
 import type * as access from "../access.js";
 import type * as admin from "../admin.js";
+import type * as adminDashboard from "../adminDashboard.js";
 import type * as agentPrefs from "../agentPrefs.js";
 import type * as documents from "../documents.js";
 import type * as drift from "../drift.js";
 import type * as library from "../library.js";
 import type * as repoSync from "../repoSync.js";
 import type * as revisions from "../revisions.js";
+import type * as usage from "../usage.js";
 import type * as workspaces from "../workspaces.js";
 
 import type {
@@ -27,12 +29,14 @@ import type {
 declare const fullApi: ApiFromModules<{
   access: typeof access;
   admin: typeof admin;
+  adminDashboard: typeof adminDashboard;
   agentPrefs: typeof agentPrefs;
   documents: typeof documents;
   drift: typeof drift;
   library: typeof library;
   repoSync: typeof repoSync;
   revisions: typeof revisions;
+  usage: typeof usage;
   workspaces: typeof workspaces;
 }>;
 

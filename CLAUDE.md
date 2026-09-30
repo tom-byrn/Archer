@@ -64,7 +64,7 @@ Router + React Flow + Convex).
   first checks the user's own GitHub read access; the push webhook
   (`GITHUB_WEBHOOK_SECRET`; optional GitHub App `GITHUB_APP_ID` +
   `GITHUB_APP_PRIVATE_KEY`) finds documents with the bare server credential
-  (`requireServer`, its only use) and then acts as each document's linking
+  (`requireServer`; the admin dashboard is its only other user) and then acts as each document's linking
   user. ALL GitHub REST calls go through `apps/web/lib/githubApi.ts` (pure
   client) via `apps/web/lib/server/github.ts` (token = the user's Clerk GitHub
   OAuth token from `getUserOauthAccessToken(userId, "github")`, or the App's
@@ -190,6 +190,22 @@ Router + React Flow + Convex).
   plane, not the reverse), so keep the two concepts apart. There is no
   support for older language versions: there are no users yet, so change the
   grammar freely.
+- Admin dashboard: `/admin-dashboard` (linked from nowhere) is for one person,
+  hard-coded in `lib/admin.ts` (`isAdmin`: verified email
+  tombyrne788@gmail.com or verified GitHub login tom-byrn — a code change, not
+  an env var, widens it). Everyone else gets a 404: every page under
+  `app/admin-dashboard` calls `requireAdmin()` (`lib/server/admin.ts`)
+  itself, not just the layout. Data: Clerk's user list plus
+  `convex/adminDashboard.ts` queries, which take the bare server credential
+  (`requireServer`) — no browser can call them. The numbers are computed by
+  `lib/adminMetrics.ts` (pure; definitions and tests in `test/admin.test.ts`)
+  and drawn by client views in `components/admin/*` (charts use the `--viz-*`
+  tokens). Usage is recorded for it: `components/UsageBeacon.tsx` (mounted in
+  `Providers`) sends `usage.heartbeat` for signed-in tabs (visible, non-idle
+  time → `sessions`), and the `/mcp` route records each tool call
+  (`lib/server/usage.ts` → `usage.recordToolCall` → `toolCalls`) after
+  responding. Read-only canvases reuse `DocumentViewer`
+  (`/admin-dashboard/canvas/<id>`, `?rev=<revisionId>` for a past version).
 - Brand kit: `/branding` (signed-in only, deliberately linked from nowhere —
   keep it that way) shows the logo, colors, type, radii, icons and ui.tsx
   primitives. Values are parsed from `app/globals.css` at build time
