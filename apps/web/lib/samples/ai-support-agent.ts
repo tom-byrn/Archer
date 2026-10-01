@@ -41,6 +41,7 @@ plane tools "MCP Servers" {
     ${FENCE}
   }
   component refunds "Refunds" @mcp {
+    color amber
     desc "Refunds up to $50 inside the return window. Anything bigger waits for a person."
     tools table ${FENCE}
     | tool          | does                            |
@@ -52,6 +53,7 @@ plane tools "MCP Servers" {
 }
 
 component team "Support Team" @human_review {
+  color amber
   desc "Approves refunds over the limit, with the conversation and the agent's reasoning attached."
 }
 

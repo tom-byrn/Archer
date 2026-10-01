@@ -24,7 +24,7 @@ export const EXAMPLES: readonly Example[] = [
     slug: "components-and-connections",
     title: "Link Shortener",
     summary:
-      "The smallest useful document: a header, a few typed components and the connections between them. A `@type` picks the icon and color, a `shape` the outline; a label says what travels on an arrow.",
+      "The smallest useful document: a header, a few typed components and the connections between them. A `@type` picks the icon and color, a `shape` the outline; a label says what travels on an arrow. A `color` overrides the type's: here orange marks the hot path, the cache most requests stop at.",
     features: ["components", "types", "connections", "labels"],
     source: `arch "Link Shortener" v0.2
 
@@ -42,6 +42,7 @@ component db "Links" @postgres {
 
 component cache "Hot Links" @redis {
   shape cylinder
+  color orange
 }
 
 api -> cache @reads : "resolve"
@@ -63,6 +64,7 @@ component dashboard "Dashboard" @vercel.nextjs {
 }
 
 component api "Billing API" @service {
+  color emerald
   desc "Owns plans, subscriptions and invoices. Stateless."
   src "services/billing"
   endpoints table ${FENCE}
@@ -104,7 +106,7 @@ dashboard -> api @http
     slug: "shapes",
     title: "Support Desk",
     summary:
-      "A `shape` in a component's body draws it as what it is: a person for the customer, people for the support team, a robot for the agent, a cloud for the model provider, a book for the help center, a cylinder for the database. The type still picks the icon and color inside the outline (an \`icon\` can change the first), and anything without a shape stays a box. Shapes are for readers; an agent implementing the document can ignore them.",
+      "A `shape` in a component's body draws it as what it is: a person for the customer, people for the support team, a robot for the agent, a cloud for the model provider, a book for the help center, a cylinder for the database. The type still picks the icon and color inside the outline (an \`icon\` and a \`color\` can change them: amber marks the way to a person), and anything without a shape stays a box. Shapes are for readers; an agent implementing the document can ignore them.",
     features: ["shapes"],
     source: `arch "Support Desk" v0.2
 
@@ -135,10 +137,12 @@ component orders "Orders" @postgres {
 
 component handoffs "Handoffs" @queue {
   shape queue
+  color amber
 }
 
 component team "Support Team" @user {
   shape people
+  color amber
 }
 
 agent -> articles @reads : "search"
@@ -154,8 +158,8 @@ widget -> agent @ws : "chat"
     slug: "icons",
     title: "Coffee Shop",
     summary:
-      "An \`icon\` in a component's body picks the icon it shows: any Phosphor icon by its snake-case name (\`coffee\`, \`receipt\`, \`device_tablet\`) or one of the catalog's (\`database\`, \`queue\`). An untyped component shows no icon until it picks one, so an icon is the quickest way to say what something is without a type. On a typed component it replaces the type's icon and keeps its color, like the book on the Postgres menu. Icons are for readers; an agent implementing the document can ignore them. \`list_types\` lists every icon, and the editor's Icon picker searches them.",
-    features: ["icons"],
+      "An \`icon\` in a component's body picks the icon it shows: any Phosphor icon by its snake-case name (\`coffee\`, \`receipt\`, \`device_tablet\`) or one of the catalog's (\`database\`, \`queue\`). An untyped component shows no icon until it picks one, so an icon is the quickest way to say what something is without a type. On a typed component it replaces the type's icon and keeps its color, like the book on the Postgres menu. A \`color\` does the same for the color: a palette name (\`amber\`) or any \`\"#rrggbb\"\`, like the coffee brown of the barista's screen. Icons and colors are for readers; an agent implementing the document can ignore them. \`list_types\` lists every icon, and the editor's Icon picker searches them.",
+    features: ["icons", "colors"],
     source: `arch "Coffee Shop" v0.2
 
 component customer "Customer" @user {
@@ -181,11 +185,13 @@ component payments "Payments" @stripe {
 
 component barista "Barista Screen" {
   icon coffee
+  color "#92400e"
   desc "The queue of drinks to make, oldest first."
 }
 
 component loyalty "Loyalty" {
   icon gift
+  color amber
   desc "A stamp per paid order; the tenth drink is free."
 }
 
@@ -208,7 +214,7 @@ orders -> payments @http : "charge"
     slug: "planes",
     title: "Photo Sharing",
     summary:
-      "A `plane` is a titled region of the canvas, a background you put components on: the user's devices on one, the AWS account on another, and a VPC inside that. Planes are only for the reader. They don't change a component's path (`api`, not `cloud.api`), connections never attach to them, and like a component a plane can take a `@type` and a `desc`.",
+      "A `plane` is a titled region of the canvas, a background you put components on: the user's devices on one, the AWS account on another, and a VPC inside that. Planes are only for the reader. They don't change a component's path (`api`, not `cloud.api`), connections never attach to them, and like a component a plane can take a `@type` and a `desc`. Colors cut across planes: the upload path is pink wherever it runs.",
     features: ["planes", "planes inside planes"],
     source: `arch "Photo Sharing" v0.2
 
@@ -231,10 +237,12 @@ plane cloud "AWS" @aws {
   component api "API" @aws.api_gateway
   component photos "Photos" @aws.s3 {
     shape bucket
+    color pink
     desc "Originals and resized copies, served through signed URLs."
   }
   plane vpc "VPC" @aws.vpc {
     component uploads "Uploads" @aws.lambda {
+      color pink
       desc "Hands out upload URLs, then resizes what lands in Photos."
     }
     component db "Metadata" @aws.rds {
@@ -257,7 +265,7 @@ web -> api @http
     slug: "nesting",
     title: "Food Delivery",
     summary:
-      "Any component can hold components. Orders owns its API, checkout, tracker and database: on the canvas it's one box with a count of what's inside, and opening it shows those parts, with whatever outside they connect to along the edges. A path reaches a nested component (`orders.checkout`), and a connection can join one or the whole component (`app -> orders`).",
+      "Any component can hold components. Orders owns its API, checkout, tracker and database: on the canvas it's one box with a count of what's inside, and opening it shows those parts, with whatever outside they connect to along the edges. A path reaches a nested component (`orders.checkout`), and a connection can join one or the whole component (`app -> orders`). The courier's side is orange.",
     features: ["nesting", "paths", "opening a component"],
     source: `arch "Food Delivery" v0.2
 
@@ -288,11 +296,13 @@ component orders "Orders" @service {
 }
 
 component dispatch "Dispatch" @service {
+  color orange
   desc "Offers each paid order to the nearest free courier."
 }
 
 component courier "Courier App" @mobile {
   shape phone
+  color orange
 }
 
 component stripe "Stripe" @stripe {
@@ -313,7 +323,7 @@ orders.tracker -> orders.db @writes
     slug: "music-streaming",
     title: "Music Streaming",
     summary:
-      "A whole product in one file: listener apps, the edge, six services in one Kubernetes cluster, their storage, analytics, and the pipeline that turns a label's delivery into playable audio. Planes mark out the regions, while the cluster and the apps nest their parts, so the top level stays readable and opening Services shows all six. All three arrow kinds appear: `->`, `<->` for the remote-control socket, and `--` for the signed URLs Playback and the CDN agree on. It was laid out by hand, so it ends with the `layout` block the canvas writes when you drag and resize; agents ignore that block and never write it.",
+      "A whole product in one file: listener apps, the edge, six services in one Kubernetes cluster, their storage, analytics, and the pipeline that turns a label's delivery into playable audio. Planes mark out the regions, while the cluster and the apps nest their parts, so the top level stays readable and opening Services shows all six. All three arrow kinds appear: `->`, `<->` for the remote-control socket, and `--` for the signed URLs Playback and the CDN agree on. It was laid out by hand, so it ends with the `layout` block the canvas writes when you drag and resize; agents ignore that block and never write it. Where the money flows, in and out, is emerald.",
     features: ["planes and nesting together", "arrow kinds", "connection payloads", "the layout block"],
     source: `arch "Music Streaming" v0.2
 
@@ -383,6 +393,7 @@ component services "Services" @aws.eks {
     desc "Home feed, radio and a weekly mix, built from the nearest neighbors of what you play."
   }
   component subscriptions "Subscriptions" @service {
+    color emerald
     desc "Plans, trials and family seats. Answers what a listener is entitled to."
     src "services/subscriptions"
   }
@@ -446,6 +457,7 @@ plane analytics "Analytics" {
   }
   component royalties "Royalties" {
     icon hand_coins
+    color emerald
     desc "Monthly job that splits each market's revenue across rights holders by share of streams."
     rules markdown ${FENCE}
     - A stream counts after 30 seconds of play.
