@@ -174,6 +174,14 @@ Router + React Flow + Convex).
   `@archer/catalog/icons`; add freely, never rename or remove one). The
   language keeps any name as written; validators pass `knownIcons` for `W305`.
   The inspector's picker is `components/IconPicker.tsx` ("Change icon…" opens it).
+- Colors: a component's `color` (spec §3.3; `color green` or `color "#b45309"`)
+  replaces its type's color: its icon is drawn in it and its card or shape
+  takes a tint (`arch-card-colored` / `arch-shape-typed`); logos keep their own
+  colors, and planes have none. The palette is `packages/lang/src/colors.ts`
+  (`COLORS`, `COLOR_HEX`, `resolveColor`; add freely, never rename or remove
+  one); anything else that isn't `#rrggbb` is `W306`. `toFlow` passes the
+  resolved hex as `data.color`, beside the type's `accent`. The inspector's
+  picker is `components/ColorPicker.tsx` ("Change color…" opens it).
 - Planes and nesting (spec §3.1, §3.4, language v0.2): a `plane` is a titled
   region of a canvas, for readers only. It is transparent to paths (`api` on
   plane `backend` is still `api`), never a connection endpoint (`E101`), and

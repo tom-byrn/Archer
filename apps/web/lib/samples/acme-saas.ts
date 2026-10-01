@@ -32,6 +32,7 @@ plane backend "Backend" @vercel {
 
 component auth "Auth Service" {
   icon lock_key
+  color indigo
   desc "Our own thin wrapper over Cognito — issues sessions."
 }
 

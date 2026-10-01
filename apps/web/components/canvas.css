@@ -16,6 +16,15 @@
 .react-flow__node:hover .arch-node-component {
   border-color: color-mix(in srgb, var(--edge-strong) 40%, transparent);
 }
+/* A component that picked a color (`color blue`) takes a tint of it, like a
+   typed shape (--card-accent, nodes.tsx ArchCardNode). */
+.arch-node-component.arch-card-colored {
+  border-color: color-mix(in srgb, var(--card-accent) 45%, var(--line-2));
+  background-color: color-mix(in srgb, var(--card-accent) 5%, var(--surface));
+}
+.react-flow__node:hover .arch-node-component.arch-card-colored {
+  border-color: color-mix(in srgb, var(--card-accent) 70%, var(--line-2));
+}
 .react-flow__node.selected .arch-node,
 .react-flow__node.arch-selected .arch-node {
   box-shadow:

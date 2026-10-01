@@ -22,7 +22,8 @@ const PREAMBLE = `# This is an Archer architecture document — a complete, mach
 # - \`shape\` (cylinder, cloud, person, robot, …) is how the canvas draws a
 #   component: a hint at what it is (a store, an outside service, a user, an
 #   agent), never an instruction for how to build it. \`icon\` (database,
-#   shopping_cart, …) is the icon it shows; like \`shape\`, a hint for readers.
+#   shopping_cart, …) is the icon it shows and \`color\` (blue, "#0ea5e9", …)
+#   the color it's drawn in; like \`shape\`, hints for readers.
 # - Named payload blocks (json | yaml | table | markdown) carry structured detail
 #   such as schemas, endpoint lists, or env vars. json/yaml/table payloads are
 #   syntactically validated — trust them as authored data.

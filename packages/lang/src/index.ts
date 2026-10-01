@@ -1,6 +1,8 @@
 export * from "./types";
 export { SHAPES, SHAPE_INFO, SHAPE_GROUPS, DEFAULT_SHAPE, isShape, shapeOf } from "./shapes";
 export type { Shape, ShapeGroup } from "./shapes";
+export { COLORS, COLOR_HEX, isColor, isColorName, resolveColor } from "./colors";
+export type { ColorName } from "./colors";
 export { parse, CURRENT_VERSION } from "./parser";
 export { lex, dedent } from "./lexer";
 export type { Token, TokenType } from "./lexer";

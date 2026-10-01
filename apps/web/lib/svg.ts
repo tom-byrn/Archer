@@ -13,6 +13,7 @@ import {
   layoutMap,
   parse,
   planeTree,
+  resolveColor,
   shapeOf,
   type ArchDoc,
   type ComponentNode,
@@ -200,6 +201,8 @@ interface Box {
   icon?: string;
   /** Drawn as a shape (lib/shapes.ts) instead of the card. */
   shape?: ShapeGeometry;
+  /** It picked its own color (`color blue`), which `color` is: its card or outline takes a tint of it. */
+  colored?: boolean;
 }
 
 /**
@@ -253,6 +256,7 @@ export function renderArchSvg(source: string, opts: RenderOptions = {}): string 
       const type = item.type ? lookupType(item.type) : undefined;
       const shape = item.kind === "component" ? shapeOf(item) : "box";
       const icon = item.kind === "component" ? iconMarkup(item.icon) : undefined;
+      const own = item.kind === "component" ? resolveColor(item.color) : undefined;
       const w = size[0] * CELL;
       const h = size[1] * CELL;
       boxes.push({
@@ -264,11 +268,12 @@ export function renderArchSvg(source: string, opts: RenderOptions = {}): string 
         h,
         plane,
         on: chain,
-        color: displayColor(type?.color ?? P.fallback, dark),
+        color: displayColor(own ?? type?.color ?? P.fallback, dark),
         glyph: type?.glyph ?? "box",
         logo: type?.logo === undefined ? undefined : opts.logos?.[type.logo],
         ...(icon !== undefined ? { icon } : {}),
         ...(shape !== "box" ? { shape: shapeGeometry(shape, w, h) } : {}),
+        ...(own !== undefined ? { colored: true } : {}),
       });
       if (item.kind === "plane") walk(item, abs, [path, ...chain]);
     }
@@ -328,7 +333,9 @@ export function renderArchSvg(source: string, opts: RenderOptions = {}): string 
           (nested > 0
             ? `<rect x="${x + 3}" y="${y + 3}" width="${b.w}" height="${b.h}" rx="6" fill="${P.surface}" stroke="${P.line2}"/>`
             : "") +
-          `<rect x="${x}" y="${y}" width="${b.w}" height="${b.h}" rx="6" fill="${P.surface}" stroke="${P.line2}"/>` +
+          (b.colored
+            ? `<rect x="${x}" y="${y}" width="${b.w}" height="${b.h}" rx="6" fill="${mix(b.color, P.surface, 0.05)}" stroke="${mix(b.color, P.line2, 0.45)}"/>`
+            : `<rect x="${x}" y="${y}" width="${b.w}" height="${b.h}" rx="6" fill="${P.surface}" stroke="${P.line2}"/>`) +
           // A vendor's square icon (AWS) takes the tinted tile's place.
           (!tile
             ? ""
@@ -540,14 +547,15 @@ export function renderArchSvg(source: string, opts: RenderOptions = {}): string 
 
 /**
  * A component drawn as its shape (mirrors nodes.tsx ArchShapeNode): the
- * outline, tinted by its type, then the label centered in the shape's
+ * outline, tinted by its color or type, then the label centered in the shape's
  * middle, with as much of glyph, name and tag as `labelLayout` finds room for.
  */
 function shapeSvg(b: Box, x: number, y: number, P: Palette, dark: boolean): string {
   const g = b.shape!;
   const typed = b.node.type !== undefined;
-  // Tinted by a type that resolves; an unknown one keeps the plain outline, as on the canvas.
-  const tinted = lookupType(b.node.type) !== undefined;
+  // Tinted by its own color or a type that resolves; an unknown type keeps the
+  // plain outline, as on the canvas.
+  const tinted = b.colored === true || lookupType(b.node.type) !== undefined;
   const stroke = tinted ? mix(b.color, P.line2, 0.45) : P.line2;
   const fill = tinted ? mix(b.color, P.surface, 0.05) : P.surface;
   const inside = b.node.kind === "component" ? b.node.children.length : 0;
