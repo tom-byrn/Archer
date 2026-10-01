@@ -91,6 +91,12 @@ component <id> ["Display Name"] [@<type>] [{ <body> }]
     or a URL. Single-line string only. A component that lives in several places
     has one `src` line for each, kept in the order written. Agents start here when
     implementing or verifying the component; the app renders each one as a link.
+    Cite only where the component itself is implemented — its entry points, its
+    own folder — not every file it touches: shared helpers, UI primitives (a table
+    or button component), imported libraries and utilities it merely uses are not
+    sources for it. Prefer one folder over listing the files inside it; a few `src`
+    lines is normal, a dozen means the component is too broad or the list too
+    detailed.
   - Child `component` declarations — any component can hold components, arbitrarily
     deep, with JSON-object nesting semantics (§3.1).
   - Child `plane` declarations — regions on the component's own canvas (§3.4).
@@ -134,6 +140,7 @@ them all on one canvas and doesn't change their paths.
 
 ```
 component db "Primary Postgres" @postgres {
+  shape cylinder
   desc "Single Postgres instance holding all app data. Row-level security on."
 
   component users_table "users" @postgres.table {
@@ -515,6 +522,7 @@ a dangling connection is never created in the first place.
 arch "Acme SaaS" v0.2
 
 component web "Next.js App" @vercel.nextjs {
+  shape browser
   desc "App shell + marketing. RSC, deployed on Vercel."
   src "apps/web"
   src "packages/ui"
@@ -533,9 +541,12 @@ plane backend "Backend" @vercel {
     ```
 
     component checkout "Checkout" {
+      icon shopping_cart
       desc "Creates Stripe checkout sessions."
     }
-    component projects "Projects"
+    component projects "Projects" {
+      icon folders
+    }
   }
 
   component db "Postgres" @supabase.postgres {
@@ -551,11 +562,16 @@ plane backend "Backend" @vercel {
 }
 
 component auth "Auth Service" {
+  icon lock_key
   desc "Our own thin wrapper over Cognito — issues sessions."
 }
 
-component cognito "Cognito" @aws.cognito
-component stripe "Stripe" @stripe
+component cognito "Cognito" @aws.cognito {
+  shape cloud
+}
+component stripe "Stripe" @stripe {
+  shape cloud
+}
 
 web -> auth @http : "login"
 web -> api @http
@@ -578,9 +594,11 @@ layout {
   auth: { at: [0, 8], size: [4, 3] }
   backend: { at: [6, 0], size: [12, 6] }
   api: { at: [1, 2], size: [4, 3] }
+  api.checkout: { at: [0, 0], size: [4, 3] }
+  api.projects: { at: [0, 5], size: [4, 3] }
   db: { at: [7, 2], size: [4, 3] }
-  cognito: { at: [0, 13], size: [3, 3] }
-  stripe: { at: [20, 3], size: [3, 3] }
+  cognito: { at: [0, 13], size: [4, 3] }
+  stripe: { at: [20, 3], size: [4, 3] }
 }
 ````
 

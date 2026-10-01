@@ -3,14 +3,17 @@ const FENCE = "```";
 export const AI_SUPPORT_AGENT = `arch "AI Support Agent" v0.2
 
 component widget "Chat Widget" @chat_ui {
+  shape browser
   desc "Embedded in the app and the help center. Streams replies as they're written."
 }
 
 component guardrails "Guardrails" @guardrails {
+  shape shield
   desc "Checks every turn both ways: prompt injection coming in, PII and off-policy promises going out."
 }
 
 component agent "Support Agent" @agent {
+  shape robot
   desc "Answers from the help center, and looks up orders and issues refunds through MCP tools."
   src "services/agent"
   instructions markdown ${FENCE}
@@ -20,13 +23,17 @@ component agent "Support Agent" @agent {
   ${FENCE}
 }
 
-component llm "Claude" @anthropic
+component llm "Claude" @anthropic {
+  shape cloud
+}
 
 component memory "Conversations" @memory {
+  shape cylinder
   desc "Every conversation, plus a running summary per customer so the next chat picks up where the last one left off."
 }
 
 component evals "Evals" @evals {
+  shape gauge
   desc "Nightly: grades a sample of yesterday's conversations for accuracy, tone and policy."
 }
 
@@ -53,19 +60,27 @@ plane tools "MCP Servers" {
 }
 
 component team "Support Team" @human_review {
+  shape people
   color amber
   desc "Approves refunds over the limit, with the conversation and the agent's reasoning attached."
 }
 
 component knowledge "Knowledge Base" @knowledge_base {
+  shape book
   component ingest "Ingestion" @worker {
+    shape gear
     desc "Re-chunks and re-embeds a help-center article whenever it's published or edited."
   }
-  component embeddings "Embeddings" @openai
+  component embeddings "Embeddings" @openai {
+    shape cloud
+  }
   component retriever "Retriever" @rag {
+    shape search
     desc "Hybrid search over help-center chunks; returns the best five with their article links."
   }
-  component vectors "Chunks" @pgvector
+  component vectors "Chunks" @pgvector {
+    shape cylinder
+  }
 }
 
 agent -> knowledge.retriever @http : "search"

@@ -92,11 +92,15 @@ const FENCE = "```";
 /** "Shop" as Claude Code created it. */
 const SHOP_CREATED = `arch "Shop" v0.2
 
-component web "Storefront" @vercel.nextjs
+component web "Storefront" @vercel.nextjs {
+  shape browser
+}
 
 plane backend "Backend" {
   component api "API" @vercel.functions
-  component db "Orders DB" @postgres
+  component db "Orders DB" @postgres {
+    shape cylinder
+  }
 }
 
 api -> db @sql
@@ -106,16 +110,22 @@ web -> api @http
 /** …after the user added Stripe and a code link on the canvas. The current document. */
 const SHOP = `arch "Shop" v0.2
 
-component web "Storefront" @vercel.nextjs
+component web "Storefront" @vercel.nextjs {
+  shape browser
+}
 
 plane backend "Backend" {
   component api "API" @vercel.functions {
     src "apps/api"
   }
-  component db "Orders DB" @postgres
+  component db "Orders DB" @postgres {
+    shape cylinder
+  }
 }
 
-component stripe "Stripe" @stripe
+component stripe "Stripe" @stripe {
+  shape cloud
+}
 
 api -> db @sql
 api -> stripe @http : "charges"
@@ -125,17 +135,25 @@ web -> api @http
 /** The update_project example: an agent adds an order-events queue with its message schema. */
 const SHOP_WITH_QUEUE = `arch "Shop" v0.2
 
-component web "Storefront" @vercel.nextjs
+component web "Storefront" @vercel.nextjs {
+  shape browser
+}
 
 plane backend "Backend" {
   component api "API" @vercel.functions {
     src "apps/api"
   }
-  component db "Orders DB" @postgres
-  component events "Order Events" @queue
+  component db "Orders DB" @postgres {
+    shape cylinder
+  }
+  component events "Order Events" @queue {
+    shape queue
+  }
 }
 
-component stripe "Stripe" @stripe
+component stripe "Stripe" @stripe {
+  shape cloud
+}
 
 api -> db @sql
 api -> events @queue : "order placed" {
@@ -349,16 +367,22 @@ api -> db @sql
 
 arch "Shop" v0.2
 
-component web "Storefront" @vercel.nextjs
+component web "Storefront" @vercel.nextjs {
+  shape browser
+}
 
 plane backend "Backend" {
   component api "API" @vercel.functions {
     src "apps/api"
   }
-  component db "Orders DB" @postgres
+  component db "Orders DB" @postgres {
+    shape cylinder
+  }
 }
 
-component stripe "Stripe" @stripe
+component stripe "Stripe" @stripe {
+  shape cloud
+}
 
 api -> db @sql
 api -> stripe @http : "charges"
@@ -489,7 +513,7 @@ layout {
         url: "https://github.com/acme/shop/tree/main",
         hint: "Drift checks and `src` paths refer to this repository at this branch.",
       },
-      source: 'arch "Shop" v0.2\n\ncomponent web "Storefront" @vercel.nextjs\n…\n\nlayout {\n…\n}\n',
+      source: 'arch "Shop" v0.2\n\ncomponent web "Storefront" @vercel.nextjs {\n  shape browser\n}\n…\n\nlayout {\n…\n}\n',
     },
     notes: [
       "`source` is the stored document, `layout` block included. Agents leave that block out of their edits and the server keeps it.",
@@ -501,9 +525,13 @@ layout {
     args: {
       source: `arch "Link Shortener" v0.2
 
-component app "Web App" @vercel.nextjs
+component app "Web App" @vercel.nextjs {
+  shape browser
+}
 component api "API" @vercel.functions
-component db "Links" @postgres
+component db "Links" @postgres {
+  shape cylinder
+}
 
 app -> api @http : "shorten"
 api -> db @sql
@@ -592,7 +620,7 @@ api -> db @sql
       created_at: "2026-09-01T09:00:00.000Z",
       author: { kind: "agent", name: "Claude Code" },
       summary: "Created the project",
-      source: 'arch "Shop" v0.2\n\ncomponent web "Storefront" @vercel.nextjs\n…',
+      source: 'arch "Shop" v0.2\n\ncomponent web "Storefront" @vercel.nextjs {\n  shape browser\n}\n…',
     },
     notes: ["To roll back, send `source` to `update_project` with a summary that says so."],
   },

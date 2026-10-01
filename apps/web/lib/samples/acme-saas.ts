@@ -3,6 +3,7 @@ const FENCE = "```";
 export const ACME_SAAS = `arch "Acme SaaS" v0.2
 
 component web "Next.js App" @vercel.nextjs {
+  shape browser
   desc "App shell + marketing. RSC, deployed on Vercel."
 }
 
@@ -18,6 +19,7 @@ plane backend "Backend" @vercel {
     ${FENCE}
   }
   component db "Postgres" @supabase.postgres {
+    shape cylinder
     desc "Primary datastore."
     schema json ${FENCE}
     {
@@ -34,9 +36,13 @@ component auth "Auth Service" {
   desc "Our own thin wrapper over Cognito — issues sessions."
 }
 
-component cognito "Cognito" @aws.cognito
+component cognito "Cognito" @aws.cognito {
+  shape cloud
+}
 
-component stripe "Stripe" @stripe
+component stripe "Stripe" @stripe {
+  shape cloud
+}
 
 api -> db @sql
 
