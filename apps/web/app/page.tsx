@@ -14,6 +14,7 @@ import { MembersDialog } from "@/components/MembersDialog";
 import { ACME_SAAS } from "@/lib/samples/acme-saas";
 import { DocPreview } from "@/lib/preview";
 import { ConnectAgentDialog } from "@/components/ConnectAgentDialog";
+import { FeedbackDialog } from "@/components/FeedbackDialog";
 import { LogoProvider } from "@/components/logos";
 import { SampleDialog } from "@/components/SampleDialog";
 import { GitHubFileDialog } from "@/components/GitHubFileDialog";
@@ -478,6 +479,7 @@ function Dashboard() {
   const updateSource = useMutation(api.documents.updateSource);
 
   const [connectOpen, setConnectOpen] = useState(false);
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [sampleOpen, setSampleOpen] = useState(false);
   const [githubOpen, setGithubOpen] = useState(false);
   const [pending, setPending] = useState<Pending>(null);
@@ -556,9 +558,14 @@ function Dashboard() {
         </>
       }
       footerLinks={
-        <Link href="/language" className={siteNavLinkCls}>
-          Docs
-        </Link>
+        <>
+          <Link href="/language" className={siteNavLinkCls}>
+            Docs
+          </Link>
+          <button type="button" className={siteNavLinkCls} onClick={() => setFeedbackOpen(true)}>
+            Send feedback
+          </button>
+        </>
       }
     >
       {empty ? (
@@ -609,6 +616,7 @@ function Dashboard() {
         </div>
       )}
 
+      <FeedbackDialog open={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
       <ConnectAgentDialog
         open={connectOpen}
         onClose={() => setConnectOpen(false)}

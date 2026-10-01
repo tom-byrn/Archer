@@ -128,7 +128,7 @@ export function Feed({
   );
 }
 
-const fallbackUser = (id: string): AdminUser => ({
+export const fallbackUser = (id: string): AdminUser => ({
   id,
   name: null,
   email: null,

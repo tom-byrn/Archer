@@ -14,6 +14,7 @@ const TABS = [
   { href: `${ADMIN_BASE}/documents`, label: "Documents" },
   { href: `${ADMIN_BASE}/agents`, label: "Agents" },
   { href: `${ADMIN_BASE}/activity`, label: "Activity" },
+  { href: `${ADMIN_BASE}/feedback`, label: "Feedback" },
 ];
 
 export const RANGES = ["7", "30", "90"] as const;

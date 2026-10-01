@@ -202,6 +202,19 @@ export default defineSchema({
     .index("by_at", ["at"])
     .index("by_user", ["userId", "at"]),
 
+  /**
+   * Feedback people send from the dashboard (components/FeedbackDialog.tsx →
+   * `feedback.send`). Read by the admin dashboard only.
+   */
+  feedback: defineTable({
+    userId: v.string(),
+    message: v.string(),
+    /** The page it was sent from. */
+    path: v.string(),
+    /** "Chrome · macOS"; derived in the browser from its user agent. */
+    device: v.optional(v.string()),
+  }),
+
   libraryTypes: defineTable({
     workspaceId: v.string(),
     tag: v.string(),
