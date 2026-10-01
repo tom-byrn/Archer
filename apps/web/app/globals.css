@@ -61,15 +61,10 @@
   --tok-payload: #6b665e;
   --tok-version: #0c6d82;
 
-  /* Landing page only: its page color (black in dark mode, not --bg), the
-     tone its dithered backdrop fades down from (landing.css), and the agent
-     prompt's window dots. The dots keep the dark theme's --danger, --warn and
-     --accent in both themes, since the light ones are too deep for them. */
+  /* Landing page only: its page color (black in dark mode, not --bg) and the
+     tone its dithered backdrop fades down from (landing.css). */
   --landing-bg: #fbfaf8;
   --landing-fade: #edeae4;
-  --landing-close: #f0655a;
-  --landing-minimize: #f2a33a;
-  --landing-zoom: #23c088;
 
   /* Chart series (the admin dashboard), in this order: a validated
      categorical set — blue, orange, aqua — stepped per theme. */
