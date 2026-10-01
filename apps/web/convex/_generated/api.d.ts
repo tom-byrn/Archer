@@ -14,6 +14,7 @@ import type * as adminDashboard from "../adminDashboard.js";
 import type * as agentPrefs from "../agentPrefs.js";
 import type * as documents from "../documents.js";
 import type * as drift from "../drift.js";
+import type * as feedback from "../feedback.js";
 import type * as library from "../library.js";
 import type * as repoSync from "../repoSync.js";
 import type * as revisions from "../revisions.js";
@@ -33,6 +34,7 @@ declare const fullApi: ApiFromModules<{
   agentPrefs: typeof agentPrefs;
   documents: typeof documents;
   drift: typeof drift;
+  feedback: typeof feedback;
   library: typeof library;
   repoSync: typeof repoSync;
   revisions: typeof revisions;

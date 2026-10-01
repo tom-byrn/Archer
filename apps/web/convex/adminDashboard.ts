@@ -189,3 +189,19 @@ export const userActivity = query({
     return { sessions, toolCalls };
   },
 });
+
+/** Feedback people sent, newest first, whatever its age. */
+export const feedback = query({
+  args: { apiKey: v.string() },
+  handler: async (ctx, { apiKey }) => {
+    requireServer(apiKey);
+    return (await ctx.db.query("feedback").order("desc").take(1000)).map((f) => ({
+      _id: f._id,
+      at: f._creationTime,
+      userId: f.userId,
+      message: f.message,
+      path: f.path,
+      device: f.device ?? null,
+    }));
+  },
+});

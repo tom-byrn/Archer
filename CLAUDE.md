@@ -212,7 +212,10 @@ Router + React Flow + Convex).
   `Providers`) sends `usage.heartbeat` for signed-in tabs (visible, non-idle
   time → `sessions`), and the `/mcp` route records each tool call
   (`lib/server/usage.ts` → `usage.recordToolCall` → `toolCalls`) after
-  responding. Read-only canvases reuse `DocumentViewer`
+  responding. Feedback: "Send feedback" beside Docs in the dashboard footer
+  opens `components/FeedbackDialog.tsx` → `feedback.send` (`feedback` table),
+  listed with its sender on the Feedback tab (`adminDashboard.feedback`).
+  Read-only canvases reuse `DocumentViewer`
   (`/admin-dashboard/canvas/<id>`, `?rev=<revisionId>` for a past version).
 - Brand kit: `/branding` (signed-in only, deliberately linked from nowhere —
   keep it that way) shows the logo, colors, type, radii, icons and ui.tsx
