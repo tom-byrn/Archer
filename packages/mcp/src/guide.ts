@@ -107,6 +107,13 @@ that branch, is the source of truth:
   or a URL. A component that spans several places gets one \`src\` line for
   each. Set it whenever you know the location — humans jump to it from the
   canvas, and drift checks start there. Keep it up to date when you move code.
+- Keep \`src\` to where the component is **implemented**, not everything it
+  uses. A page that renders a shared table component, imports a UI kit or
+  calls a utility module does not cite those files: they are dependencies,
+  not the component (if one matters architecturally, it is its own component
+  with its own \`src\`, connected or nested). Prefer the component's folder
+  over a list of the files in it. One to a few \`src\` lines is normal; a
+  long list means you are cataloguing imports.
 
 ### Drift check (does the code still match the architecture?)
 0. If \`get_project\` returns a \`repository\`, that repo at that branch is
@@ -163,7 +170,9 @@ The full language specification is at the end of this guide. Key habits:
 - **Use \`desc\` on every non-obvious component** — it is what humans read in
   the detail panel and what agents rely on when implementing.
 - **Add \`src\` when you know where a component lives in code** — it is how
-  the next agent (or you, later) finds the implementation.
+  the next agent (or you, later) finds the implementation. Cite the
+  component's own folder or entry points, never the shared components,
+  libraries and helpers it imports.
 - **Nest the parts inside the thing they belong to**: a service's API and
   database, a cluster's services, an agent's tools. Any component can hold
   components, at any depth. The human sees it as one box and opens it to
