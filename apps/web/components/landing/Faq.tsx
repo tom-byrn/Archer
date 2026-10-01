@@ -28,7 +28,7 @@ const FAQ: { q: string; a: ReactNode }[] = [
   },
   {
     q: "Can I start from an existing codebase?",
-    a: "Yes. Give your coding agent the prompt at the top of this page and it maps the repo into an Archer document. With the MCP server connected, it can create the project for you.",
+    a: "Yes. Give your coding agent the prompt at the top of this page: it connects the MCP server, then offers to map the repo into an Archer project.",
   },
   {
     q: "What if my agent gets it wrong?",

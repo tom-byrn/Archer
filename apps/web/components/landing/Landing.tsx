@@ -5,7 +5,7 @@ import { newsreader } from "@/lib/fonts";
 import { HEADLINE, LEDE } from "@/lib/landingCopy";
 import { ThemeToggle } from "../ThemeToggle";
 import { Icon, buttonCls, cx } from "../ui";
-import { AgentPrompt, CopyPromptButton } from "./AgentPrompt";
+import { AgentPromptLine, CopyPromptButton } from "./AgentPrompt";
 import { ClientLogos } from "./ClientLogos";
 import { DitherBackdrop } from "./Dither";
 import { Faq } from "./Faq";
@@ -112,30 +112,28 @@ export function Landing() {
       }
     >
       <section className="landing-joints border-b border-line">
-        <div className="relative grid items-end gap-x-14 gap-y-10 px-5 pb-14 pt-16 sm:px-10 sm:pb-20 sm:pt-24 lg:grid-cols-[minmax(0,1fr)_440px]">
-          <div>
-            <h1 className="landing-headline landing-rise max-w-[12ch] text-display-sm text-ink sm:text-display">
-              {HEADLINE}
-            </h1>
-            <p
-              className="landing-rise max-w-[46ch] pt-6 text-lede text-ink-2"
-              style={{ "--i": 1 } as React.CSSProperties}
-            >
-              {LEDE}
-            </p>
-            <div
-              className="landing-rise flex flex-wrap items-center gap-3 pt-8"
-              style={{ "--i": 2 } as React.CSSProperties}
-            >
-              {signIn}
-              <Link href="#sandbox" className={buttonCls("secondary", "lg")}>
-                <Icon.ArrowDown className="size-3.5" />
-                Try the sandbox
-              </Link>
-            </div>
+        <div className="flex flex-col items-center px-5 pb-14 pt-16 text-center sm:px-10 sm:pb-16 sm:pt-24">
+          <h1 className="landing-headline landing-rise max-w-[16ch] text-display-sm text-ink sm:text-display">
+            {HEADLINE}
+          </h1>
+          <p
+            className="landing-rise max-w-[46ch] pt-6 text-lede text-ink-2"
+            style={{ "--i": 1 } as React.CSSProperties}
+          >
+            {LEDE}
+          </p>
+          <div
+            className="landing-rise flex flex-wrap justify-center gap-3 pt-8"
+            style={{ "--i": 2 } as React.CSSProperties}
+          >
+            {signIn}
+            <Link href="#sandbox" className={buttonCls("secondary", "lg")}>
+              <Icon.ArrowDown className="size-3.5" />
+              Try the sandbox
+            </Link>
           </div>
-          <div className="landing-rise" style={{ "--i": 3 } as React.CSSProperties}>
-            <AgentPrompt />
+          <div className="landing-rise pt-6" style={{ "--i": 3 } as React.CSSProperties}>
+            <AgentPromptLine />
           </div>
         </div>
       </section>
@@ -166,7 +164,7 @@ export function Landing() {
           Design systems, with your AI agents.
         </h2>
         <p className="max-w-[52ch] pt-5 text-lede text-ink-2">
-          Start on the canvas, or hand your agent the prompt and let it map the codebase you already
+          Start on the canvas, or hand your agent the prompt to connect it and map the codebase you already
           have.
         </p>
         <div className="flex flex-wrap justify-center gap-3 pt-8">
