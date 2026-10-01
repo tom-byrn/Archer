@@ -41,6 +41,7 @@ const FIELD_LABEL: Record<string, string> = {
   payloads: "payloads",
   shape: "shape",
   icon: "icon",
+  color: "color",
   plane: "plane",
 };
 import {

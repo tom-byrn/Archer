@@ -7,6 +7,7 @@ import {
   layoutMap,
   pathToString,
   planeTree,
+  resolveColor,
   scopeAt,
   shapeOf,
   type ArchDoc,
@@ -76,8 +77,15 @@ export interface ArchNodeData extends Record<string, unknown> {
   /** Components nested in it, shown when it's opened; components only. */
   childCount: number;
   payloadCount: number;
+  /** Its type's color. */
   accent?: string;
   glyphKey?: string;
+  /**
+   * Its own color (`color <name>` or `color "#rrggbb"`, when it's one the
+   * language knows) as #rrggbb, drawn instead of its type's, with the card
+   * or outline tinted by it; components and context only.
+   */
+  color?: string;
   /**
    * The icon it picked (`icon <name>`, when the name is known), drawn instead
    * of its type's glyph or logo; components and context only.
@@ -193,6 +201,10 @@ export function toFlow(
           return v ? { accent: v.color, glyphKey: v.glyph } : {};
         })()
       : {}),
+    ...(() => {
+      const color = item.kind === "component" ? resolveColor(item.color) : undefined;
+      return color !== undefined ? { color } : {};
+    })(),
     ...(() => {
       const m = opts.marks?.(path, item);
       return m && Object.keys(m).length > 0 ? { marks: m } : {};

@@ -337,7 +337,7 @@ function EditorView({ initialSource, library, session }: EditorProps) {
    * reading.
    */
   const [editingId, setEditingId] = useState<string | null>(null);
-  /** "Change shape…" / "Change icon…": the component whose shape or icon list the form opens on. */
+  /** "Change shape…" / "Change icon…" / "Change color…": the component whose list the form opens on. */
   const [pickerFor, setPickerFor] = useState<{ path: string; picker: Picker } | null>(null);
   const [focus, setFocus] = useState<string[]>([]);
   const [codeOpen, setCodeOpen] = useState(false);
@@ -1208,6 +1208,15 @@ function EditorView({ initialSource, library, session }: EditorProps) {
             setSel(only(t.path));
             setEditingId(t.path);
             setPickerFor({ path: t.path, picker: "icon" });
+          },
+        },
+        {
+          label: "Change color…",
+          icon: <Icon.Color />,
+          onSelect: () => {
+            setSel(only(t.path));
+            setEditingId(t.path);
+            setPickerFor({ path: t.path, picker: "color" });
           },
         },
         ...(inside > 0

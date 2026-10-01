@@ -20,8 +20,8 @@ reading guide, as an implementation spec.
    context, MUST NOT implement anything from it, and SHOULD NOT write it unless asked
    to arrange the diagram. Two things outside it are there for readers, but belong to
    the document in every view, so agents write them like any other field: a
-   component's \`shape\` and \`icon\` (§3.3) say what a thing *is* at a glance (a cylinder
-   is a store, a person is a user), and planes (§3.4) say which things belong together (a
+   component's \`shape\`, \`icon\` and \`color\` (§3.3) say what a thing *is* at a glance (a
+   cylinder is a store, a person is a user), and planes (§3.4) say which things belong together (a
    frontend and a backend, a cloud account, a network).
 4. **Strict references, permissive semantics.** Every reference must resolve — a
    connection to an undeclared component is a validation error, never an auto-created
@@ -82,6 +82,9 @@ component <id> ["Display Name"] [@<type>] [{ <body> }]
   - \`icon <name>\` — the icon the component shows: \`database\`, \`shopping_cart\`,
     \`credit_card\`, … (§3.3). At most one per component (a second one is error \`E004\`).
     Without one, a typed component shows its type's icon and an untyped one shows none.
+  - \`color <name>\` or \`color "#rrggbb"\` — the color the component is drawn in: \`blue\`,
+    \`green\`, \`rose\`, … or any hex color (§3.3). At most one per component (a second one
+    is error \`E004\`). Without one, a component takes its type's color.
   - \`desc "..."\` — human-readable description (shown in the detail view). One per
     component. Multiline via triple quotes: \`desc """ ... """\`.
   - \`src "..."\` — where the component lives in code: a repo-relative path to a
@@ -89,6 +92,12 @@ component <id> ["Display Name"] [@<type>] [{ <body> }]
     or a URL. Single-line string only. A component that lives in several places
     has one \`src\` line for each, kept in the order written. Agents start here when
     implementing or verifying the component; the app renders each one as a link.
+    Cite only where the component itself is implemented — its entry points, its
+    own folder — not every file it touches: shared helpers, UI primitives (a table
+    or button component), imported libraries and utilities it merely uses are not
+    sources for it. Prefer one folder over listing the files inside it; a few \`src\`
+    lines is normal, a dozen means the component is too broad or the list too
+    detailed.
   - Child \`component\` declarations — any component can hold components, arbitrarily
     deep, with JSON-object nesting semantics (§3.1).
   - Child \`plane\` declarations — regions on the component's own canvas (§3.4).
@@ -132,6 +141,7 @@ them all on one canvas and doesn't change their paths.
 
 \`\`\`
 component db "Primary Postgres" @postgres {
+  shape cylinder
   desc "Single Postgres instance holding all app data. Row-level security on."
 
   component users_table "users" @postgres.table {
@@ -256,6 +266,33 @@ component ledger "Ledger" @postgres {
 - A name the tools don't know is a warning (\`W305\`), and the component is drawn as if it
   had no icon.
 
+#### Colors
+
+A component is drawn in its type's color (slate for an untyped one) unless its body names
+a color: one of the palette's, by name, or any color as a \`"#rrggbb"\` string.
+
+\`\`\`
+component checkout "Checkout" {
+  icon shopping_cart
+  color green
+}
+
+component legacy "Legacy Billing" @service {
+  color "#b45309"
+}
+\`\`\`
+
+- The palette, in the order the editor's picker shows it: \`red\`, \`orange\`, \`amber\`,
+  \`yellow\`, \`lime\`, \`green\`, \`emerald\`, \`teal\`, \`cyan\`, \`sky\`, \`blue\`, \`indigo\`,
+  \`violet\`, \`purple\`, \`fuchsia\`, \`pink\`, \`rose\`, \`slate\`.
+- A color replaces the type's: the icon is drawn in it, and the component's card or
+  shape takes a tint of it. A product's logo keeps its own colors. Planes have no color.
+- Like a shape, a color is a hint for readers: agents implementing a document may
+  ignore it. Use it to group or highlight (new, deprecated, owned by one team), not
+  to carry meaning a \`desc\` should state.
+- A name the language doesn't know, or a string that isn't \`#rrggbb\`, is a warning
+  (\`W306\`), and the component is drawn as if it had no color.
+
 ### 3.4 Planes
 
 \`\`\`
@@ -287,7 +324,7 @@ web -> api @http
 
 - The body holds, in any mix: a \`desc\`, \`component\` declarations (the components on the
   plane) and \`plane\` declarations (regions inside it, like the VPC above). No \`shape\`,
-  \`icon\`, \`src\` or payloads. An empty plane is valid.
+  \`icon\`, \`color\`, \`src\` or payloads. An empty plane is valid.
 - A \`@type\` resolves against the catalog like a component's (§5) and is drawn in the
   plane's title bar: a cloud account, a region, a network, a cluster.
 - **Transparent to paths.** A component on a plane keeps its path — \`api\` and \`db\`
@@ -316,7 +353,7 @@ Payloads attach structured or freeform data to a component — or to a connectio
 
 - \`<name>\` — snake_case identifier, unique per owner (\`schema\`, \`env\`, \`endpoints\`,
   \`notes\`, \`message\`, …). Names are free, except the body keywords (\`component\`,
-  \`plane\`, \`desc\`, \`src\`, \`shape\`, \`icon\`); they exist so agents and the detail view can refer
+  \`plane\`, \`desc\`, \`src\`, \`shape\`, \`icon\`, \`color\`); they exist so agents and the detail view can refer
   to a payload by role.
 - \`<format>\` — one of:
 
@@ -454,7 +491,7 @@ A document is **valid** when:
 | \`E001\` | file parses (header, declarations, fences)                       | error    |
 | \`E002\` | ids unique within their scope, components and planes together    | error    |
 | \`E003\` | payload names unique per component / per connection              | error    |
-| \`E004\` | at most one \`shape\` and one \`icon\` per component                 | error    |
+| \`E004\` | at most one \`shape\`, one \`icon\` and one \`color\` per component    | error    |
 | \`E101\` | every connection endpoint resolves to a declared component       | error    |
 | \`E201\` | \`json\` / \`yaml\` / \`table\` payloads parse in their format         | error    |
 | \`W301\` | type tag resolves in the catalog                                 | warning  |
@@ -462,6 +499,7 @@ A document is **valid** when:
 | \`W303\` | layout entry references a declared component or plane            | warning (entry dropped) |
 | \`W304\` | shape is one the language knows (§3.3)                           | warning (drawn as a box) |
 | \`W305\` | icon is one the tools know (§3.3)                                | warning (no icon drawn) |
+| \`W306\` | color is a palette name or \`#rrggbb\` (§3.3)                      | warning (type's color drawn) |
 
 Errors block agent export ("copy as prompt") and mark the document invalid in the UI;
 the canvas still renders as much as it can. Warnings never block anything.
@@ -485,6 +523,7 @@ a dangling connection is never created in the first place.
 arch "Acme SaaS" v0.2
 
 component web "Next.js App" @vercel.nextjs {
+  shape browser
   desc "App shell + marketing. RSC, deployed on Vercel."
   src "apps/web"
   src "packages/ui"
@@ -503,9 +542,12 @@ plane backend "Backend" @vercel {
     \`\`\`
 
     component checkout "Checkout" {
+      icon shopping_cart
       desc "Creates Stripe checkout sessions."
     }
-    component projects "Projects"
+    component projects "Projects" {
+      icon folders
+    }
   }
 
   component db "Postgres" @supabase.postgres {
@@ -521,11 +563,16 @@ plane backend "Backend" @vercel {
 }
 
 component auth "Auth Service" {
+  icon lock_key
   desc "Our own thin wrapper over Cognito — issues sessions."
 }
 
-component cognito "Cognito" @aws.cognito
-component stripe "Stripe" @stripe
+component cognito "Cognito" @aws.cognito {
+  shape cloud
+}
+component stripe "Stripe" @stripe {
+  shape cloud
+}
 
 web -> auth @http : "login"
 web -> api @http
@@ -548,9 +595,11 @@ layout {
   auth: { at: [0, 8], size: [4, 3] }
   backend: { at: [6, 0], size: [12, 6] }
   api: { at: [1, 2], size: [4, 3] }
+  api.checkout: { at: [0, 0], size: [4, 3] }
+  api.projects: { at: [0, 5], size: [4, 3] }
   db: { at: [7, 2], size: [4, 3] }
-  cognito: { at: [0, 13], size: [3, 3] }
-  stripe: { at: [20, 3], size: [3, 3] }
+  cognito: { at: [0, 13], size: [4, 3] }
+  stripe: { at: [20, 3], size: [4, 3] }
 }
 \`\`\`\`
 
@@ -561,11 +610,12 @@ file        = header { declaration | connection } [ layout ] ;
 header      = "arch" string version ;
 declaration = component | plane ;
 component   = "component" id [ string ] [ type ] [ "{" { bodyitem } "}" ] ;
-bodyitem    = shape | icon | desc | src | declaration | payload ;
+bodyitem    = shape | icon | color | desc | src | declaration | payload ;
 plane       = "plane" id [ string ] [ type ] [ "{" { planeitem } "}" ] ;
 planeitem   = desc | declaration ;
 shape       = "shape" id ;
 icon        = "icon" id ;
+color       = "color" ( id | string ) ;
 desc        = "desc" ( string | tripleString ) ;
 src         = "src" string ;
 payload     = id format fence ;

@@ -92,11 +92,15 @@ const FENCE = "```";
 /** "Shop" as Claude Code created it. */
 const SHOP_CREATED = `arch "Shop" v0.2
 
-component web "Storefront" @vercel.nextjs
+component web "Storefront" @vercel.nextjs {
+  shape browser
+}
 
 plane backend "Backend" {
   component api "API" @vercel.functions
-  component db "Orders DB" @postgres
+  component db "Orders DB" @postgres {
+    shape cylinder
+  }
 }
 
 api -> db @sql
@@ -106,16 +110,22 @@ web -> api @http
 /** …after the user added Stripe and a code link on the canvas. The current document. */
 const SHOP = `arch "Shop" v0.2
 
-component web "Storefront" @vercel.nextjs
+component web "Storefront" @vercel.nextjs {
+  shape browser
+}
 
 plane backend "Backend" {
   component api "API" @vercel.functions {
     src "apps/api"
   }
-  component db "Orders DB" @postgres
+  component db "Orders DB" @postgres {
+    shape cylinder
+  }
 }
 
-component stripe "Stripe" @stripe
+component stripe "Stripe" @stripe {
+  shape cloud
+}
 
 api -> db @sql
 api -> stripe @http : "charges"
@@ -125,17 +135,25 @@ web -> api @http
 /** The update_project example: an agent adds an order-events queue with its message schema. */
 const SHOP_WITH_QUEUE = `arch "Shop" v0.2
 
-component web "Storefront" @vercel.nextjs
+component web "Storefront" @vercel.nextjs {
+  shape browser
+}
 
 plane backend "Backend" {
   component api "API" @vercel.functions {
     src "apps/api"
   }
-  component db "Orders DB" @postgres
-  component events "Order Events" @queue
+  component db "Orders DB" @postgres {
+    shape cylinder
+  }
+  component events "Order Events" @queue {
+    shape queue
+  }
 }
 
-component stripe "Stripe" @stripe
+component stripe "Stripe" @stripe {
+  shape cloud
+}
 
 api -> db @sql
 api -> events @queue : "order placed" {
@@ -349,16 +367,22 @@ api -> db @sql
 
 arch "Shop" v0.2
 
-component web "Storefront" @vercel.nextjs
+component web "Storefront" @vercel.nextjs {
+  shape browser
+}
 
 plane backend "Backend" {
   component api "API" @vercel.functions {
     src "apps/api"
   }
-  component db "Orders DB" @postgres
+  component db "Orders DB" @postgres {
+    shape cylinder
+  }
 }
 
-component stripe "Stripe" @stripe
+component stripe "Stripe" @stripe {
+  shape cloud
+}
 
 api -> db @sql
 api -> stripe @http : "charges"
@@ -431,11 +455,17 @@ layout {
         { group: "Commerce & finance", icons: ["shopping_cart", "shopping_bag", "basket", "…"] },
         "…",
       ],
+      colors: [
+        { color: "red", hex: "#ef4444" },
+        { color: "orange", hex: "#f97316" },
+        "…",
+      ],
     },
     notes: [
-      "`search` filters the catalog and custom types only; connection types, shapes and icons are always listed in full. Custom types come from the current workspace; if they can't be read, `note` says so.",
+      "`search` filters the catalog and custom types only; connection types, shapes, icons and colors are always listed in full. Custom types come from the current workspace; if they can't be read, `note` says so.",
       "A shape goes in a component's body, `shape cylinder`, and draws the component as that outline; the type still picks the icon and color inside it.",
       "An icon goes in a component's body too, `icon shopping_cart`, and replaces its type's icon; an untyped component shows none without one.",
+      "So does a color, `color green` or `color \"#b45309\"`, which replaces its type's color: the icon is drawn in it and the component takes a tint of it.",
     ],
   },
   create_custom_type: {
@@ -483,7 +513,7 @@ layout {
         url: "https://github.com/acme/shop/tree/main",
         hint: "Drift checks and `src` paths refer to this repository at this branch.",
       },
-      source: 'arch "Shop" v0.2\n\ncomponent web "Storefront" @vercel.nextjs\n…\n\nlayout {\n…\n}\n',
+      source: 'arch "Shop" v0.2\n\ncomponent web "Storefront" @vercel.nextjs {\n  shape browser\n}\n…\n\nlayout {\n…\n}\n',
     },
     notes: [
       "`source` is the stored document, `layout` block included. Agents leave that block out of their edits and the server keeps it.",
@@ -495,9 +525,13 @@ layout {
     args: {
       source: `arch "Link Shortener" v0.2
 
-component app "Web App" @vercel.nextjs
+component app "Web App" @vercel.nextjs {
+  shape browser
+}
 component api "API" @vercel.functions
-component db "Links" @postgres
+component db "Links" @postgres {
+  shape cylinder
+}
 
 app -> api @http : "shorten"
 api -> db @sql
@@ -586,7 +620,7 @@ api -> db @sql
       created_at: "2026-09-01T09:00:00.000Z",
       author: { kind: "agent", name: "Claude Code" },
       summary: "Created the project",
-      source: 'arch "Shop" v0.2\n\ncomponent web "Storefront" @vercel.nextjs\n…',
+      source: 'arch "Shop" v0.2\n\ncomponent web "Storefront" @vercel.nextjs {\n  shape browser\n}\n…',
     },
     notes: ["To roll back, send `source` to `update_project` with a summary that says so."],
   },
@@ -624,7 +658,7 @@ api -> db @sql
     },
     notes: [
       "`from` and `to` are revision ids, `current` (the project as it is now) or `empty` (before the first revision). Only the newest 200 revisions can be named.",
-      "A changed component lists its changed `fields`: `name`, `type`, `shape`, `icon`, `desc`, `src`, `payloads` or `plane` (it sits on a different plane). `planes` lists planes added, removed and changed (`name`, `type`, `desc` or `plane`) the same way. A connection is `changed` when only its payloads differ, and `title` appears when the document was renamed.",
+      "A changed component lists its changed `fields`: `name`, `type`, `shape`, `icon`, `color`, `desc`, `src`, `payloads` or `plane` (it sits on a different plane). `planes` lists planes added, removed and changed (`name`, `type`, `desc` or `plane`) the same way. A connection is `changed` when only its payloads differ, and `title` appears when the document was renamed.",
     ],
   },
 

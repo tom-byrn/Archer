@@ -51,6 +51,12 @@ export interface ComponentNode {
    * untyped component shows no icon.
    */
   icon?: string;
+  /**
+   * Its own color, instead of its type's: a palette name (`COLORS`, e.g.
+   * "blue") or "#rrggbb". Kept as written: one the language doesn't know is a
+   * warning, drawn as if there were none.
+   */
+  color?: string;
   desc?: string;
   /**
    * Where this component lives in code, one entry per `src` line in the order

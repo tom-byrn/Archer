@@ -23,20 +23,31 @@ not systems. An Archer document is a semantic model:
   the same way; components nest like JSON, and planes group them on the
   canvas.
 - **Round-trip** — canvas ↔ text with zero loss. Layout lives in a quarantined
-  machine-managed `layout` block that agents never see or write.
-- **Agent-first** — "Copy for agent" emits the canonical document, layout
-  stripped, with a short guide prepended. Paste it into Claude Code / Cursor
-  and say "build this".
+  machine-managed `layout` block: agents may read it to see the diagram as
+  drawn, never implement it, and write it only when asked to arrange things.
+- **Readable at a glance** — a component can take a `shape` (a cylinder for a
+  store, a person for a user, a robot for an agent) and an `icon`, and any
+  component can hold components: it's one box on the canvas, and opening it
+  shows its parts.
+- **Agent-first** — "Copy for agent" emits the canonical document, with its
+  layout and a short guide prepended. Paste it into Claude Code / Cursor and
+  say "build this".
 
 ````
 arch "Acme SaaS" v0.2
 
-component web "Web App" @vercel.nextjs
+component web "Web App" @vercel.nextjs {
+  shape browser
+}
 
 plane backend "Backend" @vercel {
   component api "API" @vercel.functions {
-    component checkout "Checkout"
-    component projects "Projects"
+    component checkout "Checkout" {
+      icon shopping_cart
+    }
+    component projects "Projects" {
+      icon folders
+    }
   }
   component db "Postgres" @supabase.postgres {
     shape cylinder

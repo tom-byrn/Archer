@@ -62,6 +62,9 @@ function formatComponent(c: ComponentNode, depth: number): string {
   const body: string[] = [];
   if (c.shape !== undefined) body.push(`${INDENT.repeat(depth + 1)}shape ${c.shape}`);
   if (c.icon !== undefined) body.push(`${INDENT.repeat(depth + 1)}icon ${c.icon}`);
+  // A palette name stays bare; anything else (a hex value) is a string.
+  if (c.color !== undefined)
+    body.push(`${INDENT.repeat(depth + 1)}color ${/^[a-z][a-z0-9_]*$/.test(c.color) ? c.color : quote(c.color)}`);
   if (c.desc !== undefined) body.push(formatDesc(c.desc, depth + 1));
   for (const src of c.src ?? []) body.push(`${INDENT.repeat(depth + 1)}src ${quote(src)}`);
   for (const p of c.payloads) body.push(formatPayload(p, depth + 1));

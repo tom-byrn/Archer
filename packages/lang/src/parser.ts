@@ -186,11 +186,30 @@ export function parse(source: string): ParseResult {
               });
             }
             node.icon = value;
+          } else if (at("ident", "color")) {
+            const kwTok = next();
+            const t = peek();
+            if (t.type !== "ident" && t.type !== "string") {
+              fail(
+                `Expected a color after 'color' (a name like color blue, or color "#rrggbb"), got ${describe(t)}.`,
+                t.span,
+              );
+            }
+            const value = next().value;
+            if (node.color !== undefined) {
+              diagnostics.push({
+                code: "E004",
+                severity: "error",
+                message: `Component '${node.id}' has more than one 'color'.`,
+                span: { start: kwTok.span.start, end: t.span.end },
+              });
+            }
+            node.color = value;
           } else if (at("ident")) {
             node.payloads.push(parsePayload());
           } else {
             fail(
-              `Expected 'desc', 'src', 'shape', 'icon', 'component', 'plane', or a payload inside a component body, got ${describe(peek())}.`,
+              `Expected 'desc', 'src', 'shape', 'icon', 'color', 'component', 'plane', or a payload inside a component body, got ${describe(peek())}.`,
               peek().span,
             );
           }
@@ -258,7 +277,7 @@ export function parse(source: string): ParseResult {
       } catch (e) {
         if (e instanceof ParseError) {
           diagnostics.push(e.diagnostic);
-          // `src`, `shape` and `icon` are statement starts elsewhere but not here:
+          // `src`, `shape`, `icon` and `color` are statement starts elsewhere but not here:
           // step over one so recovery always moves on.
           if (i === start) next();
           syncBody();
@@ -393,6 +412,7 @@ export function parse(source: string): ParseResult {
       !at("ident", "src") &&
       !at("ident", "shape") &&
       !at("ident", "icon") &&
+      !at("ident", "color") &&
       !at("ident", "plane") &&
       !at("ident", "layout")
     ) {

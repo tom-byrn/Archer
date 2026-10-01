@@ -16,6 +16,7 @@ import {
   type CSSProperties,
   type InputHTMLAttributes,
   type ReactNode,
+  type Ref,
   type TextareaHTMLAttributes,
 } from "react";
 import {
@@ -54,6 +55,7 @@ import {
   MoonIcon,
   NetworkIcon,
   PaperPlaneTiltIcon,
+  PaletteIcon,
   PencilSimpleIcon,
   PlugIcon,
   PlusIcon,
@@ -219,7 +221,7 @@ export function Input({
   mono,
   invalid,
   ...rest
-}: InputHTMLAttributes<HTMLInputElement> & { mono?: boolean; invalid?: boolean }) {
+}: InputHTMLAttributes<HTMLInputElement> & { mono?: boolean; invalid?: boolean; ref?: Ref<HTMLInputElement> }) {
   return (
     <input
       spellCheck={false}
@@ -836,6 +838,8 @@ export const Icon = {
   Shapes: (p: IconProps) => <ShapesIcon {...UI} {...p} />,
   /** A component's icon (the picker, "Change icon…"). */
   Icons: (p: IconProps) => <SmileyIcon {...UI} {...p} />,
+  /** A component's color (the picker, "Change color…"). */
+  Color: (p: IconProps) => <PaletteIcon {...UI} {...p} />,
   /** No icon: an untyped component that picks none. */
   NoIcon: (p: IconProps) => <ProhibitIcon {...UI} {...p} />,
   /** A plane: a region things sit on. */

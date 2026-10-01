@@ -23,6 +23,9 @@ import {
   setPayload,
   setPlaneMeta,
   shapeOf,
+  isColor,
+  isColorName,
+  resolveColor,
   SHAPE_INFO,
   type ArchDoc,
   type Arrow,
@@ -49,6 +52,7 @@ import { Markdown, MarkdownTable, parseTable } from "./Markdown";
 import { Glyph, GlyphSwatch } from "./nodes";
 import { ShapeIcon, ShapePicker } from "./ShapePicker";
 import { IconArt, IconPicker } from "./IconPicker";
+import { ColorPicker, ColorSwatch, colorLabel } from "./ColorPicker";
 import { TypeCombobox } from "./TypeCombobox";
 import {
   Button,
@@ -68,8 +72,8 @@ import {
   type MenuItem,
 } from "./ui";
 
-/** A list the component form can open straight onto ("Change shape…", "Change icon…"). */
-export type Picker = "shape" | "icon";
+/** A list the component form can open straight onto ("Change shape…", "Change icon…", "Change color…"). */
+export type Picker = "shape" | "icon" | "color";
 
 export type Selection =
   | { kind: "component"; path: string }
@@ -489,6 +493,22 @@ export function ComponentDetails({
               </span>
             </ReadRow>
           )}
+          {node.color !== undefined && (
+            <ReadRow label="Color">
+              <span className="flex min-w-0 items-center gap-1.5">
+                {isColor(node.color) ? (
+                  <>
+                    <ColorSwatch hex={resolveColor(node.color)!} size={14} />
+                    <span className={cx("truncate", !isColorName(node.color) && "mono")}>{colorLabel(node.color)}</span>
+                  </>
+                ) : (
+                  <span className="truncate text-ink-3">
+                    <span className="mono">{node.color}</span> (unknown, not drawn)
+                  </span>
+                )}
+              </span>
+            </ReadRow>
+          )}
           <ReadRow label="Description">
             {node.desc ? (
               <p className="whitespace-pre-wrap break-words">{node.desc}</p>
@@ -656,7 +676,7 @@ function Endpoint({
     >
       <Glyph
         tag={node.type}
-        color={custom?.color}
+        color={resolveColor(node.color) ?? custom?.color}
         glyph={custom?.glyph}
         icon={node.icon}
         size={14}
@@ -763,7 +783,7 @@ function ComponentInspector({
   onDrillIn?: (path: string) => void;
   library: UserLibrary;
   repo: RepoLink | null;
-  /** Open the form's shape or icon list as soon as it shows. */
+  /** Open the form's shape, icon or color list as soon as it shows. */
   openPicker?: Picker;
   onPickerOpened?: () => void;
 }) {
@@ -773,7 +793,8 @@ function ComponentInspector({
   if (!node) return null;
   const inside = node.children.length;
   const custom = library.items.find((t) => t.tag === node.type);
-  const accent = displayColor(custom?.color ?? lookupType(node.type)?.color, isDark) ?? "#64748b";
+  const own = resolveColor(node.color);
+  const accent = displayColor(own ?? custom?.color ?? lookupType(node.type)?.color, isDark) ?? "#64748b";
   // Any component opens, to show (or start) what's nested in it; the
   // read-only views have nothing to show in an empty one.
   const openInside = onDrillIn && (inside > 0 || !readOnly) ? () => onDrillIn(path) : undefined;
@@ -834,7 +855,7 @@ function ComponentInspector({
         {(node.type !== undefined || isIcon(node.icon)) && (
           <GlyphSwatch
             tag={node.type}
-            color={custom?.color}
+            color={own ?? custom?.color}
             glyph={custom?.glyph}
             icon={node.icon}
             box={24}
@@ -954,10 +975,19 @@ function ComponentForm({
             type={
               node.type === undefined
                 ? undefined
-                : { tag: node.type, color: custom?.color, glyph: custom?.glyph }
+                : { tag: node.type, color: resolveColor(node.color) ?? custom?.color, glyph: custom?.glyph }
             }
             onChange={(icon) => mutate((d) => setComponentMeta(d, segments, { icon }))}
             autoOpen={openPicker === "icon"}
+            onAutoOpened={onPickerOpened}
+          />
+        </PropertyRow>
+        <PropertyRow label="Color" align="start">
+          <ColorPicker
+            value={node.color}
+            typeColor={custom?.color ?? lookupType(node.type)?.color}
+            onChange={(color) => mutate((d) => setComponentMeta(d, segments, { color }))}
+            autoOpen={openPicker === "color"}
             onAutoOpened={onPickerOpened}
           />
         </PropertyRow>
@@ -1443,7 +1473,7 @@ export function DetailPanel({
   library: UserLibrary;
   /** Linked repository: turns relative `src` paths into GitHub links. */
   repo?: RepoLink | null;
-  /** A component whose form should open straight onto its shape or icon list ("Change shape…"). */
+  /** A component whose form should open straight onto its shape, icon or color list ("Change shape…"). */
   pickerFor?: { path: string; picker: Picker } | null;
   onPickerOpened?: () => void;
 }) {
