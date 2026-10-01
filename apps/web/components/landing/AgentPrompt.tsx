@@ -4,22 +4,45 @@ import { Fragment, useEffect, useRef, useState, type RefObject } from "react";
 import { SITE_URL } from "@/lib/site";
 import { Button, Icon, SwapIcon, cx } from "../ui";
 
-const PROMPT = `Set me up with Archer (${SITE_URL}).
+/** What "Copy prompt" puts on the clipboard: the whole setup, step by step. */
+const PROMPT = `Set me up with Archer (${SITE_URL}), an architecture canvas I share with AI agents. Work through these steps in order, and stop where a step says to wait for me.
+
+1. Install the Archer MCP server
+It's hosted at ${SITE_URL}/mcp (Streamable HTTP). There's no API key, header or client ID to configure: sign-in happens in the browser.
+- Claude Code: claude mcp add --transport http archer ${SITE_URL}/mcp
+- Codex: codex mcp add archer --url ${SITE_URL}/mcp
+- Gemini CLI: gemini mcp add --transport http archer ${SITE_URL}/mcp
+- Cursor: add "archer": { "url": "${SITE_URL}/mcp" } under mcpServers in ~/.cursor/mcp.json
+- VS Code: add "archer": { "type": "http", "url": "${SITE_URL}/mcp" } under servers in .vscode/mcp.json
+- Any other client: follow ${SITE_URL}/docs/mcp
+If you can't change your own MCP settings (Claude on the web or desktop, for example), give me the exact steps from that page instead. If your client has to restart or reload to pick up the server, tell me and wait.
+
+2. Connect it
+Start the sign-in so my browser opens, or tell me how to (Claude Code: I run /mcp, choose archer, then Authenticate; Codex: codex mcp login archer; Gemini CLI: /mcp auth archer). Wait while I sign in with GitHub, then call get_workspace_info to check you're connected and tell me which workspace you're working in.
+
+3. Learn Archer
+Archer keeps a system's architecture as a document we both edit: its components, what runs inside them and how they connect, written in the .arch language and drawn as a live diagram on my canvas. You work on it through the MCP tools. Everything you save is validated (a broken document is rejected, not saved), recorded in the project's history under your name, and appears on my canvas straight away. Call get_guide now, once: it has the workflows, the error codes and the full language spec.
+
+4. Ask me what we're building
+If you're working in a codebase right now, ask whether I'd like you to map its architecture into a new Archer project. If not, ask whether I'd like to plan the architecture of a new project together. Wait for my answer before you create anything.`;
+
+/** What the box on the page types out: the same steps, trimmed to fit. */
+const PREVIEW = `Set me up with Archer (${SITE_URL}).
 
 1. Install the Archer MCP server: ${SITE_URL}/mcp (Streamable HTTP). The setup for your client is at ${SITE_URL}/docs/mcp.
-2. Connect it: start the sign-in so my browser opens, and wait while I sign in with GitHub. There are no API keys.
-3. Learn Archer: it's an architecture canvas that people and agents share. Each design is an .arch document you read and write through the MCP tools, and I see it as a diagram. Call get_guide once for the language and workflows.
-4. Ask me: if we're in a codebase, should you map its architecture into Archer? If not, should we plan the architecture of a new project?`;
+2. Connect it: start the sign-in so my browser opens, and wait while I sign in with GitHub.
+3. Learn Archer: it's an architecture canvas that people and agents share, edited as .arch documents through the MCP tools. Call get_guide once.
+4. Ask me: if we're in a codebase, should you map its architecture into Archer? If not, should we plan a new project's architecture?`;
 
 // Links and tool names get terminal colors; everything else stays plain.
-const PARTS = PROMPT.split(/(https?:\/\/\S+?(?=[.,;:)]*(?:\s|$))|get_guide)/).filter(Boolean);
+const PARTS = PREVIEW.split(/(https?:\/\/\S+?(?=[.,;:)]*(?:\s|$))|get_guide)/).filter(Boolean);
 
 // Typing starts this long after mount: the hero's rise-in, then a beat of
 // idle cursor. A box that scrolls into view later still idles for IDLE_MS.
 const START_MS = 1000;
 const IDLE_MS = 300;
 
-/** The prompt's characters from `from` to `to`, colored the way a terminal would. */
+/** The preview's characters from `from` to `to`, colored the way a terminal would. */
 function Slice({ from, to }: { from: number; to: number }) {
   let at = 0;
   return PARTS.map((part, i) => {
@@ -177,8 +200,8 @@ export function CopyPromptButton() {
 
 export function AgentPrompt() {
   const root = useRef<HTMLDivElement>(null);
-  const { shown, typing, finish } = useTypewriter(PROMPT, root);
-  const done = shown === PROMPT.length;
+  const { shown, typing, finish } = useTypewriter(PREVIEW, root);
+  const done = shown === PREVIEW.length;
   const { copied, copy: copyPrompt } = useCopyPrompt();
   const copy = () => {
     finish();
@@ -216,7 +239,7 @@ export function AgentPrompt() {
           <span className={cx("landing-caret", typing && "is-typing", !done && "motion-reduce:invisible")} />
           {/* The rest is laid out but invisible, so the box has its final size and line breaks from the first frame. */}
           <span className="invisible motion-reduce:visible">
-            <Slice from={shown} to={PROMPT.length} />
+            <Slice from={shown} to={PREVIEW.length} />
           </span>
         </p>
       </div>
