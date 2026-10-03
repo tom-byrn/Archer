@@ -20,7 +20,7 @@ const { client, call, dropAuth } = await connectInProcess({ userId: USER_ID, age
 const { check, failures } = checks();
 
 const names = (await client.listTools()).tools.map((t) => t.name);
-check("25 tools registered", names.length === 25, names);
+check("26 tools registered", names.length === 26, names);
 check("no set_api_key", !names.includes("set_api_key"));
 check("list_workspaces + use_workspace present", names.includes("list_workspaces") && names.includes("use_workspace"));
 

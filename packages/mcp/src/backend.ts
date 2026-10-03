@@ -4,7 +4,7 @@ import { anyApi, type FunctionReference } from "convex/server";
 import { analyzeSource, prepareSource, typeTags, type Analysis, type PreparedWrite } from "./analysis";
 
 // Untyped references into apps/web/convex functions (validated server-side).
-type Module = "documents" | "library" | "revisions" | "drift" | "workspaces" | "agentPrefs";
+type Module = "documents" | "library" | "revisions" | "drift" | "workspaces" | "agentPrefs" | "feedback";
 const fn = (module: Module, name: string): unknown =>
   (anyApi as Record<string, Record<string, unknown>>)[module]![name];
 const qref = (m: Module, n: string) => fn(m, n) as FunctionReference<"query">;
@@ -179,6 +179,16 @@ export const db = {
     client.query(qref("drift", "get"), { ...auth(ws), documentId }) as Promise<DriftRow | null>,
   reportDrift: (ws: Workspace, documentId: string, findings: DriftFinding[]) =>
     client.mutation(mref("drift", "report"), { ...auth(ws), documentId, findings, author: agentAuthor() }) as Promise<string>,
+
+  // feedback: from the user, for the admin dashboard; "/mcp" stands where the
+  // app's page path goes, and the agent's name where its device goes
+  sendFeedback: (serviceKey: string, message: string) =>
+    client.mutation(mref("feedback", "send"), {
+      apiKey: serviceKey,
+      message,
+      path: "/mcp",
+      device: agentName(),
+    }) as Promise<void>,
 };
 
 // ---------------------------------------------------------------------------
