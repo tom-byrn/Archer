@@ -396,6 +396,7 @@ export function Palette({
   onAdd,
   onAddPlane,
   library,
+  onFeedback,
 }: {
   /** Closed, the sidebar is hidden but keeps its search and new-type form. */
   open: boolean;
@@ -404,6 +405,8 @@ export function Palette({
   /** Add a plane. */
   onAddPlane: () => void;
   library: UserLibrary;
+  /** Open "Send feedback"; without it (the sandbox) the sidebar has no feedback button. */
+  onFeedback?: () => void;
 }) {
   const [query, setQuery] = useState("");
   const [creating, setCreating] = useState(false);
@@ -602,6 +605,19 @@ export function Palette({
           </p>
         )}
       </div>
+
+      {onFeedback && (
+        <div className="border-t border-line p-2">
+          <Button
+            size="sm"
+            variant="ghost"
+            icon={<Icon.Feedback />}
+            onClick={onFeedback}
+          >
+            Send feedback
+          </Button>
+        </div>
+      )}
     </aside>
   );
 }

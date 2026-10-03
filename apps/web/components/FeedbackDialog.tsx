@@ -11,8 +11,9 @@ import { Button, Dialog, Icon, TextArea } from "./ui";
 const MAX_FEEDBACK = 4000;
 
 /**
- * "Send feedback" from the dashboard: a message to the admin, who reads it on
- * the admin dashboard's Feedback tab with who sent it and from where.
+ * "Send feedback" from the dashboard footer or the foot of the editor's
+ * components sidebar: a message to the admin, who reads it on the admin
+ * dashboard's Feedback tab with who sent it and from where.
  */
 export function FeedbackDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const send = useMutation(api.feedback.send);
