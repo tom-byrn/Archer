@@ -65,7 +65,7 @@ export function FeedbackDialog({ open, onClose }: { open: boolean; onClose: () =
           }}
         >
           <p className="pb-2 text-sm text-ink-2">
-            Something broken, confusing or missing? Ideas welcome too.
+            Something broken, confusing, missing? All feedback is read, new ideas are welcome too!
           </p>
           <TextArea
             value={message}
