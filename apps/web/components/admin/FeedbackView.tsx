@@ -11,12 +11,12 @@ export interface FeedbackItem {
   at: number;
   userId: string;
   message: string;
-  /** The page it was sent from. */
+  /** The page it was sent from; "/mcp" when an agent sent it (`device` is then the agent). */
   path: string;
   device: string | null;
 }
 
-/** Feedback sent from the dashboard's "Send feedback", newest first, with who sent it. */
+/** Feedback sent from "Send feedback" or the MCP tool `send_feedback`, newest first, with who sent it. */
 export function FeedbackView({ items, users }: { items: FeedbackItem[]; users: AdminUser[] }) {
   const byId = useMemo(() => new Map(users.map((u) => [u.id, u])), [users]);
   return (

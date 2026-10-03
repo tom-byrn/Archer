@@ -260,6 +260,12 @@ export const TOOL_GROUPS: readonly ToolGroup[] = [
       "Project tools act on one workspace at a time, the current one. It starts as Personal. The choice is stored for the user, so the CLI and every agent they connect move together.",
     tools: ["get_workspace_info", "list_workspaces", "use_workspace"],
   },
+  {
+    title: "Feedback",
+    intro:
+      "Pass the user's feedback on to the people who build Archer, as \"Send feedback\" in the app does. Agents send it only when the user asks.",
+    tools: ["send_feedback"],
+  },
 ];
 
 export const TOOL_DOCS: Record<string, ToolDoc> = {
@@ -751,6 +757,23 @@ api -> db @sql
     result: { current_workspace_id: TEAM, name: "Acme", kind: "team", role: "editor", visible_projects: 0 },
     notes: [
       "Also switches the CLI (`archer workspace`) and the user's other agents. In a workspace where the user is a viewer, the result carries a `note` and writes are refused.",
+    ],
+  },
+
+  // --- feedback --------------------------------------------------------------------
+  send_feedback: {
+    access: "account",
+    args: {
+      message:
+        "Exporting a project with a long description cuts the text off in the PNG. It would also help to choose the export's background color.",
+    },
+    result: {
+      sent: true,
+      characters: 133,
+      note: "Sent to the Archer team, from the signed-in user. Tell the user it was sent.",
+    },
+    notes: [
+      "Sent as the signed-in user, labelled with the agent's name, whichever workspace is current. Up to 4000 characters.",
     ],
   },
 };

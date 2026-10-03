@@ -284,7 +284,9 @@ components, connections, descriptions, shapes, icons, colors, payloads, nesting,
 (\`get_workspace_info\`, \`list_workspaces\`/\`use_workspace\`), read the docs' worked
 examples (\`list_examples\`/\`get_example\`), and export the agent spec
 (\`compile_for_agent\`). The only human-app-exclusive feature is PNG export —
-point users at the Export menu in the editor.
+point users at the Export menu in the editor. When the user wants to tell the
+Archer team something (a bug, a gap, an idea), \`send_feedback\` sends it as
+them, like "Send feedback" in the app — only when they ask.
 
 ---
 

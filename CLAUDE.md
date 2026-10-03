@@ -45,7 +45,7 @@ Router + React Flow + Convex).
   server-only service credential `svc_<ARCHER_SERVICE_SECRET>.<userId>` passed
   in the functions' `apiKey` argument (legacy name; `convex/access.ts` →
   `effectiveUser`); the same secret must be set on the Convex deployment and
-  in the web env. `registerArcherTools(server)` registers 25 tools. The CLI
+  in the web env. `registerArcherTools(server)` registers 26 tools. The CLI
   (`archer login`) runs the same OAuth flow as any MCP client (DCR + PKCE +
   localhost redirect, client name "Archer CLI"), stores the session in
   `~/.archer/auth.json`, and calls the tools; the JSON shapes it reads are
@@ -216,6 +216,8 @@ Router + React Flow + Convex).
   (and at the foot of the editor's components sidebar, stored documents only)
   opens `components/FeedbackDialog.tsx` → `feedback.send` (`feedback` table),
   listed with its sender on the Feedback tab (`adminDashboard.feedback`).
+  Agents send it with the MCP tool `send_feedback` (only when the user asks;
+  stored with path `/mcp` and the agent's name as the device).
   Read-only canvases reuse `DocumentViewer`
   (`/admin-dashboard/canvas/<id>`, `?rev=<revisionId>` for a past version).
 - Brand kit: `/branding` (signed-in only, deliberately linked from nowhere —
