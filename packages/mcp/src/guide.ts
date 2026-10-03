@@ -435,7 +435,9 @@ examples (\`list_examples\`/\`get_example\`), export the agent spec
 (\`compile_for_agent\`), and draw a project as an SVG image
 (\`render_project\`: save it as a .svg file, put it in a README, or look at
 it). Sharing links, members and PNG export are human-app-exclusive — point
-users at the editor's Share and Export menus.
+users at the editor's Share and Export menus. When the user wants to tell the
+Archer team something (a bug, a gap, an idea), \`send_feedback\` sends it as
+them, like "Send feedback" in the app — only when they ask.
 
 ---
 

@@ -22,7 +22,7 @@ const { check, failures } = checks();
 // tools/list
 const tools = await client.listTools();
 const names = tools.tools.map((t) => t.name).sort();
-check("26 tools registered", names.length === 26, names);
+check("27 tools registered", names.length === 27, names);
 
 // guide + resource
 const guide = await call("get_guide");

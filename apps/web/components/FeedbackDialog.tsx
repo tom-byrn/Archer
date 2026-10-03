@@ -11,8 +11,9 @@ import { Button, Dialog, Icon, TextArea } from "./ui";
 const MAX_FEEDBACK = 4000;
 
 /**
- * "Send feedback" from the dashboard: a message to the admin, who reads it on
- * the admin dashboard's Feedback tab with who sent it and from where.
+ * "Send feedback" from the dashboard footer or the foot of the editor's
+ * components sidebar: a message to the admin, who reads it on the admin
+ * dashboard's Feedback tab with who sent it and from where.
  */
 export function FeedbackDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const send = useMutation(api.feedback.send);
@@ -64,7 +65,7 @@ export function FeedbackDialog({ open, onClose }: { open: boolean; onClose: () =
           }}
         >
           <p className="pb-2 text-sm text-ink-2">
-            Something broken, confusing or missing? Ideas welcome too.
+            Something broken, confusing, missing? All feedback is read, new ideas are welcome too!
           </p>
           <TextArea
             value={message}

@@ -126,6 +126,9 @@ const diagnosticsReport = (ds: { severity: string }[] & Parameters<typeof format
 
 const iso = (ms: number) => new Date(ms).toISOString();
 
+/** Longest feedback message kept (apps/web/convex/feedback.ts keeps the same). */
+const MAX_FEEDBACK = 4000;
+
 const describeSummary = (s: DiffSummary): string => {
   const parts: string[] = [];
   if (s.added) parts.push(`+${s.added} component${s.added === 1 ? "" : "s"}`);
@@ -982,6 +985,33 @@ export function registerArcherTools(server: McpServer, options: ArcherToolOption
           ? { note: "The user is a viewer here: reads work, writes will be refused." }
           : {}),
       } satisfies WorkspaceSwitched);
+    }),
+  );
+
+  // --- feedback ---------------------------------------------------------------
+
+  server.registerTool(
+    "send_feedback",
+    {
+      title: "Send feedback to the Archer team",
+      description: `Send feedback about Archer (the app, this MCP server, the CLI or the language) to the people who build it, from the signed-in user — the same as "Send feedback" in the app. Something broken, confusing or missing, or an idea: it is all read. ONLY call this when the user asks you to send feedback, or agrees when you offer; never on your own initiative, and send each piece of feedback once. Write it as the user means it, in their words where you can, and include what helps reproduce a problem (what they tried, what happened, error messages). Leave out secrets, credentials and code the user didn't ask to share. At most ${MAX_FEEDBACK} characters.`,
+      inputSchema: {
+        message: z
+          .string()
+          .min(1)
+          .max(MAX_FEEDBACK)
+          .describe("The feedback, as plain text or markdown, written for the Archer team"),
+      },
+    },
+    wrap(async ({ message }) => {
+      const body = message.trim();
+      if (body === "") throw new Error("Feedback is empty: pass the user's feedback in `message`.");
+      await db.sendFeedback(caller().serviceKey, body);
+      return text({
+        sent: true,
+        characters: body.length,
+        note: "Sent to the Archer team, from the signed-in user. Tell the user it was sent.",
+      });
     }),
   );
 }

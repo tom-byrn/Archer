@@ -203,15 +203,16 @@ export default defineSchema({
     .index("by_user", ["userId", "at"]),
 
   /**
-   * Feedback people send from the dashboard (components/FeedbackDialog.tsx →
-   * `feedback.send`). Read by the admin dashboard only.
+   * Feedback people send from the app (components/FeedbackDialog.tsx →
+   * `feedback.send`) or through an agent (the MCP tool `send_feedback`, path
+   * "/mcp", device the agent's name). Read by the admin dashboard only.
    */
   feedback: defineTable({
     userId: v.string(),
     message: v.string(),
-    /** The page it was sent from. */
+    /** The page it was sent from ("/mcp" for agents). */
     path: v.string(),
-    /** "Chrome · macOS"; derived in the browser from its user agent. */
+    /** "Chrome · macOS", derived in the browser from its user agent; the agent's name ("Claude Code") over MCP. */
     device: v.optional(v.string()),
   }),
 

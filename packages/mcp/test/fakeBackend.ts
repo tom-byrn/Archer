@@ -32,6 +32,8 @@ export interface FakeState {
   drift: Map<string, DriftRow>;
   /** The workspace each user's agents act on (use_workspace). */
   prefs: Map<string, string>;
+  /** Feedback sent with send_feedback, oldest first. */
+  feedback: { userId: string; message: string; path: string; device: string }[];
 }
 
 export function createFakeBackend() {
@@ -44,6 +46,7 @@ export function createFakeBackend() {
     library: new Map(),
     drift: new Map(),
     prefs: new Map(),
+    feedback: [],
   };
 
   /** The user a service credential acts for (svc_<secret>.<userId>). */
@@ -180,6 +183,11 @@ export function createFakeBackend() {
       const row: DriftRow = { _id: nextId("drift_"), documentId, reportedAt: Date.now(), author: agentAuthor(), findings };
       state.drift.set(documentId, row);
       return row._id;
+    },
+    sendFeedback: async (serviceKey: string, message: string) => {
+      const userId = userOf(serviceKey);
+      if (message.trim() === "") throw new Error("Feedback is empty.");
+      state.feedback.push({ userId, message: message.trim(), path: "/mcp", device: agentAuthor().name });
     },
   };
 

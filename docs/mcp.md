@@ -10,7 +10,7 @@ Claude Code, Claude, Cursor, VS Code, Codex and more.
 - **Sign-in:** in your browser, with GitHub. There are no API keys to create
   or paste.
 - **Tools:** 26, covering projects, the language, component types, the
-  canvas, history, drift and workspaces. See the
+  canvas, history, drift, workspaces and feedback. See the
   [tool reference](#tool-reference).
 
 The agent acts as you, in the workspaces you belong to, with your role in
