@@ -463,23 +463,23 @@ function DriftTab({
 
   if (!report) {
     return (
-      <div className="px-3 py-3">
+      <div className="flex flex-col items-center gap-3 px-6 py-8 text-center">
         <p className="text-sm leading-relaxed text-ink-2">
-          A drift check compares this document with your codebase. Paste this prompt into your
-          agent:
+          Drift is where this diagram and your code have stopped matching. Your coding agent
+          checks it: paste the prompt into an agent connected to Archer and it compares each
+          component with the code.
         </p>
-        <pre className="mono mt-2 whitespace-pre-wrap rounded-md border border-line bg-surface-2 p-2.5 text-xs leading-relaxed text-ink-2">
-          {prompt}
-        </pre>
-        <div className="pt-2">
-          <Button
-            size="sm"
-            icon={<SwapIcon swapped={copied} from={<Icon.Copy />} to={<Icon.Check />} />}
-            onClick={() => copy(prompt)}
-          >
-            Copy prompt
-          </Button>
-        </div>
+        <p className="text-sm leading-relaxed text-ink-3">
+          Its report lands here and as badges on the canvas: components with no code, code that
+          changed, and code the diagram doesn&apos;t show yet.
+        </p>
+        <Button
+          size="sm"
+          icon={<SwapIcon swapped={copied} from={<Icon.Copy />} to={<Icon.Check />} />}
+          onClick={() => copy(prompt)}
+        >
+          Copy prompt
+        </Button>
       </div>
     );
   }
