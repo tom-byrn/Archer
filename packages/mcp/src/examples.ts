@@ -159,24 +159,28 @@ widget -> agent @ws : "chat"
     slug: "icons",
     title: "Coffee Shop",
     summary:
-      "An \`icon\` in a component's body picks the icon it shows: any Phosphor icon by its snake-case name (\`coffee\`, \`receipt\`, \`device_tablet\`) or one of the catalog's (\`database\`, \`queue\`). An untyped component shows no icon until it picks one, so an icon is the quickest way to say what something is without a type. On a typed component it replaces the type's icon and keeps its color, like the book on the Postgres menu. A \`color\` does the same for the color: a palette name (\`amber\`) or any \`\"#rrggbb\"\`, like the coffee brown of the barista's screen. Icons and colors are for readers; an agent implementing the document can ignore them. \`list_types\` lists every icon, and the editor's Icon picker searches them.",
+      "An \`icon\` in a component's body picks the icon it shows: any Phosphor icon by its snake-case name (\`coffee\`, \`receipt\`, \`device_tablet\`) or one of the catalog's (\`database\`, \`queue\`). An untyped component shows no icon until it picks one, so an icon is the quickest way to say what something is without a type. On a typed component it replaces the type's icon and keeps its color, like the book on the Postgres menu. A \`color\` does the same for the color: a palette name (\`amber\`) or any \`\"#rrggbb\"\`, like the coffee brown of the barista's screen. The rest go by role, as the agent guide suggests: the customer and their devices are sky, the Orders service blue. Icons and colors are for readers; an agent implementing the document can ignore them. \`list_types\` lists every icon, and the editor's Icon picker searches them.",
     features: ["icons", "colors"],
     source: `arch "Coffee Shop" v0.2
 
 component customer "Customer" @user {
   shape person
+  color sky
 }
 
 component kiosk "Order Kiosk" {
   icon device_tablet
+  color sky
 }
 
 component app "Mobile App" @mobile {
   shape phone
+  color sky
 }
 
 component orders "Orders" {
   icon receipt
+  color blue
   desc "Takes orders from the kiosk and the app, and tracks each drink from paid to picked up."
 }
 
@@ -266,18 +270,21 @@ web -> api @http
     slug: "nesting",
     title: "Food Delivery",
     summary:
-      "Any component can hold components. Orders owns its API, checkout, tracker and database: on the canvas it's one box with a count of what's inside, and opening it shows those parts, with whatever outside they connect to along the edges. A path reaches a nested component (`orders.checkout`), and a connection can join one or the whole component (`app -> orders`). The courier's side is orange.",
+      "Any component can hold components. Orders owns its API, checkout, tracker and database: on the canvas it's one box with a count of what's inside, and opening it shows those parts, with whatever outside they connect to along the edges. A path reaches a nested component (`orders.checkout`), and a connection can join one or the whole component (`app -> orders`). Colors go by side: the customer's app is sky, Orders and its parts blue, and the courier's side orange.",
     features: ["nesting", "paths", "opening a component"],
     source: `arch "Food Delivery" v0.2
 
 component app "Customer App" @mobile {
   shape phone
+  color sky
 }
 
 component orders "Orders" @service {
+  color blue
   desc "Takes an order from basket to doorstep: the API, checkout, live tracking and its own database."
   src "services/orders"
   component api "Orders API" @service {
+    color blue
     endpoints table ${FENCE}
     | method | path        | purpose        |
     | ------ | ----------- | -------------- |
@@ -286,9 +293,11 @@ component orders "Orders" @service {
     ${FENCE}
   }
   component checkout "Checkout" @worker {
+    color blue
     desc "Charges the card, then tells Dispatch the order is paid."
   }
   component tracker "Tracker" @service {
+    color blue
     desc "Takes each courier's position and streams it to the customer's map."
   }
   component db "Orders DB" @postgres {
@@ -324,8 +333,8 @@ orders.tracker -> orders.db @writes
     slug: "music-streaming",
     title: "Music Streaming",
     summary:
-      "A whole product in one file: listener apps, the edge, six services in one Kubernetes cluster, their storage, analytics, and the pipeline that turns a label's delivery into playable audio. Planes mark out the regions, while the cluster and the apps nest their parts, so the top level stays readable. Opening Services shows all six, on a plane per Kubernetes namespace: a plane inside a component is a region of its own canvas, and the services on it are still `services.playback` and friends. All three arrow kinds appear: `->`, `<->` for the remote-control socket, and `--` for the signed URLs Playback and the CDN agree on. It was laid out by hand, so it ends with the `layout` block the canvas writes when you drag and resize. Agents may read that block to see the diagram as drawn, but never implement anything from it, and write it only when asked to arrange the diagram. Where the money flows, in and out, is emerald.",
-    features: ["planes and nesting together", "planes inside a component", "arrow kinds", "connection payloads", "the layout block"],
+      "A whole product in one file that still reads at a glance: listener apps, the platform we run, and the outside world around it. The platform's five parts (edge, services, storage, ingestion and analytics) sit on one plane, and each is a component holding its own pieces, so the top level is nine boxes and ten lines, and opening one shows the rest. Opening Services shows all six services, on a plane per Kubernetes namespace: a plane inside a component is a region of its own canvas, and the services on it are still `services.playback` and friends. All three arrow kinds appear: `->`, `<->` for the remote-control socket, and `--` for the signed URLs Playback and the CDN agree on. It was laid out by hand, so it ends with the `layout` block the canvas writes when you drag and resize. Agents may read that block to see the diagram as drawn, but never implement anything from it, and write it only when asked to arrange the diagram. Where the money flows, in and out, is emerald.",
+    features: ["nesting a big system", "planes and nesting together", "planes inside a component", "arrow kinds", "connection payloads", "the layout block"],
     source: `arch "Music Streaming" v0.2
 
 component apps "Listener Apps" {
@@ -345,138 +354,145 @@ component auth "Accounts" @auth0 {
   desc "Email, Apple and Google sign-in. Issues the JWT every API call carries."
 }
 
-plane edge "Edge" @aws {
-  component gateway "API Gateway" @aws.api_gateway {
-    desc "The only public API. Checks the JWT, rate-limits per account, routes to services."
-  }
-  component sync "Device Sync" {
-    icon broadcast
-    desc "WebSocket hub: move playback between devices, or use a phone as the remote for a speaker."
-  }
-  component cdn "Audio CDN" @aws.cloudfront {
-    desc "Caches encrypted audio at the edge and serves only URLs that Playback signed."
-  }
-}
-
-component services "Services" @aws.eks {
-  desc "Stateless services on Kubernetes, reachable from outside only through the API Gateway."
-  plane browse "Browse" {
-    desc "Namespace browse: what listeners find."
-    component catalog "Catalog" @service {
-      desc "Artists, albums, tracks, credits, and the markets each track may play in."
-      src "services/catalog"
+plane platform "Platform" {
+  desc "Everything we run."
+  component edge "Edge" @aws {
+    icon globe
+    desc "The way in from the internet: one API, one socket hub, one CDN."
+    component gateway "API Gateway" @aws.api_gateway {
+      desc "The only public API. Checks the JWT, rate-limits per account, routes to services."
     }
-    component search "Search" @service {
-      desc "Typeahead across artists, albums, tracks and playlists."
+    component sync "Device Sync" {
+      icon broadcast
+      desc "WebSocket hub: move playback between devices, or use a phone as the remote for a speaker."
     }
-    component recs "Recommender" @service {
-      desc "Home feed, radio and a weekly mix, built from the nearest neighbors of what you play."
+    component cdn "Audio CDN" @aws.cloudfront {
+      desc "Caches encrypted audio at the edge and serves only URLs that Playback signed."
     }
   }
-  plane listen "Listen" {
-    desc "Namespace listen: what happens when someone presses play."
-    component playback "Playback" @service {
-      desc "Decides what a listener may play right now and returns a signed URL for the right rendition."
-      src "services/playback"
-      endpoints table ${FENCE}
-      | method | path        | purpose                                |
-      | ------ | ----------- | -------------------------------------- |
-      | POST   | /v1/play    | resolve a track to a signed stream URL |
-      | POST   | /v1/license | DRM license for this device            |
+  component services "Services" @aws.eks {
+    desc "Stateless services on Kubernetes, reachable from outside only through the API Gateway."
+    plane browse "Browse" {
+      desc "Namespace browse: what listeners find."
+      component catalog "Catalog" @service {
+        desc "Artists, albums, tracks, credits, and the markets each track may play in."
+        src "services/catalog"
+      }
+      component search "Search" @service {
+        desc "Typeahead across artists, albums, tracks and playlists."
+      }
+      component recs "Recommender" @service {
+        desc "Home feed, radio and a weekly mix, built from the nearest neighbors of what you play."
+      }
+    }
+    plane listen "Listen" {
+      desc "Namespace listen: what happens when someone presses play."
+      component playback "Playback" @service {
+        desc "Decides what a listener may play right now and returns a signed URL for the right rendition."
+        src "services/playback"
+        endpoints table ${FENCE}
+        | method | path        | purpose                                |
+        | ------ | ----------- | -------------------------------------- |
+        | POST   | /v1/play    | resolve a track to a signed stream URL |
+        | POST   | /v1/license | DRM license for this device            |
+        ${FENCE}
+        tiers yaml ${FENCE}
+        free:
+          bitrate_kbps: 160
+          skips_per_hour: 6
+          offline: false
+        premium:
+          bitrate_kbps: 320
+          skips_per_hour: unlimited
+          offline: true
+        ${FENCE}
+      }
+      component library "Library" @service {
+        desc "Saved tracks, followed artists, and playlists, including collaborative ones."
+      }
+    }
+    plane accounts "Accounts" {
+      desc "Namespace accounts: who may listen, and to what."
+      component subscriptions "Subscriptions" @service {
+        color emerald
+        desc "Plans, trials and family seats. Answers what a listener is entitled to."
+        src "services/subscriptions"
+      }
+    }
+  }
+  component storage "Storage" {
+    icon database
+    desc "Each service's own store, plus the event stream every play lands on."
+    component catalog_db "Catalog DB" @aws.rds {
+      shape cylinder
+      desc "Postgres. The source of truth for metadata."
+      schema json ${FENCE}
+      {
+        "artists": { "id": "uuid pk", "name": "text" },
+        "albums": { "id": "uuid pk", "artist_id": "uuid fk artists.id", "released_on": "date" },
+        "tracks": { "id": "uuid pk", "album_id": "uuid fk albums.id", "isrc": "text unique", "markets": "text[]" }
+      }
       ${FENCE}
-      tiers yaml ${FENCE}
-      free:
-        bitrate_kbps: 160
-        skips_per_hour: 6
-        offline: false
-      premium:
-        bitrate_kbps: 320
-        skips_per_hour: unlimited
-        offline: true
-      ${FENCE}
     }
-    component library "Library" @service {
-      desc "Saved tracks, followed artists, and playlists, including collaborative ones."
+    component index "Search Index" @elasticsearch {
+      shape cylinder
+    }
+    component playlists "Playlists" @aws.dynamodb {
+      shape cylinder
+      desc "Libraries and playlists, partitioned by listener."
+    }
+    component sessions "Play Sessions" @redis {
+      shape cylinder
+      desc "Active streams per account, for device limits. Keys expire 30 seconds after the last heartbeat."
+    }
+    component events "Play Events" @kafka {
+      shape queue
+    }
+    component embeddings "Embeddings" @pinecone {
+      shape cylinder
+    }
+    component accounts_db "Accounts DB" @aws.rds {
+      shape cylinder
     }
   }
-  plane accounts "Accounts" {
-    desc "Namespace accounts: who may listen, and to what."
-    component subscriptions "Subscriptions" @service {
+  component content "Ingestion" {
+    icon music_notes
+    desc "Turns a label's delivery into playable audio and catalog entries."
+    component inbox "Delivery Inbox" @aws.s3 {
+      shape bucket
+      desc "Labels drop DDEX packages here: XML metadata, lossless masters and artwork."
+    }
+    component pipeline "Pipeline" @temporal {
+      desc "One durable workflow per release: validate, encode, then publish on release day."
+    }
+    component transcoder "Transcoder" @aws.fargate {
+      shape stack
+      desc "FFmpeg workers. Ogg Vorbis at 96, 160 and 320 kbps plus AAC, loudness-normalized to -14 LUFS."
+    }
+    component audio "Audio Files" @aws.s3 {
+      shape bucket
+      desc "Every encoded rendition, keyed by track and bitrate."
+    }
+  }
+  component analytics "Analytics" {
+    icon chart_bar
+    desc "Where plays become recommendations and royalty statements."
+    component warehouse "Warehouse" @snowflake {
+      shape cylinder
+    }
+    component royalties "Royalties" {
+      icon hand_coins
       color emerald
-      desc "Plans, trials and family seats. Answers what a listener is entitled to."
-      src "services/subscriptions"
+      desc "Monthly job that splits each market's revenue across rights holders by share of streams."
+      rules markdown ${FENCE}
+      - A stream counts after 30 seconds of play.
+      - Free-tier streams share ad revenue; Premium streams share subscription revenue.
+      - Statements go out by the 15th of the following month.
+      ${FENCE}
     }
-  }
-}
-
-plane storage "Storage" {
-  component catalog_db "Catalog DB" @aws.rds {
-    shape cylinder
-    desc "Postgres. The source of truth for metadata."
-    schema json ${FENCE}
-    {
-      "artists": { "id": "uuid pk", "name": "text" },
-      "albums": { "id": "uuid pk", "artist_id": "uuid fk artists.id", "released_on": "date" },
-      "tracks": { "id": "uuid pk", "album_id": "uuid fk albums.id", "isrc": "text unique", "markets": "text[]" }
+    component training "Model Training" @worker {
+      desc "Nightly job: learns track and listener embeddings from the last 90 days of plays."
     }
-    ${FENCE}
-  }
-  component index "Search Index" @elasticsearch {
-    shape cylinder
-  }
-  component playlists "Playlists" @aws.dynamodb {
-    shape cylinder
-    desc "Libraries and playlists, partitioned by listener."
-  }
-  component sessions "Play Sessions" @redis {
-    shape cylinder
-    desc "Active streams per account, for device limits. Keys expire 30 seconds after the last heartbeat."
-  }
-  component events "Play Events" @kafka {
-    shape queue
-  }
-  component embeddings "Embeddings" @pinecone {
-    shape cylinder
-  }
-  component accounts_db "Accounts DB" @aws.rds {
-    shape cylinder
-  }
-}
-
-plane content "Content Ingestion" {
-  component inbox "Delivery Inbox" @aws.s3 {
-    shape bucket
-    desc "Labels drop DDEX packages here: XML metadata, lossless masters and artwork."
-  }
-  component pipeline "Pipeline" @temporal {
-    desc "One durable workflow per release: validate, encode, then publish on release day."
-  }
-  component transcoder "Transcoder" @aws.fargate {
-    shape stack
-    desc "FFmpeg workers. Ogg Vorbis at 96, 160 and 320 kbps plus AAC, loudness-normalized to -14 LUFS."
-  }
-  component audio "Audio Files" @aws.s3 {
-    shape bucket
-    desc "Every encoded rendition, keyed by track and bitrate."
-  }
-}
-
-plane analytics "Analytics" {
-  component warehouse "Warehouse" @snowflake {
-    shape cylinder
-  }
-  component royalties "Royalties" {
-    icon hand_coins
-    color emerald
-    desc "Monthly job that splits each market's revenue across rights holders by share of streams."
-    rules markdown ${FENCE}
-    - A stream counts after 30 seconds of play.
-    - Free-tier streams share ad revenue; Premium streams share subscription revenue.
-    - Statements go out by the 15th of the following month.
-    ${FENCE}
-  }
-  component training "Model Training" @worker {
-    desc "Nightly job: learns track and listener embeddings from the last 90 days of plays."
   }
 }
 
@@ -488,19 +504,9 @@ component stripe "Stripe" @stripe {
   shape cloud
 }
 
-apps -> auth @auth : "sign in"
-apps -> cdn @http : "audio"
-apps -> gateway @http
-apps <-> sync @ws : "remote control"
-cdn -> audio @reads : "origin"
-events -> warehouse @stream
-gateway -> services @http : "routes"
-inbox -> pipeline @event
-labels -> inbox @writes : "DDEX"
-pipeline -> services.catalog @grpc : "publish"
-pipeline -> transcoder @queue : "encode"
+analytics.royalties -> analytics.warehouse @reads
 
-royalties -> labels : "statements" {
+analytics.royalties -> labels : "statements" {
   statement table ${FENCE}
   | column       | type | notes            |
   | ------------ | ---- | ---------------- |
@@ -511,51 +517,60 @@ royalties -> labels : "statements" {
   ${FENCE}
 }
 
-royalties -> warehouse @reads
-services.catalog -> catalog_db @sql
-services.catalog -> index @writes : "reindex"
-services.library -> playlists
-services.playback -- cdn : "signed URLs"
+analytics.training -> analytics.warehouse @reads
+analytics.training -> storage.embeddings @writes : "nightly"
+apps -> auth @auth : "sign in"
+apps -> edge.cdn @http : "audio"
+apps -> edge.gateway @http
+apps <-> edge.sync @ws : "remote control"
+content.inbox -> content.pipeline @event
+content.pipeline -> content.transcoder @queue : "encode"
+content.pipeline -> services.catalog @grpc : "publish"
+content.transcoder -> content.audio @writes
+edge.cdn -> content.audio @reads : "origin"
+edge.gateway -> services @http : "routes"
+labels -> content.inbox @writes : "DDEX"
+services.catalog -> storage.catalog_db @sql
+services.catalog -> storage.index @writes : "reindex"
+services.library -> storage.playlists
+services.playback -- edge.cdn : "signed URLs"
+services.playback -> services.catalog @grpc : "availability"
+services.playback -> services.subscriptions @grpc : "entitlements"
 
-services.playback -> events @event : "track played" {
+services.playback -> storage.events @event : "track played" {
   message json ${FENCE}
   { "listener_id": "uuid", "track_id": "uuid", "ms_played": "int", "market": "text", "played_at": "timestamp" }
   ${FENCE}
 }
 
-services.playback -> services.catalog @grpc : "availability"
-services.playback -> services.subscriptions @grpc : "entitlements"
-services.playback -> sessions @writes : "active streams"
-services.recs -> embeddings @reads
-services.search -> index @reads
-services.subscriptions -> accounts_db @sql
+services.playback -> storage.sessions @writes : "active streams"
+services.recs -> storage.embeddings @reads
+services.search -> storage.index @reads
+services.subscriptions -> storage.accounts_db @sql
 services.subscriptions <-> stripe @http : "billing"
-training -> embeddings @writes : "nightly"
-training -> warehouse @reads
-transcoder -> audio @writes
+storage.events -> analytics.warehouse @stream
 
 layout {
-  accounts_db: { at: [1, 17], size: [4, 3] }
-  analytics: { at: [45, 7], size: [13, 11] }
+  analytics: { at: [25, 2], size: [4, 3] }
+  analytics.royalties: { at: [0, 0], size: [4, 3] }
+  analytics.training: { at: [0, 5], size: [4, 3] }
+  analytics.warehouse: { at: [7, 0], size: [4, 3] }
   apps: { at: [0, 10], size: [4, 3] }
   apps.mobile: { at: [0, 5], size: [4, 3] }
   apps.web: { at: [0, 0], size: [4, 3] }
-  audio: { at: [1, 2], size: [4, 3] }
   auth: { at: [0, 3], size: [4, 3] }
-  catalog_db: { at: [1, 2], size: [4, 3] }
-  cdn: { at: [1, 12], size: [4, 3] }
-  content: { at: [9, 25], size: [27, 6] }
-  edge: { at: [9, 3], size: [6, 16] }
-  embeddings: { at: [7, 14], size: [4, 3] }
-  events: { at: [7, 9], size: [4, 3] }
-  gateway: { at: [1, 7], size: [4, 3] }
-  inbox: { at: [22, 2], size: [4, 3] }
-  index: { at: [1, 7], size: [4, 3] }
-  labels: { at: [53, 27], size: [4, 3] }
-  pipeline: { at: [15, 2], size: [4, 3] }
-  playlists: { at: [1, 12], size: [4, 3] }
-  royalties: { at: [8, 2], size: [4, 3] }
-  services: { at: [20, 10], size: [4, 3] }
+  content: { at: [13, 9], size: [4, 3] }
+  content.audio: { at: [22, 0], size: [4, 3] }
+  content.inbox: { at: [0, 0], size: [4, 3] }
+  content.pipeline: { at: [7, 0], size: [4, 3] }
+  content.transcoder: { at: [15, 0], size: [4, 3] }
+  edge: { at: [1, 2], size: [4, 3] }
+  edge.cdn: { at: [0, 10], size: [4, 3] }
+  edge.gateway: { at: [0, 0], size: [4, 3] }
+  edge.sync: { at: [0, 5], size: [4, 3] }
+  labels: { at: [40, 17], size: [4, 3] }
+  platform: { at: [7, 8], size: [30, 13] }
+  services: { at: [9, 2], size: [4, 3] }
   services.accounts: { at: [0, 16], size: [6, 6] }
   services.browse: { at: [0, 0], size: [18, 6] }
   services.catalog: { at: [1, 2], size: [4, 3] }
@@ -565,13 +580,15 @@ layout {
   services.recs: { at: [13, 2], size: [4, 3] }
   services.search: { at: [7, 2], size: [4, 3] }
   services.subscriptions: { at: [1, 2], size: [4, 3] }
-  sessions: { at: [7, 4], size: [4, 3] }
-  storage: { at: [30, 0], size: [12, 21] }
-  stripe: { at: [20, 3], size: [4, 3] }
-  sync: { at: [1, 2], size: [4, 3] }
-  training: { at: [1, 7], size: [4, 3] }
-  transcoder: { at: [8, 2], size: [4, 3] }
-  warehouse: { at: [1, 2], size: [4, 3] }
+  storage: { at: [17, 2], size: [4, 3] }
+  storage.accounts_db: { at: [0, 15], size: [4, 3] }
+  storage.catalog_db: { at: [0, 0], size: [4, 3] }
+  storage.embeddings: { at: [6, 12], size: [4, 3] }
+  storage.events: { at: [6, 7], size: [4, 3] }
+  storage.index: { at: [0, 5], size: [4, 3] }
+  storage.playlists: { at: [0, 10], size: [4, 3] }
+  storage.sessions: { at: [6, 2], size: [4, 3] }
+  stripe: { at: [16, 1], size: [4, 3] }
 }
 `,
   },

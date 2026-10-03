@@ -22,6 +22,117 @@ ${BRIEF}
    The workflow is: write → get diagnostics → fix → retry. Diagnostics carry
    codes and line numbers; fix exactly what they name.
 
+## Keep every canvas readable (the most important habit)
+
+A canvas showing 30 boxes and 50 crossing lines tells nobody anything, however
+accurate it is. Archer's answer is nesting: any component can hold
+components, to any depth, and the human opens a box to see inside it. Design
+a big system as a stack of small canvases, not one big one.
+
+- **Budget: about 5–9 components per canvas, 12 at most, and about as many
+  lines as components.** The budget applies to the top level and again to
+  the inside of every component. Depth is free; width is what makes a
+  diagram unreadable.
+- **Design top-down, like zooming in.**
+  1. The top level is the whole system in one picture: who uses it, the
+     product's few main parts, where data lives, and the outside world.
+     Someone new should get the story in ten seconds.
+  2. Inside each main part: its services, apps or modules.
+  3. Inside those: their parts (handlers, workers, tables, …), as far down as
+     is useful. A large codebase usually needs three or four levels.
+- **Don't mirror the repository's folder list.** Twenty packages are not
+  twenty top-level boxes: group them by what they do for the system, and
+  put each package (with its \`src\`) inside the group it belongs to.
+- **Over budget? Nest.** Find the components that work together for one
+  purpose (the packages behind the API, a job system's workers, the stores
+  of one service) and move them inside one component named for that
+  purpose. Their connections to the rest now show as a line to that box.
+- **Planes don't reduce clutter.** Everything on a plane is still drawn on
+  the same canvas. A plane with more than three or four components is
+  usually a component waiting to be nested: write
+  \`component core "Core" { … }\` instead of \`plane core "Core" { … }\`,
+  and connect to \`core\`.
+- **Group the outside world.** Email, OAuth, KMS, captcha and webhook
+  providers become one \`component external "External Services"\` (shape
+  \`cloud\`) with each provider nested in it. Keep a provider at the top
+  level only when it is central to the story (the payment provider of a
+  shop).
+- **Every connection costs a line on each canvas above it.** A connection to
+  a nested part is drawn, one level up, as a line to the box that holds it
+  (several between the same two boxes share one line). Draw the flows that
+  matter; connect to the whole component (\`web -> core\`) when which part
+  receives it isn't the point; and connect clients to the entry point, not
+  to every service behind it.
+
+A codebase with apps, a dozen packages, three stores and eight providers
+still reads at a glance as five boxes and four lines:
+
+    arch "Signing Platform" v0.2
+
+    component signer "Signer" {
+      shape person
+      color sky
+    }
+
+    component web "Web App" @vercel.nextjs {
+      shape browser
+      color sky
+      src "apps/web"
+    }
+
+    component core "Core" {
+      color blue
+      desc "Business logic every app shares: documents, signing, auth."
+      src "packages/lib"
+      component documents "Documents" {
+        color blue
+        desc "Envelopes, recipients and fields."
+      }
+      component signing "PDF Signing" {
+        color blue
+        src "packages/signing"
+      }
+      component auth "Auth" {
+        shape lock
+        color rose
+        src "packages/auth"
+      }
+    }
+
+    component data "Data" {
+      icon database
+      color teal
+      component db "Postgres" @postgres {
+        shape cylinder
+      }
+      component files "Object Storage" @aws.s3
+    }
+
+    component external "External Services" {
+      shape cloud
+      component kms "Google Cloud KMS" @gcp
+      component email "Email Provider"
+      component oauth "OAuth Providers"
+    }
+
+    core -> data.db @sql
+    core.auth -> external.oauth @http
+    core.documents -> data.files @http : "PDFs"
+    core.documents -> external.email @http : "invites"
+    core.signing -> external.kms @http : "sign digest"
+    signer -> web @http
+    web -> core @http
+
+Each of those boxes then gets the same treatment inside (\`core.documents\`
+can hold its own parts, and so on). The \`nesting\` and \`music-streaming\`
+worked examples (\`get_example\`) show more: the second is a whole product
+whose top level is nine boxes.
+
+\`create_project\`, \`update_project\` and \`validate_source\` return
+\`hints\` when a canvas is over budget, naming it. When you are designing the
+document, act on them before you finish. When you are making a small edit to
+a document the user arranged, mention them instead of restructuring it unasked.
+
 ## Authentication
 
 The user connected this server and approved it in their browser (MCP OAuth,
@@ -55,8 +166,13 @@ fails, call \`get_workspace_info\` and relay what it reports.
    \`@api_gateway\`, \`@rate_limiter\`, \`@cdn\`, \`@cache\`, \`@queue\`,
    \`@database\`, \`@object_storage\`, …) and real technologies for concrete
    stacks (\`@postgres\`, \`@aws.sqs\`, \`@kafka\`, …).
-2. \`create_project\` with your source. Same validation gates as update.
-3. The result includes an editor URL — share it with the user.
+2. Plan the top level first: the five to nine boxes that tell the story,
+   then what goes inside each (see "Keep every canvas readable"). Give
+   components colors by role as you write them (see "Colors").
+3. \`create_project\` with your source. Same validation gates as update.
+   If the result has \`hints\` (a crowded canvas, or a mostly grey
+   diagram), fix them with \`update_project\`.
+4. The result includes an editor URL — share it with the user.
 
 ### Use a worked example
 1. \`list_examples\` — the worked examples from the docs, each with the
@@ -176,7 +292,8 @@ The full language specification is at the end of this guide. Key habits:
 - **Nest the parts inside the thing they belong to**: a service's API and
   database, a cluster's services, an agent's tools. Any component can hold
   components, at any depth. The human sees it as one box and opens it to
-  see its parts, so nesting is how a big system stays readable. Connect
+  see its parts, so nesting is how a big system stays readable (see "Keep
+  every canvas readable" for the budget). Connect
   across any depth, to a part (\`web -> orders.api\`) or to the whole
   component (\`web -> orders\`), whichever is true.
 - **Group with planes, not wrapper components.** A \`plane\` is a titled
@@ -225,12 +342,44 @@ The full language specification is at the end of this guide. Key habits:
   \`queue\`; Phosphor's own name works for those too, \`hard_drives\` for
   \`server\`). \`list_types\` lists every icon by group. Give an untyped
   component an icon when one says what it is; a typed one rarely needs one.
-- **Colors.** A component is drawn in its type's color unless its body names
-  one with \`color <name>\` (\`red\`, \`orange\`, \`amber\`, \`yellow\`,
-  \`lime\`, \`green\`, \`emerald\`, \`teal\`, \`cyan\`, \`sky\`, \`blue\`,
-  \`indigo\`, \`violet\`, \`purple\`, \`fuchsia\`, \`pink\`, \`rose\`,
-  \`slate\`) or \`color "#rrggbb"\`. Keep colors the human chose; add one
-  only when asked, or to group related components (one team's, the new ones).
+- **Colors — color every document you write.** A component is drawn in its
+  type's color unless its body names one with \`color <name>\` (\`red\`,
+  \`orange\`, \`amber\`, \`yellow\`, \`lime\`, \`green\`, \`emerald\`,
+  \`teal\`, \`cyan\`, \`sky\`, \`blue\`, \`indigo\`, \`violet\`,
+  \`purple\`, \`fuchsia\`, \`pink\`, \`rose\`, \`slate\`) or
+  \`color "#rrggbb"\`. Untyped components and the vendor-neutral types
+  (\`@service\`, \`@queue\`, \`@worker\`, \`@database\`, …) are slate grey,
+  so a document without colors is a wall of grey that hides its structure.
+  A color draws the component's icon in it and tints its card or shape; a
+  product's logo keeps its own colors, so on a vendor type it only tints the
+  card. Rough guidelines:
+  - **Color by meaning, with 3–6 colors per document**, and keep the same
+    scheme on every canvas. By role (below) suits most systems; by domain
+    or team suits a story about ownership (each domain one color, its parts
+    too).
+  - **Role colors**, when nothing better suggests itself:
+
+    | Role | Color |
+    | ---- | ----- |
+    | People, clients and apps | \`sky\` |
+    | Edge: gateways, CDNs, load balancers | \`indigo\` |
+    | Services and business logic | \`blue\` |
+    | Data: databases, caches, storage | \`teal\` |
+    | Messaging: queues, streams, events | \`amber\` |
+    | Jobs, workers and schedulers | \`orange\` |
+    | AI: models, agents, RAG | \`violet\` |
+    | Auth and security | \`rose\` |
+    | Outside services | none, or \`slate\`: let them stay quiet |
+
+  - **Same role, same color.** Don't give every component its own color; a
+    rainbow says nothing. A component with parts takes its group's color,
+    and its parts follow the scheme on their own canvas.
+  - **One accent to make a point** is fine: the new parts of a proposal, or
+    where the money flows (the \`music-streaming\` example makes it
+    \`emerald\`). Say what it means in a \`desc\` or your summary.
+  - **Keep red for trouble**: something deprecated, failing or about to go.
+  - **In the user's document, keep their colors.** Color what you add to
+    match their scheme, and don't recolor what they chose unless asked.
 - **AI systems have their own building blocks:** \`@llm\`, \`@agent\`, \`@mcp\`
   (an MCP server), \`@tool\`, \`@rag\`, \`@embeddings\`, \`@vector_db\`,
   \`@memory\`, \`@guardrails\`, \`@evals\` and more (\`list_types\` with search
@@ -282,9 +431,11 @@ components, connections, descriptions, shapes, icons, colors, payloads, nesting,
 (\`auto_layout_project\`, or explicit layout entries), review history
 (\`get_history\`/\`get_revision\`/\`diff_project\`), report drift (\`report_drift\`/\`get_drift\`), switch workspaces
 (\`get_workspace_info\`, \`list_workspaces\`/\`use_workspace\`), read the docs' worked
-examples (\`list_examples\`/\`get_example\`), and export the agent spec
-(\`compile_for_agent\`). The only human-app-exclusive feature is PNG export —
-point users at the Export menu in the editor. When the user wants to tell the
+examples (\`list_examples\`/\`get_example\`), export the agent spec
+(\`compile_for_agent\`), and draw a project as an SVG image
+(\`render_project\`: save it as a .svg file, put it in a README, or look at
+it). Sharing links, members and PNG export are human-app-exclusive — point
+users at the editor's Share and Export menus. When the user wants to tell the
 Archer team something (a bug, a gap, an idea), \`send_feedback\` sends it as
 them, like "Send feedback" in the app — only when they ask.
 

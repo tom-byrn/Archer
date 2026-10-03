@@ -239,8 +239,8 @@ export const TOOL_GROUPS: readonly ToolGroup[] = [
   {
     title: "Canvas",
     intro:
-      "Change how the diagram is drawn without touching the architecture. It saves a revision. (Planes and nesting are architecture: write them in the source.)",
-    tools: ["auto_layout_project"],
+      "Draw the diagram, or change how it's drawn without touching the architecture. `render_project` only reads; `auto_layout_project` saves a revision. (Planes and nesting are architecture: write them in the source.)",
+    tools: ["render_project", "auto_layout_project"],
   },
   {
     title: "History",
@@ -334,6 +334,8 @@ api -> payments @http
     },
     notes: [
       "The same checks as the write gate on `create_project` and `update_project`: a source that validates clean will save. Only errors make `valid` false.",
+      "When a canvas (the top level, or the inside of a component) holds more than 12 components or draws more than 16 lines between them, the result also has `hints`: one sentence per crowded canvas, saying which and to nest its parts. They're advice: `valid` doesn't depend on them.",
+      "`hints` also says so when most components would be drawn grey: at least four, and at least half, have no `color` and are untyped or a vendor-neutral type. Color them by role (see the guide).",
     ],
   },
   format_source: {
@@ -553,6 +555,8 @@ api -> db @sql
     notes: [
       "The title comes from the `arch` header. The document is saved canonical and laid out. Without a `summary` the revision reads \"Created the project\".",
       "A document with errors saves nothing. The error result lists them: `{ \"message\": \"REJECTED — fix these errors and retry.\", \"errors\": [\"E101 [error] line 3: …\"], \"warnings\": [] }`.",
+      "When a canvas (the top level, or the inside of a component) holds more than 12 components or draws more than 16 lines between them, the result also has `hints`: one sentence per crowded canvas, saying which and to nest its parts. They're advice and never block the write.",
+      "`hints` also says so when most components would be drawn grey: at least four, and at least half, have no `color` and are untyped or a vendor-neutral type. Color them by role (see the guide).",
     ],
   },
   update_project: {
@@ -570,6 +574,7 @@ api -> db @sql
       "The source replaces the whole document, so start from what `get_project` returned. Rejected writes return the same error result as `create_project` and save nothing.",
       "Components that still exist keep their canvas positions and new ones are placed. Entries in a `layout` block you send win over the stored ones.",
       "An update that changes nothing adds no revision.",
+      "Like `create_project`, the result has `hints` when a canvas is too crowded to read at a glance.",
     ],
   },
   delete_project: {
@@ -580,6 +585,15 @@ api -> db @sql
   },
 
   // --- canvas ------------------------------------------------------------------
+  render_project: {
+    access: "read",
+    args: { project_id: PROJECT, theme: "dark" },
+    result: '<svg xmlns="http://www.w3.org/2000/svg" …</svg>',
+    notes: [
+      "The SVG markup itself, ready to save as a `.svg` file or put in a README. It's the picture a public share link's `image.svg` shows, but the project needs no share link: any member of the workspace, viewers included, can render it.",
+      "It draws the top level: planes as regions, components with their shapes, icons, logos and colors, and the connections between them. A component with components nested in it is one box with a count. `theme` is `light` (the default) or `dark`.",
+    ],
+  },
   auto_layout_project: {
     access: "write",
     args: { project_id: PROJECT, reset: true },

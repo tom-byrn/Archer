@@ -47,6 +47,8 @@ export interface ProjectCreated {
   title: string;
   editor_url: string;
   warnings: string[];
+  /** Present when a canvas is too crowded to read at a glance: how to nest it. Advice, never blocking. */
+  hints?: string[];
 }
 
 export interface ProjectUpdated extends ProjectCreated {

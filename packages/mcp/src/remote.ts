@@ -1,6 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
-import { registerArcherTools } from "./server";
+import { registerArcherTools, type ArcherToolOptions } from "./server";
 
 /** What the hosting route has verified about the caller (OAuth). */
 export interface RemoteAuth {
@@ -24,11 +24,16 @@ export const REMOTE_SERVER_VERSION = "1.7.0";
  * function trusts `auth`.
  *
  * Lives in this package so the app never imports the MCP SDK itself — two
- * copies of the SDK (one per zod peer) do not interoperate.
+ * copies of the SDK (one per zod peer) do not interoperate. `options` carries
+ * what the app supplies to the tools (the SVG renderer).
  */
-export async function handleRemoteRequest(req: Request, auth: RemoteAuth): Promise<Response> {
+export async function handleRemoteRequest(
+  req: Request,
+  auth: RemoteAuth,
+  options: ArcherToolOptions = {},
+): Promise<Response> {
   const server = new McpServer({ name: "archer", version: REMOTE_SERVER_VERSION });
-  registerArcherTools(server);
+  registerArcherTools(server, options);
   const transport = new WebStandardStreamableHTTPServerTransport({
     sessionIdGenerator: undefined,
     enableJsonResponse: true,
