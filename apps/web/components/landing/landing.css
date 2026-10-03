@@ -81,39 +81,56 @@
   }
 }
 
-/* The hero's agent prompt (AgentPromptLine): its opening words type across
-   behind a block cursor, hold, and clear for the next run. The box keeps the
-   full line's width so the copy action beside it never moves; widths are in
-   ch, which the mono font makes exactly one character. --chars is the text's
-   length. Without motion the line just sits there, typed, with its cursor. */
+/* The hero's agent prompt (AgentPromptLine) types across once, a character
+   cell at a time: the prompt's opening words, then the copy action, with a
+   block cursor that ends up blinking after them. Every cell is 1ch, which the
+   mono font makes exactly one character: the action sits 2ch after the
+   opening and its icon gets a 2ch box, so --cells counts them all. The line
+   is revealed with clip-path, which also keeps the action unclickable until
+   it has appeared; once the typing ends the clip goes away, so nothing (a
+   focus ring included) stays cut off. Without motion the line just sits
+   there, typed, with its cursor. */
 .landing-typed {
   display: inline-flex;
   align-items: center;
-  width: calc(var(--chars) * 1ch + 0.6em);
 }
-.landing-typed-text {
-  overflow: hidden;
+.landing-typed-line {
+  display: inline-flex;
+  align-items: center;
   white-space: nowrap;
-  width: calc(var(--chars) * 1ch);
+}
+.landing-typed-action {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 2ch;
+}
+.landing-typed-icon {
+  display: inline-flex;
+  width: 2ch;
 }
 .landing-typed-caret {
   width: 0.55em;
   height: 1.1em;
-  margin-left: 0.05em;
+  margin-left: 0.15em;
   background: var(--accent);
   opacity: 0.7;
 }
 @keyframes landing-type {
-  0% {
-    width: 0;
+  from {
+    clip-path: inset(-4px 100% -4px -4px);
   }
-  22%,
-  88% {
-    width: calc(var(--chars) * 1ch);
+  to {
+    clip-path: inset(-4px 0 -4px -4px);
   }
-  96%,
-  100% {
-    width: 0;
+}
+/* The cursor rides the typing: from the line's start to its resting place
+   just after it. */
+@keyframes landing-type-caret {
+  from {
+    transform: translateX(calc(var(--cells) * -1ch));
+  }
+  to {
+    transform: none;
   }
 }
 @keyframes landing-caret-blink {
@@ -122,12 +139,14 @@
   }
 }
 @media (prefers-reduced-motion: no-preference) {
-  .landing-typed-text {
-    /* Starts once the hero has risen in (its --i is 3). */
-    animation: landing-type 9s steps(var(--chars), end) 600ms infinite backwards;
+  /* Starts once the hero has risen in (the line's --i is 3). */
+  .landing-typed-line {
+    animation: landing-type 2s steps(var(--cells), end) 600ms backwards;
   }
   .landing-typed-caret {
-    animation: landing-caret-blink 1s steps(1) infinite;
+    animation:
+      landing-type-caret 2s steps(var(--cells), end) 600ms backwards,
+      landing-caret-blink 1s steps(1) 2.6s infinite;
   }
 }
 

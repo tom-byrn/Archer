@@ -63,13 +63,18 @@ export function CopyPromptButton() {
   );
 }
 
-/** The prompt's opening words, typed out on the hero's line. */
+/** The hero line's words: the prompt's opening, then its copy action. */
 const OPENING = "Set me up with Archer…";
+const ACTION = "copy prompt";
+/** How many character cells the line types: the action sits 2 after the
+ * opening, and its icon takes 2 (landing.css lays the line out to match). */
+const CELLS = OPENING.length + 2 + 2 + ACTION.length;
 
 /**
- * The hero's prompt: one quiet line under the buttons, the prompt's opening
- * words typed out like a terminal, and a copy action. Only the action is a
- * button; the whole prompt goes on the clipboard.
+ * The hero's prompt: one quiet line under the buttons that types out like a
+ * terminal, the prompt's opening words and then the copy action, and leaves
+ * its cursor blinking after them. Only the action is a button; the whole
+ * prompt goes on the clipboard.
  */
 export function AgentPromptLine() {
   const { copied, copy } = useCopyPrompt();
@@ -78,22 +83,26 @@ export function AgentPromptLine() {
       <span aria-hidden className="text-accent">
         ❯
       </span>
-      <span className="landing-typed" style={{ "--chars": OPENING.length } as React.CSSProperties}>
-        <span className="landing-typed-text">{OPENING}</span>
+      <span className="landing-typed" style={{ "--cells": CELLS } as React.CSSProperties}>
+        <span className="landing-typed-line">
+          <span>{OPENING}</span>
+          <button
+            type="button"
+            onClick={copy}
+            className="landing-typed-action cursor-pointer rounded-sm text-ink-2 underline decoration-line-2 underline-offset-[3px] transition-colors duration-100 hover:text-ink hover:decoration-current"
+          >
+            <span className="landing-typed-icon">
+              <SwapIcon
+                swapped={copied}
+                from={<Icon.Copy className="size-3.5" />}
+                to={<Icon.Check className="size-3.5" />}
+              />
+            </span>
+            {ACTION}
+          </button>
+        </span>
         <span aria-hidden className="landing-typed-caret" />
       </span>
-      <button
-        type="button"
-        onClick={copy}
-        className="inline-flex cursor-pointer items-center gap-1 rounded-sm text-ink-2 underline decoration-line-2 underline-offset-[3px] transition-colors duration-100 hover:text-ink hover:decoration-current"
-      >
-        <SwapIcon
-          swapped={copied}
-          from={<Icon.Copy className="size-3.5" />}
-          to={<Icon.Check className="size-3.5" />}
-        />
-        copy prompt
-      </button>
       <CopiedStatus copied={copied} />
     </div>
   );
