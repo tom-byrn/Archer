@@ -97,8 +97,8 @@ describe("links", () => {
     expect(siteHref("cli.md#archer-push")).toBe("/docs/cli#archer-push");
     expect(siteHref("mcp.md")).toBe("/docs/mcp");
     expect(siteHref("language-spec.md#8-validation")).toBe("/language#8-validation");
-    expect(siteHref("https://archer.tombyrne.dev/language/examples")).toBe("/language/examples");
-    expect(siteHref("https://archer.tombyrne.dev")).toBe("/");
+    expect(siteHref("https://tryarcher.dev/language/examples")).toBe("/language/examples");
+    expect(siteHref("https://tryarcher.dev")).toBe("/");
     expect(siteHref("https://code.claude.com/docs/en/mcp")).toBe("https://code.claude.com/docs/en/mcp");
   });
 });

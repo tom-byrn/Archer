@@ -3,7 +3,7 @@ import pkg from "./package.json";
 
 // The Archer app the published bundle talks to by default (src/config.ts);
 // override with ARCHER_DEFAULT_APP_URL at build time.
-const APP_URL = process.env.ARCHER_DEFAULT_APP_URL ?? "https://archer.tombyrne.dev";
+const APP_URL = process.env.ARCHER_DEFAULT_APP_URL ?? "https://tryarcher.dev";
 
 export default defineConfig({
   entry: ["src/cli.ts"],

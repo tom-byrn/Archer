@@ -8,7 +8,7 @@ structured detail inside every node. The whole canvas *is* one `.arch` text
 file: dragging a box edits the file, editing the file re-renders the canvas,
 and one click compiles it into a precise spec you paste to a coding agent.
 
-![Architecture](https://archer.tombyrne.dev/share/c_cjygFhmmD5DB3S/image.svg?theme=dark)
+![Architecture](https://tryarcher.dev/share/c_cjygFhmmD5DB3S/image.svg?theme=dark)
 
 ## Why
 
@@ -71,7 +71,7 @@ web -> api @http
 | `packages/cli` | The `archer` command (npm: `archerctl`): `check` / `fmt` for `.arch` files in CI and agent shells, `init`, `login`, `push` / `pull`, and `archer mcp` (stdio bridge to the hosted server). See [docs/cli.md](docs/cli.md). |
 | `apps/web` | Next.js app: React Flow canvas, palette, detail panel, live code pane, drill-down navigation, Convex persistence. |
 
-Docs: [language spec](docs/language-spec.md) · [MCP server](docs/mcp.md) · [CLI](docs/cli.md) · [repo sync](docs/repo-sync.md) · [product spec](docs/product-spec.md) · [roadmap](docs/roadmap.md). The site publishes the first three at [/language](https://archer.tombyrne.dev/language), [/docs/mcp](https://archer.tombyrne.dev/docs/mcp) (with a tool reference generated from the server) and [/docs/cli](https://archer.tombyrne.dev/docs/cli).
+Docs: [language spec](docs/language-spec.md) · [MCP server](docs/mcp.md) · [CLI](docs/cli.md) · [repo sync](docs/repo-sync.md) · [product spec](docs/product-spec.md) · [roadmap](docs/roadmap.md). The site publishes the first three at [/language](https://tryarcher.dev/language), [/docs/mcp](https://tryarcher.dev/docs/mcp) (with a tool reference generated from the server) and [/docs/cli](https://tryarcher.dev/docs/cli).
 
 ## Run it
 

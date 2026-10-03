@@ -1,12 +1,12 @@
 # archerctl
 
-The command-line tool for [Archer](https://archer.tombyrne.dev), an
+The command-line tool for [Archer](https://tryarcher.dev), an
 architecture canvas that compiles to and from an agent-readable language
 (`.arch` files). The package installs one command, `archer`, which checks and
 formats `.arch` files, keeps a file in sync with a project in your workspace,
 and runs the Archer MCP server for agents that can only start local servers.
 
-**Documentation:** [archer.tombyrne.dev/docs/cli](https://archer.tombyrne.dev/docs/cli)
+**Documentation:** [tryarcher.dev/docs/cli](https://tryarcher.dev/docs/cli)
 
 ```sh
 npx archerctl init           # starter architecture.arch + .mcp.json entry
@@ -50,9 +50,9 @@ no sign-in, so they work in CI:
 ```
 
 **Environment.** `ARCHER_APP_URL` — the Archer app to talk to (default:
-`https://archer.tombyrne.dev`); the MCP server is `$ARCHER_APP_URL/mcp`, and
+`https://tryarcher.dev`); the MCP server is `$ARCHER_APP_URL/mcp`, and
 each app needs its own `archer login`.
 
-More: the [MCP server](https://archer.tombyrne.dev/docs/mcp), and the `.arch`
-language's [reference](https://archer.tombyrne.dev/language) and
-[examples](https://archer.tombyrne.dev/language/examples).
+More: the [MCP server](https://tryarcher.dev/docs/mcp), and the `.arch`
+language's [reference](https://tryarcher.dev/language) and
+[examples](https://tryarcher.dev/language/examples).

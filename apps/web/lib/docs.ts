@@ -20,7 +20,7 @@ export function readDoc(name: DocName): string {
 }
 
 /** The origin the docs files use for links to the site (they're read on GitHub and npm too). */
-const DOCS_ORIGIN = "https://archer.tombyrne.dev";
+const DOCS_ORIGIN = "https://tryarcher.dev";
 
 /** Links between the docs files, and the pages that render them. */
 const DOC_PAGES: Record<string, string> = {

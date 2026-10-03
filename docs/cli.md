@@ -145,7 +145,7 @@ The document's title is `--title`, or the directory's name in title case
 ```console
 $ archer init --title "My Shop"
 architecture.arch: created
-.mcp.json: created (MCP server "archer" → https://archer.tombyrne.dev/mcp)
+.mcp.json: created (MCP server "archer" → https://tryarcher.dev/mcp)
 
 Next:
   archer check             validate every .arch file here (exit 1 on errors; --json for machines)
@@ -159,7 +159,7 @@ Next:
 archer guide
 ```
 
-Prints the Archer [language specification](https://archer.tombyrne.dev/language)
+Prints the Archer [language specification](https://tryarcher.dev/language)
 as markdown. Hand it to an agent that has a shell but no MCP client:
 `archer guide > ARCHER.md`.
 
@@ -176,9 +176,9 @@ result on a `localhost` address it listens on for the next five minutes.
 
 ```console
 $ archer login
-Sign in to https://archer.tombyrne.dev in your browser:
+Sign in to https://tryarcher.dev in your browser:
   https://…/oauth/authorize?response_type=code&client_id=…
-Signed in to archer.tombyrne.dev — workspace Personal (owner)
+Signed in to tryarcher.dev — workspace Personal (owner)
 ```
 
 The sign-in page opens in your default browser, and its address is printed
@@ -250,9 +250,9 @@ to it.
 
 ```console
 $ archer push shop.arch -m "First cut"
-Created "Shop" — https://archer.tombyrne.dev/documents/k57bmtyf4pmj3fmrbrz9hq7qwn6ypcp5
+Created "Shop" — https://tryarcher.dev/documents/k57bmtyf4pmj3fmrbrz9hq7qwn6ypcp5
 $ archer push shop.arch -m "Add a cache"
-Updated "Shop" — https://archer.tombyrne.dev/documents/k57bmtyf4pmj3fmrbrz9hq7qwn6ypcp5
+Updated "Shop" — https://tryarcher.dev/documents/k57bmtyf4pmj3fmrbrz9hq7qwn6ypcp5
 ```
 
 The file is checked first. If it has errors, nothing is saved:
@@ -365,7 +365,7 @@ the file Claude Code and other MCP clients read:
   "mcpServers": {
     "archer": {
       "type": "http",
-      "url": "https://archer.tombyrne.dev/mcp"
+      "url": "https://tryarcher.dev/mcp"
     }
   }
 }
@@ -437,7 +437,7 @@ or `team` and `role` is `owner`, `editor` or `viewer`.
 
 | Variable | Description |
 | --- | --- |
-| `ARCHER_APP_URL` | The Archer app to use. Defaults to `https://archer.tombyrne.dev`. The MCP server is `$ARCHER_APP_URL/mcp`, and sign-ins are kept per server, so a different app needs its own `archer login`. `archer --help` shows the current value. |
+| `ARCHER_APP_URL` | The Archer app to use. Defaults to `https://tryarcher.dev`. The MCP server is `$ARCHER_APP_URL/mcp`, and sign-ins are kept per server, so a different app needs its own `archer login`. `archer --help` shows the current value. |
 
 Point it at another deployment, or at a local development server:
 
@@ -626,7 +626,7 @@ tsup bundles `src/cli.ts` into `dist/cli.js` (ESM, Node 20). It inlines the
 private workspace packages (`@archer/lang`, `@archer/catalog` and the parts
 of `@archer/mcp` the CLI uses), while real npm dependencies stay external. The
 build fixes two values: the version, from `package.json`, and the default
-app, from `ARCHER_DEFAULT_APP_URL` (default `https://archer.tombyrne.dev`).
+app, from `ARCHER_DEFAULT_APP_URL` (default `https://tryarcher.dev`).
 Set that variable at build time to target another deployment. Bump `version`
 in `packages/cli/package.json` for each release, and keep
 `packages/cli/README.md`, the npm page, in step with this file.
