@@ -116,8 +116,9 @@ still reads at a glance as five boxes and four lines:
     web -> core @http
 
 Each of those boxes then gets the same treatment inside (\`core.documents\`
-can hold its own parts, and so on). The \`nesting\` worked example
-(\`get_example\`) shows a component opened up.
+can hold its own parts, and so on). The \`nesting\` and \`music-streaming\`
+worked examples (\`get_example\`) show more: the second is a whole product
+whose top level is nine boxes.
 
 \`create_project\`, \`update_project\` and \`validate_source\` return
 \`hints\` when a canvas is over budget, naming it. When you are designing the

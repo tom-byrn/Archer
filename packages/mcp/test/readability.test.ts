@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { format, parse } from "@archer/lang";
 import { CANVAS_BUDGET, analyzeSource, prepareSource, readabilityHints, typeTags } from "../src/analysis";
+import { EXAMPLES } from "../src/examples";
 import { GUIDE } from "../src/guide";
 
 // Write results nudge agents to nest when a canvas gets too crowded to read
@@ -64,5 +65,9 @@ describe("readability hints", () => {
     expect([...a.errors, ...a.warnings].map((d) => d.message)).toEqual([]);
     expect(format(a.doc)).toBe(source);
     expect(readabilityHints(a.doc)).toEqual([]);
+  });
+
+  it.each(EXAMPLES.map((e) => [e.slug, e.source] as const))("stay quiet for the worked example %s", (_, source) => {
+    expect(hints(source)).toEqual([]);
   });
 });
