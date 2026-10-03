@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "description": "Check, format and sync Archer (.arch) architecture files — and reach the Archer MCP server.",
   "license": "MIT",
-  "homepage": "https://archer.tombyrne.dev",
+  "homepage": "https://tryarcher.dev",
   "keywords": [
     "archer",
     "architecture",

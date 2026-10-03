@@ -76,7 +76,7 @@ Router + React Flow + Convex).
   users get the dashboard at `/`. The sandbox is the real `ArchCanvas` in
   `embedded` mode on a local `useArchDoc` (no Convex), lazy-loaded so React
   Flow stays out of the first paint. Absolute URLs come from `lib/site.ts`
-  (`NEXT_PUBLIC_SITE_URL`, default `https://archer.tombyrne.dev`).
+  (`NEXT_PUBLIC_SITE_URL`, default `https://tryarcher.dev`).
 - Docs: `/language` (the spec) and `/language/examples` (worked examples from
   `packages/mcp/src/examples.ts`, which agents also read through the MCP
   tools `list_examples`/`get_example`). Example sources must stay canonical

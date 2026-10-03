@@ -6,7 +6,7 @@ and record whether the code still matches the design. It works with any
 client that speaks the [Model Context Protocol](https://modelcontextprotocol.io):
 Claude Code, Claude, Cursor, VS Code, Codex and more.
 
-- **Address:** `https://archer.tombyrne.dev/mcp` (Streamable HTTP)
+- **Address:** `https://tryarcher.dev/mcp` (Streamable HTTP)
 - **Sign-in:** in your browser, with GitHub. There are no API keys to create
   or paste.
 - **Tools:** 26, covering projects, the language, component types, the
@@ -26,7 +26,7 @@ the deployment you're using.
 ### Claude Code
 
 ```sh
-claude mcp add --transport http archer https://archer.tombyrne.dev/mcp
+claude mcp add --transport http archer https://tryarcher.dev/mcp
 ```
 
 Then run `/mcp` in Claude Code, choose `archer`, and pick **Authenticate**.
@@ -42,7 +42,7 @@ adds it for all your projects. `--scope project` writes it to the project's
 
 Add Archer as a custom connector: in Claude, go to **Customize → Connectors**,
 choose **Add custom connector**, and paste
-`https://archer.tombyrne.dev/mcp`. Then **Connect** and sign in. Archer needs
+`https://tryarcher.dev/mcp`. Then **Connect** and sign in. Archer needs
 no OAuth client ID or secret: if Claude asks how to register, choose automatic
 registration. On Team and Enterprise plans an owner adds the connector for the
 organization first. See
@@ -57,7 +57,7 @@ Add the server to `.cursor/mcp.json` in your project, or to
 {
   "mcpServers": {
     "archer": {
-      "url": "https://archer.tombyrne.dev/mcp"
+      "url": "https://tryarcher.dev/mcp"
     }
   }
 }
@@ -75,7 +75,7 @@ For GitHub Copilot's agent mode, add the server to `.vscode/mcp.json`, or run
   "servers": {
     "archer": {
       "type": "http",
-      "url": "https://archer.tombyrne.dev/mcp"
+      "url": "https://tryarcher.dev/mcp"
     }
   }
 }
@@ -87,7 +87,7 @@ VS Code opens the browser to sign in the first time the server starts. See
 ### Codex
 
 ```sh
-codex mcp add archer --url https://archer.tombyrne.dev/mcp
+codex mcp add archer --url https://tryarcher.dev/mcp
 ```
 
 Codex detects the sign-in and opens the browser. To sign in again later, run
@@ -96,7 +96,7 @@ Codex detects the sign-in and opens the browser. To sign in again later, run
 ### Gemini CLI
 
 ```sh
-gemini mcp add --transport http archer https://archer.tombyrne.dev/mcp
+gemini mcp add --transport http archer https://tryarcher.dev/mcp
 ```
 
 Then run `/mcp auth archer` in Gemini CLI to sign in. See
@@ -105,7 +105,7 @@ Then run `/mcp auth archer` in Gemini CLI to sign in. See
 ### Other clients
 
 Add a remote MCP server that uses the **Streamable HTTP** transport, at
-`https://archer.tombyrne.dev/mcp`. Don't configure headers or keys: the
+`https://tryarcher.dev/mcp`. Don't configure headers or keys: the
 client finds the sign-in on its own, registers itself, and opens your
 browser. The details are under [Protocol](#protocol).
 
@@ -152,7 +152,7 @@ npx archerctl init
   "mcpServers": {
     "archer": {
       "type": "http",
-      "url": "https://archer.tombyrne.dev/mcp"
+      "url": "https://tryarcher.dev/mcp"
     }
   }
 }
@@ -210,8 +210,8 @@ update at once. The main things agents do:
 
 - **Learn the language.** Agents are told to read the guide (`get_guide`)
   before they write anything. It holds the workflows, the error codes and the
-  complete [language specification](https://archer.tombyrne.dev/language).
-  The [worked examples](https://archer.tombyrne.dev/language/examples) are
+  complete [language specification](https://tryarcher.dev/language).
+  The [worked examples](https://tryarcher.dev/language/examples) are
   available too (`list_examples`, `get_example`).
 - **Map a codebase.** The agent reads the repository and saves what it finds
   as a new project (`create_project`), with `src` paths that point back into
@@ -262,7 +262,7 @@ Things to ask your agent:
 
 The reference for every tool, generated from the server's own code (its
 parameters, an example call and the result), is on the docs site:
-[archer.tombyrne.dev/docs/mcp#tool-reference](https://archer.tombyrne.dev/docs/mcp#tool-reference).
+[tryarcher.dev/docs/mcp#tool-reference](https://tryarcher.dev/docs/mcp#tool-reference).
 In this repository, `packages/mcp/src/server.ts` registers the tools and
 `packages/mcp/src/reference.ts` holds the examples.
 
@@ -287,7 +287,7 @@ text says why. Rejected writes answer with JSON that lists the problems:
 
 Each diagnostic reads `<code> [<severity>] line <line>: <message>`. Errors
 (`E…`) block a save, and warnings (`W…`) never do. The codes are listed under
-[Validation](https://archer.tombyrne.dev/language#8-validation) in the
+[Validation](https://tryarcher.dev/language#8-validation) in the
 language reference.
 
 | Error | What it means |
@@ -318,7 +318,7 @@ For client developers and the curious:
     register is the name their saves appear under.
   - Every request carries `Authorization: Bearer <access token>`. Without a
     valid token the server answers `401` with
-    `WWW-Authenticate: Bearer error="invalid_token", error_description="…", resource_metadata="https://archer.tombyrne.dev/.well-known/oauth-protected-resource/mcp"`,
+    `WWW-Authenticate: Bearer error="invalid_token", error_description="…", resource_metadata="https://tryarcher.dev/.well-known/oauth-protected-resource/mcp"`,
     which is where clients discover all of the above.
 - **CORS.** Any origin may call the server from a browser.
 - **Resources.** Besides tools, the server offers the agent guide as

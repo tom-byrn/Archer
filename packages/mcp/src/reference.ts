@@ -85,7 +85,7 @@ const TEAM = "jn7dt5pzq1b3wk8m2c9x4v6hre0fs7ya";
 const PROJECT = "k57bmtyf4pmj3fmrbrz9hq7qwn6ypcp5";
 const REV_CREATED = "kd73ac5x2dmbn4xq8v1ng6ytzh7p9wsf";
 const REV_EDITED = "kd7e1q8vd2m3p5sz0b6tyhc9w4xnrj8a";
-const APP = "https://archer.tombyrne.dev";
+const APP = "https://tryarcher.dev";
 const EDITOR_URL = `${APP}/documents/${PROJECT}`;
 const FENCE = "```";
 
@@ -269,7 +269,7 @@ export const TOOL_DOCS: Record<string, ToolDoc> = {
     args: {},
     result: "# Archer MCP Server — Agent Guide\n\nArcher is an architecture-design tool: …",
     notes: [
-      "Markdown: the mental model, the standard workflows, how validation gates writes, the error codes, advice on writing good documents, then the complete [language specification](https://archer.tombyrne.dev/language). The same text is the resource `archer://guide`.",
+      "Markdown: the mental model, the standard workflows, how validation gates writes, the error codes, advice on writing good documents, then the complete [language specification](https://tryarcher.dev/language). The same text is the resource `archer://guide`.",
     ],
   },
   list_examples: {
@@ -288,7 +288,7 @@ export const TOOL_DOCS: Record<string, ToolDoc> = {
       "…",
     ],
     notes: [
-      "The documents on the [Examples](https://archer.tombyrne.dev/language/examples) page. `sandbox_url` opens one in the editor without an account; nothing there is saved.",
+      "The documents on the [Examples](https://tryarcher.dev/language/examples) page. `sandbox_url` opens one in the editor without an account; nothing there is saved.",
     ],
   },
   get_example: {
