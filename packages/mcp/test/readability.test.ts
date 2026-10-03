@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { format, parse } from "@archer/lang";
-import { CANVAS_BUDGET, analyzeSource, prepareSource, readabilityHints, typeTags } from "../src/analysis";
+import { CANVAS_BUDGET, analyzeSource, colorHints, prepareSource, readabilityHints, typeTags } from "../src/analysis";
 import { EXAMPLES } from "../src/examples";
 import { GUIDE } from "../src/guide";
 
@@ -65,9 +65,38 @@ describe("readability hints", () => {
     expect([...a.errors, ...a.warnings].map((d) => d.message)).toEqual([]);
     expect(format(a.doc)).toBe(source);
     expect(readabilityHints(a.doc)).toEqual([]);
+    expect(colorHints(a.doc)).toEqual([]);
   });
 
   it.each(EXAMPLES.map((e) => [e.slug, e.source] as const))("stay quiet for the worked example %s", (_, source) => {
     expect(hints(source)).toEqual([]);
+    expect(colorHints(parse(source).doc)).toEqual([]);
+  });
+});
+
+describe("color hints", () => {
+  const colors = (source: string) => colorHints(parse(source).doc);
+  const doc = (...bodies: string[]) =>
+    `arch "x" v0.2\n` + bodies.map((b, i) => `component c${i} "C${i}"${b}`).join("\n") + "\n";
+
+  it("speak up when most components would be drawn grey", () => {
+    const out = colors(doc("", " @service", " @worker", " @queue", " @postgres"));
+    expect(out).toHaveLength(1);
+    expect(out[0]).toMatch(/^4 of 5 components are drawn grey/);
+    expect(out[0]).toMatch(/"Colors" in get_guide/);
+  });
+
+  it("count nested components too", () => {
+    expect(colors(`arch "x" v0.2\ncomponent a "A" {\n  component b "B"\n  component c "C"\n  component d "D"\n}\n`)).toHaveLength(1);
+  });
+
+  it("are quiet once components have colors, or colored types", () => {
+    expect(colors(doc(" {\n  color sky\n}", " {\n  color blue\n}", " {\n  color teal\n}", "", ""))).toEqual([]);
+    expect(colors(doc(" @postgres", " @stripe", " @aws.s3", " @kafka", ""))).toEqual([]);
+    expect(colors(doc(" @custom.billing", " @custom.billing", " @custom.billing", " @custom.billing"))).toEqual([]);
+  });
+
+  it("leave small documents alone", () => {
+    expect(colors(doc("", "", ""))).toEqual([]);
   });
 });

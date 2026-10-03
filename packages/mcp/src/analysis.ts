@@ -12,7 +12,7 @@ import {
   type Diagnostic,
   type LayoutEntry,
 } from "@archer/lang";
-import { knownConnectionTypes, knownTypes } from "@archer/catalog";
+import { knownConnectionTypes, knownTypes, lookupType } from "@archer/catalog";
 import { ICON_NAMES } from "@archer/catalog/icons";
 
 // Validation and write preparation shared by the hosted MCP tools and the CLI,
@@ -90,6 +90,34 @@ export function readabilityHints(doc: ArchDoc): string[] {
     );
   });
   return hints;
+}
+
+/** What an untyped component and every vendor-neutral catalog type are drawn in. */
+const GREY = "#64748b";
+
+/**
+ * A hint when most of a document would be drawn grey: at least four
+ * components have no `color` and no colored type (untyped, a vendor-neutral
+ * building block like `@service`, or an unknown tag), and they are at least
+ * half of all components. Custom types bring their own color. Advice only.
+ */
+export function colorHints(doc: ArchDoc): string[] {
+  let total = 0;
+  let grey = 0;
+  forEachScope(doc, (_, scope) => {
+    for (const c of scope.components) {
+      total++;
+      if (c.color !== undefined || c.type?.startsWith("custom.")) continue;
+      const type = lookupType(c.type);
+      if (!type || type.color.toLowerCase() === GREY) grey++;
+    }
+  });
+  if (grey < 4 || grey * 2 < total) return [];
+  return [
+    `${grey} of ${total} components are drawn grey (no \`color\`, and untyped or a vendor-neutral type). ` +
+      `Color them by role with 3–6 colors, e.g. \`color sky\` on people and clients, \`color blue\` on services, \`color teal\` on data stores — see "Colors" in get_guide. ` +
+      `In the user's own document, keep their scheme and don't recolor unasked.`,
+  ];
 }
 
 /** The plane each component and plane sits on, by path ("" for none). */

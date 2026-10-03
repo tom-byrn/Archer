@@ -159,24 +159,28 @@ widget -> agent @ws : "chat"
     slug: "icons",
     title: "Coffee Shop",
     summary:
-      "An \`icon\` in a component's body picks the icon it shows: any Phosphor icon by its snake-case name (\`coffee\`, \`receipt\`, \`device_tablet\`) or one of the catalog's (\`database\`, \`queue\`). An untyped component shows no icon until it picks one, so an icon is the quickest way to say what something is without a type. On a typed component it replaces the type's icon and keeps its color, like the book on the Postgres menu. A \`color\` does the same for the color: a palette name (\`amber\`) or any \`\"#rrggbb\"\`, like the coffee brown of the barista's screen. Icons and colors are for readers; an agent implementing the document can ignore them. \`list_types\` lists every icon, and the editor's Icon picker searches them.",
+      "An \`icon\` in a component's body picks the icon it shows: any Phosphor icon by its snake-case name (\`coffee\`, \`receipt\`, \`device_tablet\`) or one of the catalog's (\`database\`, \`queue\`). An untyped component shows no icon until it picks one, so an icon is the quickest way to say what something is without a type. On a typed component it replaces the type's icon and keeps its color, like the book on the Postgres menu. A \`color\` does the same for the color: a palette name (\`amber\`) or any \`\"#rrggbb\"\`, like the coffee brown of the barista's screen. The rest go by role, as the agent guide suggests: the customer and their devices are sky, the Orders service blue. Icons and colors are for readers; an agent implementing the document can ignore them. \`list_types\` lists every icon, and the editor's Icon picker searches them.",
     features: ["icons", "colors"],
     source: `arch "Coffee Shop" v0.2
 
 component customer "Customer" @user {
   shape person
+  color sky
 }
 
 component kiosk "Order Kiosk" {
   icon device_tablet
+  color sky
 }
 
 component app "Mobile App" @mobile {
   shape phone
+  color sky
 }
 
 component orders "Orders" {
   icon receipt
+  color blue
   desc "Takes orders from the kiosk and the app, and tracks each drink from paid to picked up."
 }
 
@@ -266,18 +270,21 @@ web -> api @http
     slug: "nesting",
     title: "Food Delivery",
     summary:
-      "Any component can hold components. Orders owns its API, checkout, tracker and database: on the canvas it's one box with a count of what's inside, and opening it shows those parts, with whatever outside they connect to along the edges. A path reaches a nested component (`orders.checkout`), and a connection can join one or the whole component (`app -> orders`). The courier's side is orange.",
+      "Any component can hold components. Orders owns its API, checkout, tracker and database: on the canvas it's one box with a count of what's inside, and opening it shows those parts, with whatever outside they connect to along the edges. A path reaches a nested component (`orders.checkout`), and a connection can join one or the whole component (`app -> orders`). Colors go by side: the customer's app is sky, Orders and its parts blue, and the courier's side orange.",
     features: ["nesting", "paths", "opening a component"],
     source: `arch "Food Delivery" v0.2
 
 component app "Customer App" @mobile {
   shape phone
+  color sky
 }
 
 component orders "Orders" @service {
+  color blue
   desc "Takes an order from basket to doorstep: the API, checkout, live tracking and its own database."
   src "services/orders"
   component api "Orders API" @service {
+    color blue
     endpoints table ${FENCE}
     | method | path        | purpose        |
     | ------ | ----------- | -------------- |
@@ -286,9 +293,11 @@ component orders "Orders" @service {
     ${FENCE}
   }
   component checkout "Checkout" @worker {
+    color blue
     desc "Charges the card, then tells Dispatch the order is paid."
   }
   component tracker "Tracker" @service {
+    color blue
     desc "Takes each courier's position and streams it to the customer's map."
   }
   component db "Orders DB" @postgres {

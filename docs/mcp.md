@@ -277,8 +277,10 @@ Tools answer with a single text item. Most results are JSON. `get_guide`,
 `create_project`, `update_project` and `validate_source` add `hints` when a
 canvas (the top level, or the inside of a component) is too crowded to read
 at a glance: more than 12 components, or more than 16 lines between them.
-Each names the canvas and suggests nesting its parts. Hints never block a
-save.
+Each names the canvas and suggests nesting its parts. `create_project` and
+`validate_source` also hint when most of the diagram would be drawn grey
+(components with no `color` that are untyped or a vendor-neutral type), and
+suggest colors by role. Hints never block a save.
 
 When a call fails, the result is marked as an error (`isError: true`) and its
 text says why. Rejected writes answer with JSON that lists the problems:

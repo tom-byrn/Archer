@@ -329,6 +329,7 @@ api -> payments @http
     notes: [
       "The same checks as the write gate on `create_project` and `update_project`: a source that validates clean will save. Only errors make `valid` false.",
       "When a canvas (the top level, or the inside of a component) holds more than 12 components or draws more than 16 lines between them, the result also has `hints`: one sentence per crowded canvas, saying which and to nest its parts. They're advice: `valid` doesn't depend on them.",
+      "`hints` also says so when most components would be drawn grey: at least four, and at least half, have no `color` and are untyped or a vendor-neutral type. Color them by role (see the guide).",
     ],
   },
   format_source: {
@@ -549,6 +550,7 @@ api -> db @sql
       "The title comes from the `arch` header. The document is saved canonical and laid out. Without a `summary` the revision reads \"Created the project\".",
       "A document with errors saves nothing. The error result lists them: `{ \"message\": \"REJECTED — fix these errors and retry.\", \"errors\": [\"E101 [error] line 3: …\"], \"warnings\": [] }`.",
       "When a canvas (the top level, or the inside of a component) holds more than 12 components or draws more than 16 lines between them, the result also has `hints`: one sentence per crowded canvas, saying which and to nest its parts. They're advice and never block the write.",
+      "`hints` also says so when most components would be drawn grey: at least four, and at least half, have no `color` and are untyped or a vendor-neutral type. Color them by role (see the guide).",
     ],
   },
   update_project: {

@@ -71,29 +71,37 @@ still reads at a glance as five boxes and four lines:
 
     component signer "Signer" {
       shape person
+      color sky
     }
 
     component web "Web App" @vercel.nextjs {
       shape browser
+      color sky
       src "apps/web"
     }
 
     component core "Core" {
+      color blue
       desc "Business logic every app shares: documents, signing, auth."
       src "packages/lib"
       component documents "Documents" {
+        color blue
         desc "Envelopes, recipients and fields."
       }
       component signing "PDF Signing" {
+        color blue
         src "packages/signing"
       }
       component auth "Auth" {
         shape lock
+        color rose
         src "packages/auth"
       }
     }
 
     component data "Data" {
+      icon database
+      color teal
       component db "Postgres" @postgres {
         shape cylinder
       }
@@ -159,9 +167,11 @@ fails, call \`get_workspace_info\` and relay what it reports.
    \`@database\`, \`@object_storage\`, …) and real technologies for concrete
    stacks (\`@postgres\`, \`@aws.sqs\`, \`@kafka\`, …).
 2. Plan the top level first: the five to nine boxes that tell the story,
-   then what goes inside each (see "Keep every canvas readable").
+   then what goes inside each (see "Keep every canvas readable"). Give
+   components colors by role as you write them (see "Colors").
 3. \`create_project\` with your source. Same validation gates as update.
-   If the result has \`hints\`, a canvas is too crowded: nest and update.
+   If the result has \`hints\` (a crowded canvas, or a mostly grey
+   diagram), fix them with \`update_project\`.
 4. The result includes an editor URL — share it with the user.
 
 ### Use a worked example
@@ -332,12 +342,44 @@ The full language specification is at the end of this guide. Key habits:
   \`queue\`; Phosphor's own name works for those too, \`hard_drives\` for
   \`server\`). \`list_types\` lists every icon by group. Give an untyped
   component an icon when one says what it is; a typed one rarely needs one.
-- **Colors.** A component is drawn in its type's color unless its body names
-  one with \`color <name>\` (\`red\`, \`orange\`, \`amber\`, \`yellow\`,
-  \`lime\`, \`green\`, \`emerald\`, \`teal\`, \`cyan\`, \`sky\`, \`blue\`,
-  \`indigo\`, \`violet\`, \`purple\`, \`fuchsia\`, \`pink\`, \`rose\`,
-  \`slate\`) or \`color "#rrggbb"\`. Keep colors the human chose; add one
-  only when asked, or to group related components (one team's, the new ones).
+- **Colors — color every document you write.** A component is drawn in its
+  type's color unless its body names one with \`color <name>\` (\`red\`,
+  \`orange\`, \`amber\`, \`yellow\`, \`lime\`, \`green\`, \`emerald\`,
+  \`teal\`, \`cyan\`, \`sky\`, \`blue\`, \`indigo\`, \`violet\`,
+  \`purple\`, \`fuchsia\`, \`pink\`, \`rose\`, \`slate\`) or
+  \`color "#rrggbb"\`. Untyped components and the vendor-neutral types
+  (\`@service\`, \`@queue\`, \`@worker\`, \`@database\`, …) are slate grey,
+  so a document without colors is a wall of grey that hides its structure.
+  A color draws the component's icon in it and tints its card or shape; a
+  product's logo keeps its own colors, so on a vendor type it only tints the
+  card. Rough guidelines:
+  - **Color by meaning, with 3–6 colors per document**, and keep the same
+    scheme on every canvas. By role (below) suits most systems; by domain
+    or team suits a story about ownership (each domain one color, its parts
+    too).
+  - **Role colors**, when nothing better suggests itself:
+
+    | Role | Color |
+    | ---- | ----- |
+    | People, clients and apps | \`sky\` |
+    | Edge: gateways, CDNs, load balancers | \`indigo\` |
+    | Services and business logic | \`blue\` |
+    | Data: databases, caches, storage | \`teal\` |
+    | Messaging: queues, streams, events | \`amber\` |
+    | Jobs, workers and schedulers | \`orange\` |
+    | AI: models, agents, RAG | \`violet\` |
+    | Auth and security | \`rose\` |
+    | Outside services | none, or \`slate\`: let them stay quiet |
+
+  - **Same role, same color.** Don't give every component its own color; a
+    rainbow says nothing. A component with parts takes its group's color,
+    and its parts follow the scheme on their own canvas.
+  - **One accent to make a point** is fine: the new parts of a proposal, or
+    where the money flows (the \`music-streaming\` example makes it
+    \`emerald\`). Say what it means in a \`desc\` or your summary.
+  - **Keep red for trouble**: something deprecated, failing or about to go.
+  - **In the user's document, keep their colors.** Color what you add to
+    match their scheme, and don't recolor what they chose unless asked.
 - **AI systems have their own building blocks:** \`@llm\`, \`@agent\`, \`@mcp\`
   (an MCP server), \`@tool\`, \`@rag\`, \`@embeddings\`, \`@vector_db\`,
   \`@memory\`, \`@guardrails\`, \`@evals\` and more (\`list_types\` with search
