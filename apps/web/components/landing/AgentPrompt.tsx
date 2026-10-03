@@ -63,33 +63,38 @@ export function CopyPromptButton() {
   );
 }
 
+/** The prompt's opening words, typed out on the hero's line. */
+const OPENING = "Set me up with Archer…";
+
 /**
  * The hero's prompt: one quiet line under the buttons, the prompt's opening
- * words and a copy action. The whole prompt goes on the clipboard.
+ * words typed out like a terminal, and a copy action. Only the action is a
+ * button; the whole prompt goes on the clipboard.
  */
 export function AgentPromptLine() {
   const { copied, copy } = useCopyPrompt();
   return (
-    <>
+    <div className="mono inline-flex items-center gap-2.5 px-2 py-1 text-sm text-ink-3">
+      <span aria-hidden className="text-accent">
+        ❯
+      </span>
+      <span className="landing-typed" style={{ "--chars": OPENING.length } as React.CSSProperties}>
+        <span className="landing-typed-text">{OPENING}</span>
+        <span aria-hidden className="landing-typed-caret" />
+      </span>
       <button
         type="button"
         onClick={copy}
-        className="mono group inline-flex items-center gap-2.5 rounded-sm px-2 py-1 text-sm text-ink-3 transition-colors duration-100 hover:text-ink-2"
+        className="inline-flex cursor-pointer items-center gap-1 rounded-sm text-ink-2 underline decoration-line-2 underline-offset-[3px] transition-colors duration-100 hover:text-ink hover:decoration-current"
       >
-        <span aria-hidden className="text-accent">
-          ❯
-        </span>
-        <span>Set me up with Archer…</span>
-        <span className="inline-flex items-center gap-1 text-ink-2 underline decoration-line-2 underline-offset-[3px] transition-colors duration-100 group-hover:text-ink group-hover:decoration-current">
-          <SwapIcon
-            swapped={copied}
-            from={<Icon.Copy className="size-3.5" />}
-            to={<Icon.Check className="size-3.5" />}
-          />
-          copy prompt
-        </span>
+        <SwapIcon
+          swapped={copied}
+          from={<Icon.Copy className="size-3.5" />}
+          to={<Icon.Check className="size-3.5" />}
+        />
+        copy prompt
       </button>
       <CopiedStatus copied={copied} />
-    </>
+    </div>
   );
 }

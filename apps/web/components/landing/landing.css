@@ -81,6 +81,56 @@
   }
 }
 
+/* The hero's agent prompt (AgentPromptLine): its opening words type across
+   behind a block cursor, hold, and clear for the next run. The box keeps the
+   full line's width so the copy action beside it never moves; widths are in
+   ch, which the mono font makes exactly one character. --chars is the text's
+   length. Without motion the line just sits there, typed, with its cursor. */
+.landing-typed {
+  display: inline-flex;
+  align-items: center;
+  width: calc(var(--chars) * 1ch + 0.6em);
+}
+.landing-typed-text {
+  overflow: hidden;
+  white-space: nowrap;
+  width: calc(var(--chars) * 1ch);
+}
+.landing-typed-caret {
+  width: 0.55em;
+  height: 1.1em;
+  margin-left: 0.05em;
+  background: var(--accent);
+  opacity: 0.7;
+}
+@keyframes landing-type {
+  0% {
+    width: 0;
+  }
+  22%,
+  88% {
+    width: calc(var(--chars) * 1ch);
+  }
+  96%,
+  100% {
+    width: 0;
+  }
+}
+@keyframes landing-caret-blink {
+  50% {
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .landing-typed-text {
+    /* Starts once the hero has risen in (its --i is 3). */
+    animation: landing-type 9s steps(var(--chars), end) 600ms infinite backwards;
+  }
+  .landing-typed-caret {
+    animation: landing-caret-blink 1s steps(1) infinite;
+  }
+}
+
 /* Diamond joints where a horizontal rule meets the column's side rules. The
    offsets centre an 8px box on the crossing of two 1px lines. */
 .landing-joints {
