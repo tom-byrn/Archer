@@ -282,9 +282,11 @@ components, connections, descriptions, shapes, icons, colors, payloads, nesting,
 (\`auto_layout_project\`, or explicit layout entries), review history
 (\`get_history\`/\`get_revision\`/\`diff_project\`), report drift (\`report_drift\`/\`get_drift\`), switch workspaces
 (\`get_workspace_info\`, \`list_workspaces\`/\`use_workspace\`), read the docs' worked
-examples (\`list_examples\`/\`get_example\`), and export the agent spec
-(\`compile_for_agent\`). The only human-app-exclusive feature is PNG export —
-point users at the Export menu in the editor.
+examples (\`list_examples\`/\`get_example\`), export the agent spec
+(\`compile_for_agent\`), and draw a project as an SVG image
+(\`render_project\`: save it as a .svg file, put it in a README, or look at
+it). Sharing links, members and PNG export are human-app-exclusive — point
+users at the editor's Share and Export menus.
 
 ---
 

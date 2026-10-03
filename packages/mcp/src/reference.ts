@@ -239,8 +239,8 @@ export const TOOL_GROUPS: readonly ToolGroup[] = [
   {
     title: "Canvas",
     intro:
-      "Change how the diagram is drawn without touching the architecture. It saves a revision. (Planes and nesting are architecture: write them in the source.)",
-    tools: ["auto_layout_project"],
+      "Draw the diagram, or change how it's drawn without touching the architecture. `render_project` only reads; `auto_layout_project` saves a revision. (Planes and nesting are architecture: write them in the source.)",
+    tools: ["render_project", "auto_layout_project"],
   },
   {
     title: "History",
@@ -574,6 +574,15 @@ api -> db @sql
   },
 
   // --- canvas ------------------------------------------------------------------
+  render_project: {
+    access: "read",
+    args: { project_id: PROJECT, theme: "dark" },
+    result: '<svg xmlns="http://www.w3.org/2000/svg" …</svg>',
+    notes: [
+      "The SVG markup itself, ready to save as a `.svg` file or put in a README. It's the picture a public share link's `image.svg` shows, but the project needs no share link: any member of the workspace, viewers included, can render it.",
+      "It draws the top level: planes as regions, components with their shapes, icons, logos and colors, and the connections between them. A component with components nested in it is one box with a count. `theme` is `light` (the default) or `dark`.",
+    ],
+  },
   auto_layout_project: {
     access: "write",
     args: { project_id: PROJECT, reset: true },

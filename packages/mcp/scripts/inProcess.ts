@@ -18,11 +18,16 @@ export function requireEnv(names: string[], usage: string): void {
   }
 }
 
-export async function connectInProcess(opts: { userId: string; agentName: string }) {
+export async function connectInProcess(opts: {
+  userId: string;
+  agentName: string;
+  /** The SVG renderer the web app passes the tools (render_project). */
+  renderSvg?: (source: string, theme: "light" | "dark") => string;
+}) {
   // Imported late: backend.ts reads CONVEX_URL at import time.
   const { registerArcherTools } = await import("../src/server");
   const server = new McpServer({ name: "archer", version: "script" });
-  registerArcherTools(server);
+  registerArcherTools(server, { renderSvg: opts.renderSvg });
 
   const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
   await server.connect(serverTransport);

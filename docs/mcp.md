@@ -184,8 +184,8 @@ From then on the agent acts as you:
   name, as registered at sign-in ("Claude Code", "Cursor", "Archer CLI"…),
   with the one-line summary the agent gives. The canvas highlights what an
   agent changed until you review it.
-- Sharing links, workspace members and invitations, and image export stay in
-  the app.
+- Sharing links, workspace members and invitations, and PNG export stay in
+  the app. Agents can draw a project as an SVG with `render_project`.
 
 To disconnect an agent, remove the server from the client or clear its
 sign-in there (in Claude Code, from `/mcp`).
@@ -271,8 +271,8 @@ In this repository, `packages/mcp/src/server.ts` registers the tools and
 ## Results and errors
 
 Tools answer with a single text item. Most results are JSON. `get_guide`,
-`format_source`, `auto_layout_source` and `compile_for_agent` answer with
-plain text: markdown or Archer source.
+`format_source`, `auto_layout_source`, `compile_for_agent` and
+`render_project` answer with plain text: markdown, Archer source or SVG.
 
 When a call fails, the result is marked as an error (`isError: true`) and its
 text says why. Rejected writes answer with JSON that lists the problems:

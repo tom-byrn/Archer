@@ -13,6 +13,10 @@ import { seedExample } from "./seedExample";
 process.env.ARCHER_SERVICE_SECRET ??= "test-service-secret";
 
 const ANY = "…";
+
+/** Stands in for the web app's renderer (lib/svg.ts); apps/web/test/mcpRender.test.ts checks the real one. */
+const renderSvg = (source: string, theme: "light" | "dark") =>
+  `<svg xmlns="http://www.w3.org/2000/svg" data-theme="${theme}"><!-- ${source.length} --></svg>`;
 const documented = TOOL_GROUPS.flatMap((g) => g.tools);
 
 /** Where a result differs from its documented example. `"…"` matches anything (see ToolDoc.result). */
@@ -81,7 +85,7 @@ describe("tool reference", () => {
     const fake = createFakeBackend();
     seedExample(fake);
     Object.assign(db, fake.db);
-    const mcp = await connectInProcess({ userId: EXAMPLE_STATE.user, agentName: EXAMPLE_STATE.agentName });
+    const mcp = await connectInProcess({ userId: EXAMPLE_STATE.user, agentName: EXAMPLE_STATE.agentName, renderSvg });
     close = () => mcp.client.close();
 
     const doc = TOOL_DOCS[name]!;

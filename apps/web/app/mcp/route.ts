@@ -2,6 +2,8 @@ import { after } from "next/server";
 import { auth, clerkClient } from "@clerk/nextjs/server";
 import { verifyClerkToken } from "@clerk/mcp-tools/next";
 import { handleRemoteRequest } from "@archer/mcp/remote";
+import { LOGOS } from "@archer/catalog/logos";
+import { renderArchSvg } from "@/lib/svg";
 import { recordToolCalls, toolCallsIn } from "@/lib/server/usage";
 
 /**
@@ -71,6 +73,10 @@ async function agentNameFor(clientId: string): Promise<string> {
   return clientNames.get(clientId) ?? "agent";
 }
 
+/** render_project draws what /share/<slug>/image.svg draws, logos included. */
+const renderSvg = (source: string, theme: "light" | "dark") =>
+  renderArchSvg(source, { theme, logos: LOGOS });
+
 async function handle(req: Request): Promise<Response> {
   const header = req.headers.get("authorization") ?? "";
   const token = /^Bearer\s+(.+)$/i.exec(header)?.[1];
@@ -91,7 +97,7 @@ async function handle(req: Request): Promise<Response> {
     scopes: verified.scopes,
     userId,
     agentName,
-  });
+  }, { renderSvg });
   if (calls.length > 0) {
     const ms = Date.now() - started;
     const copy = res.clone();

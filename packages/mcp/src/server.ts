@@ -199,12 +199,22 @@ const requireProject = async (ws: Workspace, projectId: string) => {
   return doc;
 };
 
+/** What the host supplies that this package can't do itself. */
+export interface ArcherToolOptions {
+  /**
+   * Draw a document as an SVG, the way its share image is drawn. The renderer
+   * lives in the web app (`lib/svg.ts`), which passes it in; without it
+   * `render_project` answers with an error.
+   */
+  renderSvg?: (source: string, theme: "light" | "dark") => string;
+}
+
 /**
  * Register Archer's resources and tools on a server. Nothing is registered at
  * import time: the hosted HTTP route (remote.ts) builds a fresh McpServer per
  * request and calls this. Every call carries an OAuth-verified user id.
  */
-export function registerArcherTools(server: McpServer): void {
+export function registerArcherTools(server: McpServer, options: ArcherToolOptions = {}): void {
   // --- documentation ----------------------------------------------------------
 
   server.registerResource(
@@ -643,6 +653,25 @@ export function registerArcherTools(server: McpServer): void {
         reset ? "Re-arranged the canvas" : "Placed unpositioned components",
       );
       return text({ id: project_id, reset: reset ?? false, saved: true });
+    }),
+  );
+
+  server.registerTool(
+    "render_project",
+    {
+      title: "Render a project as SVG",
+      description:
+        "Draw a stored project's canvas as an SVG image — the same picture as its share image: the top level with its planes, connections, icons and logos, where a component with components nested in it shows as one box with a count. Returns the SVG markup itself (not JSON), ready to save as a .svg file, embed in a README or docs, or inspect. Read-only: nothing is saved and the project doesn't need a share link. theme: light (default) or dark.",
+      inputSchema: {
+        project_id: z.string(),
+        theme: z.enum(["light", "dark"]).optional().describe("Colors to draw in (default light)"),
+      },
+    },
+    wrap(async ({ project_id, theme }) => {
+      if (!options.renderSvg) throw new Error("Rendering isn't available on this server.");
+      const ws = await requireWorkspace();
+      const doc = await requireProject(ws, project_id);
+      return text(options.renderSvg(doc.source, theme ?? "light"));
     }),
   );
 
