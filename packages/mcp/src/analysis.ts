@@ -53,6 +53,45 @@ export function analyzeSource(source: string, types: Set<string>): Analysis {
   };
 }
 
+/**
+ * How much one canvas can show and still read at a glance. Past either, write
+ * results carry a hint to nest (see "Keep every canvas readable" in the
+ * guide). The guide asks for about 5–9 components; these are the ceilings.
+ */
+export const CANVAS_BUDGET = { components: 12, connections: 16 };
+
+/**
+ * Readability hints for a document: one per canvas (the top level, or the
+ * inside of a component) that holds more components, or draws more lines
+ * between them, than CANVAS_BUDGET. A connection to a nested part is drawn on
+ * every canvas above it, to the box holding it, so lines count per pair of
+ * boxes. Advice only: nothing is blocked, and it isn't a diagnostic.
+ */
+export function readabilityHints(doc: ArchDoc): string[] {
+  const hints: string[] = [];
+  forEachScope(doc, (path, scope) => {
+    const n = scope.components.length;
+    const inside = (p: readonly string[]) =>
+      p.length > path.length && path.every((seg, i) => p[i] === seg);
+    const pairs = new Set<string>();
+    for (const c of doc.connections) {
+      if (!inside(c.source) || !inside(c.target)) continue;
+      const a = c.source[path.length]!;
+      const b = c.target[path.length]!;
+      if (a !== b) pairs.add(a < b ? `${a} ${b}` : `${b} ${a}`);
+    }
+    if (n <= CANVAS_BUDGET.components && pairs.size <= CANVAS_BUDGET.connections) return;
+    const where = path.length === 0 ? "The top level" : `The inside of ${path.join(".")}`;
+    hints.push(
+      `${where} shows ${n} component${n === 1 ? "" : "s"} and ${pairs.size} line${pairs.size === 1 ? "" : "s"} between them; ` +
+        `a canvas reads at a glance with about 5–9. Nest the parts that work together inside a component named for what they do ` +
+        `(any depth; planes don't help, they stay on the same canvas), so this canvas shows only the main pieces. ` +
+        `See "Keep every canvas readable" in get_guide. If you are only making a small edit to the user's document, tell them instead of restructuring it unasked.`,
+    );
+  });
+  return hints;
+}
+
 /** The plane each component and plane sits on, by path ("" for none). */
 function planesOf(doc: ArchDoc): Map<string, string> {
   const out = new Map<string, string>();
@@ -87,7 +126,7 @@ export function mergeLayout(previous: ArchDoc, next: ArchDoc): ArchDoc {
 }
 
 export type PreparedWrite =
-  | { ok: true; text: string; title: string; warnings: Diagnostic[] }
+  | { ok: true; text: string; title: string; warnings: Diagnostic[]; hints: string[] }
   | { ok: false; errors: Diagnostic[]; warnings: Diagnostic[] };
 
 /** Validate-gate a write; returns canonical text or the blocking errors. */
@@ -108,5 +147,6 @@ export function prepareSource(
     text: format(laidOut),
     title: analysis.doc.title,
     warnings: analysis.warnings,
+    hints: readabilityHints(analysis.doc),
   };
 }

@@ -18,7 +18,7 @@ import {
 } from "@archer/lang";
 import { CATALOG, CONNECTION_TYPES } from "@archer/catalog";
 import { ICON_GROUPS, isIcon } from "@archer/catalog/icons";
-import { formatDiagnostic } from "./analysis";
+import { formatDiagnostic, readabilityHints } from "./analysis";
 import {
   APP_URL,
   CONVEX_URL,
@@ -156,6 +156,9 @@ const revisionView = (r: RevisionRow, previous: ArchDoc | null) => {
   };
 };
 
+/** `{ hints }` when a canvas is over budget, else nothing, so a tidy document's result stays as it was. */
+const hintsField = (hints: string[]): { hints?: string[] } => (hints.length > 0 ? { hints } : {});
+
 /** The repository a project describes, and the file it's stored in, as get_project reports it. */
 const repositoryView = (doc: ProjectDoc): ProjectRead["repository"] => {
   const r = doc.repo;
@@ -287,7 +290,7 @@ export function registerArcherTools(server: McpServer, options: ArcherToolOption
     {
       title: "Validate Archer source",
       description:
-        "Parse and validate an Archer document WITHOUT saving anything. Returns { valid, errors, warnings } with codes and line numbers (see the guide's error reference). Use this to check work-in-progress source before create_project/update_project, or to explain why a document is invalid. Errors block writes; warnings never do. Validation knows the built-in catalog AND this workspace's custom types.",
+        "Parse and validate an Archer document WITHOUT saving anything. Returns { valid, errors, warnings } with codes and line numbers (see the guide's error reference). Use this to check work-in-progress source before create_project/update_project, or to explain why a document is invalid. Errors block writes; warnings never do. Validation knows the built-in catalog AND this workspace's custom types. Also returns `hints` when a canvas (the top level, or the inside of a component) has too many components or lines to read at a glance.",
       inputSchema: { source: z.string().describe("Full Archer document text") },
     },
     wrap(async ({ source }) => {
@@ -296,6 +299,7 @@ export function registerArcherTools(server: McpServer, options: ArcherToolOption
         valid: a.errors.length === 0,
         errors: diagnosticsReport(a.errors),
         warnings: diagnosticsReport(a.warnings),
+        ...hintsField(readabilityHints(a.doc)),
       });
     }),
   );
@@ -543,7 +547,7 @@ export function registerArcherTools(server: McpServer, options: ArcherToolOption
     {
       title: "Create a project",
       description:
-        "Create a new Archer project from source. The document is validated first: any ERROR (syntax, unresolved connection endpoint, invalid payload, duplicate id) REJECTS the write and returns the diagnostics — fix and retry. On success the source is auto-laid-out, canonicalized, saved, and the result includes the id and an editor URL to share with the user. Write semantic content only; omit the layout block. Minimum viable document: 'arch \"Title\" v0.2'.",
+        "Create a new Archer project from source. The document is validated first: any ERROR (syntax, unresolved connection endpoint, invalid payload, duplicate id) REJECTS the write and returns the diagnostics — fix and retry. On success the source is auto-laid-out, canonicalized, saved, and the result includes the id and an editor URL to share with the user. Write semantic content only; omit the layout block. Minimum viable document: 'arch \"Title\" v0.2'. Design top-down so it reads at a glance: about 5–9 components on the top level and inside each component, with the rest nested inside the component it belongs to, as many levels deep as the system needs (planes don't help: they stay on the same canvas). When a canvas is over budget the result carries `hints` saying which — nest and update_project. See get_guide, 'Keep every canvas readable'.",
       inputSchema: {
         source: z.string().describe("Full Archer document text (see get_guide for the language)"),
         summary: z.string().max(200).optional().describe("One line describing what you changed, shown in the human's activity feed next to your name. Always provide it."),
@@ -564,6 +568,7 @@ export function registerArcherTools(server: McpServer, options: ArcherToolOption
         title: prep.title,
         editor_url: `${APP_URL}/documents/${id}`,
         warnings: diagnosticsReport(prep.warnings),
+        ...hintsField(prep.hints),
       } satisfies ProjectCreated);
     }),
   );
@@ -573,7 +578,7 @@ export function registerArcherTools(server: McpServer, options: ArcherToolOption
     {
       title: "Update a project (full replace)",
       description:
-        "Replace a project's document with new source. Same validation gates as create_project: errors REJECT the write (nothing saved) and are returned for you to fix. Layout preservation is automatic: components that survive your edit keep their on-canvas positions; new components are auto-placed — so simply omit the layout block. The human's open canvas updates live. Always get_project first and edit that source; sending unrelated source will silently discard their content.",
+        "Replace a project's document with new source. Same validation gates as create_project: errors REJECT the write (nothing saved) and are returned for you to fix. Layout preservation is automatic: components that survive your edit keep their on-canvas positions; new components are auto-placed — so simply omit the layout block. The human's open canvas updates live. Always get_project first and edit that source; sending unrelated source will silently discard their content. Keep each canvas to about 5–9 components by nesting new parts inside the component they belong to; `hints` in the result name a canvas that is over budget.",
       inputSchema: {
         project_id: z.string(),
         source: z.string().describe("Complete replacement document text"),
@@ -600,6 +605,7 @@ export function registerArcherTools(server: McpServer, options: ArcherToolOption
         attributed_to: agentName(),
         editor_url: `${APP_URL}/documents/${project_id}`,
         warnings: diagnosticsReport(prep.warnings),
+        ...hintsField(prep.hints),
         ...(file
           ? {
               note: `Saved to the unpublished draft. This project is stored in ${file.path} in ${file.owner}/${file.name} (${file.branch}); a human publishes the draft there as a pull request. If you are working in that repository, edit ${file.path} directly instead.`,

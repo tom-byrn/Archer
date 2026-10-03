@@ -328,6 +328,7 @@ api -> payments @http
     },
     notes: [
       "The same checks as the write gate on `create_project` and `update_project`: a source that validates clean will save. Only errors make `valid` false.",
+      "When a canvas (the top level, or the inside of a component) holds more than 12 components or draws more than 16 lines between them, the result also has `hints`: one sentence per crowded canvas, saying which and to nest its parts. They're advice: `valid` doesn't depend on them.",
     ],
   },
   format_source: {
@@ -547,6 +548,7 @@ api -> db @sql
     notes: [
       "The title comes from the `arch` header. The document is saved canonical and laid out. Without a `summary` the revision reads \"Created the project\".",
       "A document with errors saves nothing. The error result lists them: `{ \"message\": \"REJECTED — fix these errors and retry.\", \"errors\": [\"E101 [error] line 3: …\"], \"warnings\": [] }`.",
+      "When a canvas (the top level, or the inside of a component) holds more than 12 components or draws more than 16 lines between them, the result also has `hints`: one sentence per crowded canvas, saying which and to nest its parts. They're advice and never block the write.",
     ],
   },
   update_project: {
@@ -564,6 +566,7 @@ api -> db @sql
       "The source replaces the whole document, so start from what `get_project` returned. Rejected writes return the same error result as `create_project` and save nothing.",
       "Components that still exist keep their canvas positions and new ones are placed. Entries in a `layout` block you send win over the stored ones.",
       "An update that changes nothing adds no revision.",
+      "Like `create_project`, the result has `hints` when a canvas is too crowded to read at a glance.",
     ],
   },
   delete_project: {

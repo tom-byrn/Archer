@@ -274,6 +274,12 @@ Tools answer with a single text item. Most results are JSON. `get_guide`,
 `format_source`, `auto_layout_source`, `compile_for_agent` and
 `render_project` answer with plain text: markdown, Archer source or SVG.
 
+`create_project`, `update_project` and `validate_source` add `hints` when a
+canvas (the top level, or the inside of a component) is too crowded to read
+at a glance: more than 12 components, or more than 16 lines between them.
+Each names the canvas and suggests nesting its parts. Hints never block a
+save.
+
 When a call fails, the result is marked as an error (`isError: true`) and its
 text says why. Rejected writes answer with JSON that lists the problems:
 

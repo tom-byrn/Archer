@@ -22,6 +22,108 @@ ${BRIEF}
    The workflow is: write → get diagnostics → fix → retry. Diagnostics carry
    codes and line numbers; fix exactly what they name.
 
+## Keep every canvas readable (the most important habit)
+
+A canvas showing 30 boxes and 50 crossing lines tells nobody anything, however
+accurate it is. Archer's answer is nesting: any component can hold
+components, to any depth, and the human opens a box to see inside it. Design
+a big system as a stack of small canvases, not one big one.
+
+- **Budget: about 5–9 components per canvas, 12 at most, and about as many
+  lines as components.** The budget applies to the top level and again to
+  the inside of every component. Depth is free; width is what makes a
+  diagram unreadable.
+- **Design top-down, like zooming in.**
+  1. The top level is the whole system in one picture: who uses it, the
+     product's few main parts, where data lives, and the outside world.
+     Someone new should get the story in ten seconds.
+  2. Inside each main part: its services, apps or modules.
+  3. Inside those: their parts (handlers, workers, tables, …), as far down as
+     is useful. A large codebase usually needs three or four levels.
+- **Don't mirror the repository's folder list.** Twenty packages are not
+  twenty top-level boxes: group them by what they do for the system, and
+  put each package (with its \`src\`) inside the group it belongs to.
+- **Over budget? Nest.** Find the components that work together for one
+  purpose (the packages behind the API, a job system's workers, the stores
+  of one service) and move them inside one component named for that
+  purpose. Their connections to the rest now show as a line to that box.
+- **Planes don't reduce clutter.** Everything on a plane is still drawn on
+  the same canvas. A plane with more than three or four components is
+  usually a component waiting to be nested: write
+  \`component core "Core" { … }\` instead of \`plane core "Core" { … }\`,
+  and connect to \`core\`.
+- **Group the outside world.** Email, OAuth, KMS, captcha and webhook
+  providers become one \`component external "External Services"\` (shape
+  \`cloud\`) with each provider nested in it. Keep a provider at the top
+  level only when it is central to the story (the payment provider of a
+  shop).
+- **Every connection costs a line on each canvas above it.** A connection to
+  a nested part is drawn, one level up, as a line to the box that holds it
+  (several between the same two boxes share one line). Draw the flows that
+  matter; connect to the whole component (\`web -> core\`) when which part
+  receives it isn't the point; and connect clients to the entry point, not
+  to every service behind it.
+
+A codebase with apps, a dozen packages, three stores and eight providers
+still reads at a glance as five boxes and four lines:
+
+    arch "Signing Platform" v0.2
+
+    component signer "Signer" {
+      shape person
+    }
+
+    component web "Web App" @vercel.nextjs {
+      shape browser
+      src "apps/web"
+    }
+
+    component core "Core" {
+      desc "Business logic every app shares: documents, signing, auth."
+      src "packages/lib"
+      component documents "Documents" {
+        desc "Envelopes, recipients and fields."
+      }
+      component signing "PDF Signing" {
+        src "packages/signing"
+      }
+      component auth "Auth" {
+        shape lock
+        src "packages/auth"
+      }
+    }
+
+    component data "Data" {
+      component db "Postgres" @postgres {
+        shape cylinder
+      }
+      component files "Object Storage" @aws.s3
+    }
+
+    component external "External Services" {
+      shape cloud
+      component kms "Google Cloud KMS" @gcp
+      component email "Email Provider"
+      component oauth "OAuth Providers"
+    }
+
+    core -> data.db @sql
+    core.auth -> external.oauth @http
+    core.documents -> data.files @http : "PDFs"
+    core.documents -> external.email @http : "invites"
+    core.signing -> external.kms @http : "sign digest"
+    signer -> web @http
+    web -> core @http
+
+Each of those boxes then gets the same treatment inside (\`core.documents\`
+can hold its own parts, and so on). The \`nesting\` worked example
+(\`get_example\`) shows a component opened up.
+
+\`create_project\`, \`update_project\` and \`validate_source\` return
+\`hints\` when a canvas is over budget, naming it. When you are designing the
+document, act on them before you finish. When you are making a small edit to
+a document the user arranged, mention them instead of restructuring it unasked.
+
 ## Authentication
 
 The user connected this server and approved it in their browser (MCP OAuth,
@@ -55,8 +157,11 @@ fails, call \`get_workspace_info\` and relay what it reports.
    \`@api_gateway\`, \`@rate_limiter\`, \`@cdn\`, \`@cache\`, \`@queue\`,
    \`@database\`, \`@object_storage\`, …) and real technologies for concrete
    stacks (\`@postgres\`, \`@aws.sqs\`, \`@kafka\`, …).
-2. \`create_project\` with your source. Same validation gates as update.
-3. The result includes an editor URL — share it with the user.
+2. Plan the top level first: the five to nine boxes that tell the story,
+   then what goes inside each (see "Keep every canvas readable").
+3. \`create_project\` with your source. Same validation gates as update.
+   If the result has \`hints\`, a canvas is too crowded: nest and update.
+4. The result includes an editor URL — share it with the user.
 
 ### Use a worked example
 1. \`list_examples\` — the worked examples from the docs, each with the
@@ -176,7 +281,8 @@ The full language specification is at the end of this guide. Key habits:
 - **Nest the parts inside the thing they belong to**: a service's API and
   database, a cluster's services, an agent's tools. Any component can hold
   components, at any depth. The human sees it as one box and opens it to
-  see its parts, so nesting is how a big system stays readable. Connect
+  see its parts, so nesting is how a big system stays readable (see "Keep
+  every canvas readable" for the budget). Connect
   across any depth, to a part (\`web -> orders.api\`) or to the whole
   component (\`web -> orders\`), whichever is true.
 - **Group with planes, not wrapper components.** A \`plane\` is a titled
