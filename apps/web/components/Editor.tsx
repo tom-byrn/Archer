@@ -93,6 +93,7 @@ import {
   type Picker,
   type Selection,
 } from "./DetailPanel";
+import { FeedbackDialog } from "./FeedbackDialog";
 import { LogoProvider } from "./logos";
 import { Palette } from "./Palette";
 import {
@@ -364,6 +365,7 @@ function EditorView({ initialSource, library, session }: EditorProps) {
   const [moveOpen, setMoveOpen] = useState(false);
   const [publishOpen, setPublishOpen] = useState(false);
   const [stopOpen, setStopOpen] = useState(false);
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
   const setRepo = useMutation(api.documents.setRepo);
   const [diffView, setDiffView] = useState<DiffView>(null);
 
@@ -1565,6 +1567,7 @@ function EditorView({ initialSource, library, session }: EditorProps) {
           onAdd={addFromPalette}
           onAddPlane={() => addPlaneHere()}
           library={library}
+          onFeedback={stored ? () => setFeedbackOpen(true) : undefined}
         />
         <CodePane
           source={source}
@@ -1804,6 +1807,7 @@ function EditorView({ initialSource, library, session }: EditorProps) {
 
       {stored && (
         <>
+          <FeedbackDialog open={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
           <ShareDialog
             open={shareOpen}
             onClose={() => setShareOpen(false)}

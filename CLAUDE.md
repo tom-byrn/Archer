@@ -213,6 +213,7 @@ Router + React Flow + Convex).
   time → `sessions`), and the `/mcp` route records each tool call
   (`lib/server/usage.ts` → `usage.recordToolCall` → `toolCalls`) after
   responding. Feedback: "Send feedback" beside Docs in the dashboard footer
+  (and at the foot of the editor's components sidebar, stored documents only)
   opens `components/FeedbackDialog.tsx` → `feedback.send` (`feedback` table),
   listed with its sender on the Feedback tab (`adminDashboard.feedback`).
   Read-only canvases reuse `DocumentViewer`
