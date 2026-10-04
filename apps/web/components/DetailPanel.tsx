@@ -23,8 +23,6 @@ import {
   setPayload,
   setPlaneMeta,
   shapeOf,
-  isColor,
-  isColorName,
   resolveColor,
   SHAPE_INFO,
   type ArchDoc,
@@ -45,14 +43,13 @@ import { markdown } from "@codemirror/lang-markdown";
 import type { UserLibrary } from "@/lib/userLibrary";
 import { githubTreeUrl } from "@/lib/githubApi";
 import type { RepoLink } from "@/lib/github";
-import { iconLabel } from "@/lib/icons";
 import { displayColor, useIsDark } from "@/lib/useIsDark";
 import { CodeEditor } from "./CodeMirror";
 import { Markdown, MarkdownTable, parseTable } from "./Markdown";
 import { Glyph, GlyphSwatch } from "./nodes";
 import { ShapeIcon, ShapePicker } from "./ShapePicker";
-import { IconArt, IconPicker } from "./IconPicker";
-import { ColorPicker, ColorSwatch, colorLabel } from "./ColorPicker";
+import { IconPicker } from "./IconPicker";
+import { ColorPicker } from "./ColorPicker";
 import { TypeCombobox } from "./TypeCombobox";
 import {
   Button,
@@ -472,38 +469,6 @@ export function ComponentDetails({
                 ) : (
                   <span className="truncate text-ink-3">
                     <span className="mono">{node.shape}</span> (unknown, drawn as a box)
-                  </span>
-                )}
-              </span>
-            </ReadRow>
-          )}
-          {node.icon !== undefined && (
-            <ReadRow label="Icon">
-              <span className="flex min-w-0 items-center gap-1.5">
-                {isIcon(node.icon) ? (
-                  <>
-                    <IconArt name={node.icon} size={16} className="text-ink-2" />
-                    <span className="truncate">{iconLabel(node.icon)}</span>
-                  </>
-                ) : (
-                  <span className="truncate text-ink-3">
-                    <span className="mono">{node.icon}</span> (unknown, not drawn)
-                  </span>
-                )}
-              </span>
-            </ReadRow>
-          )}
-          {node.color !== undefined && (
-            <ReadRow label="Color">
-              <span className="flex min-w-0 items-center gap-1.5">
-                {isColor(node.color) ? (
-                  <>
-                    <ColorSwatch hex={resolveColor(node.color)!} size={14} />
-                    <span className={cx("truncate", !isColorName(node.color) && "mono")}>{colorLabel(node.color)}</span>
-                  </>
-                ) : (
-                  <span className="truncate text-ink-3">
-                    <span className="mono">{node.color}</span> (unknown, not drawn)
                   </span>
                 )}
               </span>
