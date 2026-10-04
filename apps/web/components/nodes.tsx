@@ -494,17 +494,36 @@ function arrowhead(x: number, y: number, side: Position): string {
   }
 }
 
+/** A handle's point moved `by` px along its side and `inward` px in from it (`ArchEdgeData.ports`). */
+function portPoint(x: number, y: number, side: Position, by = 0, inward = 0): [number, number] {
+  switch (side) {
+    case Position.Left:
+      return [x + inward, y + by];
+    case Position.Right:
+      return [x - inward, y + by];
+    case Position.Top:
+      return [x + by, y + inward];
+    default:
+      return [x + by, y - inward];
+  }
+}
+
 export function ArchEdgeComponent({
   id,
-  sourceX,
-  sourceY,
-  targetX,
-  targetY,
+  sourceX: handleSX,
+  sourceY: handleSY,
+  targetX: handleTX,
+  targetY: handleTY,
   sourcePosition,
   targetPosition,
   data,
   selected,
 }: EdgeProps<ArchEdge>) {
+  // Each edge has its own port on a shared side (toFlow → assignPorts), so
+  // lines never leave from or arrive at one point and merge.
+  const p = data?.ports;
+  const [sourceX, sourceY] = portPoint(handleSX, handleSY, sourcePosition, p?.[0], p?.[1]);
+  const [targetX, targetY] = portPoint(handleTX, handleTY, targetPosition, p?.[2], p?.[3]);
   // The routed bend (toFlow → routeEdge) clears the boxes around the edge. It
   // was computed for the committed layout; mid-drag it may no longer sit
   // between the ends, and the default middle bend takes over.

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { SHAPES, parse, autoLayout } from "@archer/lang";
-import { labelLayout, shapeGeometry, type Rect } from "../lib/shapes";
+import { labelLayout, outlineInset, shapeGeometry, type Rect } from "../lib/shapes";
 import { renderArchSvg } from "../lib/svg";
 import { toFlow } from "../lib/toFlow";
 
@@ -93,6 +93,21 @@ describe("shape geometry", () => {
     // Knobs, crowns and peaks reach the box.
     for (const shape of ["puzzle", "clock", "building", "lock", "gauge", "cube"] as const) expect(at(shape).t, shape).toBe(1);
     expect(at("puzzle").r).toBe(1);
+  });
+
+  it("ends edges on the outline beside a side's middle too (ports)", () => {
+    const inset = (shape: (typeof SHAPES)[number], side: "t" | "r" | "b" | "l", offset: number) =>
+      outlineInset(shapeGeometry(shape, 160, 120), 160, 120, side, offset);
+    // A box's sides are straight; at the middle it's the anchor.
+    expect(inset("box", "t", 30)).toBeCloseTo(1, 5);
+    expect(inset("cloud", "r", 0)).toBe(shapeGeometry("cloud", 160, 120).anchors.r);
+    // Off a diamond's tip and a robot's antenna, the outline falls away.
+    expect(inset("diamond", "t", 20)).toBeGreaterThan(10);
+    expect(inset("robot", "t", 20)).toBeGreaterThan(5);
+    // Symmetric shapes, symmetric insets.
+    expect(inset("diamond", "l", -15)).toBeCloseTo(inset("diamond", "l", 15), 5);
+    // A cylinder's curved top dips only a little off centre.
+    expect(inset("cylinder", "t", 20)).toBeLessThan(3);
   });
 });
 

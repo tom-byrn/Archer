@@ -19,6 +19,7 @@ import {
 import { isIcon } from "@archer/catalog/icons";
 import {
   BOX_COST,
+  assignPorts,
   bendOf,
   chipWidth,
   routeEdge,
@@ -28,7 +29,9 @@ import {
   type Obstacle,
   type Rect,
   type RoutedEdge,
+  type Side,
 } from "./edgeRoute";
+import { outlineInset, shapeGeometry } from "./shapes";
 
 /** One grid cell in pixels. */
 export const CELL = 40;
@@ -124,6 +127,13 @@ export interface ArchEdgeData extends Record<string, unknown> {
   mid?: number;
   horizontal?: boolean;
   /**
+   * Where the edge meets its boxes (`assignPorts`), relative to the handles
+   * in the middles of their sides, in px: [source along, source inward,
+   * target along, target inward] — along the side, then in from it to a
+   * shape's outline. Unset: all 0.
+   */
+  ports?: [number, number, number, number];
+  /**
    * Hover highlighting, set by the canvas: true while the pointer is over the
    * edge or a component it connects (its label chip shows), false while it's
    * over something else (the edge fades), unset otherwise.
@@ -191,7 +201,7 @@ export function toFlow(
   const planes: ArchNode[] = [];
   const boxes: ArchNode[] = [];
   /** Canvas rect (px) of each node, for edge routing. */
-  const rects = new Map<string, Rect & { plane: boolean }>();
+  const rects = new Map<string, Rect & { plane: boolean; shape?: Exclude<Shape, "box"> }>();
   /** Planes each node sits on, innermost first (for edge routing). */
   const onPlanes = new Map<string, string[]>();
   const style = (item: ComponentNode | PlaneNode, path: string) => ({
@@ -255,6 +265,7 @@ export function toFlow(
         walk(item, path, absPx, [path, ...chain]);
       } else {
         const shape = shapeOf(item);
+        if (shape !== "box") rects.set(path, { ...rects.get(path)!, shape });
         boxes.push({
           ...base,
           type: "archComponent",
@@ -373,8 +384,8 @@ export function toFlow(
     return out;
   };
 
-  // Route every edge first, then untangle shared handles and keep parallel
-  // bends from merging.
+  // Route every edge first, then untangle shared sides, give each edge its
+  // own ports and keep parallel bends from merging.
   const routed: {
     c: ArchDoc["connections"][number];
     i: number;
@@ -409,7 +420,9 @@ export function toFlow(
   });
   const withRoutes = routed.flatMap((r) => (r.edge ? [r.edge] : []));
   untangle(withRoutes, obstaclesFor);
-  separateBends(withRoutes.map((e) => bendOf(e.route, e.s, e.t, e.source, e.target)));
+  const ports = assignPorts(withRoutes, obstaclesFor);
+  const portOf = new Map(withRoutes.map((e, i) => [e, ports[i]!]));
+  separateBends(withRoutes.map((e, i) => bendOf(e.route, e.s, e.t, ports[i])));
 
   const pair = (a: string, b: string) => (a < b ? `${a}\n${b}` : `${b}\n${a}`);
   const chips = new Map<string, number>();
@@ -426,6 +439,21 @@ export function toFlow(
     const slot = count > 1 ? (stacked.get(k) ?? 0) : 0;
     if (count > 1) stacked.set(k, slot + 1);
     const route: EdgeRoute | undefined = edge?.route;
+    const port = edge && portOf.get(edge);
+    // A port beside a shape's middle ends on its outline, which may sit
+    // deeper (or shallower) than the handle's anchor there.
+    const deeper = (box: string, side: Side | undefined, offset: number) => {
+      const r = rects.get(box);
+      if (!r?.shape || !side || offset === 0) return 0;
+      const g = shapeGeometry(r.shape, r.w, r.h);
+      return outlineInset(g, r.w, r.h, side, offset) - g.anchors[side];
+    };
+    const ends: [number, number, number, number] | undefined = port && [
+      port.from,
+      deeper(source, route?.from, port.from),
+      port.to,
+      deeper(target, route?.to, port.to),
+    ];
     const sourceHandle = `s${route?.from ?? "r"}`;
     const targetHandle = `t${route?.to ?? "l"}`;
     edges.push({
@@ -448,6 +476,7 @@ export function toFlow(
           return d ? { diff: d } : {};
         })(),
         ...(route && !route.corner ? { mid: route.mid, horizontal: route.horizontal } : {}),
+        ...(ends && ends.some((v) => v !== 0) ? { ports: ends } : {}),
         ...(isContext ? { context: true } : {}),
         ...(count > 1 ? { stack: [slot, count] as [number, number] } : {}),
       },

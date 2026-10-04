@@ -133,7 +133,8 @@ export function routeEdge(
  * little for squeezing right past a box. That cost only changes at obstacle
  * edges, so it is swept exactly. The answer is the middle of the span when
  * that is as clear as anywhere, else the middle of the clearest stretch
- * nearest to it — so a fan-out from one box keeps a single trunk.
+ * nearest to it — so the edges fanning out of one box bend in one place,
+ * which `separateBends` then spreads into neat parallel tracks.
  */
 function bendAt(
   a1: number,
@@ -273,6 +274,129 @@ export function untangle(
   }
 }
 
+/** Ports on one side of a box sit this far apart (px): room for an arrowhead, or a label chip, each. */
+export const PORT_GAP = 20;
+/** Ports keep this far (px) from a side's corners. */
+const PORT_PAD = 12;
+
+/** Where an edge meets its two boxes: offsets (px) along each side from its middle. */
+export interface Ports {
+  from: number;
+  to: number;
+}
+
+/**
+ * Give every edge its own port on each box. Lines that leave from (or arrive
+ * at) one point merge into a trunk, and then nobody can tell which line goes
+ * where, or that two opposite arrows aren't one two-way line. So the edges on
+ * a side spread out along it, `gap` apart, in the order of where each one goes
+ * (the other box), which keeps them from crossing as they leave; parallel
+ * edges between the same two boxes get the same order at both ends.
+ *
+ * An edge whose boxes overlap across its direction runs straight when it can
+ * (and the line stays clear): two lone ports meet in the middle of the
+ * smaller box, and the ports on a side slide to meet their partners on the
+ * other boxes where that keeps their order and spacing.
+ */
+export function assignPorts(
+  edges: readonly RoutedEdge[],
+  obstaclesFor: (source: string, target: string) => Obstacle[],
+  gap = PORT_GAP,
+): Ports[] {
+  const ports: Ports[] = edges.map(() => ({ from: 0, to: 0 }));
+  const across = (side: Side) => (side === "l" || side === "r" ? "y" : "x");
+  const center = (r: Rect, axis: "x" | "y") => (axis === "y" ? r.y + r.h / 2 : r.x + r.w / 2);
+  const length = (r: Rect, axis: "x" | "y") => (axis === "y" ? r.h : r.w);
+
+  type End = { i: number; end: keyof Ports; order: number };
+  type SideEnds = { rect: Rect; axis: "x" | "y"; ends: End[]; step: number };
+  const sides = new Map<string, SideEnds>();
+  edges.forEach((e, i) => {
+    for (const end of ["from", "to"] as const) {
+      const [id, rect, other] = end === "from" ? [e.source, e.s, e.t] : [e.target, e.t, e.s];
+      const side = end === "from" ? e.route.from : e.route.to;
+      const axis = across(side);
+      const k = `${id}:${side}`;
+      const entry = sides.get(k) ?? { rect, axis, ends: [], step: gap };
+      entry.ends.push({ i, end, order: center(other, axis) });
+      sides.set(k, entry);
+    }
+  });
+  const range = (r: Rect, axis: "x" | "y") => {
+    const pad = Math.min(PORT_PAD, length(r, axis) / 4);
+    const lo = (axis === "y" ? r.y : r.x) + pad;
+    return [lo, lo + length(r, axis) - 2 * pad] as const;
+  };
+  for (const entry of sides.values()) {
+    const { rect, axis, ends } = entry;
+    if (ends.length === 1) continue;
+    ends.sort((a, b) => a.order - b.order || a.i - b.i);
+    const room = length(rect, axis) - 2 * Math.min(PORT_PAD, length(rect, axis) / 4);
+    entry.step = Math.min(gap, room / (ends.length - 1));
+    ends.forEach((e, k) => (ports[e.i]![e.end] = (k - (ends.length - 1) / 2) * entry.step));
+  }
+
+  // Straightening. A straight line must stay clear of the boxes between.
+  const clear = (e: RoutedEdge, at: number) => {
+    const axis = across(e.route.from);
+    const forward = e.route.from === "r" || e.route.from === "b";
+    const far = (r: Rect) => (axis === "y" ? r.x + r.w : r.y + r.h);
+    const near = (r: Rect) => (axis === "y" ? r.x : r.y);
+    const line: Seg = {
+      at,
+      from: forward ? far(e.s) : near(e.s),
+      to: forward ? near(e.t) : far(e.t),
+      alongX: axis === "y",
+    };
+    return !obstaclesFor(e.source, e.target).some((o) => o.cost >= BOX_COST && segmentHits(line, o));
+  };
+  const abs = (i: number, end: keyof Ports) => {
+    const e = edges[i]!;
+    const axis = across(end === "from" ? e.route.from : e.route.to);
+    return center(end === "from" ? e.s : e.t, axis) + ports[i]![end];
+  };
+  const sideOf = (i: number, end: keyof Ports) => {
+    const e = edges[i]!;
+    return sides.get(end === "from" ? `${e.source}:${e.route.from}` : `${e.target}:${e.route.to}`)!;
+  };
+  // Two lone ports meet in the middle of the smaller box.
+  edges.forEach((e, i) => {
+    if (e.route.corner || sideOf(i, "from").ends.length > 1 || sideOf(i, "to").ends.length > 1)
+      return;
+    const axis = across(e.route.from);
+    const [sLo, sHi] = range(e.s, axis);
+    const [tLo, tHi] = range(e.t, axis);
+    const lo = Math.max(sLo, tLo);
+    const hi = Math.min(sHi, tHi);
+    if (lo > hi) return;
+    const small = center(length(e.s, axis) <= length(e.t, axis) ? e.s : e.t, axis);
+    const at = Math.min(hi, Math.max(lo, small));
+    if (!clear(e, at)) return;
+    ports[i] = { from: at - center(e.s, axis), to: at - center(e.t, axis) };
+  });
+  // Then each side, fewest ports first, slides its ports to meet their
+  // partners where the order and spacing on the side still hold.
+  const other = (end: keyof Ports): keyof Ports => (end === "from" ? "to" : "from");
+  for (const { rect, axis, ends, step } of [...sides.values()].sort(
+    (a, b) => a.ends.length - b.ends.length,
+  )) {
+    const [lo, hi] = range(rect, axis);
+    const want = ends.map(({ i, end }) => {
+      const at = abs(i, other(end));
+      return !edges[i]!.route.corner && at >= lo && at <= hi && clear(edges[i]!, at)
+        ? at
+        : abs(i, end);
+    });
+    if (want.every((at, k) => at === abs(ends[k]!.i, ends[k]!.end))) continue;
+    if (want.some((at, k) => k > 0 && at - want[k - 1]! < step - 0.01)) continue;
+    ends.forEach(({ i, end }, k) => {
+      const e = edges[i]!;
+      ports[i]![end] = want[k]! - center(end === "from" ? e.s : e.t, axis);
+    });
+  }
+  return ports;
+}
+
 /** A routed edge as `separateBends` sees it. */
 export interface Bend {
   /** Its route; `mid` is moved in place. */
@@ -284,37 +408,25 @@ export interface Bend {
    */
   near: number;
   far: number;
-  /** The two handles it uses (e.g. "api:r"): edges sharing one keep a shared trunk. */
-  handles: [string, string];
 }
 
-/** The `Bend` of a route between two boxes, keyed by their ids for bus detection. */
-export function bendOf(
-  route: EdgeRoute,
-  s: Rect,
-  t: Rect,
-  sourceId: string,
-  targetId: string,
-): Bend {
+/** The `Bend` of a route between two boxes, with the edge's `ports` on them. */
+export function bendOf(route: EdgeRoute, s: Rect, t: Rect, ports: Ports = { from: 0, to: 0 }): Bend {
   const across = (r: Rect) => (route.horizontal ? r.y + r.h / 2 : r.x + r.w / 2);
   const forward = route.from === "r" || route.from === "b";
-  return {
-    route,
-    near: forward ? across(s) : across(t),
-    far: forward ? across(t) : across(s),
-    handles: [`${sourceId}:${route.from}`, `${targetId}:${route.to}`],
-  };
+  const a = across(s) + ports.from;
+  const b = across(t) + ports.to;
+  return { route, near: forward ? a : b, far: forward ? b : a };
 }
 
 /**
  * Spread apart bends that landed in the same channel, so two edges' middle
- * segments never merge into one ambiguous line. Edges sharing a handle stay
- * together (a bus reads fine); the rest get their own track, 10px apart, in
- * the order that crosses least.
+ * segments never merge into one ambiguous line: each gets its own track,
+ * `spacing` apart, in the order that crosses least.
  */
 export function separateBends(bends: readonly Bend[], spacing = 10): void {
   for (const horizontal of [true, false]) {
-    // A straight edge has no bend to separate (and must not glue buses together).
+    // A straight edge has no bend to separate.
     const list = bends
       .filter((b) => b.route.horizontal === horizontal && !b.route.corner && b.near !== b.far)
       .sort((a, b) => a.route.mid - b.route.mid);
@@ -329,38 +441,24 @@ export function separateBends(bends: readonly Bend[], spacing = 10): void {
 
 function spread(cluster: Bend[], spacing: number) {
   if (cluster.length < 2) return;
-  // Bus members (a shared handle) form one unit.
-  const up = cluster.map((_, i) => i);
-  const find = (i: number): number => (up[i] === i ? i : (up[i] = find(up[i]!)));
-  for (let i = 0; i < cluster.length; i++)
-    for (let j = i + 1; j < cluster.length; j++)
-      if (cluster[i]!.handles.some((h) => cluster[j]!.handles.includes(h))) up[find(j)] = find(i);
-  const byRoot = new Map<number, Bend[]>();
-  cluster.forEach((b, i) => byRoot.set(find(i), [...(byRoot.get(find(i)) ?? []), b]));
-  const units = [...byRoot.values()];
-  if (units.length < 2) return;
-
   const lo = (b: Bend) => Math.min(b.near, b.far);
   const hi = (b: Bend) => Math.max(b.near, b.far);
-  const touching = (a: Bend[], b: Bend[]) =>
-    a.some((x) => b.some((y) => lo(x) <= hi(y) + 2 && lo(y) <= hi(x) + 2));
   let clash = false;
-  for (let i = 0; i < units.length && !clash; i++)
-    for (let j = i + 1; j < units.length && !clash; j++) clash = touching(units[i]!, units[j]!);
+  for (let i = 0; i < cluster.length && !clash; i++)
+    for (let j = i + 1; j < cluster.length && !clash; j++) {
+      const [a, b] = [cluster[i]!, cluster[j]!];
+      clash = lo(a) <= hi(b) + 2 && lo(b) <= hi(a) + 2;
+    }
   if (!clash) return;
 
-  // With unit a before unit b along the channel, a's far piece crosses b's
-  // bend if it runs strictly inside b's span, and b's near piece likewise a's.
+  // With a before b along the channel, a's far piece crosses b's bend if it
+  // runs strictly inside b's span, and b's near piece likewise a's.
   const inside = (v: number, b: Bend) => v > lo(b) && v < hi(b);
-  const cost = (a: Bend[], b: Bend[]) => {
-    let c = 0;
-    for (const x of a) for (const y of b) c += Number(inside(x.far, y)) + Number(inside(y.near, x));
-    return c;
-  };
-  let order = units;
-  if (units.length <= 6) {
+  const cost = (a: Bend, b: Bend) => Number(inside(a.far, b)) + Number(inside(b.near, a));
+  let order = cluster;
+  if (cluster.length <= 6) {
     let best = Infinity;
-    for (const perm of permutations(units)) {
+    for (const perm of permutations(cluster)) {
       let c = 0;
       for (let i = 0; i < perm.length; i++)
         for (let j = i + 1; j < perm.length; j++) c += cost(perm[i]!, perm[j]!);
@@ -371,10 +469,7 @@ function spread(cluster: Bend[], spacing: number) {
     }
   }
   const center = cluster.reduce((acc, b) => acc + b.route.mid, 0) / cluster.length;
-  order.forEach((unit, k) => {
-    const mid = center + (k - (order.length - 1) / 2) * spacing;
-    for (const b of unit) b.route.mid = mid;
-  });
+  order.forEach((b, k) => (b.route.mid = center + (k - (order.length - 1) / 2) * spacing));
 }
 
 function* permutations<T>(items: T[]): Generator<T[]> {

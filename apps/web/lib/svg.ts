@@ -21,9 +21,10 @@ import {
 } from "@archer/lang";
 import { GLYPHS, GLYPH_VIEWBOX, lookupType, type Logo } from "@archer/catalog";
 import { iconMarkup } from "@archer/catalog/icons";
-import { LABEL, labelLayout, shapeGeometry, type ShapeGeometry } from "./shapes";
+import { LABEL, labelLayout, outlineInset, shapeGeometry, type ShapeGeometry } from "./shapes";
 import {
   BOX_COST,
+  assignPorts,
   bendOf,
   chipWidth,
   routeEdge,
@@ -31,6 +32,7 @@ import {
   untangle,
   type Obstacle,
   type RoutedEdge,
+  type Side,
 } from "./edgeRoute";
 
 /** One grid cell in pixels (mirrors lib/toFlow.ts, which is client-only). */
@@ -221,9 +223,12 @@ const nestedBadge = (x: number, y: number, w: number, h: number, count: number, 
   );
 };
 
-/** How far in from each side of a box its edges end: a shape's outline, or the card's border. */
-const NO_INSET = { t: 0, r: 0, b: 0, l: 0 };
-const insets = (b: Box) => b.shape?.anchors ?? NO_INSET;
+/**
+ * How far in from a side of a box an edge ends `offset` px from the side's
+ * middle (its port): a shape's outline, or the card's border.
+ */
+const inset = (b: Box, side: Side, offset: number) =>
+  b.shape ? outlineInset(b.shape, b.w, b.h, side, offset) : 0;
 
 export function renderArchSvg(source: string, opts: RenderOptions = {}): string {
   const dark = opts.theme === "dark";
@@ -399,12 +404,14 @@ export function renderArchSvg(source: string, opts: RenderOptions = {}): string 
     const headAtTarget = c.arrow !== "--";
     routed.push({ c, source: s.path, target: t.path, s: sr, t: tr, route, headAtTarget });
   }
-  // Untangle shared handles, then keep parallel bends from merging.
+  // Untangle shared sides, give each edge its own ports, then keep parallel
+  // bends from merging.
   untangle(routed, obstaclesFor);
-  separateBends(routed.map((e) => bendOf(e.route, e.s, e.t, e.source, e.target)));
+  const ports = assignPorts(routed, obstaclesFor);
+  separateBends(routed.map((e, i) => bendOf(e.route, e.s, e.t, ports[i])));
   // Edges from one side of a box to several others (a component whose
-  // nested parts connect out, say) share a trunk, so a chip on it can't say
-  // which branch it labels: those chips go on their own branch first.
+  // nested parts connect out, say) run close together by it, so a chip there
+  // is hard to pin to its line: those chips go on their own branch first.
   const partners = new Map<string, Set<string>>();
   const meet = (box: string, side: string, other: string) => {
     const k = `${box}:${side}`;
@@ -415,12 +422,15 @@ export function renderArchSvg(source: string, opts: RenderOptions = {}): string 
     meet(e.target, e.route.to, e.source);
   }
   const fanned = (box: string, side: string) => (partners.get(`${box}:${side}`)?.size ?? 0) > 1;
-  for (const { c, source, target, s: sr, t: tr, route } of routed) {
+  for (const [i, { c, source, target, s: sr, t: tr, route }] of routed.entries()) {
+    const port = ports[i]!;
     const fanOut = fanned(source, route.from) && !fanned(target, route.to);
     const fanIn = fanned(target, route.to) && !fanned(source, route.from);
-    // Edges end where a shape's outline crosses the middle of the side.
-    const si = insets(byPath.get(source)!);
-    const ti = insets(byPath.get(target)!);
+    // Edges end where a shape's outline crosses their port.
+    const sb = byPath.get(source)!;
+    const tb = byPath.get(target)!;
+    const si = (side: Side) => inset(sb, side, port.from);
+    const ti = (side: Side) => inset(tb, side, port.to);
     let p1: { x: number; y: number };
     let p2: { x: number; y: number };
     let d: string;
@@ -432,8 +442,8 @@ export function renderArchSvg(source: string, opts: RenderOptions = {}): string 
     if (route.corner) {
       const right = route.from === "r";
       const down = route.to === "t";
-      p1 = { x: right ? sr.x + sr.w - si.r : sr.x + si.l, y: sr.y + sr.h / 2 };
-      p2 = { x: tr.x + tr.w / 2, y: down ? tr.y + ti.t : tr.y + tr.h - ti.b };
+      p1 = { x: right ? sr.x + sr.w - si("r") : sr.x + si("l"), y: sr.y + sr.h / 2 + port.from };
+      p2 = { x: tr.x + tr.w / 2 + port.to, y: down ? tr.y + ti("t") : tr.y + tr.h - ti("b") };
       d = `M${p1.x} ${p1.y}H${p2.x}V${p2.y}`;
       const legs = [
         { x: (p1.x + p2.x) / 2, y: p1.y },
@@ -443,10 +453,10 @@ export function renderArchSvg(source: string, opts: RenderOptions = {}): string 
     } else if (route.horizontal) {
       const right = route.from === "r";
       const sign = right ? 1 : -1;
-      p1 = { x: right ? sr.x + sr.w - si.r : sr.x + si.l, y: sr.y + sr.h / 2 };
-      p2 = { x: right ? tr.x + ti.l : tr.x + tr.w - ti.r, y: tr.y + tr.h / 2 };
+      p1 = { x: right ? sr.x + sr.w - si("r") : sr.x + si("l"), y: sr.y + sr.h / 2 + port.from };
+      p2 = { x: right ? tr.x + ti("l") : tr.x + tr.w - ti("r"), y: tr.y + tr.h / 2 + port.to };
       const mx = route.mid;
-      d = `M${p1.x} ${p1.y}H${mx}V${p2.y}H${p2.x}`;
+      d = Math.abs(p1.y - p2.y) < 0.5 ? `M${p1.x} ${p1.y}H${p2.x}` : `M${p1.x} ${p1.y}H${mx}V${p2.y}H${p2.x}`;
       const bend = { x: mx, y: (p1.y + p2.y) / 2 };
       const near = { x: (p1.x + mx) / 2, y: p1.y };
       const far = { x: (mx + p2.x) / 2, y: p2.y };
@@ -456,10 +466,10 @@ export function renderArchSvg(source: string, opts: RenderOptions = {}): string 
       );
     } else {
       const down = route.from === "b";
-      p1 = { x: sr.x + sr.w / 2, y: down ? sr.y + sr.h - si.b : sr.y + si.t };
-      p2 = { x: tr.x + tr.w / 2, y: down ? tr.y + ti.t : tr.y + tr.h - ti.b };
+      p1 = { x: sr.x + sr.w / 2 + port.from, y: down ? sr.y + sr.h - si("b") : sr.y + si("t") };
+      p2 = { x: tr.x + tr.w / 2 + port.to, y: down ? tr.y + ti("t") : tr.y + tr.h - ti("b") };
       const my = route.mid;
-      d = `M${p1.x} ${p1.y}V${my}H${p2.x}V${p2.y}`;
+      d = Math.abs(p1.x - p2.x) < 0.5 ? `M${p1.x} ${p1.y}V${p2.y}` : `M${p1.x} ${p1.y}V${my}H${p2.x}V${p2.y}`;
       const bend = { x: (p1.x + p2.x) / 2, y: my };
       const near = { x: p1.x, y: (p1.y + my) / 2 };
       const far = { x: p2.x, y: (my + p2.y) / 2 };

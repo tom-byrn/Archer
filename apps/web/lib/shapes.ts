@@ -1339,6 +1339,121 @@ export function shapeGeometry(shape: Shape, width: number, height: number): Shap
   return { ...g, anchors: { t: a.t + PAD, r: a.r + PAD, b: a.b + PAD, l: a.l + PAD } };
 }
 
+/** Straight pieces approximating an outline path (absolute M/L/H/V/Q/C/A/Z, as built here). */
+function flatten(d: string): [number, number, number, number][] {
+  const segs: [number, number, number, number][] = [];
+  const tokens = d.match(/[A-Za-z]|-?(?:\d+\.?\d*|\.\d+)(?:e-?\d+)?/g) ?? [];
+  let i = 0;
+  let cmd = "";
+  let [x, y, sx, sy] = [0, 0, 0, 0];
+  const num = () => Number(tokens[i++]);
+  const line = (nx: number, ny: number) => {
+    segs.push([x, y, nx, ny]);
+    [x, y] = [nx, ny];
+  };
+  const curve = (at: (t: number) => [number, number]) => {
+    for (let k = 1; k <= 16; k++) line(...at(k / 16));
+  };
+  while (i < tokens.length) {
+    if (/[A-Za-z]/.test(tokens[i]!)) cmd = tokens[i++]!;
+    const [x0, y0] = [x, y];
+    switch (cmd) {
+      case "M":
+        [x, y] = [num(), num()];
+        [sx, sy] = [x, y];
+        cmd = "L";
+        break;
+      case "L":
+        line(num(), num());
+        break;
+      case "H":
+        line(num(), y);
+        break;
+      case "V":
+        line(x, num());
+        break;
+      case "Z":
+        line(sx, sy);
+        break;
+      case "Q": {
+        const [cx, cy, ex, ey] = [num(), num(), num(), num()];
+        curve((t) => [
+          (1 - t) ** 2 * x0 + 2 * (1 - t) * t * cx + t * t * ex,
+          (1 - t) ** 2 * y0 + 2 * (1 - t) * t * cy + t * t * ey,
+        ]);
+        break;
+      }
+      case "C": {
+        const [c1x, c1y, c2x, c2y, ex, ey] = [num(), num(), num(), num(), num(), num()];
+        const b = (t: number, p0: number, p1: number, p2: number, p3: number) =>
+          (1 - t) ** 3 * p0 + 3 * (1 - t) ** 2 * t * p1 + 3 * (1 - t) * t * t * p2 + t ** 3 * p3;
+        curve((t) => [b(t, x0, c1x, c2x, ex), b(t, y0, c1y, c2y, ey)]);
+        break;
+      }
+      case "A": {
+        // Endpoint to centre parameterization (SVG spec, F.6.5); no rotation here.
+        let [rx, ry] = [Math.abs(num()), Math.abs(num())];
+        num(); // x-axis rotation: always 0
+        const large = num() !== 0;
+        const sweep = num() !== 0;
+        const [ex, ey] = [num(), num()];
+        if (rx === 0 || ry === 0) {
+          line(ex, ey);
+          break;
+        }
+        const hx = (x0 - ex) / 2;
+        const hy = (y0 - ey) / 2;
+        const scale = Math.max(1, Math.sqrt((hx * hx) / (rx * rx) + (hy * hy) / (ry * ry)));
+        rx *= scale;
+        ry *= scale;
+        const n = rx * rx * hy * hy + ry * ry * hx * hx;
+        const f =
+          (large === sweep ? -1 : 1) * Math.sqrt(Math.max(0, (rx * rx * ry * ry - n) / n));
+        const cx = (f * rx * hy) / ry + (x0 + ex) / 2;
+        const cy = (-f * ry * hx) / rx + (y0 + ey) / 2;
+        const a0 = Math.atan2((y0 - cy) / ry, (x0 - cx) / rx);
+        let da = Math.atan2((ey - cy) / ry, (ex - cx) / rx) - a0;
+        if (sweep && da < 0) da += 2 * Math.PI;
+        if (!sweep && da > 0) da -= 2 * Math.PI;
+        curve((t) =>
+          t === 1 ? [ex, ey] : [cx + rx * Math.cos(a0 + da * t), cy + ry * Math.sin(a0 + da * t)],
+        );
+        break;
+      }
+      default:
+        i++; // unknown command: skip its numbers
+    }
+  }
+  return segs;
+}
+
+/**
+ * How far in from side `side` of a `width` × `height` box the shape's
+ * outline sits `offset` px along that side from its middle: where an edge
+ * meeting the shape beside the middle ends (`anchors` is the middle's).
+ */
+export function outlineInset(
+  g: ShapeGeometry,
+  width: number,
+  height: number,
+  side: "t" | "r" | "b" | "l",
+  offset: number,
+): number {
+  if (offset === 0) return g.anchors[side];
+  const vertical = side === "t" || side === "b";
+  const at = (vertical ? width : height) / 2 + offset;
+  let best: number | undefined;
+  for (const part of g.parts)
+    for (const [x1, y1, x2, y2] of flatten(part)) {
+      const [a1, a2, b1, b2] = vertical ? [x1, x2, y1, y2] : [y1, y2, x1, x2];
+      if (at < Math.min(a1, a2) || at > Math.max(a1, a2) || a1 === a2) continue;
+      const hit = b1 + ((at - a1) / (a2 - a1)) * (b2 - b1);
+      const depth = side === "t" || side === "l" ? hit : (vertical ? height : width) - hit;
+      if (best === undefined || depth < best) best = depth;
+    }
+  return best ?? g.anchors[side];
+}
+
 /** Label metrics shared by the canvas and the SVG renderer (px). */
 export const LABEL = {
   /** Name: 13px semibold, tight leading. */

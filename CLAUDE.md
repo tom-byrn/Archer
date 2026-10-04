@@ -262,7 +262,10 @@ Router + React Flow + Convex).
   `layered.ts` (solver: `simplex.ts`); otherwise it keeps positions and places
   new components next to their neighbours. Edges are drawn by
   `apps/web/lib/edgeRoute.ts` for both the canvas (`toFlow`) and `lib/svg.ts`
-  — route through it so the two stay identical.
+  — route through it so the two stay identical. Every edge gets its own port
+  on each box (`assignPorts`; ending on a shape's outline via
+  `outlineInset` in `lib/shapes.ts`), so no two lines leave from or arrive at
+  one point and merge.
 
 ## Context.dev
 
