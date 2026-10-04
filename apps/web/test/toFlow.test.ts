@@ -98,8 +98,7 @@ describe("resolveDropTarget", () => {
 });
 
 describe("parallel connections", () => {
-  it("stack their chips when nested parts reach the same outside component", () => {
-    const doc = parse(`arch "T" v0.2
+  const doc = parse(`arch "T" v0.2
 
 component a {
   component x
@@ -112,13 +111,36 @@ component b
 a.x -> b @http : "one"
 a.y -> b @grpc : "two"
 a.z -> b
+b -> a.x @event : "back"
+a -> b : "direct"
 `).doc;
+
+  it("draw nested parts reaching one outside component as one summary line per direction", () => {
     const { edges } = toFlow(doc);
-    expect(edges.map((e) => [e.source, e.target, e.data!.stack])).toEqual([
-      ["a", "b", [0, 2]],
-      ["a", "b", [1, 2]],
-      // No chip, no place in the stack.
-      ["a", "b", undefined],
+    expect(edges.map((e) => [e.source, e.target, e.data!.label, e.data!.bundle?.indices])).toEqual([
+      ["a", "b", "3 connections", [0, 1, 2]],
+      ["b", "a", "back", undefined],
+      // Drawn between the components it names: a line of its own.
+      ["a", "b", "direct", undefined],
+    ]);
+    const summary = edges[0]!;
+    expect(summary.data!.protocol).toBeUndefined(); // http and grpc: no one protocol
+    expect(summary.data!.bundle!.open).toBe("a");
+    expect(summary.reconnectable).toBe(false);
+  });
+
+  it("show each part's own line once the component is open", () => {
+    const { edges } = toFlow(doc, { focus: ["a"] });
+    expect(edges.filter((e) => e.data!.bundle)).toEqual([]);
+    expect(edges.map((e) => e.data!.label)).toEqual(["one", "two", undefined, "back"]);
+  });
+
+  it("stack the chips of labelled lines between the same two boxes", () => {
+    const { edges } = toFlow(doc);
+    expect(edges.map((e) => e.data!.stack)).toEqual([
+      [0, 3],
+      [1, 3],
+      [2, 3],
     ]);
   });
 });

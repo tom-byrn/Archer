@@ -19,6 +19,11 @@ export interface Rect {
 
 export type Side = "t" | "r" | "b" | "l";
 
+export interface Point {
+  x: number;
+  y: number;
+}
+
 /** Something an edge should not cross; `cost` weighs a crossing (boxes 1000). */
 export interface Obstacle extends Rect {
   cost: number;
@@ -36,9 +41,17 @@ export interface EdgeRoute {
   mid: number;
   /**
    * An L instead: out of the source's side level with it, then straight into
-   * the target's top or bottom (`from` is l/r, `to` is t/b; `mid` unused).
+   * the target's top or bottom (`from` is l/r, `to` is t/b), or with
+   * `horizontal` false out of its top or bottom into the target's side
+   * (`from` t/b, `to` l/r). `mid` unused.
    */
   corner?: boolean;
+  /**
+   * A detour instead (`detour`): the whole path, from the middle of the
+   * source's `from` side to the middle of the target's `to` side, for an edge
+   * no simpler shape gets past the boxes in its way. `mid` unused.
+   */
+  points?: Point[];
 }
 
 /** Bends stay at least this far (px) from the boxes they leave and enter. */
@@ -222,10 +235,23 @@ function bendAt(
 }
 
 /**
- * An L-shaped route from `s` into the top or bottom of `t`, or null when the
- * geometry doesn't allow one or it would cross something.
+ * An L-shaped route from a side of `s` into the top or bottom of `t` (or,
+ * `vertical`, from the top or bottom of `s` into a side of `t`), or null
+ * when the geometry doesn't allow one or it would cross something.
  */
-export function routeCorner(s: Rect, t: Rect, obstacles: readonly Obstacle[]): EdgeRoute | null {
+export function routeCorner(
+  s: Rect,
+  t: Rect,
+  obstacles: readonly Obstacle[],
+  vertical = false,
+): EdgeRoute | null {
+  if (vertical) {
+    // A vertical-first L is a horizontal-first one with x and y swapped.
+    const flip = <R extends Rect>(r: R): R => ({ ...r, x: r.y, y: r.x, w: r.h, h: r.w });
+    const r = routeCorner(flip(s), flip(t), obstacles.map(flip));
+    const side = { r: "b", l: "t", t: "l", b: "r" } as const;
+    return r && { from: side[r.from], to: side[r.to], horizontal: false, mid: r.mid, corner: true };
+  }
   const y1 = s.y + s.h / 2;
   const x2 = t.x + t.w / 2;
   const right = x2 >= s.x + s.w + CLEAR;
@@ -240,6 +266,290 @@ export function routeCorner(s: Rect, t: Rect, obstacles: readonly Obstacle[]): E
   ];
   if (obstacles.some((o) => segs.some((seg) => segmentHits(seg, o)))) return null;
   return { from: right ? "r" : "l", to: down ? "t" : "b", horizontal: true, mid: x2, corner: true };
+}
+
+/**
+ * A diagonal edge (its boxes overlap neither across nor down) takes an L
+ * where that is clear of boxes and plane titles and both sides it would use
+ * are free of other edges: one bend is easier to follow than two, but not
+ * when it runs alongside another line. It leaves the way its three-piece
+ * route did if it can, else the other way.
+ */
+export function preferCorners(
+  edges: RoutedEdge[],
+  obstaclesFor: (source: string, target: string) => Obstacle[],
+): void {
+  const used = new Map<string, number>();
+  const use = (e: RoutedEdge, by: number) => {
+    for (const k of [`${e.source}:${e.route.from}`, `${e.target}:${e.route.to}`])
+      used.set(k, (used.get(k) ?? 0) + by);
+  };
+  edges.forEach((e) => use(e, 1));
+  const apart = (a0: number, a1: number, b0: number, b1: number) => a1 <= b0 || b1 <= a0;
+  for (const e of edges) {
+    if (e.route.corner) continue;
+    if (
+      !apart(e.s.x, e.s.x + e.s.w, e.t.x, e.t.x + e.t.w) ||
+      !apart(e.s.y, e.s.y + e.s.h, e.t.y, e.t.y + e.t.h)
+    )
+      continue;
+    use(e, -1);
+    const free = (r: EdgeRoute | null) =>
+      r !== null && !used.get(`${e.source}:${r.from}`) && !used.get(`${e.target}:${r.to}`);
+    const hard = obstaclesFor(e.source, e.target).filter((o) => o.cost >= BOX_COST / 4);
+    const sideways = e.route.horizontal;
+    const corner = [
+      routeCorner(e.s, e.t, hard, !sideways),
+      routeCorner(e.s, e.t, hard, sideways),
+    ].find(free);
+    if (corner) e.route = corner;
+    use(e, 1);
+  }
+}
+
+/** The pieces of a route between the middles of its sides (ports aside). */
+function pieces(route: EdgeRoute, s: Rect, t: Rect): Seg[] {
+  const at = (r: Rect, side: Side): Point =>
+    side === "l"
+      ? { x: r.x, y: r.y + r.h / 2 }
+      : side === "r"
+        ? { x: r.x + r.w, y: r.y + r.h / 2 }
+        : side === "t"
+          ? { x: r.x + r.w / 2, y: r.y }
+          : { x: r.x + r.w / 2, y: r.y + r.h };
+  const a = at(s, route.from);
+  const b = at(t, route.to);
+  const pts = route.points
+    ? route.points
+    : route.corner
+      ? route.horizontal
+        ? [a, { x: b.x, y: a.y }, b]
+        : [a, { x: a.x, y: b.y }, b]
+      : route.horizontal
+        ? [a, { x: route.mid, y: a.y }, { x: route.mid, y: b.y }, b]
+        : [a, { x: a.x, y: route.mid }, { x: b.x, y: route.mid }, b];
+  const out: Seg[] = [];
+  for (let i = 0; i + 1 < pts.length; i++) {
+    const [p, q] = [pts[i]!, pts[i + 1]!];
+    if (p.y === q.y) out.push({ at: p.y, from: p.x, to: q.x, alongX: true });
+    else out.push({ at: p.x, from: p.y, to: q.y, alongX: false });
+  }
+  return out;
+}
+
+/** Bends cost this much path length (px) in a detour: fewer bends read easier. */
+const BEND = 80;
+
+/**
+ * A path around the boxes from a side of `s` to a side of `t`: the shortest
+ * with bends counted dear, on lanes 20px clear of every box and plane title
+ * (an orthogonal visibility grid, searched with Dijkstra). Null when there is
+ * none.
+ */
+export function routeAround(s: Rect, t: Rect, obstacles: readonly Obstacle[]): EdgeRoute | null {
+  const walls = [...obstacles.filter((o) => o.cost >= BOX_COST / 4), s, t].map((r) => ({
+    x0: r.x - MARGIN,
+    x1: r.x + r.w + MARGIN,
+    y0: r.y - MARGIN,
+    y1: r.y + r.h + MARGIN,
+  }));
+  const blocked = (x: number, y: number) =>
+    walls.some((w) => x > w.x0 && x < w.x1 && y > w.y0 && y < w.y1);
+  const sides: Side[] = ["t", "r", "b", "l"];
+  const stub = (r: Rect, side: Side) => {
+    const cx = r.x + r.w / 2;
+    const cy = r.y + r.h / 2;
+    return side === "l"
+      ? { at: { x: r.x, y: cy }, out: { x: r.x - CLEAR, y: cy } }
+      : side === "r"
+        ? { at: { x: r.x + r.w, y: cy }, out: { x: r.x + r.w + CLEAR, y: cy } }
+        : side === "t"
+          ? { at: { x: cx, y: r.y }, out: { x: cx, y: r.y - CLEAR } }
+          : { at: { x: cx, y: r.y + r.h }, out: { x: cx, y: r.y + r.h + CLEAR } };
+  };
+  // Lanes: 10px outside every wall (20px from its box), through each stub,
+  // and down the middle of every gap between those.
+  const lanes = (base: number[]) => {
+    const sorted = [...new Set(base.map((v) => Math.round(v * 2) / 2))].sort((a, b) => a - b);
+    const mids = sorted.slice(1).map((v, i) => (v + sorted[i]!) / 2);
+    return [...new Set([...sorted, ...mids])].sort((a, b) => a - b);
+  };
+  const stubs = [s, t].flatMap((r) => sides.map((side) => stub(r, side).out));
+  const xs = lanes([
+    ...walls.flatMap((w) => [w.x0 - MARGIN, w.x1 + MARGIN]),
+    ...stubs.map((p) => p.x),
+  ]);
+  const ys = lanes([
+    ...walls.flatMap((w) => [w.y0 - MARGIN, w.y1 + MARGIN]),
+    ...stubs.map((p) => p.y),
+  ]);
+  const xi = new Map(xs.map((v, i) => [v, i]));
+  const yi = new Map(ys.map((v, i) => [v, i]));
+  const round = (v: number) => Math.round(v * 2) / 2;
+
+  // Dijkstra over (grid point, heading). Headings: 0 right, 1 down, 2 left, 3 up.
+  const DX = [1, 0, -1, 0];
+  const DY = [0, 1, 0, -1];
+  const heading: Record<Side, number> = { r: 0, b: 1, l: 2, t: 3 };
+  const key = (i: number, j: number, d: number) => (i * ys.length + j) * 4 + d;
+  const dist = new Map<number, number>();
+  const prev = new Map<number, number>();
+  const heap: [number, number][] = [];
+  const push = (cost: number, k: number, from: number) => {
+    if ((dist.get(k) ?? Infinity) <= cost) return;
+    dist.set(k, cost);
+    prev.set(k, from);
+    heap.push([cost, k]);
+    let n = heap.length - 1;
+    while (n > 0) {
+      const p = (n - 1) >> 1;
+      if (heap[p]![0] <= heap[n]![0]) break;
+      [heap[p], heap[n]] = [heap[n]!, heap[p]!];
+      n = p;
+    }
+  };
+  const pop = (): [number, number] => {
+    const top = heap[0]!;
+    const last = heap.pop()!;
+    if (heap.length > 0) {
+      heap[0] = last;
+      let n = 0;
+      for (;;) {
+        const [l, r] = [2 * n + 1, 2 * n + 2];
+        let m = n;
+        if (l < heap.length && heap[l]![0] < heap[m]![0]) m = l;
+        if (r < heap.length && heap[r]![0] < heap[m]![0]) m = r;
+        if (m === n) break;
+        [heap[m], heap[n]] = [heap[n]!, heap[m]!];
+        n = m;
+      }
+    }
+    return top;
+  };
+  const START = -1;
+  const starts = new Map<number, Side>();
+  for (const side of sides) {
+    const { out } = stub(s, side);
+    const i = xi.get(round(out.x));
+    const j = yi.get(round(out.y));
+    if (i === undefined || j === undefined || blocked(out.x, out.y)) continue;
+    const k = key(i, j, heading[side]);
+    starts.set(k, side);
+    push(CLEAR, k, START);
+  }
+  const goals = new Map<number, Side>();
+  for (const side of sides) {
+    const { out } = stub(t, side);
+    const i = xi.get(round(out.x));
+    const j = yi.get(round(out.y));
+    if (i === undefined || j === undefined || blocked(out.x, out.y)) continue;
+    // Arriving here heading into the side, i.e. away from where `side` faces.
+    goals.set(key(i, j, (heading[side] + 2) % 4), side);
+  }
+  let goal: number | undefined;
+  while (heap.length > 0) {
+    const [cost, k] = pop();
+    if (cost > (dist.get(k) ?? Infinity)) continue;
+    if (goals.has(k)) {
+      goal = k;
+      break;
+    }
+    const d = k % 4;
+    const cell = (k - d) / 4;
+    const j = cell % ys.length;
+    const i = (cell - j) / ys.length;
+    for (const nd of [d, (d + 1) % 4, (d + 3) % 4]) {
+      if (nd !== d) {
+        // Turning: arriving at a goal stub in a new heading counts too.
+        push(cost + BEND, key(i, j, nd), k);
+        continue;
+      }
+      const ni = i + DX[d]!;
+      const nj = j + DY[d]!;
+      if (ni < 0 || nj < 0 || ni >= xs.length || nj >= ys.length) continue;
+      const [x0, y0, x1, y1] = [xs[i]!, ys[j]!, xs[ni]!, ys[nj]!];
+      if (blocked(x1, y1) || blocked((x0 + x1) / 2, (y0 + y1) / 2)) continue;
+      push(cost + Math.abs(x1 - x0) + Math.abs(y1 - y0), key(ni, nj, d), k);
+    }
+  }
+  if (goal === undefined) return null;
+  const cells: Point[] = [];
+  let k = goal;
+  let first = goal;
+  while (k !== START) {
+    const d = k % 4;
+    const cell = (k - d) / 4;
+    const j = cell % ys.length;
+    const i = (cell - j) / ys.length;
+    const p = { x: xs[i]!, y: ys[j]! };
+    const last = cells[cells.length - 1];
+    if (!last || last.x !== p.x || last.y !== p.y) cells.push(p);
+    first = k;
+    k = prev.get(k)!;
+  }
+  cells.reverse();
+  const from = starts.get(first)!;
+  const to = goals.get(goal)!;
+  const path = [stub(s, from).at, ...cells, stub(t, to).at];
+  // Keep only the corners.
+  const points = path.filter((p, n) => {
+    if (n === 0 || n === path.length - 1) return true;
+    const [a, b] = [path[n - 1]!, path[n + 1]!];
+    return !((a.x === p.x && p.x === b.x) || (a.y === p.y && p.y === b.y));
+  });
+  return { from, to, horizontal: from === "l" || from === "r", mid: 0, points };
+}
+
+/**
+ * An edge whose route still crosses a box (one in its row, say, that no
+ * bend can get around) takes a detour around everything instead
+ * (`routeAround`), if there is one.
+ */
+export function detour(
+  edges: RoutedEdge[],
+  obstaclesFor: (source: string, target: string) => Obstacle[],
+): void {
+  for (const e of edges) {
+    const obstacles = obstaclesFor(e.source, e.target);
+    const boxes = obstacles.filter((o) => o.cost >= BOX_COST);
+    if (!pieces(e.route, e.s, e.t).some((seg) => boxes.some((b) => segmentHits(seg, b)))) continue;
+    const around = routeAround(e.s, e.t, obstacles);
+    if (around) e.route = around;
+  }
+}
+
+/** `p` moved `by` px in from `side` of a box (towards its middle). */
+export const inward = (p: Point, side: Side, by: number): Point =>
+  side === "l"
+    ? { x: p.x + by, y: p.y }
+    : side === "r"
+      ? { x: p.x - by, y: p.y }
+      : side === "t"
+        ? { x: p.x, y: p.y + by }
+        : { x: p.x, y: p.y - by };
+
+/**
+ * A detour's points with its ports applied: each end slides `by` px along
+ * its side, and so does the piece leaving it, up to its first turn.
+ */
+export function detourPoints(route: EdgeRoute, ports: Ports): Point[] {
+  const pts = route.points!.map((p) => ({ ...p }));
+  const slide = (order: Point[], side: Side, by: number) => {
+    if (by === 0) return;
+    const alongY = side === "l" || side === "r";
+    order[0]![alongY ? "y" : "x"] += by;
+    for (let n = 1; n < order.length; n++) {
+      // Still on the piece that leaves the side square on (perpendicular to it).
+      const leaving = alongY
+        ? order[n]!.y === order[n - 1]!.y - by
+        : order[n]!.x === order[n - 1]!.x - by;
+      if (!leaving) break;
+      order[n]![alongY ? "y" : "x"] += by;
+    }
+  };
+  slide(pts, route.from, ports.from);
+  slide([...pts].reverse(), route.to, ports.to);
+  return pts;
 }
 
 /** One routed edge, as `untangle` sees it. */
@@ -361,7 +671,12 @@ export function assignPorts(
   };
   // Two lone ports meet in the middle of the smaller box.
   edges.forEach((e, i) => {
-    if (e.route.corner || sideOf(i, "from").ends.length > 1 || sideOf(i, "to").ends.length > 1)
+    if (
+      e.route.corner ||
+      e.route.points ||
+      sideOf(i, "from").ends.length > 1 ||
+      sideOf(i, "to").ends.length > 1
+    )
       return;
     const axis = across(e.route.from);
     const [sLo, sHi] = range(e.s, axis);
@@ -383,7 +698,8 @@ export function assignPorts(
     const [lo, hi] = range(rect, axis);
     const want = ends.map(({ i, end }) => {
       const at = abs(i, other(end));
-      return !edges[i]!.route.corner && at >= lo && at <= hi && clear(edges[i]!, at)
+      const { corner, points } = edges[i]!.route;
+      return !corner && !points && at >= lo && at <= hi && clear(edges[i]!, at)
         ? at
         : abs(i, end);
     });
@@ -426,9 +742,12 @@ export function bendOf(route: EdgeRoute, s: Rect, t: Rect, ports: Ports = { from
  */
 export function separateBends(bends: readonly Bend[], spacing = 10): void {
   for (const horizontal of [true, false]) {
-    // A straight edge has no bend to separate.
+    // A straight edge has no bend to separate (and an L or a detour no one bend).
     const list = bends
-      .filter((b) => b.route.horizontal === horizontal && !b.route.corner && b.near !== b.far)
+      .filter(
+        (b) =>
+          b.route.horizontal === horizontal && !b.route.corner && !b.route.points && b.near !== b.far,
+      )
       .sort((a, b) => a.route.mid - b.route.mid);
     let start = 0;
     for (let i = 1; i <= list.length; i++) {

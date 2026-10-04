@@ -265,7 +265,12 @@ Router + React Flow + Convex).
   — route through it so the two stay identical. Every edge gets its own port
   on each box (`assignPorts`; ending on a shape's outline via
   `outlineInset` in `lib/shapes.ts`), so no two lines leave from or arrive at
-  one point and merge.
+  one point and merge; diagonal edges take an L when its sides are free
+  (`preferCorners`), and an edge whose route still crosses a box detours
+  around (`routeAround`, a grid search; drawn from `points`). Connections
+  between parts nested in two components are drawn between those components
+  as one summary line per direction ("8 connections", `lib/edgeBundle.ts`):
+  clicking it selects them all, double-clicking opens the component.
 
 ## Context.dev
 

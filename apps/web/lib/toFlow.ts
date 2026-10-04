@@ -22,15 +22,21 @@ import {
   assignPorts,
   bendOf,
   chipWidth,
+  detour,
+  detourPoints,
+  inward,
+  preferCorners,
   routeEdge,
   separateBends,
   untangle,
   type EdgeRoute,
   type Obstacle,
+  type Point,
   type Rect,
   type RoutedEdge,
   type Side,
 } from "./edgeRoute";
+import { bundle, bundleChip } from "./edgeBundle";
 import { outlineInset, shapeGeometry } from "./shapes";
 
 /** One grid cell in pixels. */
@@ -134,6 +140,12 @@ export interface ArchEdgeData extends Record<string, unknown> {
    */
   ports?: [number, number, number, number];
   /**
+   * A detour (`lib/edgeRoute.ts` `detour`): the whole path in canvas px, its
+   * ends where the handles and ports put them. Drawn while they're still
+   * there; mid-drag the plain route takes over.
+   */
+  points?: Point[];
+  /**
    * Hover highlighting, set by the canvas: true while the pointer is over the
    * edge or a component it connects (its label chip shows), false while it's
    * over something else (the edge fades), unset otherwise.
@@ -142,12 +154,17 @@ export interface ArchEdgeData extends Record<string, unknown> {
   /** One end is a context node (a component outside the canvas). */
   context?: boolean;
   /**
-   * Several labelled connections between the same two boxes (nested parts
-   * reaching one outside component, say) share a path: this chip's place in
-   * their stack, [index, count], so the chips sit apart instead of on top of
-   * each other.
+   * Several labelled lines between the same two boxes show their chips
+   * together (hovering either box): this chip's place in their stack,
+   * [index, count], so the chips sit apart instead of on top of each other.
    */
   stack?: [number, number];
+  /**
+   * A summary line (`lib/edgeBundle.ts`): the connections it stands for,
+   * between parts nested in its boxes, `index` and `key` being the first;
+   * `open` is a box they reach into (double-clicking the line opens it).
+   */
+  bundle?: { indices: number[]; keys: string[]; open: string };
   /** Set by the canvas while a component it connects is selected: its label chip shows. */
   endSelected?: boolean;
 }
@@ -384,58 +401,82 @@ export function toFlow(
     return out;
   };
 
-  // Route every edge first, then untangle shared sides, give each edge its
-  // own ports and keep parallel bends from merging.
-  const routed: {
-    c: ArchDoc["connections"][number];
+  // Each connection's two boxes. Summary connections between the same boxes
+  // share a line (`bundle`).
+  type Conn = ArchDoc["connections"][number];
+  const drawable: {
+    c: Conn;
     i: number;
     source: string;
     target: string;
+    arrow: Arrow;
+    summary: boolean;
     context: boolean;
-    edge?: RoutedEdge;
   }[] = [];
   doc.connections.forEach((c, i) => {
     let source = boxOf(c.source);
     let target = boxOf(c.target);
     const isContext = (source === undefined) !== (target === undefined);
+    const summary =
+      (source !== undefined && source !== pathToString(c.source)) ||
+      (target !== undefined && target !== pathToString(c.target));
     if (isContext) {
       source ??= contextOf.get(pathToString(c.source));
       target ??= contextOf.get(pathToString(c.target));
     }
     if (source === undefined || target === undefined || source === target) return;
+    drawable.push({ c, i, source, target, arrow: c.arrow, summary, context: isContext });
+  });
+
+  // Route every line first, then L-shape diagonal ones, untangle shared
+  // sides, detour lines still crossing a box, give each line its own ports
+  // and keep parallel bends from merging.
+  const routed: {
+    members: typeof drawable;
+    chip: ReturnType<typeof bundleChip>;
+    edge?: RoutedEdge;
+  }[] = [];
+  for (const members of bundle(drawable)) {
+    const { c, source, target } = members[0]!;
+    const chip = bundleChip(members.map((m) => m.c));
     const s = rects.get(source);
     const t = rects.get(target);
     if (!s || !t) {
-      routed.push({ c, i, source, target, context: isContext });
-      return;
+      routed.push({ members, chip });
+      continue;
     }
     const route = routeEdge(
       s,
       t,
       obstaclesFor(source, target),
-      chipWidth(c.type, c.label, c.payloads.length),
+      chipWidth(chip.protocol, chip.label, chip.payloads),
     );
     const headAtTarget = c.arrow !== "--";
-    routed.push({ c, i, source, target, context: isContext, edge: { source, target, s, t, route, headAtTarget } });
-  });
+    routed.push({ members, chip, edge: { source, target, s, t, route, headAtTarget } });
+  }
   const withRoutes = routed.flatMap((r) => (r.edge ? [r.edge] : []));
+  preferCorners(withRoutes, obstaclesFor);
   untangle(withRoutes, obstaclesFor);
+  detour(withRoutes, obstaclesFor);
   const ports = assignPorts(withRoutes, obstaclesFor);
   const portOf = new Map(withRoutes.map((e, i) => [e, ports[i]!]));
   separateBends(withRoutes.map((e, i) => bendOf(e.route, e.s, e.t, ports[i])));
 
   const pair = (a: string, b: string) => (a < b ? `${a}\n${b}` : `${b}\n${a}`);
   const chips = new Map<string, number>();
-  const labelled = (c: ArchDoc["connections"][number]) =>
-    c.type !== undefined || c.label !== undefined || c.payloads.length > 0;
-  for (const { c, source, target } of routed)
-    if (labelled(c)) chips.set(pair(source, target), (chips.get(pair(source, target)) ?? 0) + 1);
+  const labelled = (chip: ReturnType<typeof bundleChip>) =>
+    chip.protocol !== undefined || chip.label !== undefined || chip.payloads > 0;
+  for (const { members, chip } of routed) {
+    const k = pair(members[0]!.source, members[0]!.target);
+    if (labelled(chip)) chips.set(k, (chips.get(k) ?? 0) + 1);
+  }
   const stacked = new Map<string, number>();
 
   const edges: ArchEdge[] = [];
-  for (const { c, i, source, target, context: isContext, edge } of routed) {
+  for (const { members, chip, edge } of routed) {
+    const { c, i, source, target, context: isContext } = members[0]!;
     const k = pair(source, target);
-    const count = labelled(c) ? (chips.get(k) ?? 1) : 1;
+    const count = labelled(chip) ? (chips.get(k) ?? 1) : 1;
     const slot = count > 1 ? (stacked.get(k) ?? 0) : 0;
     if (count > 1) stacked.set(k, slot + 1);
     const route: EdgeRoute | undefined = edge?.route;
@@ -454,8 +495,27 @@ export function toFlow(
       port.to,
       deeper(target, route?.to, port.to),
     ];
+    // A detour's path, its ends where the handles (and ports) put them.
+    const points =
+      route?.points && port && ends
+        ? (() => {
+            const pts = detourPoints(route, port);
+            const anchor = (box: string, side: Side) => {
+              const r = rects.get(box);
+              return r?.shape ? shapeGeometry(r.shape, r.w, r.h).anchors[side] : 0;
+            };
+            const last = pts.length - 1;
+            pts[0] = inward(pts[0]!, route.from, anchor(source, route.from) + ends[1]);
+            pts[last] = inward(pts[last]!, route.to, anchor(target, route.to) + ends[3]);
+            return pts;
+          })()
+        : undefined;
     const sourceHandle = `s${route?.from ?? "r"}`;
     const targetHandle = `t${route?.to ?? "l"}`;
+    const many = members.length > 1;
+    // A line's diff is its connections' if they agree, else "changed".
+    const diffs = new Set(members.map((m) => opts.edgeDiff?.get(edgeKey(m.c))));
+    const diff = diffs.size === 1 ? [...diffs][0] : "changed";
     edges.push({
       id: `c${i}:${source}->${target}`,
       source,
@@ -463,22 +523,36 @@ export function toFlow(
       sourceHandle,
       targetHandle,
       type: "archEdge",
-      ...(isContext ? { reconnectable: false } : {}),
+      ...(isContext || many ? { reconnectable: false } : {}),
       data: {
         index: i,
         key: edgeKey(c),
         arrow: c.arrow,
-        ...(c.type !== undefined ? { protocol: c.type } : {}),
-        ...(c.label !== undefined ? { label: c.label } : {}),
-        payloadCount: c.payloads.length,
-        ...(() => {
-          const d = opts.edgeDiff?.get(edgeKey(c));
-          return d ? { diff: d } : {};
-        })(),
-        ...(route && !route.corner ? { mid: route.mid, horizontal: route.horizontal } : {}),
+        ...(chip.protocol !== undefined ? { protocol: chip.protocol } : {}),
+        ...(chip.label !== undefined ? { label: chip.label } : {}),
+        payloadCount: chip.payloads,
+        ...(diff ? { diff } : {}),
+        ...(route && !route.corner && !route.points
+          ? { mid: route.mid, horizontal: route.horizontal }
+          : {}),
+        ...(points ? { points } : {}),
         ...(ends && ends.some((v) => v !== 0) ? { ports: ends } : {}),
         ...(isContext ? { context: true } : {}),
         ...(count > 1 ? { stack: [slot, count] as [number, number] } : {}),
+        ...(many
+          ? {
+              bundle: {
+                indices: members.map((m) => m.i),
+                keys: members.map((m) => edgeKey(m.c)),
+                open: members.some((m) => {
+                  const end = m.source === source ? m.c.source : m.c.target;
+                  return pathToString(end) !== source;
+                })
+                  ? source
+                  : target,
+              },
+            }
+          : {}),
       },
     });
   }

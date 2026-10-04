@@ -271,6 +271,15 @@ button.arch-nested:hover {
 .react-flow__edge:hover .arch-edge-arrow {
   fill: var(--edge-strong);
 }
+/* Lit by hovering it or a component it connects (see Hover dimming). Before
+   selected and diff styles, which win over it. */
+.react-flow__edge.lit .arch-edge-path {
+  stroke: var(--edge-strong);
+  stroke-width: 2;
+}
+.react-flow__edge.lit .arch-edge-arrow {
+  fill: var(--edge-strong);
+}
 .react-flow__edge.selected .arch-edge-path {
   stroke: var(--accent);
   stroke-width: 2;
@@ -332,11 +341,16 @@ button.arch-nested:hover {
   stroke-dasharray: 4 3;
 }
 
-/* ---- Hover dimming ---- */
-.react-flow__node.dim,
+/* ---- Hover dimming ----
+   Hovering a component or an edge lights its edges (`.lit`, with the edge
+   styles above) and fades the rest well back, so the lit lines can be traced
+   at a glance. */
+.react-flow__node.dim {
+  opacity: 0.5;
+}
 .react-flow__edge.dim,
 .arch-edge-chip.dim {
-  opacity: 0.6;
+  opacity: 0.2;
 }
 .react-flow__node,
 .react-flow__edge {

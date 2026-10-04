@@ -494,6 +494,63 @@ function arrowhead(x: number, y: number, side: Position): string {
   }
 }
 
+/**
+ * A detour's points with their ends moved onto the handles' (React Flow puts
+ * them a few px off the box), the pieces leaving them kept square; undefined
+ * once an end is further off than that (mid-drag, say).
+ */
+function fitEnds(
+  points: { x: number; y: number }[],
+  sx: number,
+  sy: number,
+  tx: number,
+  ty: number,
+): { x: number; y: number }[] | undefined {
+  const pts = points.map((p) => ({ ...p }));
+  const fit = (end: number, next: number, x: number, y: number) => {
+    const [p, q] = [pts[end]!, pts[next]!];
+    if (Math.abs(p.x - x) > 8 || Math.abs(p.y - y) > 8) return false;
+    if (p.x === q.x) q.x = x;
+    else q.y = y;
+    pts[end] = { x, y };
+    return true;
+  };
+  const last = pts.length - 1;
+  return fit(0, 1, sx, sy) && fit(last, last - 1, tx, ty) ? pts : undefined;
+}
+
+/**
+ * SVG path through orthogonal `points` with rounded corners, and where its
+ * label goes (the middle of its longest piece): [path, labelX, labelY].
+ */
+function detourPath(points: { x: number; y: number }[], radius: number): [string, number, number] {
+  let d = `M${points[0]!.x} ${points[0]!.y}`;
+  for (let n = 1; n < points.length - 1; n++) {
+    const [a, p, b] = [points[n - 1]!, points[n]!, points[n + 1]!];
+    const r = Math.min(
+      radius,
+      (Math.abs(p.x - a.x) + Math.abs(p.y - a.y)) / 2,
+      (Math.abs(b.x - p.x) + Math.abs(b.y - p.y)) / 2,
+    );
+    const into = { x: p.x - Math.sign(p.x - a.x) * r, y: p.y - Math.sign(p.y - a.y) * r };
+    const out = { x: p.x + Math.sign(b.x - p.x) * r, y: p.y + Math.sign(b.y - p.y) * r };
+    d += `L${into.x} ${into.y}Q${p.x} ${p.y} ${out.x} ${out.y}`;
+  }
+  const end = points[points.length - 1]!;
+  d += `L${end.x} ${end.y}`;
+  let best = 0;
+  let label: [number, number] = [points[0]!.x, points[0]!.y];
+  for (let n = 1; n < points.length; n++) {
+    const [a, b] = [points[n - 1]!, points[n]!];
+    const span = Math.abs(b.x - a.x) + Math.abs(b.y - a.y);
+    if (span > best) {
+      best = span;
+      label = [(a.x + b.x) / 2, (a.y + b.y) / 2];
+    }
+  }
+  return [d, ...label];
+}
+
 /** A handle's point moved `by` px along its side and `inward` px in from it (`ArchEdgeData.ports`). */
 function portPoint(x: number, y: number, side: Position, by = 0, inward = 0): [number, number] {
   switch (side) {
@@ -530,21 +587,27 @@ export function ArchEdgeComponent({
   const mid = data?.mid;
   const inside = (m: number, a: number, b: number) =>
     m > Math.min(a, b) + 4 && m < Math.max(a, b) - 4;
-  const [path, labelX, labelY] = getSmoothStepPath({
-    sourceX,
-    sourceY,
-    targetX,
-    targetY,
-    sourcePosition,
-    targetPosition,
-    borderRadius: 8,
-    centerX:
-      mid !== undefined && data?.horizontal && inside(mid, sourceX, targetX) ? mid : undefined,
-    centerY:
-      mid !== undefined && data?.horizontal === false && inside(mid, sourceY, targetY)
-        ? mid
-        : undefined,
-  });
+  // A detour (toFlow → detour) is drawn as routed while its ends are still
+  // where it was routed for.
+  const pts = data?.points && fitEnds(data.points, sourceX, sourceY, targetX, targetY);
+  const routed = pts ? detourPath(pts, 8) : undefined;
+  const [path, labelX, labelY] =
+    routed ??
+    getSmoothStepPath({
+      sourceX,
+      sourceY,
+      targetX,
+      targetY,
+      sourcePosition,
+      targetPosition,
+      borderRadius: 8,
+      centerX:
+        mid !== undefined && data?.horizontal && inside(mid, sourceX, targetX) ? mid : undefined,
+      centerY:
+        mid !== undefined && data?.horizontal === false && inside(mid, sourceY, targetY)
+          ? mid
+          : undefined,
+    });
   const arrow = data?.arrow ?? "->";
   const payloads = data?.payloadCount ?? 0;
   const hasLabel = data?.protocol !== undefined || data?.label !== undefined || payloads > 0;

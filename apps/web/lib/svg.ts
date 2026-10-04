@@ -16,21 +16,28 @@ import {
   resolveColor,
   shapeOf,
   type ArchDoc,
+  type Arrow,
   type ComponentNode,
   type PlaneNode,
 } from "@archer/lang";
 import { GLYPHS, GLYPH_VIEWBOX, lookupType, type Logo } from "@archer/catalog";
 import { iconMarkup } from "@archer/catalog/icons";
+import { bundle, bundleChip } from "./edgeBundle";
 import { LABEL, labelLayout, outlineInset, shapeGeometry, type ShapeGeometry } from "./shapes";
 import {
   BOX_COST,
   assignPorts,
   bendOf,
   chipWidth,
+  detour,
+  detourPoints,
+  inward,
+  preferCorners,
   routeEdge,
   separateBends,
   untangle,
   type Obstacle,
+  type Point,
   type RoutedEdge,
   type Side,
 } from "./edgeRoute";
@@ -388,25 +395,39 @@ export function renderArchSvg(source: string, opts: RenderOptions = {}): string 
     const b = byPath.get(path[0] ?? "");
     return b && !b.plane ? b : undefined;
   };
-  const routed: (RoutedEdge & { c: ArchDoc["connections"][number] })[] = [];
+  // Summary connections between the same two boxes share a line (`bundle`).
+  type Conn = ArchDoc["connections"][number];
+  const drawable: { c: Conn; source: string; target: string; arrow: Arrow; summary: boolean }[] = [];
   for (const c of doc.connections) {
     const s = boxFor(c.source);
     const t = boxFor(c.target);
     if (!s || !t || s === t) continue;
+    const summary = c.source.length > 1 || c.target.length > 1;
+    drawable.push({ c, source: s.path, target: t.path, arrow: c.arrow, summary });
+  }
+  const routed: (RoutedEdge & { c: Conn; chip: ReturnType<typeof bundleChip> })[] = [];
+  for (const members of bundle(drawable)) {
+    const { c, source, target } = members[0]!;
+    const s = byPath.get(source)!;
+    const t = byPath.get(target)!;
+    const chip = bundleChip(members.map((m) => m.c));
     const sr = { x: s.x + dx, y: s.y + dy, w: s.w, h: s.h };
     const tr = { x: t.x + dx, y: t.y + dy, w: t.w, h: t.h };
     const route = routeEdge(
       sr,
       tr,
       obstaclesFor(s.path, t.path),
-      chipWidth(c.type, c.label, c.payloads.length),
+      chipWidth(chip.protocol, chip.label, chip.payloads),
     );
     const headAtTarget = c.arrow !== "--";
-    routed.push({ c, source: s.path, target: t.path, s: sr, t: tr, route, headAtTarget });
+    routed.push({ c, chip, source: s.path, target: t.path, s: sr, t: tr, route, headAtTarget });
   }
-  // Untangle shared sides, give each edge its own ports, then keep parallel
-  // bends from merging.
+  // L-shape diagonal edges, untangle shared sides, detour edges still
+  // crossing a box, give each edge its own ports, then keep parallel bends
+  // from merging.
+  preferCorners(routed, obstaclesFor);
   untangle(routed, obstaclesFor);
+  detour(routed, obstaclesFor);
   const ports = assignPorts(routed, obstaclesFor);
   separateBends(routed.map((e, i) => bendOf(e.route, e.s, e.t, ports[i])));
   // Edges from one side of a box to several others (a component whose
@@ -422,7 +443,7 @@ export function renderArchSvg(source: string, opts: RenderOptions = {}): string 
     meet(e.target, e.route.to, e.source);
   }
   const fanned = (box: string, side: string) => (partners.get(`${box}:${side}`)?.size ?? 0) > 1;
-  for (const [i, { c, source, target, s: sr, t: tr, route }] of routed.entries()) {
+  for (const [i, { c, chip, source, target, s: sr, t: tr, route }] of routed.entries()) {
     const port = ports[i]!;
     const fanOut = fanned(source, route.from) && !fanned(target, route.to);
     const fanIn = fanned(target, route.to) && !fanned(source, route.from);
@@ -439,7 +460,31 @@ export function renderArchSvg(source: string, opts: RenderOptions = {}): string 
     // shared trunk). The first one that overlaps no leaf node and no earlier
     // chip wins.
     const candidates: { x: number; y: number }[] = [];
-    if (route.corner) {
+    if (route.points) {
+      const pts = detourPoints(route, port);
+      // Ends in from the box to a shape's outline.
+      pts[0] = inward(pts[0]!, route.from, si(route.from));
+      pts[pts.length - 1] = inward(pts[pts.length - 1]!, route.to, ti(route.to));
+      p1 = pts[0]!;
+      p2 = pts[pts.length - 1]!;
+      d = `M${pts.map((p) => `${p.x} ${p.y}`).join("L")}`;
+      // Chip: on the longest piece first.
+      const legs = pts.slice(1).map((q, n) => ({ a: pts[n]!, q }));
+      const span = ({ a, q }: { a: Point; q: Point }) => Math.abs(q.x - a.x) + Math.abs(q.y - a.y);
+      legs.sort((u, v) => span(v) - span(u));
+      candidates.push(...legs.map(({ a, q }) => ({ x: (a.x + q.x) / 2, y: (a.y + q.y) / 2 })));
+    } else if (route.corner && !route.horizontal) {
+      const down = route.from === "b";
+      const right = route.to === "l";
+      p1 = { x: sr.x + sr.w / 2 + port.from, y: down ? sr.y + sr.h - si("b") : sr.y + si("t") };
+      p2 = { x: right ? tr.x + ti("l") : tr.x + tr.w - ti("r"), y: tr.y + tr.h / 2 + port.to };
+      d = `M${p1.x} ${p1.y}V${p2.y}H${p2.x}`;
+      const legs = [
+        { x: p1.x, y: (p1.y + p2.y) / 2 },
+        { x: (p1.x + p2.x) / 2, y: p2.y },
+      ];
+      candidates.push(...(fanOut ? legs.reverse() : legs));
+    } else if (route.corner) {
       const right = route.from === "r";
       const down = route.to === "t";
       p1 = { x: right ? sr.x + sr.w - si("r") : sr.x + si("l"), y: sr.y + sr.h / 2 + port.from };
@@ -485,8 +530,8 @@ export function renderArchSvg(source: string, opts: RenderOptions = {}): string 
       `<path d="${d}" fill="none" stroke="${P.edge}" stroke-width="1.5"${markerEnd}${markerStart}/>`,
     );
     const parts: string[] = [];
-    if (c.type) parts.push(c.type);
-    if (c.label) parts.push(c.label);
+    if (chip.protocol) parts.push(chip.protocol);
+    if (chip.label) parts.push(chip.label);
     if (parts.length > 0) {
       const label = parts.join(" · ");
       const lw = Math.round(label.length * 6 + 12);
@@ -516,12 +561,12 @@ export function renderArchSvg(source: string, opts: RenderOptions = {}): string 
       chipOut.push(
         `<g>` +
           `<rect x="${lx - lw / 2}" y="${ly - 9}" width="${lw}" height="18" rx="4" fill="${P.surface}" stroke="${P.line}"/>` +
-          (c.type
-            ? `<text x="${lx - lw / 2 + 6}" y="${ly + 3.5}" font-family='${MONO}' font-size="10" fill="${P.ink2}">${esc(c.type)}</text>` +
-              (c.label
-                ? `<text x="${lx - lw / 2 + 6 + c.type.length * 6 + 4}" y="${ly + 3.5}" font-family='${SANS}' font-size="10" fill="${P.ink}">· ${esc(c.label)}</text>`
+          (chip.protocol
+            ? `<text x="${lx - lw / 2 + 6}" y="${ly + 3.5}" font-family='${MONO}' font-size="10" fill="${P.ink2}">${esc(chip.protocol)}</text>` +
+              (chip.label
+                ? `<text x="${lx - lw / 2 + 6 + chip.protocol.length * 6 + 4}" y="${ly + 3.5}" font-family='${SANS}' font-size="10" fill="${P.ink}">· ${esc(chip.label)}</text>`
                 : "")
-            : `<text x="${lx - lw / 2 + 6}" y="${ly + 3.5}" font-family='${SANS}' font-size="10" fill="${P.ink}">${esc(c.label ?? "")}</text>`) +
+            : `<text x="${lx - lw / 2 + 6}" y="${ly + 3.5}" font-family='${SANS}' font-size="10" fill="${P.ink}">${esc(chip.label ?? "")}</text>`) +
           `</g>`,
       );
     }

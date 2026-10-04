@@ -149,6 +149,10 @@ const isAdditive = (e: { shiftKey: boolean; metaKey: boolean; ctrlKey: boolean }
   e.shiftKey || e.metaKey || e.ctrlKey;
 
 /** React Flow's zoom and fit-view buttons, drawn with the app's icons instead of its own. */
+/** The connections an edge stands for: one, or a summary line's several. */
+const indicesOf = (edge: ArchEdge): number[] =>
+  edge.data?.bundle?.indices ?? (edge.data?.index !== undefined ? [edge.data.index] : []);
+
 function CanvasControls() {
   const { zoomIn, zoomOut, fitView } = useReactFlow();
   const maxZoomReached = useStore((s) => s.transform[2] >= s.maxZoom);
@@ -233,7 +237,9 @@ function CanvasInner({
   const flagEdges = useCallback(
     (list: ArchEdge[]) =>
       list.map((e) => {
-        const on = e.data !== undefined && selRef.current.edges.has(e.data.key);
+        // A summary line is selected with the connections it stands for.
+        const keys = e.data?.bundle?.keys ?? (e.data ? [e.data.key] : []);
+        const on = keys.some((k) => selRef.current.edges.has(k));
         return !!e.selected === on ? e : { ...e, selected: on };
       }),
     [],
@@ -399,7 +405,7 @@ function CanvasInner({
           ...(e.data && (on !== e.data.lit || ends !== !!e.data.endSelected)
             ? { data: { ...e.data, lit: on, endSelected: ends } }
             : {}),
-          className: joinCls(on === false && "dim"),
+          className: joinCls(on === false && "dim", on === true && "lit"),
         };
       }),
     [edges, lit, selectedEnds],
@@ -488,9 +494,7 @@ function CanvasInner({
     ({ nodes: deleted, edges: deletedEdges }: { nodes: Node[]; edges: Edge[] }) =>
       callbacks.onDelete(
         deleted.map((n) => n.id),
-        deletedEdges
-          .map((e) => (e.data as { index?: number } | undefined)?.index)
-          .filter((i): i is number => i !== undefined),
+        deletedEdges.flatMap((e) => indicesOf(e as ArchEdge)),
       ),
     [callbacks],
   );
@@ -593,8 +597,12 @@ function CanvasInner({
             if (n.type === "archComponent") callbacks.onDrillIn(n.id);
           }}
           onEdgeClick={(e, edge) => {
-            const i = (edge.data as { index?: number } | undefined)?.index;
-            if (i !== undefined) callbacks.onSelectEdge(i, isAdditive(e));
+            // A summary line selects every connection it stands for.
+            indicesOf(edge).forEach((i, k) => callbacks.onSelectEdge(i, k > 0 || isAdditive(e)));
+          }}
+          onEdgeDoubleClick={(_e, edge) => {
+            // Opening a summary line opens a component its connections reach into.
+            if (edge.data?.bundle) callbacks.onDrillIn(edge.data.bundle.open);
           }}
           onPaneClick={() => callbacks.onClearSelection()}
           onSelectionEnd={() =>
@@ -610,8 +618,10 @@ function CanvasInner({
               });
           }}
           onEdgeContextMenu={(e, edge) => {
-            const i = (edge.data as { index?: number } | undefined)?.index;
-            if (i !== undefined) openMenu(e, { kind: "edge", index: i });
+            const i = edge.data?.index;
+            // A summary line has no one connection to reverse or re-point.
+            if (edge.data?.bundle) e.preventDefault();
+            else if (i !== undefined) openMenu(e, { kind: "edge", index: i });
           }}
           onPaneContextMenu={(e) =>
             openMenu(e, {

@@ -4,6 +4,10 @@ import {
   PORT_GAP,
   assignPorts,
   bendOf,
+  detour,
+  detourPoints,
+  preferCorners,
+  routeAround,
   routeCorner,
   routeEdge,
   separateBends,
@@ -12,6 +16,7 @@ import {
   type Rect,
   type RoutedEdge,
 } from "../lib/edgeRoute";
+import { bundle, bundleChip } from "../lib/edgeBundle";
 
 const box = (x: number, y: number, w = 160, h = 120): Rect => ({ x, y, w, h });
 const wall = (r: Rect): Obstacle => ({ ...r, cost: BOX_COST });
@@ -172,5 +177,149 @@ describe("untangle", () => {
     expect(webhook.route.corner).toBe(true);
     expect(webhook.route.to).toBe("t");
     expect(out.route.corner).toBeUndefined();
+  });
+});
+
+describe("preferCorners", () => {
+  const routed = (source: string, target: string, s: Rect, t: Rect): RoutedEdge => ({
+    source,
+    target,
+    s,
+    t,
+    route: routeEdge(s, t, []),
+    headAtTarget: true,
+  });
+
+  it("turns a diagonal edge into an L with one bend", () => {
+    const e = routed("a", "b", box(0, 0), box(400, 300));
+    expect(e.route.corner).toBeUndefined();
+    preferCorners([e], () => []);
+    expect([e.route.corner, e.route.from, e.route.to]).toEqual([true, "r", "t"]);
+  });
+
+  it("leaves the other way when the L it would take is blocked", () => {
+    const e = routed("a", "b", box(0, 0), box(400, 300));
+    // A box right of a, on the way to b's top.
+    preferCorners([e], () => [wall(box(240, 0, 120, 120))]);
+    expect([e.route.corner, e.route.from, e.route.to]).toEqual([true, "b", "l"]);
+  });
+
+  it("takes no L onto a side another edge uses", () => {
+    const hub = box(0, 200);
+    const up = routed("hub", "up", hub, box(400, -100));
+    const level = routed("hub", "level", hub, box(400, 200));
+    preferCorners([up, level], () => []);
+    // Out of hub's right side it would run beside level: out of its top instead.
+    expect([up.route.corner, up.route.from, up.route.to]).toEqual([true, "t", "l"]);
+    // With hub's top taken too, it keeps its three pieces.
+    const up2 = routed("hub", "up", hub, box(400, -100));
+    const above = routed("hub", "above", hub, box(0, -200));
+    preferCorners([up2, routed("hub", "level", hub, box(400, 200)), above], () => []);
+    expect(up2.route.corner).toBeUndefined();
+  });
+
+  it("leaves boxes that overlap alone", () => {
+    const e = routed("a", "b", box(0, 0), box(400, 60));
+    preferCorners([e], () => []);
+    expect(e.route.corner).toBeUndefined();
+  });
+});
+
+describe("bundle", () => {
+  const c = (source: string, target: string, arrow: "->" | "<->" | "--", summary = true) => ({
+    source,
+    target,
+    arrow,
+    summary,
+  });
+
+  it("puts summary connections that point the same way on one line", () => {
+    const lines = bundle([
+      c("a", "b", "->"),
+      c("b", "a", "->"),
+      c("a", "b", "->"),
+      c("a", "b", "<->"),
+      c("b", "a", "<->"),
+      c("a", "b", "->", false),
+    ]);
+    expect(lines.map((l) => l.length)).toEqual([2, 1, 2, 1]);
+    expect(lines[0]!.every((m) => m.source === "a")).toBe(true);
+  });
+
+  it("counts the connections a line stands for, with the protocol they share", () => {
+    const http = { type: "http", payloads: [] };
+    expect(bundleChip([http, { ...http, label: "x" }])).toEqual({
+      protocol: "http",
+      label: "2 connections",
+      payloads: 0,
+    });
+    expect(bundleChip([{ ...http, label: "x", payloads: [1] }])).toEqual({
+      protocol: "http",
+      label: "x",
+      payloads: 1,
+    });
+  });
+});
+
+describe("detour", () => {
+  // Every piece of a polyline, as [x1, y1, x2, y2].
+  const legs = (pts: { x: number; y: number }[]) => pts.slice(1).map((q, i) => [pts[i]!, q] as const);
+  const crosses = (pts: { x: number; y: number }[], r: Rect) =>
+    legs(pts).some(([a, b]) => {
+      const [x0, x1] = [Math.min(a.x, b.x), Math.max(a.x, b.x)];
+      const [y0, y1] = [Math.min(a.y, b.y), Math.max(a.y, b.y)];
+      return x1 > r.x && x0 < r.x + r.w && y1 > r.y && y0 < r.y + r.h;
+    });
+
+  it("goes around a box in the row that no bend gets past", () => {
+    const a = box(0, 0);
+    const b = box(800, 0);
+    const middle = box(400, -20, 160, 160);
+    const e: RoutedEdge = {
+      source: "a",
+      target: "b",
+      s: a,
+      t: b,
+      route: routeEdge(a, b, [wall(middle)]),
+      headAtTarget: true,
+    };
+    detour([e], () => [wall(middle)]);
+    const pts = e.route.points!;
+    expect(pts).toBeDefined();
+    expect(crosses(pts, middle)).toBe(false);
+    // Square corners only, and few of them.
+    for (const [p, q] of legs(pts)) expect(p.x === q.x || p.y === q.y).toBe(true);
+    expect(pts.length).toBeLessThanOrEqual(6);
+  });
+
+  it("leaves edges with a clear route alone", () => {
+    const e: RoutedEdge = {
+      source: "a",
+      target: "b",
+      s: box(0, 0),
+      t: box(400, 200),
+      route: routeEdge(box(0, 0), box(400, 200), []),
+      headAtTarget: true,
+    };
+    detour([e], () => []);
+    expect(e.route.points).toBeUndefined();
+  });
+
+  it("finds nothing when the target is walled in", () => {
+    const t = box(400, 0);
+    const ring = [
+      box(360, -40, 240, 20),
+      box(360, 140, 240, 20),
+      box(360, -40, 20, 200),
+      box(580, -40, 20, 200),
+    ];
+    expect(routeAround(box(0, 0), t, ring.map(wall))).toBeNull();
+  });
+
+  it("slides a detour's ends to their ports, keeping the pieces square", () => {
+    const route = routeAround(box(0, 0), box(800, 0), [wall(box(400, -20, 160, 160))])!;
+    const pts = detourPoints(route, { from: 10, to: -10 });
+    expect(pts[0]!.y - route.points![0]!.y).toBe(route.from === "r" || route.from === "l" ? 10 : 0);
+    for (const [p, q] of legs(pts)) expect(p.x === q.x || p.y === q.y).toBe(true);
   });
 });
