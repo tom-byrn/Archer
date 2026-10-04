@@ -30,6 +30,7 @@
     "@lezer/highlight": "^1.2.3",
     "@paper-design/shaders-react": "^0.0.81",
     "@phosphor-icons/react": "^2.1.10",
+    "@vercel/analytics": "^2.0.1",
     "@xyflow/react": "^12.8.0",
     "context.dev": "^2.14.0",
     "convex": "^1.45.0",

@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Inter, Playfair_Display } from "next/font/google";
+import { Analytics } from "@vercel/analytics/next";
 import "@xyflow/react/dist/style.css";
 import "./globals.css";
 import { Providers } from "@/components/Providers";
@@ -44,6 +45,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body>
         <Providers>{children}</Providers>
+        <Analytics />
       </body>
     </html>
   );
