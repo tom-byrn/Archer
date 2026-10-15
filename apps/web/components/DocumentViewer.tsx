@@ -301,6 +301,10 @@ function DocumentView({
                   }
                 : undefined
             }
+            onSelectComponent={(path) => {
+              setFocus(path.split(".").slice(0, -1));
+              setSelected(path);
+            }}
             repo={repo}
           />
         )}
@@ -315,6 +319,7 @@ function Details({
   node,
   onClose,
   onOpen,
+  onSelectComponent,
   repo,
 }: {
   doc: ArchDoc;
@@ -322,6 +327,8 @@ function Details({
   node: ComponentNode | PlaneNode;
   onClose: () => void;
   onOpen?: () => void;
+  /** Show another component (a connection's far end), on the canvas it's on. */
+  onSelectComponent: (path: string) => void;
   repo: RepoLink | null;
 }) {
   const isDark = useIsDark();
@@ -344,7 +351,12 @@ function Details({
         {node.kind === "plane" ? (
           <PlaneDetails doc={doc} path={path} plane={node} />
         ) : (
-          <ComponentDetails node={node} repo={repo} onOpen={onOpen} />
+          <ComponentDetails
+            node={node}
+            repo={repo}
+            onOpen={onOpen}
+            connections={{ doc, path, onSelectComponent }}
+          />
         )}
       </div>
     </SidePanel>
