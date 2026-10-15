@@ -840,7 +840,7 @@ hooks <span class="p">-&gt;</span> ledger <span class="t">@sql</span> <span clas
         <h2 id="h-agents">Your agent works on the same model.</h2>
         <p class="sub">Archer serves an MCP server at tryarcher.dev/mcp. Add it to your client, sign in with the same GitHub account, and your agent can read the model, write Archer code, render it and check its history.</p>
         <ul class="clients" aria-label="Works with">
-          <li>Claude Code</li><li>Codex</li><li>Cursor</li><li>Gemini CLI</li><li>VS Code</li><li>any MCP client</li>
+          <li>Claude Code</li><li>Codex</li><li>Cursor</li><li>Gemini CLI</li><li>VS Code</li>
         </ul>
         <ol class="steps">
           <li><span class="k2">Add</span>
@@ -1686,7 +1686,7 @@ hooks <span class="p">-&gt;</span> ledger <span class="t">@sql</span> <span clas
       if (n >= 13) S.box({ x: 160, y: 180, w: 90, d: 64, h: 22, on: B, hover: 8, mat: n === 13 ? "added" : "white", side: windows(n + 2), top: card({ glyph: "card", label: "Billing", sz: "s" }) });
       if (n < 14) S.box({ x: 20, y: 180, w: 90, d: 64, h: 22, on: B, hover: 8, side: windows(n + 4), top: card({ glyph: "key", label: "Auth", sz: "s" }) });
       else S.box({ x: 20, y: 180, w: 90, d: 64, h: 22, mat: "ghost", top: card({ glyph: "key", label: "Auth", sz: "s" }) });
-    }, [12, 12, 12, 12]);
+    }, [12, 30, 26, 12]);
   }
   rev("v-r12", 12); rev("v-r13", 13); rev("v-r14", 14);
 
