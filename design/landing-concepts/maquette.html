@@ -291,8 +291,8 @@ p { margin: 0; }
 @media (max-width: 420px) { .nav-r .btn { padding: 0 12px; font-size: 14px; } }
 
 /* ---------- hero ---------- */
-.hero-head { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 56px; align-items: end; padding-top: 34px; padding-bottom: 6px; }
-.hero-head h1 { max-width: 11.5ch; }
+.hero-head { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); gap: 56px; align-items: end; padding-top: 34px; padding-bottom: 6px; }
+.hero-head h1 { max-width: 14ch; font-size: clamp(42px, 5.3vw, 78px); }
 .lede { font-size: 21px; line-height: 1.5; color: var(--ink-2); font-weight: 300; max-width: 34em; }
 .lede strong { font-weight: 500; color: var(--ink); }
 .ctas { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 12px; margin-top: 24px; }
@@ -303,19 +303,22 @@ p { margin: 0; }
 .icon-btn { width: 40px; height: 40px; flex: none; display: grid; place-items: center; background: none; border: 0; border-left: 1px solid var(--line); cursor: pointer; color: var(--ink-2); }
 .icon-btn:hover { color: var(--ink); }
 @media (max-width: 900px) {
-  .hero-head { grid-template-columns: 1fr; gap: 22px; padding-top: 18px; }
+  .hero-head { grid-template-columns: minmax(0, 1fr); gap: 22px; padding-top: 18px; }
   .lede { font-size: 19px; }
 }
 
-.stage {
-  position: relative; margin-top: 18px;
+.hero {
   background:
-    radial-gradient(ellipse 60% 70% at 50% 42%, var(--spot) 0%, transparent 70%),
-    linear-gradient(to bottom, transparent 0%, var(--bg-2) 100%);
+    radial-gradient(ellipse 55% 50% at 55% 68%, var(--spot) 0%, transparent 72%),
+    linear-gradient(to bottom, transparent 45%, var(--bg-2) 100%);
   border-bottom: 1px solid var(--line);
 }
+.hero-head { position: relative; z-index: 2; pointer-events: none; }
+.hero-head > * { pointer-events: auto; }
+.stage { position: relative; margin-top: 0; }
+@media (min-width: 1100px) { .stage { margin-top: -96px; } }
 .stage-in { display: flex; max-width: 1440px; margin: 0 auto; }
-.model-wrap { position: relative; flex: 1; min-width: 0; height: clamp(250px, 46vw, 630px); }
+.model-wrap { position: relative; flex: 1; min-width: 0; height: clamp(250px, 44vw, 610px); overflow: hidden; }
 .model-wrap svg { width: 100%; height: 100%; overflow: visible; }
 .code { width: 0; overflow: hidden; transition: width .9s cubic-bezier(.22, 1.18, .36, 1); }
 .code-in { width: min(430px, 40vw); height: 100%; padding: 26px 26px 26px 0; }
@@ -462,19 +465,19 @@ section { position: relative; }
 .band .col h3 { font-size: 19px; margin-bottom: 8px; display: flex; align-items: baseline; gap: 10px; }
 .band .col h3 .sc { font-family: "DM Mono", monospace; letter-spacing: 0; font-size: 12px; color: var(--accent); font-weight: 400; }
 .band .col p { color: var(--ink-2); font-weight: 300; font-size: 17.5px; }
-@media (max-width: 1000px) { .band { grid-template-columns: 1fr 1fr; } }
-@media (max-width: 600px) { .band { grid-template-columns: 1fr; gap: 28px; padding-top: 48px; padding-bottom: 52px; } }
+@media (max-width: 1000px) { .band { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
+@media (max-width: 600px) { .band { grid-template-columns: minmax(0, 1fr); gap: 28px; padding-top: 48px; padding-bottom: 52px; } }
 
 .sec-head { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 40px; align-items: end; padding-top: 96px; padding-bottom: 40px; }
 .sec-head p.sub { color: var(--ink-2); font-weight: 300; font-size: 19px; max-width: 32em; }
-@media (max-width: 860px) { .sec-head { grid-template-columns: 1fr; gap: 16px; padding-top: 64px; padding-bottom: 28px; } }
+@media (max-width: 860px) { .sec-head { grid-template-columns: minmax(0, 1fr); gap: 16px; padding-top: 64px; padding-bottom: 28px; } }
 
 .vgrid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); column-gap: 40px; }
 .vig { margin: 0; padding: 30px 0 46px; border-top: 1px solid var(--line); display: flex; flex-direction: column; min-width: 0; }
 .vig.c7 { grid-column: span 7; }
 .vig.c5 { grid-column: span 5; }
 .vig.c12 { grid-column: span 12; }
-.vig-model { position: relative; flex: 1; display: flex; align-items: center; justify-content: center; min-height: 0; }
+.vig-model { position: relative; overflow: hidden; flex: 1; display: flex; align-items: center; justify-content: center; min-height: 0; }
 .vig-model svg { width: 100%; height: auto; max-height: 420px; overflow: visible; }
 .crumb { position: absolute; left: 0; top: 0; font-family: "DM Mono", monospace; font-size: 12.5px; color: var(--ink-3); display: flex; gap: 6px; align-items: center; }
 .crumb b { color: var(--ink); font-weight: 500; }
@@ -487,7 +490,7 @@ section { position: relative; }
 .snip code { flex: 1; min-width: 0; overflow-x: auto; white-space: nowrap; font-size: 12px; padding: 10px 12px; color: var(--ink-2); scrollbar-width: none; }
 .snip code::-webkit-scrollbar { display: none; }
 .revs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 28px; }
-.rev { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.rev { display: flex; flex-direction: column; gap: 10px; min-width: 0; overflow: hidden; }
 .rev svg { width: 100%; height: auto; overflow: visible; }
 .rev-cap { border-left: 1px solid var(--line-2); padding-left: 12px; font-size: 16px; }
 .rev-cap .who { font-family: "Alegreya Sans SC", sans-serif; letter-spacing: .08em; color: var(--ink); }
@@ -497,11 +500,12 @@ section { position: relative; }
 .rev-cap .del { color: var(--ink-3); text-decoration: line-through; text-decoration-color: var(--line-2); }
 .rev-cap .mv { color: var(--ink-3); font-style: italic; font-family: "Alegreya Sans", sans-serif; font-size: 15px; }
 @media (max-width: 1000px) {
-  .vig.c7, .vig.c5 { grid-column: span 12; }
+  .vgrid { grid-template-columns: minmax(0, 1fr); column-gap: 0; }
+  .vig.c7, .vig.c5, .vig.c12 { grid-column: auto; }
 }
 @media (max-width: 760px) {
-  .revs { grid-template-columns: 1fr; gap: 22px; }
-  .vig figcaption { grid-template-columns: 1fr; }
+  .revs { grid-template-columns: minmax(0, 1fr); gap: 22px; }
+  .vig figcaption { grid-template-columns: minmax(0, 1fr); }
   .vig figcaption h3, .vig figcaption p, .vig figcaption .snip { grid-column: 1; }
   .vig figcaption .fig { padding: 0; }
 }
@@ -516,8 +520,8 @@ section { position: relative; }
 .specimen .sheet-head { font-size: 15px; }
 .specimen pre { margin: 0; padding: 16px 20px 20px; font-size: 13px; line-height: 1.75; overflow-x: auto; }
 @media (max-width: 900px) {
-  .notes { grid-template-columns: 1fr; gap: 36px; padding-top: 56px; padding-bottom: 60px; }
-  .notes dl div { grid-template-columns: 1fr; gap: 4px; }
+  .notes { grid-template-columns: minmax(0, 1fr); gap: 36px; padding-top: 56px; padding-bottom: 60px; }
+  .notes dl div { grid-template-columns: minmax(0, 1fr); gap: 4px; }
 }
 
 /* agents */
@@ -537,23 +541,24 @@ section { position: relative; }
 .transcript pre { margin: 0; padding: 14px 18px 18px; font-size: 12.5px; line-height: 1.8; white-space: pre-wrap; color: var(--ink-2); }
 .transcript .who { color: var(--ink-3); }
 .transcript .ok { color: var(--accent); }
-@media (max-width: 960px) { .agents { grid-template-columns: 1fr; gap: 36px; padding-top: 64px; padding-bottom: 64px; } }
-@media (max-width: 520px) { .steps li { grid-template-columns: 1fr; gap: 4px; } }
+@media (max-width: 960px) { .agents { grid-template-columns: minmax(0, 1fr); gap: 36px; padding-top: 64px; padding-bottom: 64px; } }
+@media (max-width: 520px) { .steps li { grid-template-columns: minmax(0, 1fr); gap: 4px; } }
 
 /* faq */
 .faq { padding-top: 72px; padding-bottom: 80px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); gap: 48px; }
-.faq dl { margin: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 0 40px; }
+.faq dl { margin: 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0 40px; }
 .faq dl div { padding: 18px 0 22px; border-top: 1px solid var(--line); }
 .faq dt { font-family: "Schibsted Grotesk", sans-serif; font-weight: 600; font-size: 17.5px; letter-spacing: -0.01em; }
 .faq dd { margin: 6px 0 0; color: var(--ink-2); font-weight: 300; font-size: 17.5px; }
-@media (max-width: 860px) { .faq { grid-template-columns: 1fr; gap: 20px; padding-top: 56px; padding-bottom: 56px; } .faq dl { grid-template-columns: 1fr; } }
+@media (max-width: 860px) { .faq { grid-template-columns: minmax(0, 1fr); gap: 20px; padding-top: 56px; padding-bottom: 56px; } .faq dl { grid-template-columns: minmax(0, 1fr); } }
 
 /* closing */
 .closing { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 40px; align-items: center; padding-top: 72px; padding-bottom: 88px; }
 .closing h2 { font-size: clamp(38px, 4.6vw, 68px); }
 .closing p { color: var(--ink-2); font-weight: 300; font-size: 19px; margin-top: 16px; max-width: 30em; }
+.cl-model { overflow: hidden; min-width: 0; }
 .closing svg { width: 100%; height: auto; overflow: visible; max-height: 380px; }
-@media (max-width: 860px) { .closing { grid-template-columns: 1fr; padding-top: 48px; padding-bottom: 60px; } .closing .cl-model { order: -1; } }
+@media (max-width: 860px) { .closing { grid-template-columns: minmax(0, 1fr); padding-top: 48px; padding-bottom: 60px; } .closing .cl-model { order: -1; } }
 
 /* footer */
 footer { border-top: 1px solid var(--line); background: var(--bg-2); }
@@ -564,7 +569,7 @@ footer { border-top: 1px solid var(--line); background: var(--bg-2); }
 .foot ul a:hover { color: var(--ink); text-decoration: underline; text-underline-offset: 4px; }
 .foot .about { color: var(--ink-3); font-size: 15.5px; font-weight: 300; max-width: 22em; margin-top: 12px; }
 .colophon { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding-top: 18px; padding-bottom: 28px; border-top: 1px solid var(--line); font-size: 14.5px; color: var(--ink-3); }
-@media (max-width: 760px) { .foot { grid-template-columns: 1fr 1fr; } .foot .f-brand { grid-column: 1 / -1; } }
+@media (max-width: 760px) { .foot { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } .foot .f-brand { grid-column: 1 / -1; } }
 
 .toast { position: fixed; left: 50%; bottom: 22px; transform: translate(-50%, 20px); background: var(--ink); color: var(--on-ink); padding: 10px 16px; border-radius: 4px; font-size: 15px; opacity: 0; transition: opacity .3s, transform .5s cubic-bezier(.3, 1.5, .5, 1); pointer-events: none; z-index: 40; max-width: calc(100vw - 32px); }
 .toast.on { opacity: 1; transform: translate(-50%, 0); }
@@ -1222,11 +1227,11 @@ hooks <span class="p">-&gt;</span> ledger <span class="t">@sql</span> <span clas
       corners: function () { return [[o.x, o.y, 0], [o.x, o.y, h + 50]]; },
       update: function (c) {
         var b = c.P(o.x, o.y, 0), t = c.P(o.x, o.y, h * 0.7), hd = c.P(o.x, o.y, h * 0.9);
-        var w = 9 * c.zoom;
+        var w = (o.h || 34) * 0.27 * c.zoom;
         body.setAttribute("x", r2(b[0] - w / 2)); body.setAttribute("y", r2(t[1]));
         body.setAttribute("width", r2(w)); body.setAttribute("height", r2(Math.max(0.1, b[1] - t[1] + 1)));
         body.setAttribute("rx", r2(w / 2));
-        head.setAttribute("cx", r2(hd[0])); head.setAttribute("cy", r2(hd[1] - 5 * c.zoom)); head.setAttribute("r", r2(4.6 * c.zoom));
+        head.setAttribute("cx", r2(hd[0])); head.setAttribute("cy", r2(hd[1] - (o.h || 34) * 0.14 * c.zoom)); head.setAttribute("r", r2((o.h || 34) * 0.135 * c.zoom));
         var lx = hd[0] + (o.lx || 0), ly = hd[1] + (o.ly || -40);
         ln.setAttribute("x1", r2(hd[0])); ln.setAttribute("y1", r2(hd[1] - 14));
         ln.setAttribute("x2", r2(lx)); ln.setAttribute("y2", r2(ly + 6));
@@ -1237,7 +1242,7 @@ hooks <span class="p">-&gt;</span> ledger <span class="t">@sql</span> <span clas
     return this.push(it);
   };
 
-  Scene.prototype.packets = function (pts, layers, opt) {
+  Scene.prototype.flow = function (pts, layers, opt) {
     opt = opt || {};
     var segs = [], total = 0;
     for (var i = 0; i < pts.length - 1; i++) {
@@ -1448,10 +1453,10 @@ hooks <span class="p">-&gt;</span> ledger <span class="t">@sql</span> <span clas
   var hauth = H.box({ id: "auth", x: 0, y: 360, w: 160, d: 120, h: 30, on: board, maxLift: 16, side: windows(4),
     top: card({ glyph: "key", label: "Auth", type: "@clerk" }) });
 
-  H.packets([[160, 180, 0], [240, 180, 0], [240, 180, 16, plinth], [280, 180, 16, plinth]], [gpk, ppk, ppk], { n: 2, speed: 40, cls: "c1", big: true });
-  H.packets([[80, 240, 0], [80, 360, 0]], [gpk], { n: 2, speed: 34, phase: 30, cls: "c2", big: true });
-  H.packets([[440, 180, 16, plinth], [524, 180, 16, plinth]], [ppk], { n: 2, speed: 36, phase: 10, cls: "c3", big: true });
-  H.packets([[360, 240, 16, plinth], [360, 280, 16, plinth], [360, 280, 0], [360, 360, 0]], [ppk, ppk, gpk], { n: 2, speed: 38, phase: 50, cls: "c4", big: true });
+  H.flow([[160, 180, 0], [240, 180, 0], [240, 180, 16, plinth], [280, 180, 16, plinth]], [gpk, ppk, ppk], { n: 2, speed: 40, cls: "c1", big: true });
+  H.flow([[80, 240, 0], [80, 360, 0]], [gpk], { n: 2, speed: 34, phase: 30, cls: "c2", big: true });
+  H.flow([[440, 180, 16, plinth], [524, 180, 16, plinth]], [ppk], { n: 2, speed: 36, phase: 10, cls: "c3", big: true });
+  H.flow([[360, 240, 16, plinth], [360, 280, 16, plinth], [360, 280, 0], [360, 360, 0]], [ppk, ppk, gpk], { n: 2, speed: 38, phase: 50, cls: "c4", big: true });
 
   var TYPES = { web: "@vercel.nextjs", auth: "@clerk", api: "@vercel.functions", db: "@supabase.postgres", billing: "@stripe", backend: "plane backend" };
   var NAMES = { web: "Web app", auth: "Auth", api: "API", db: "Postgres", billing: "Billing", backend: "Backend plane" };
@@ -1635,9 +1640,9 @@ hooks <span class="p">-&gt;</span> ledger <span class="t">@sql</span> <span clas
     S.box({ x: 180, y: 180, w: 84, d: 58, h: 16, on: B, hover: 10, top: card({ glyph: "hook", label: "Webhooks", sz: "s" }) });
     S.box({ x: 150, y: 58, w: 8, d: 204, h: 26, on: B });
     S.box({ x: 150, y: 262, w: 230, d: 8, h: 26, on: B });
-    S.packets([[100, 120, 0], [180, 120, 0]], [L], { n: 1, speed: 26 });
-    S.packets([[264, 107, 0], [322, 107, 0], [322, 132, 0]], [L], { n: 1, speed: 24, phase: 20 });
-    S.packets([[264, 209, 0], [322, 209, 0], [322, 188, 0]], [L], { n: 1, speed: 24, phase: 50 });
+    S.flow([[100, 120, 0], [180, 120, 0]], [L], { n: 1, speed: 26 });
+    S.flow([[264, 107, 0], [322, 107, 0], [322, 132, 0]], [L], { n: 1, speed: 24, phase: 20 });
+    S.flow([[264, 209, 0], [322, 209, 0], [322, 188, 0]], [L], { n: 1, speed: 24, phase: 50 });
     S.onTick = function (dt, t) {
       if (RM) return false;
       lid.ang = 104 + Math.sin(t * 0.7) * 3;
@@ -1651,15 +1656,15 @@ hooks <span class="p">-&gt;</span> ledger <span class="t">@sql</span> <span clas
     thread(c, [[110, 145], [150, 145]], "", "e");
     thread(c, [[240, 145], [262, 145]], "", "e");
     var L = S.layer();
-    S.figure({ x: 352, y: 50, on: B, label: "Viewer", desc: "reads", lx: 26, ly: -30 });
+    S.figure({ x: 350, y: 46, h: 50, on: B, label: "Viewer", desc: "reads it", lx: 30, ly: -34 });
     S.cyl({ cx: 300, cy: 145, rx: 38, ry: 29, h: 38, on: B, hover: 10, top: cylTop({ glyph: "db", label: "Postgres", sz: "s" }) });
     S.box({ x: 150, y: 110, w: 90, d: 70, h: 34, on: B, hover: 10, side: windows(5), top: card({ glyph: "bolt", label: "API", sz: "s" }) });
-    S.figure({ x: 262, y: 252, on: B, label: "Editor", desc: "changes the model", lx: 30, ly: -14 });
+    S.figure({ x: 268, y: 250, h: 50, on: B, label: "Editor", desc: "changes the model", lx: 40, ly: -20 });
     S.box({ x: 36, y: 118, w: 74, d: 54, h: 8, on: B, hover: 10, top: card({ glyph: "globe", label: "Web app", sz: "s", chrome: true }) });
-    S.figure({ x: 84, y: 250, on: B, label: "Owner", desc: "invites, manages", lx: -34, ly: -8, anchor: "end" });
-    S.packets([[110, 145, 0], [150, 145, 0]], [L], { n: 1, speed: 20 });
-    S.packets([[240, 145, 0], [262, 145, 0]], [L], { n: 1, speed: 16, phase: 8 });
-  }, [70, 120, 16, 110]);
+    S.figure({ x: 70, y: 262, h: 50, on: B, label: "Owner", desc: "invites, manages", lx: -40, ly: -30, anchor: "end" });
+    S.flow([[110, 145, 0], [150, 145, 0]], [L], { n: 1, speed: 20 });
+    S.flow([[240, 145, 0], [262, 145, 0]], [L], { n: 1, speed: 16, phase: 8 });
+  }, [56, 96, 12, 96]);
 
   /* Fig 4: history */
   function rev(id, n) {
@@ -1715,7 +1720,7 @@ hooks <span class="p">-&gt;</span> ledger <span class="t">@sql</span> <span clas
     S.box({ x: 24, y: 48, w: 74, d: 50, h: 6, on: B, hover: 10, top: card({ glyph: "globe", label: "Web", sz: "s", chrome: true }) });
     S.box({ x: 24, y: 130, w: 74, d: 56, h: 28, on: B, hover: 10, side: windows(7), top: card({ glyph: "bolt", label: "API", sz: "s" }) });
     S.cyl({ cx: 61, cy: 246, rx: 32, ry: 24, h: 30, on: B, hover: 10, top: cylTop({ glyph: "db", label: "DB", sz: "s" }) });
-    S.packets([[98, 158, 0], [200, 158, 0]], [L], { n: 2, speed: 28 });
+    S.flow([[98, 158, 0], [200, 158, 0]], [L], { n: 2, speed: 28 });
   }, [16, 16, 16, 16]);
 
   /* Fig 6: parts drawer */
@@ -1750,7 +1755,7 @@ hooks <span class="p">-&gt;</span> ledger <span class="t">@sql</span> <span clas
     thread(c, [[130, 110], [184, 110]], "", "e");
     plate(c, 157, 92, "MCP");
     thread(c, [[240, 110], [290, 110]], "", "e");
-    plate(c, 265, 136, "update_project");
+    plate(c, 232, 176, "update_project");
     thread(c, [[360, 98], [388, 98]], "", "e");
     thread(c, [[325, 126], [325, 160]], "", "s");
     var L = S.layer();
@@ -1759,9 +1764,9 @@ hooks <span class="p">-&gt;</span> ledger <span class="t">@sql</span> <span clas
     S.box({ x: 184, y: 86, w: 56, d: 48, h: 40, on: B, hover: 10, side: windows(6), top: card({ glyph: "plug", label: "/mcp", sz: "s" }) });
     S.box({ x: 290, y: 160, w: 70, d: 52, h: 6, on: B, hover: 10, top: card({ glyph: "globe", label: "Web", sz: "s", chrome: true }) });
     S.box({ x: 20, y: 70, w: 110, d: 80, h: 10, on: B, hover: 10, top: card({ glyph: "terminal", label: "Your agent", sz: "s", type: "any MCP client" }) });
-    S.packets([[130, 110, 0], [184, 110, 0]], [L], { n: 2, speed: 26 });
-    S.packets([[240, 110, 0], [290, 110, 0]], [L], { n: 2, speed: 26, phase: 12 });
-    S.packets([[360, 98, 0], [388, 98, 0]], [L], { n: 1, speed: 18 });
+    S.flow([[130, 110, 0], [184, 110, 0]], [L], { n: 2, speed: 26 });
+    S.flow([[240, 110, 0], [290, 110, 0]], [L], { n: 2, speed: 26, phase: 12 });
+    S.flow([[360, 98, 0], [388, 98, 0]], [L], { n: 1, speed: 18 });
   }, [16, 16, 16, 16]);
 
   /* Fig 7: empty board, one piece set down */

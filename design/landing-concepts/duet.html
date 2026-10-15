@@ -126,6 +126,7 @@ code,kbd,pre{font-family:var(--f-mono)}
 .theme-btn svg{width:17px;height:17px;display:none}
 .theme-btn[data-mode="system"] .i-sys,.theme-btn[data-mode="light"] .i-sun,.theme-btn[data-mode="dark"] .i-moon{display:block}
 @media (max-width:860px){.nav-links{display:none}}
+.nav .btn{gap:0}
 @media (max-width:420px){.nav .btn.primary .long{display:none}}
 
 /* ---------- hero ---------- */
@@ -140,9 +141,9 @@ h1.headline{font-family:var(--f-display);font-variation-settings:"opsz" 96;font-
 .headline .w{position:relative;display:inline-block}
 .hcaret{position:relative;display:inline-block;width:.055em;height:.78em;margin-left:.04em;vertical-align:-.02em;background:var(--claude);border-radius:2px;animation:blink 1.1s steps(1) infinite}
 .hflag{position:absolute;left:0;bottom:100%;margin-bottom:.06em;font:600 13px/1 var(--f-body);letter-spacing:0;color:#fff;background:var(--claude);padding:5px 8px;border-radius:6px 6px 6px 0;white-space:nowrap}
-.hptr{position:absolute;right:-.36em;bottom:-.12em;width:.28em;height:.28em;min-width:22px;min-height:22px;color:var(--you);animation:bob 3.2s ease-in-out infinite}
+.hptr{position:absolute;right:-.42em;top:.02em;width:.28em;height:.28em;min-width:22px;min-height:22px;color:var(--you);animation:bob 3.2s ease-in-out infinite}
 .hptr svg{width:100%;height:100%;display:block;filter:drop-shadow(0 2px 3px rgba(0,0,0,.18))}
-.hptr .hflag{left:70%;bottom:auto;top:78%;margin:0;background:var(--you);border-radius:0 6px 6px 6px}
+.hptr .hflag{left:78%;bottom:auto;top:82%;margin:0;background:var(--you);border-radius:0 6px 6px 6px}
 @keyframes blink{50%{opacity:0}}
 @keyframes bob{0%,100%{transform:translate(0,0)}50%{transform:translate(-3px,-4px)}}
 .hero-row{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:40px;align-items:end;margin-top:34px}
@@ -261,7 +262,7 @@ h1.headline{font-family:var(--f-display);font-variation-settings:"opsz" 96;font-
 .cursor svg{width:20px;height:20px;display:block;color:var(--you);filter:drop-shadow(0 2px 3px rgba(0,0,0,.2));transition:transform .12s ease;transform-origin:3px 3px}
 .cursor.press svg{transform:scale(.86)}
 .cursor .cflag{position:absolute;left:14px;top:17px;font:600 11px/1 var(--f-body);color:#fff;background:var(--you);padding:4px 7px;border-radius:0 5px 5px 5px;white-space:nowrap}
-.hint{position:absolute;z-index:8;right:12px;bottom:12px;display:inline-flex;align-items:center;gap:8px;font-size:12.5px;color:var(--ink-2);background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:6px 12px 6px 9px;box-shadow:var(--sh-node);transition:opacity .3s ease, transform .3s ease}
+.hint{position:absolute;z-index:8;left:12px;top:12px;display:inline-flex;align-items:center;gap:8px;font-size:12.5px;color:var(--ink-2);background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:6px 12px 6px 9px;box-shadow:var(--sh-node);transition:opacity .3s ease, transform .3s ease}
 .hint svg{width:15px;height:15px;color:var(--you)}
 .hint.gone{opacity:0;transform:translateY(6px);pointer-events:none}
 .stage-foot{display:flex;align-items:center;gap:14px;height:44px;padding:0 14px;border-top:1px solid var(--line);background:var(--surface-2);overflow:hidden}
@@ -279,6 +280,8 @@ h1.headline{font-family:var(--f-display);font-variation-settings:"opsz" 96;font-
   .stage-body{grid-template-columns:1fr}
   .canvas-pane{order:-1;border-bottom:1px solid var(--line)}
   .code-pane{border-right:0;height:300px}
+  .hint{position:static;display:flex;justify-content:center;border:0;border-top:1px solid var(--line);border-radius:0;box-shadow:none;background:var(--surface-2);padding:8px 12px}
+  .hint.gone{opacity:1;transform:none}
   .presence .pp .st{display:none}
 }
 @media (max-width:560px){
@@ -287,7 +290,7 @@ h1.headline{font-family:var(--f-display);font-variation-settings:"opsz" 96;font-
   .pp{padding-right:6px}
   .pp .nm{display:none}
   .code{font-size:11.5px}
-  .hint{right:8px;bottom:8px;font-size:11.5px}
+  .hint{font-size:12px}
   .ctl span{display:none}
   .ctl{padding:0 9px}
 }
@@ -307,6 +310,7 @@ h2{font-family:var(--f-display);font-variation-settings:"opsz" 72;font-weight:70
 .s7{grid-column:span 7}.s5{grid-column:span 5}.s4{grid-column:span 4}.s8{grid-column:span 8}
 @media (max-width:980px){.tile,.s7,.s5,.s4,.s8{grid-column:span 12}}
 .tile h3{font-family:var(--f-display);font-variation-settings:"opsz" 32;font-size:22px;font-weight:650;letter-spacing:-.025em;line-height:1.1;margin:0}
+.tile .well.hist{flex:1}
 .tile .th p{margin:6px 0 0;color:var(--ink-2);font-size:15px;max-width:38em;text-wrap:pretty}
 .th{display:flex;justify-content:space-between;gap:16px;align-items:flex-start}
 .th .meta{font:500 11px/1 var(--f-mono);color:var(--ink-4);letter-spacing:.06em;text-transform:uppercase;white-space:nowrap;padding-top:6px}
@@ -320,6 +324,8 @@ h2{font-family:var(--f-display);font-variation-settings:"opsz" 72;font-weight:70
 .crumbs .sep{color:var(--ink-4)}
 .crumbs .hintx{margin-left:auto;font-size:12px;color:var(--ink-4)}
 .nest svg{display:block;width:100%;height:auto}
+.nest .svg-m{display:none}
+@media (max-width:560px){.nest .svg-d{display:none}.nest .svg-m{display:block;max-width:360px;margin:0 auto}}
 .nest .lvl{transition:opacity .45s ease, transform .55s cubic-bezier(.2,.8,.2,1);transform-box:view-box}
 .nest .lvl-top{transform-origin:265px 130px}
 .nest .lvl-in{transform-origin:265px 130px;opacity:0;transform:scale(.86);pointer-events:none}
@@ -349,7 +355,7 @@ h2{font-family:var(--f-display);font-variation-settings:"opsz" 72;font-weight:70
 .rev[aria-selected="true"]{background:var(--bg-2)}
 .rev .who{grid-row:span 2;width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-size:10.5px;font-weight:600;color:#fff;margin-top:1px}
 .rev .rt{font-size:13.5px;font-weight:500;color:var(--ink);display:flex;align-items:center;gap:6px;min-width:0}
-.rev .rm{font-size:12px;color:var(--ink-4)}
+.rev .rm{font-size:12px;color:var(--ink-4);display:flex;align-items:center;gap:6px;white-space:nowrap}
 .badge{font:500 10px/1 var(--f-mono);letter-spacing:.03em;padding:3px 5px;border-radius:4px;color:var(--claude-ink);background:var(--claude-soft);white-space:nowrap}
 .badge.ok{color:var(--ink-3);background:var(--bg-2)}
 .diff{padding:14px;display:flex;flex-direction:column;gap:8px;min-width:0}
@@ -410,7 +416,7 @@ h2{font-family:var(--f-display);font-variation-settings:"opsz" 72;font-weight:70
 .payload .fence{padding:8px 14px;color:var(--ink-3);background:var(--surface);white-space:pre;overflow-x:auto}
 .payload .fence:first-child{border-bottom:1px solid var(--line)}
 .payload .fence:last-of-type{border-top:1px solid var(--line)}
-.payload textarea{display:block;width:100%;min-height:150px;resize:vertical;border:0;background:var(--well);color:var(--ink);font:inherit;padding:10px 14px;outline:none;tab-size:2;white-space:pre;overflow:auto}
+.payload textarea{display:block;width:100%;min-height:118px;resize:vertical;border:0;background:var(--well);color:var(--ink);font:inherit;padding:10px 14px;outline:none;tab-size:2;white-space:pre;overflow:auto}
 .payload textarea:focus-visible{box-shadow:inset 0 0 0 2px var(--you)}
 .status{display:flex;align-items:center;gap:10px;padding:10px 14px;border-top:1px solid var(--line);font-family:var(--f-body);font-size:13px;background:var(--surface);min-height:44px}
 .status .dot{width:8px;height:8px;border-radius:50%;background:var(--you);flex:none}
@@ -431,6 +437,7 @@ h2{font-family:var(--f-display);font-variation-settings:"opsz" 72;font-weight:70
 .type code{display:block;font-size:10.5px;color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .type>span{min-width:0}
 .more{font-size:13px;color:var(--ink-3);padding:0 12px 12px}
+@media (max-width:560px){.types{grid-template-columns:repeat(2,minmax(0,1fr))}.type{padding:8px}.type .gl{width:24px;height:24px}.tile{padding:18px}}
 
 /* repo + team */
 .timeline{list-style:none;margin:0;padding:12px 14px;display:flex;flex-direction:column;gap:0;position:relative}
@@ -631,8 +638,8 @@ footer{border-top:1px solid var(--line);padding:48px 0 calc(40px + env(safe-area
             <div class="elabels" id="cvLabels"></div>
             <div class="nodes" id="cvNodes"></div>
             <div class="cursor" id="youCursor" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 2.5l15.5 8.2-6.7 1.6-3 6.4z" fill="currentColor" stroke="#fff" stroke-width="1.4" stroke-linejoin="round"/></svg><span class="cflag">You</span></div>
-            <div class="hint" id="hint"><svg aria-hidden="true"><use href="#i-hand"/></svg>Drag a box. Click a label to rename it.</div>
           </div>
+          <div class="hint" id="hint"><svg aria-hidden="true"><use href="#i-hand"/></svg>Drag a box or click a label.</div>
         </div>
       </div>
       <div class="stage-foot">
@@ -665,34 +672,61 @@ footer{border-top:1px solid var(--line);padding:48px 0 calc(40px + env(safe-area
             <button type="button" id="crumbRoot">Acme</button>
             <span class="sep" id="crumbSep" hidden>/</span>
             <span class="cur" id="crumbCur" hidden>API</span>
-            <span class="hintx" id="nestHint">Double-click API</span>
+            <span class="hintx" id="nestHint">Double-click or tap API</span>
           </div>
-          <svg viewBox="0 0 530 260" role="img" aria-label="Nested component demo">
+          <svg class="svg-d" viewBox="0 0 530 260" role="img" aria-label="Nested component demo">
             <g class="lvl lvl-top" id="nestTop">
               <rect class="v-plane" x="170" y="40" width="340" height="180" rx="14"/>
               <text x="186" y="64" class="v-elabel" style="font-weight:600;fill:var(--ink-2);font-size:11.5px">Backend</text>
               <path class="v-edge" d="M140 130 H196" marker-end="url(#var)"/>
               <path class="v-edge" d="M336 130 H384" marker-end="url(#var)"/>
               <g class="v-node"><rect class="bg" x="20" y="96" width="120" height="68" rx="10"/><rect class="gbg" x="32" y="108" width="22" height="22" rx="6"/><g class="gi" data-glyph="globe" transform="translate(35 111) scale(.66)"></g><text x="32" y="148">Web app</text></g>
-              <g class="v-node open-me" id="nestApi" tabindex="0" role="button" aria-label="Open API, 3 parts inside"><rect class="bg" x="196" y="88" width="140" height="84" rx="10"/><rect class="gbg" x="208" y="100" width="22" height="22" rx="6"/><g class="gi" data-glyph="lambda" transform="translate(211 103) scale(.66)"></g><text x="208" y="144">API</text><text class="ty" x="208" y="159">3 parts inside</text><g class="v-badge"><rect x="306" y="98" width="20" height="16" rx="8"/><text x="316" y="110" text-anchor="middle">3</text></g></g>
+              <g class="v-node open-me" tabindex="0" role="button" aria-label="Open API, 3 parts inside"><rect class="bg" x="196" y="88" width="140" height="84" rx="10"/><rect class="gbg" x="208" y="100" width="22" height="22" rx="6"/><g class="gi" data-glyph="lambda" transform="translate(211 103) scale(.66)"></g><text x="208" y="144">API</text><text class="ty" x="208" y="159">3 parts inside</text><g class="v-badge"><rect x="306" y="98" width="20" height="16" rx="8"/><text x="316" y="110" text-anchor="middle">3</text></g></g>
               <g class="v-node"><rect class="bg" x="384" y="96" width="112" height="68" rx="10"/><rect class="gbg" x="396" y="108" width="22" height="22" rx="6"/><g class="gi" data-glyph="database" transform="translate(399 111) scale(.66)"></g><text x="396" y="148">Postgres</text></g>
             </g>
             <g class="lvl lvl-in" id="nestIn">
-              <path class="v-edge" d="M116 130 H162" marker-end="url(#var)"/>
-              <path class="v-edge" d="M270 118 H286 Q294 118 294 110 V78 Q294 70 302 70 H318" marker-end="url(#var)"/>
-              <path class="v-edge" d="M270 142 H286 Q294 142 294 150 V182 Q294 190 302 190 H318" marker-end="url(#var)"/>
-              <path class="v-edge" d="M420 70 H446" marker-end="url(#var)"/>
-              <path class="v-edge" d="M420 190 H446" marker-end="url(#var)"/>
-              <text class="v-elabel" x="433" y="62" text-anchor="middle">checkout</text>
-              <text class="v-elabel" x="433" y="182" text-anchor="middle">writes</text>
-              <g class="v-node ctx"><rect class="bg" x="12" y="104" width="104" height="52" rx="10"/><text x="64" y="134" text-anchor="middle">Web app</text></g>
-              <g class="v-node"><rect class="bg" x="162" y="96" width="108" height="68" rx="10"/><rect class="gbg" x="174" y="108" width="22" height="22" rx="6"/><g class="gi" data-glyph="router" transform="translate(177 111) scale(.66)"></g><text x="174" y="148">Router</text></g>
-              <g class="v-node"><rect class="bg" x="318" y="38" width="102" height="64" rx="10"/><rect class="gbg" x="330" y="48" width="22" height="22" rx="6"/><g class="gi" data-glyph="card" transform="translate(333 51) scale(.66)"></g><text x="330" y="88">Checkout</text></g>
-              <g class="v-node"><rect class="bg" x="318" y="158" width="102" height="64" rx="10"/><rect class="gbg" x="330" y="168" width="22" height="22" rx="6"/><g class="gi" data-glyph="bolt" transform="translate(333 171) scale(.66)"></g><text x="330" y="208">Webhooks</text></g>
-              <g class="v-node ctx"><rect class="bg" x="446" y="46" width="76" height="48" rx="10"/><text x="484" y="74" text-anchor="middle">Billing</text></g>
-              <g class="v-node ctx"><rect class="bg" x="446" y="166" width="76" height="48" rx="10"/><text x="484" y="194" text-anchor="middle">Postgres</text></g>
+              <path class="v-edge" d="M108 130 H140" marker-end="url(#var)"/>
+              <path class="v-edge" d="M244 118 H257 Q265 118 265 110 V78 Q265 70 273 70 H286" marker-end="url(#var)"/>
+              <path class="v-edge" d="M244 142 H257 Q265 142 265 150 V182 Q265 190 273 190 H286" marker-end="url(#var)"/>
+              <path class="v-edge" d="M386 70 H440" marker-end="url(#var)"/>
+              <path class="v-edge" d="M386 190 H440" marker-end="url(#var)"/>
+              <text class="v-elabel" x="413" y="62" text-anchor="middle">checkout</text>
+              <text class="v-elabel" x="413" y="182" text-anchor="middle">writes</text>
+              <g class="v-node ctx"><rect class="bg" x="12" y="104" width="96" height="52" rx="10"/><text x="60" y="134" text-anchor="middle">Web app</text></g>
+              <g class="v-node"><rect class="bg" x="140" y="96" width="104" height="68" rx="10"/><rect class="gbg" x="152" y="108" width="22" height="22" rx="6"/><g class="gi" data-glyph="router" transform="translate(155 111) scale(.66)"></g><text x="152" y="148">Router</text></g>
+              <g class="v-node"><rect class="bg" x="286" y="38" width="100" height="64" rx="10"/><rect class="gbg" x="298" y="48" width="22" height="22" rx="6"/><g class="gi" data-glyph="card" transform="translate(301 51) scale(.66)"></g><text x="298" y="88">Checkout</text></g>
+              <g class="v-node"><rect class="bg" x="286" y="158" width="100" height="64" rx="10"/><rect class="gbg" x="298" y="168" width="22" height="22" rx="6"/><g class="gi" data-glyph="bolt" transform="translate(301 171) scale(.66)"></g><text x="298" y="208">Webhooks</text></g>
+              <g class="v-node ctx"><rect class="bg" x="440" y="46" width="80" height="48" rx="10"/><text x="480" y="74" text-anchor="middle">Billing</text></g>
+              <g class="v-node ctx"><rect class="bg" x="440" y="166" width="80" height="48" rx="10"/><text x="480" y="194" text-anchor="middle">Postgres</text></g>
             </g>
             <defs><marker id="var" viewBox="0 0 10 10" refX="9.5" refY="5" markerWidth="6" markerHeight="6" orient="auto" markerUnits="strokeWidth"><path class="arrow" d="M0,0.8 L10,5 L0,9.2 z"/></marker></defs>
+          </svg>
+          <svg class="svg-m" viewBox="0 0 320 300" role="img" aria-label="Nested component demo">
+            <g class="lvl lvl-top" style="transform-origin:160px 156px">
+              <rect class="v-plane" x="20" y="92" width="280" height="196" rx="14"/>
+              <text x="36" y="112" class="v-elabel" style="font-weight:600;fill:var(--ink-2);font-size:11.5px">Backend</text>
+              <path class="v-edge" d="M160 68 V124" marker-end="url(#varm)"/>
+              <path class="v-edge" d="M160 188 V216" marker-end="url(#varm)"/>
+              <g class="v-node"><rect class="bg" x="90" y="12" width="140" height="56" rx="10"/><rect class="gbg" x="102" y="29" width="22" height="22" rx="6"/><g class="gi" data-glyph="globe" transform="translate(105 32) scale(.66)"></g><text x="134" y="45">Web app</text></g>
+              <g class="v-node open-me" tabindex="0" role="button" aria-label="Open API, 3 parts inside"><rect class="bg" x="90" y="124" width="140" height="64" rx="10"/><rect class="gbg" x="102" y="138" width="22" height="22" rx="6"/><g class="gi" data-glyph="lambda" transform="translate(105 141) scale(.66)"></g><text x="134" y="152">API</text><text class="ty" x="134" y="168">3 parts inside</text><g class="v-badge"><rect x="200" y="132" width="20" height="16" rx="8"/><text x="210" y="144" text-anchor="middle">3</text></g></g>
+              <g class="v-node"><rect class="bg" x="90" y="216" width="140" height="56" rx="10"/><rect class="gbg" x="102" y="233" width="22" height="22" rx="6"/><g class="gi" data-glyph="database" transform="translate(105 236) scale(.66)"></g><text x="134" y="249">Postgres</text></g>
+            </g>
+            <g class="lvl lvl-in" style="transform-origin:160px 156px">
+              <path class="v-edge" d="M160 48 V76" marker-end="url(#varm)"/>
+              <path class="v-edge" d="M145 128 V136 Q145 144 137 144 H87 Q79 144 79 152 V160" marker-end="url(#varm)"/>
+              <path class="v-edge" d="M175 128 V136 Q175 144 183 144 H233 Q241 144 241 152 V160" marker-end="url(#varm)"/>
+              <path class="v-edge" d="M79 212 V244" marker-end="url(#varm)"/>
+              <path class="v-edge" d="M241 212 V244" marker-end="url(#varm)"/>
+              <text class="v-elabel" x="86" y="232">checkout</text>
+              <text class="v-elabel" x="248" y="232">writes</text>
+              <g class="v-node ctx"><rect class="bg" x="110" y="8" width="100" height="40" rx="10"/><text x="160" y="33" text-anchor="middle">Web app</text></g>
+              <g class="v-node"><rect class="bg" x="100" y="76" width="120" height="52" rx="10"/><rect class="gbg" x="112" y="91" width="22" height="22" rx="6"/><g class="gi" data-glyph="router" transform="translate(115 94) scale(.66)"></g><text x="144" y="107">Router</text></g>
+              <g class="v-node"><rect class="bg" x="14" y="160" width="130" height="52" rx="10"/><rect class="gbg" x="26" y="175" width="22" height="22" rx="6"/><g class="gi" data-glyph="card" transform="translate(29 178) scale(.66)"></g><text x="58" y="191">Checkout</text></g>
+              <g class="v-node"><rect class="bg" x="176" y="160" width="130" height="52" rx="10"/><rect class="gbg" x="188" y="175" width="22" height="22" rx="6"/><g class="gi" data-glyph="bolt" transform="translate(191 178) scale(.66)"></g><text x="220" y="191">Webhooks</text></g>
+              <g class="v-node ctx"><rect class="bg" x="29" y="244" width="100" height="40" rx="10"/><text x="79" y="269" text-anchor="middle">Billing</text></g>
+              <g class="v-node ctx"><rect class="bg" x="191" y="244" width="100" height="40" rx="10"/><text x="241" y="269" text-anchor="middle">Postgres</text></g>
+            </g>
+            <defs><marker id="varm" viewBox="0 0 10 10" refX="9.5" refY="5" markerWidth="6" markerHeight="6" orient="auto" markerUnits="strokeWidth"><path class="arrow" d="M0,0.8 L10,5 L0,9.2 z"/></marker></defs>
           </svg>
           <div class="codeline" id="nestCode">component api "API" @vercel.functions { component router … }</div>
         </div>
@@ -761,7 +795,7 @@ footer{border-top:1px solid var(--line);padding:48px 0 calc(40px + env(safe-area
           <div class="fence">component db "Postgres" @supabase.postgres {
   schema json ```</div>
           <label class="sr" for="payloadIn">Schema payload (JSON)</label>
-          <textarea id="payloadIn" spellcheck="false" autocomplete="off" autocapitalize="off" rows="7">{
+          <textarea id="payloadIn" spellcheck="false" autocomplete="off" autocapitalize="off" rows="5">{
   "users": { "id": "uuid", "email": "text" },
   "teams": { "id": "uuid", "name": "text" },
   "members": { "user_id": "uuid", "team_id": "uuid" }
@@ -2034,21 +2068,24 @@ if (reduced) {
    Vignettes
    ================================================================ */
 /* nesting */
-const nest = $("#nest"), nestApi = $("#nestApi");
+const nest = $("#nest");
+const nestApis = Array.from(nest.querySelectorAll(".open-me"));
+const visApi = () => nestApis.find((g) => g.getBoundingClientRect().width > 0) || nestApis[0];
 const crumbRoot = $("#crumbRoot"), crumbSep = $("#crumbSep"), crumbCur = $("#crumbCur"), nestHint = $("#nestHint"), nestCode = $("#nestCode");
 function setNest(open) {
   nest.classList.toggle("open", open);
   crumbSep.hidden = !open; crumbCur.hidden = !open;
-  nestHint.textContent = open ? "Outside components sit at the edges" : "Double-click API";
+  nestHint.textContent = open ? "Outside parts sit at the edges" : "Double-click or tap API";
   nestCode.textContent = open ? "web -> api.router @http" : 'component api "API" @vercel.functions { component router … }';
   if (open) crumbRoot.focus({ preventScroll: true });
 }
-nestApi.addEventListener("dblclick", () => setNest(true));
-nestApi.addEventListener("click", (e) => { if (e.pointerType === "touch" || e.detail === 0) setNest(true); });
-nestApi.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setNest(true); } });
 let lastTap = 0;
-nestApi.addEventListener("pointerup", (e) => { if (e.pointerType !== "mouse") { const n = Date.now(); if (n - lastTap < 400) setNest(true); lastTap = n; } });
-crumbRoot.addEventListener("click", () => { setNest(false); nestApi.focus({ preventScroll: true }); });
+nestApis.forEach((g) => {
+  g.addEventListener("dblclick", () => setNest(true));
+  g.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setNest(true); } });
+  g.addEventListener("pointerup", (e) => { if (e.pointerType !== "mouse") setNest(true); });
+});
+crumbRoot.addEventListener("click", () => { setNest(false); visApi().focus({ preventScroll: true }); });
 
 /* history */
 const REVS = [
@@ -2063,8 +2100,8 @@ function renderRevs() {
   revsEl.innerHTML = REVS.map((r, i) =>
     '<li><button class="rev" role="tab" type="button" id="rev' + i + '" aria-selected="' + (i === revSel) + '" tabindex="' + (i === revSel ? 0 : -1) + '" data-i="' + i + '">' +
     '<span class="who ' + (r.who === "claude" ? "av-c" : "av-y") + '" aria-hidden="true">' + (r.who === "claude" ? "C" : "Y") + "</span>" +
-    '<span class="rt">' + esc(r.title) + (r.who === "claude" ? (r.badge ? ' <span class="badge">review</span>' : ' <span class="badge ok">reviewed</span>') : "") + "</span>" +
-    '<span class="rm">' + esc(r.when) + "</span></button></li>").join("");
+    '<span class="rt">' + esc(r.title) + "</span>" +
+    '<span class="rm">' + esc(r.when) + (r.who === "claude" ? (r.badge ? ' <span class="badge">review</span>' : ' <span class="badge ok">reviewed</span>') : "") + "</span></button></li>").join("");
   const r = REVS[revSel];
   const sym = { add: "+", rem: "−", chg: "~" };
   diffEl.setAttribute("aria-labelledby", "rev" + revSel);
