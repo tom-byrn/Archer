@@ -18,3 +18,4 @@ coverage/
 
 # Conductor machine-local overrides
 .conductor/settings.local.toml
+design/landing-elements/dist/

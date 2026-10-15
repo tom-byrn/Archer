@@ -1,0 +1,102 @@
+{
+  "title": "Twelve new pieces for the landing page",
+  "lede": "Each one is drawn in the page's current style: same tokens, type, ruled column and canvas cards. Pick the ones you like and they drop into the existing page without touching the rest of the app.",
+  "elements": [
+    {
+      "slug": "prompt-examples",
+      "name": "Prompt to diagram",
+      "pitch": "A row of things people ask their agent ('Map this repo', 'Add a RAG pipeline', 'Plan a SaaS with Stripe'). Pick one and you see the agent's .arch and the diagram it draws, so the hero shows the agent half of the product, not only the canvas.",
+      "where": "Hero, under the buttons (in place of, or beside, the typed agent prompt line)",
+      "reuses": "AgentPromptLine, the sandbox's SourcePane highlighting, canvas cards",
+      "effort": "M"
+    },
+    {
+      "slug": "client-switcher",
+      "name": "Client strip that installs",
+      "pitch": "The 'Works with any MCP client' strip becomes tabs: click a client and its exact one-line setup appears under it with a copy button.",
+      "where": "Replaces the client logos strip under the hero",
+      "reuses": "ClientLogos, CopyPromptButton's copy and SwapIcon",
+      "effort": "S"
+    },
+    {
+      "slug": "linked-source",
+      "name": "Linked source in the sandbox",
+      "pitch": "Hovering a line of code lights up the component it draws, and hovering a component lights its lines. Changed lines flash the way they do today. It makes 'the canvas is the code' obvious in one gesture.",
+      "where": "The existing sandbox (an enhancement, no new section)",
+      "reuses": "Sandbox, SourcePane, ArchCanvas selection",
+      "effort": "S"
+    },
+    {
+      "slug": "agent-replay",
+      "name": "Agent session replay",
+      "pitch": "A short, looping transcript of a coding agent using the MCP tools: it reads the guide, writes a document, gets rejected with E101, fixes it and saves. A small canvas beside it updates on each call.",
+      "where": "New band between the sandbox and Features",
+      "reuses": "Canvas cards, Chip, the hero's terminal caret",
+      "effort": "M"
+    },
+    {
+      "slug": "example-strip",
+      "name": "Start from an example",
+      "pitch": "A ruled row of the worked examples, each with a small drawing of its diagram and an 'Open in sandbox' link. It shows range (link shortener to music streaming) and gives people a second way in.",
+      "where": "Under the sandbox, or above the FAQ",
+      "reuses": "/language/examples data, prerendered example SVGs, /sandbox/<slug>",
+      "effort": "S"
+    },
+    {
+      "slug": "revision-scrubber",
+      "name": "Revision scrubber",
+      "pitch": "The History tile gets a slider. Drag it through six revisions and the mini canvas changes with it, while the diff list shows what was added, removed or changed and who did it. Box moves are listed as not counting.",
+      "where": "Replaces the visual in the 'History with real diffs' tile",
+      "reuses": "History tile's diff rows, canvas cards, Chip",
+      "effort": "M"
+    },
+    {
+      "slug": "nesting-zoom",
+      "name": "Open a component",
+      "pitch": "The Planes and nesting tile becomes clickable: double-click 'Jobs' and the card zooms open into its parts with a breadcrumb, then back out.",
+      "where": "Replaces the visual in the 'Planes and nesting' tile",
+      "reuses": "MiniNode, nested badge, the editor's breadcrumb",
+      "effort": "M"
+    },
+    {
+      "slug": "readme-embed",
+      "name": "Live README embed",
+      "pitch": "The Share tile shows a README as GitHub renders it, with the architecture image inside. Toggle a revision and the image redraws, so 'an SVG that stays current' is something you watch happen.",
+      "where": "Replaces the visual in the 'Share a live link' tile",
+      "reuses": "Share tile, lib/svg.ts output style",
+      "effort": "S"
+    },
+    {
+      "slug": "break-it",
+      "name": "Try to break it",
+      "pitch": "A tiny editor with three classic agent mistakes to try. Each one comes back with the real error code and 'Rejected, not saved', and the canvas beside it stays as it was.",
+      "where": "New tile in Features, or under the FAQ answer about agents getting it wrong",
+      "reuses": "@archer/lang validate (real codes E101, E002, E004), CodeMirror styling",
+      "effort": "M"
+    },
+    {
+      "slug": "type-search",
+      "name": "Searchable type band",
+      "pitch": "The glyph carousel band stops scrolling when you focus it and becomes a search over all 350 catalog types: type 'queue' or 'aws' and the tiles filter live.",
+      "where": "Replaces the glyph carousel between Features and FAQ",
+      "reuses": "GlyphCarousel, TypeTile, @archer/catalog",
+      "effort": "S"
+    },
+    {
+      "slug": "number-band",
+      "name": "Numbers band",
+      "pitch": "Four quiet numbers in the headline serif, ruled like the rest of the page: types in the catalog, MCP tools, revisions kept, broken saves allowed.",
+      "where": "Between the client strip and the sandbox, or above the closing call to action",
+      "reuses": "Ruled grid, headline serif, diamond joints",
+      "effort": "S"
+    },
+    {
+      "slug": "comparison",
+      "name": "A drawing vs. an Archer document",
+      "pitch": "A plain ruled table that answers 'why not just draw it?': what a diagram file can do next to what an Archer document can do, row by row.",
+      "where": "Before the FAQ",
+      "reuses": "Ruled grid, Icon.Check / Icon.Minus",
+      "effort": "S"
+    }
+  ]
+}

@@ -1,0 +1,41 @@
+<title>Archer Landing Elements</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Newsreader:opsz,wght@6..72,400..600&family=Playfair+Display:wght@400;700;900&display=swap">
+<style>/*KIT_CSS*/</style>
+<style>/*ELEMENT_CSS*/</style>
+<script>/*KIT_JS*/</script>
+<div class="site landing-page">
+  <div class="col">
+    <header class="joints rule-b px" style="display:flex;align-items:center;gap:20px;height:56px">
+      <a class="wordmark" href="#top">Archer</a>
+      <nav style="display:flex;gap:24px;padding-left:16px" class="hide-sm">
+        <a class="body" style="font-size:var(--t-sm);text-decoration:none" href="#elements">Elements</a>
+      </nav>
+      <div style="margin-left:auto;display:flex;align-items:center;gap:8px">
+        <button class="btn btn-ghost" id="themeToggle" type="button" aria-label="Switch theme" style="width:32px;padding:0"></button>
+        <a class="btn" href="#top">Sign in</a>
+        <a class="btn btn-primary" href="#top">Get started</a>
+      </div>
+    </header>
+    <main id="top">
+      <!--INTRO-->
+      <!--ELEMENTS-->
+    </main>
+    <footer class="joints joints-top rule-t px" style="display:flex;align-items:center;gap:16px;padding-top:24px;padding-bottom:24px">
+      <span class="body" style="font-size:var(--t-sm)">Element concepts for tryarcher.dev, in the current landing style.</span>
+      <span class="body" style="margin-left:auto;font-size:var(--t-sm);color:var(--ink-3)">© 2026 Archer</span>
+    </footer>
+  </div>
+</div>
+<script>
+(function () {
+  var b = document.getElementById("themeToggle"), root = document.documentElement;
+  function dark() { var t = root.getAttribute("data-theme"); return t ? t === "dark" : matchMedia("(prefers-color-scheme: dark)").matches; }
+  function paint() { b.innerHTML = Archer.icon(dark() ? "sun" : "moon"); }
+  b.addEventListener("click", function () { root.setAttribute("data-theme", dark() ? "light" : "dark"); paint(); });
+  paint();
+})();
+</script>
+<script>/*ELEMENT_JS*/</script>
