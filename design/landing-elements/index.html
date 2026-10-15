@@ -317,7 +317,7 @@ button, input, textarea { font: inherit; color: inherit; }
 #prompt-examples .pe-shape { --type: var(--type-light); }
 :root[data-theme="dark"] #prompt-examples .pe-shape { --type: var(--type-dark); }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) #prompt-examples .pe-shape { --type: var(--type-dark); } }
-#prompt-examples .pe-shape svg { position: absolute; inset: 0; overflow: visible; }
+#prompt-examples .pe-shape > svg { position: absolute; inset: 0; overflow: visible; }
 #prompt-examples .pe-shape .part { fill: color-mix(in srgb, var(--type) 5%, var(--surface)); stroke: color-mix(in srgb, var(--type) 45%, var(--line-2)); stroke-width: 1; }
 #prompt-examples .pe-shape .detail { fill: none; stroke: color-mix(in srgb, var(--type) 45%, var(--line-2)); stroke-width: 1; }
 #prompt-examples .pe-shape .dot { fill: color-mix(in srgb, var(--type) 45%, var(--line-2)); }
