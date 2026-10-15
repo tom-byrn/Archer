@@ -1,0 +1,241 @@
+<section id="break-it" class="joints rule-b">
+  <div class="ruled-grid bi-grid">
+    <div class="bi-tile bi-main">
+      <div>
+        <h3 class="title">Broken documents never save</h3>
+        <p class="body bi-copy">Agent writes go through the same validation as the canvas. A broken edit comes back with its error code and line, and the last good revision stays as it was. Try a mistake agents make.</p>
+      </div>
+      <div class="bi-demo">
+        <div class="bi-actions" role="group" aria-label="Agent mistakes">
+          <button type="button" class="btn btn-sm" data-m="plane" aria-pressed="false">Connect to a plane</button>
+          <button type="button" class="btn btn-sm" data-m="dupe" aria-pressed="false">Reuse an id</button>
+          <button type="button" class="btn btn-sm" data-m="shape" aria-pressed="false">Two shapes</button>
+          <button type="button" class="btn btn-sm btn-ghost bi-reset" disabled></button>
+        </div>
+        <div class="bi-panes">
+          <div class="bi-code codebox" aria-label="architecture.arch">
+            <div class="bi-file panel-head mono">architecture.arch</div>
+            <pre class="bi-pre"></pre>
+          </div>
+          <div class="bi-canvas ground" aria-label="Canvas">
+            <span class="chip bi-rev"><span class="bi-rev-text">revision 13</span></span>
+            <div class="bi-scene" aria-hidden="true">
+              <div class="bi-web node">
+                <span class="bi-web-bar"><i></i><i></i><i></i></span>
+                <span class="bi-web-body"></span>
+              </div>
+              <div class="bi-edge-h"><span></span><svg viewBox="0 0 8 10" width="8" height="10"><path class="edge-head" d="M0 0 8 5 0 10z"/></svg></div>
+              <div class="bi-plane plane">
+                <div class="plane-head"><span class="bi-plane-box"></span>Backend</div>
+                <div class="bi-plane-body">
+                  <div class="bi-api"></div>
+                  <div class="bi-edge-v"><span></span><svg viewBox="0 0 10 8" width="10" height="8"><path class="edge-head" d="M0 0 10 0 5 8z"/></svg></div>
+                  <div class="bi-db"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="bi-result" aria-live="polite"></div>
+      </div>
+    </div>
+    <div class="bi-tile bi-side">
+      <div>
+        <h3 class="title">Teams and roles</h3>
+        <p class="body bi-copy">Personal and team workspaces with owners, editors and viewers. Invite people by email.</p>
+      </div>
+      <div class="bi-team" aria-hidden="true">
+        <div><span class="bi-av bi-av-you">Y</span><span class="bi-name">You</span><span class="chip">Owner</span></div>
+        <div><span class="bi-av">M</span><span class="bi-name">maya@acme.dev</span><span class="chip">Editor</span></div>
+        <div><span class="bi-av">S</span><span class="bi-name">sam@acme.dev</span><span class="chip">Viewer</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+#break-it .bi-grid { border-top: 0; }
+@media (min-width: 768px) { #break-it .bi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } #break-it .bi-main, #break-it .bi-side { grid-column: span 2; } }
+@media (min-width: 1024px) { #break-it .bi-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } #break-it .bi-side { grid-column: span 1; } }
+#break-it .bi-tile { display: flex; flex-direction: column; gap: 20px; padding: 32px 20px; }
+@media (min-width: 640px) { #break-it .bi-tile { padding-left: 40px; padding-right: 40px; } }
+#break-it .bi-copy { max-width: 56ch; padding-top: 4px; }
+#break-it .bi-side .bi-team { margin-top: auto; }
+
+/* Demo */
+#break-it .bi-demo { container-type: inline-size; display: flex; flex-direction: column; gap: 12px; margin-top: auto; }
+#break-it .bi-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+#break-it .bi-actions .btn[aria-pressed="true"] { border-color: var(--line-2); background: var(--surface-2); }
+#break-it .bi-reset { margin-left: auto; }
+#break-it .bi-panes { display: grid; gap: 12px; }
+@container (min-width: 560px) { #break-it .bi-panes { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); } }
+
+#break-it .bi-code { border: 1px solid var(--line); min-width: 0; display: flex; flex-direction: column; }
+#break-it .bi-file { height: 32px; background: var(--surface); font-size: var(--t-sm); color: var(--ink-2); }
+#break-it .bi-pre { margin: 0; padding: 10px 0; overflow-x: auto; min-height: 300px; font: inherit; }
+#break-it .bi-ln { display: flex; min-width: max-content; padding-right: 12px; border-left: 2px solid transparent; white-space: pre; }
+#break-it .bi-ln .n { width: 34px; flex: none; padding-right: 12px; text-align: right; color: var(--code-gutter); user-select: none; }
+#break-it .bi-ln.is-bad { background: var(--danger-soft); border-left-color: var(--danger); }
+#break-it .bi-ln.is-bad .t { text-decoration: underline wavy var(--danger); text-decoration-thickness: 1px; text-underline-offset: 4px; text-decoration-skip-ink: none; }
+#break-it .bi-ln .caret { margin-left: 1px; }
+
+/* Mini canvas: the Acme backend, which never changes */
+#break-it .bi-canvas { --edge: var(--ink); position: relative; border: 1px solid var(--line); display: flex; align-items: center; justify-content: center; min-height: 240px; padding: 44px 14px 20px; overflow: hidden; }
+#break-it .bi-rev { position: absolute; top: 10px; right: 10px; background: var(--surface); border: 1px solid var(--line); height: 22px; }
+#break-it .bi-rev .icon { width: 12px; height: 12px; }
+#break-it .bi-canvas.is-held .bi-rev { color: var(--ink); }
+#break-it .bi-scene { display: grid; grid-template-columns: minmax(96px, 128px) minmax(18px, 40px) minmax(124px, 156px); align-items: start; }
+#break-it .bi-web { flex-direction: column; align-items: stretch; gap: 0; padding: 0; min-height: 0; height: 64px; margin-top: 37px; background: var(--surface-2); border-color: var(--edge-strong); overflow: hidden; }
+#break-it .bi-web-bar { display: flex; gap: 3px; align-items: center; height: 11px; padding: 0 6px; border-bottom: 1px solid var(--line-2); }
+#break-it .bi-web-bar i { width: 3px; height: 3px; border-radius: 50%; background: var(--ink-2); }
+#break-it .bi-web-body { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; min-width: 0; padding: 0 6px; color: var(--ink-2); }
+#break-it .bi-web-body .node-label, #break-it .bi-web-body .node-type { max-width: 100%; }
+#break-it .bi-edge-h { display: flex; align-items: center; margin-top: 64px; padding: 0 3px; }
+#break-it .bi-edge-h span { flex: 1; height: 1.5px; background: var(--edge); }
+#break-it .bi-edge-v { display: flex; flex-direction: column; align-items: center; height: 26px; padding: 3px 0; }
+#break-it .bi-edge-v span { flex: 1; width: 1.5px; background: var(--edge); }
+#break-it .bi-plane { min-width: 0; }
+#break-it .bi-plane-box { width: 11px; height: 11px; border: 1.5px solid var(--ink-2); border-radius: 2px; flex: none; }
+#break-it .bi-plane-body { padding: 14px 10px; display: flex; flex-direction: column; }
+#break-it .bi-plane-body .node { gap: 8px; padding: 0 8px; }
+
+#break-it .bi-result { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; min-height: 78px; padding: 10px 12px; align-content: center; border: 1px solid var(--line); background: var(--surface); }
+#break-it .bi-result .msg { color: var(--ink); min-width: 0; flex: 1 1 200px; }
+#break-it .bi-result .where { font-family: var(--font-mono); font-size: var(--t-xs); color: var(--ink-3); }
+#break-it .bi-result .note { flex-basis: 100%; color: var(--ink-2); font-size: var(--t-sm); line-height: var(--t-sm-lh); }
+#break-it .bi-result .chip { font-family: var(--font-mono); }
+#break-it .bi-result .chip .icon { width: 12px; height: 12px; }
+#break-it .bi-result.is-checking .msg { color: var(--ink-3); }
+@media (prefers-reduced-motion: no-preference) {
+  #break-it .bi-result.is-new { animation: landing-rise 300ms cubic-bezier(0.2, 0.7, 0.2, 1); }
+}
+
+/* Teams neighbour, as Features draws it */
+#break-it .bi-team { border: 1px solid var(--line); background: var(--surface); font-size: var(--t-sm); }
+#break-it .bi-team > div { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-bottom: 1px solid var(--line); }
+#break-it .bi-team > div:last-child { border-bottom: 0; }
+#break-it .bi-av { display: flex; align-items: center; justify-content: center; width: 24px; height: 24px; flex: none; border-radius: 50%; background: var(--surface-3); color: var(--ink-2); font-size: var(--t-xs); font-weight: 600; }
+#break-it .bi-av-you { background: var(--accent-soft); color: var(--accent); }
+#break-it .bi-name { color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#break-it .bi-team .chip { margin-left: auto; }
+</style>
+
+<script>
+var root = document.getElementById("break-it");
+var A = window.Archer;
+var pre = root.querySelector(".bi-pre");
+var result = root.querySelector(".bi-result");
+var canvas = root.querySelector(".bi-canvas");
+var revText = root.querySelector(".bi-rev-text");
+var reset = root.querySelector(".bi-reset");
+var buttons = root.querySelectorAll(".bi-actions [data-m]");
+
+// The last good revision: valid v0.2, a slice of the landing's Acme sandbox.
+var GOOD = [
+  'arch "Acme" v0.2',
+  "",
+  'component web "Web app" @vercel.nextjs {',
+  "  shape browser",
+  "}",
+  "",
+  'plane backend "Backend" {',
+  '  component api "API" @vercel.functions',
+  '  component db "Postgres" @supabase.postgres',
+  "}",
+  "",
+  "web -> api @http",
+  "api -> db @sql",
+];
+
+// Each mistake: the line an agent writes, where it lands (index in GOOD it goes
+// before), and the diagnostic @archer/lang reports for it (messages as validate.ts
+// and parser.ts word them).
+var MISTAKES = {
+  plane: {
+    at: 13, line: "web -> backend @http", code: "E101",
+    msg: "Connection target 'backend' is a plane: connections join components, so point it at a component on the plane.",
+  },
+  dupe: {
+    at: 10, line: 'component api "Payments API" @vercel.functions', code: "E002",
+    msg: "Duplicate component id 'api' in the top level.",
+  },
+  shape: {
+    at: 4, line: "  shape desktop", code: "E004",
+    msg: "Component 'web' has more than one 'shape'.",
+  },
+};
+
+// Static canvas cards (the document never changes, so neither does this).
+root.querySelector(".bi-web-body").innerHTML =
+  A.glyph("globe", 14) + '<div class="node-label" style="font-size:var(--t-sm)">Web app</div><div class="node-type">vercel.nextjs</div>';
+root.querySelector(".bi-api").innerHTML = A.node({ tag: "vercel.functions", label: "API", sub: "vercel.functions" });
+root.querySelector(".bi-db").innerHTML = A.node({ tag: "supabase.postgres", label: "Postgres", sub: "supabase.postgres" });
+reset.innerHTML = A.icon("arrow-counter-clockwise") + "Reset";
+
+var timer = null, active = null;
+
+function render(bad, typed, typing) {
+  var lines = GOOD.slice(), badAt = -1;
+  if (bad) { lines.splice(bad.at, 0, typed); badAt = bad.at; }
+  pre.innerHTML = lines.map(function (l, i) {
+    var isBad = i === badAt;
+    var body = A.highlight(l) || " ";
+    return '<span class="bi-ln' + (isBad ? " is-bad" : "") + '"><span class="n">' + (i + 1) + '</span><span class="t">' +
+      body + "</span>" + (isBad && typing ? '<span class="caret"></span>' : "") + "</span>";
+  }).join("");
+}
+
+function showValid() {
+  result.className = "bi-result";
+  result.innerHTML = '<span class="chip chip-accent">' + A.icon("check") + 'Valid</span><span class="msg">No errors. Saved as revision 13.</span><span class="note">Your agent\'s edits and yours are checked the same way.</span>';
+}
+function showChecking() {
+  result.className = "bi-result is-checking";
+  result.innerHTML = '<span class="chip">validate</span><span class="msg">Checking the edit…</span>';
+}
+function showError(m) {
+  result.className = "bi-result is-new";
+  result.innerHTML = '<span class="chip chip-danger">' + A.icon("warning-circle") + m.code + '</span><span class="msg">' + A.esc(m.msg) +
+    '</span><span class="where">line ' + (m.at + 1) + '</span><span class="note">Rejected, not saved. The document is unchanged.</span>';
+  canvas.classList.add("is-held");
+  revText.innerHTML = "unchanged · revision 13";
+}
+
+function stop() { if (timer) { clearTimeout(timer); timer = null; } }
+
+function clear() {
+  stop();
+  active = null;
+  render(null);
+  showValid();
+  canvas.classList.remove("is-held");
+  revText.textContent = "revision 13";
+  reset.disabled = true;
+  buttons.forEach(function (b) { b.setAttribute("aria-pressed", "false"); });
+}
+
+function run(key) {
+  stop();
+  var m = MISTAKES[key];
+  active = key;
+  buttons.forEach(function (b) { b.setAttribute("aria-pressed", String(b.getAttribute("data-m") === key)); });
+  reset.disabled = false;
+  canvas.classList.remove("is-held");
+  revText.textContent = "revision 13";
+  if (A.reduced) { render(m, m.line, false); showError(m); return; }
+  showChecking();
+  var indent = m.line.match(/^\s*/)[0].length, n = indent;
+  (function step() {
+    render(m, m.line.slice(0, n), true);
+    if (n < m.line.length) { n++; timer = setTimeout(step, 26); return; }
+    timer = setTimeout(function () { render(m, m.line, false); showError(m); timer = null; }, 380);
+  })();
+}
+
+buttons.forEach(function (b) {
+  b.addEventListener("click", function () { run(b.getAttribute("data-m")); });
+});
+reset.addEventListener("click", function () { clear(); buttons[0].focus(); });
+
+clear();
+</script>

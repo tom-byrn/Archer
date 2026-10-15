@@ -1,0 +1,70 @@
+<section id="comparison" class="joints rule-b">
+  <div class="cmp-head px">
+    <h2 class="headline text-display-md">Why not just draw it?</h2>
+  </div>
+  <table class="cmp-table">
+    <thead>
+      <tr>
+        <th scope="col"><span class="sr-only">Capability</span></th>
+        <th scope="col">A diagram file</th>
+        <th scope="col">An Archer document</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+</section>
+
+<style>
+#comparison .cmp-head { padding-top: 64px; text-align: center; }
+@media (min-width: 640px) { #comparison .cmp-head { padding-top: 80px; } }
+#comparison .cmp-table { width: 100%; margin-top: 48px; border-collapse: collapse; border-top: 1px solid var(--line); table-layout: fixed; }
+#comparison th, #comparison td { text-align: left; vertical-align: top; padding: 16px 20px; border-bottom: 1px solid var(--line); }
+#comparison th + th, #comparison td + td, #comparison th + td, #comparison td + th { border-left: 1px solid var(--line); }
+#comparison tbody tr:last-child > * { border-bottom: 0; }
+#comparison thead th { padding-top: 14px; padding-bottom: 14px; font-size: var(--t-sm); line-height: var(--t-sm-lh); font-weight: 600; color: var(--ink); }
+#comparison thead th:nth-child(2) { color: var(--ink-2); font-weight: 500; }
+#comparison tbody th { font-size: var(--t-lg); line-height: var(--t-lg-lh); font-weight: 600; color: var(--ink); }
+#comparison .cmp-cell { display: flex; align-items: flex-start; gap: 8px; font-size: var(--t-base); line-height: var(--t-base-lh); }
+#comparison .cmp-cell .icon { margin-top: 3px; }
+#comparison .cmp-no { color: var(--ink-3); }
+#comparison .cmp-yes { color: var(--ink); }
+#comparison .cmp-yes .icon { color: var(--accent); }
+@media (min-width: 640px) {
+  #comparison th:first-child, #comparison td:first-child { padding-left: 40px; }
+  #comparison th:last-child, #comparison td:last-child { padding-right: 40px; }
+  #comparison thead th:first-child { width: 40%; }
+}
+
+/* Phone: each row becomes a card, labelled from the column headers. */
+@media (max-width: 639px) {
+  #comparison thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  #comparison .cmp-table, #comparison tbody, #comparison tr { display: block; }
+  #comparison tbody tr { padding: 20px 20px 16px; border-bottom: 1px solid var(--line); }
+  #comparison tbody tr:last-child { border-bottom: 0; }
+  #comparison tbody th, #comparison tbody td { display: block; padding: 0; border: 0 !important; }
+  #comparison tbody td { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 12px; padding-top: 10px; }
+  #comparison tbody td::before { content: attr(data-label); font-family: var(--font-mono); font-size: var(--t-xs); line-height: var(--t-base-lh); text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-3); }
+}
+</style>
+
+<script>
+var root = document.getElementById("comparison");
+var A = window.Archer;
+// [capability, what a diagram file does, what an Archer document does]
+var ROWS = [
+  ["Your agent can read and edit it", "Shapes and coordinates", "Over MCP, or as a .arch file"],
+  ["Edits are validated before they save", "Anything saves", "Broken documents are rejected"],
+  ["Every revision kept, with real diffs", "File versions, if you keep them", "Added, removed and changed"],
+  ["Lives in your repo as text on a branch", "Checked in as an export", "A .arch file on your branch, synced"],
+  ["The picture in your README stays current", "Re-export by hand", "A live SVG link"],
+  ["Components carry schemas, contracts and src paths", "Labels and notes", "Validated payloads and src paths"],
+  ["Drawn by hand or by agent, same document", "By hand", "Canvas and code are one document"],
+];
+var heads = root.querySelectorAll("thead th");
+var LABELS = ["Diagram", "Archer"];
+root.querySelector("tbody").innerHTML = ROWS.map(function (r) {
+  return '<tr><th scope="row">' + A.esc(r[0]) + "</th>" +
+    '<td data-label="' + LABELS[0] + '"><span class="cmp-cell cmp-no">' + A.icon("minus") + "<span>" + A.esc(r[1]) + "</span></span></td>" +
+    '<td data-label="' + LABELS[1] + '"><span class="cmp-cell cmp-yes">' + A.icon("check") + "<span>" + A.esc(r[2]) + "</span></span></td></tr>";
+}).join("");
+</script>

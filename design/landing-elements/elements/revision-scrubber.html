@@ -1,0 +1,319 @@
+<section id="revision-scrubber" class="joints rule-b">
+  <div class="ruled-grid fg">
+    <div class="tile">
+      <div>
+        <h3 class="title">History with real diffs</h3>
+        <p class="body">Every revision is kept, human or agent. Drag through them: diffs list what was added, removed or changed. Moving boxes around never counts.</p>
+      </div>
+      <div class="visual">
+        <div class="cv ground" data-cv>
+          <svg class="edges" data-edges aria-hidden="true"></svg>
+        </div>
+        <div class="scrub">
+          <input type="range" min="1" max="6" step="1" value="1" aria-label="Revision" data-range>
+          <div class="ticks" data-ticks></div>
+        </div>
+        <div class="diff">
+          <div class="diff-head"><span class="msg" data-msg></span><span class="when" data-when></span></div>
+          <div class="rows mono" data-rows aria-live="polite"></div>
+        </div>
+      </div>
+    </div>
+    <div class="tile">
+      <div>
+        <h3 class="title">Share a live link</h3>
+        <p class="body">A read-only link for anyone, and an SVG that stays current, for READMEs and docs.</p>
+      </div>
+      <div class="visual" aria-hidden="true">
+        <div class="share">
+          <div class="link"><span class="mono">tryarcher.dev/share/k3v9x2</span><span class="fake-btn">Copy</span></div>
+          <div class="md mono">![Architecture](…/k3v9x2/<span class="tok-str">image.svg</span>)</div>
+        </div>
+      </div>
+    </div>
+    <div class="tile last">
+      <div>
+        <h3 class="title">Linked to your repo</h3>
+        <p class="body">Link a GitHub repo and branch. src paths open the code, and commits sit next to architecture revisions.</p>
+      </div>
+      <div class="visual" aria-hidden="true">
+        <div class="repo">
+          <div class="repo-head" data-repo-icon><b>acme/platform</b><span class="mono">main</span></div>
+          <div class="repo-row"><span class="mono">4f1c2a9</span><span>Add Redis cache layer</span></div>
+          <div class="repo-row"><span class="mono">b83e011</span><span>Move checkout into Billing</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+#revision-scrubber .ruled-grid { border-top: 0; }
+#revision-scrubber .fg { grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 768px) {
+  #revision-scrubber .fg { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  #revision-scrubber .last { grid-column: span 2; }
+}
+@media (min-width: 1024px) {
+  #revision-scrubber .fg { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  #revision-scrubber .last { grid-column: auto; }
+}
+#revision-scrubber .tile { display: flex; flex-direction: column; gap: 20px; padding: 32px 20px; }
+@media (min-width: 640px) { #revision-scrubber .tile { padding: 32px 40px; } }
+#revision-scrubber .tile .body { max-width: 56ch; padding-top: 4px; }
+#revision-scrubber .visual { margin-top: auto; }
+
+/* Mini canvas: the Acme document at the chosen revision. */
+#revision-scrubber .cv { position: relative; height: 130px; border: 1px solid var(--line); border-radius: var(--r-md); overflow: hidden; --edge: var(--ink); }
+#revision-scrubber .edges { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+#revision-scrubber .e { opacity: 0; transition: opacity 200ms; }
+#revision-scrubber .e.on { opacity: 1; transition: opacity 260ms 320ms; }
+#revision-scrubber .n { position: absolute; min-height: 36px; height: 36px; padding: 0 6px; gap: 6px; transition: opacity 260ms, transform 300ms cubic-bezier(0.2, 0.7, 0.2, 1), border-color 200ms; }
+#revision-scrubber .cv.ready .n { transition: opacity 260ms, transform 300ms cubic-bezier(0.2, 0.7, 0.2, 1), left 420ms cubic-bezier(0.2, 0.7, 0.2, 1), top 420ms cubic-bezier(0.2, 0.7, 0.2, 1), border-color 200ms; }
+#revision-scrubber .n .node-label { font-size: var(--t-sm); line-height: var(--t-sm-lh); }
+#revision-scrubber .n.off { opacity: 0; transform: scale(0.85); pointer-events: none; }
+#revision-scrubber .n.is-add { border-color: var(--accent); }
+#revision-scrubber .n.is-chg { border-color: var(--warn); }
+
+/* The slider: one stop per revision, labels and authors under each stop. */
+#revision-scrubber .scrub { padding-top: 14px; }
+#revision-scrubber input[type="range"] {
+  -webkit-appearance: none; appearance: none; display: block; background: transparent; cursor: pointer;
+  height: 20px; margin: 0 calc(100% / 12 - 7px); width: calc(100% - 100% / 6 + 14px);
+  --p: 7px;
+}
+#revision-scrubber input[type="range"]:focus-visible { box-shadow: none; }
+#revision-scrubber input[type="range"]::-webkit-slider-runnable-track {
+  height: 4px; border-radius: var(--r-xs);
+  background: linear-gradient(to right, var(--ink) 0 var(--p), var(--line-2) var(--p) 100%);
+}
+#revision-scrubber input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none; width: 14px; height: 14px; margin-top: -5px; border-radius: 50%;
+  background: var(--surface); border: 1px solid var(--line-2); box-shadow: var(--shadow-sm);
+}
+#revision-scrubber input[type="range"]::-moz-range-track { height: 4px; border-radius: var(--r-xs); background: var(--line-2); }
+#revision-scrubber input[type="range"]::-moz-range-progress { height: 4px; border-radius: var(--r-xs); background: var(--ink); }
+#revision-scrubber input[type="range"]::-moz-range-thumb { width: 12px; height: 12px; border-radius: 50%; background: var(--surface); border: 1px solid var(--line-2); box-shadow: var(--shadow-sm); }
+#revision-scrubber input[type="range"]:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent); }
+#revision-scrubber input[type="range"]:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent); }
+#revision-scrubber .ticks { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); padding-top: 4px; }
+#revision-scrubber .tick { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 2px 0; border: 0; background: none; cursor: pointer; }
+#revision-scrubber .tick .r { font-size: var(--t-xs); line-height: var(--t-xs-lh); color: var(--ink-3); transition: color 120ms; }
+#revision-scrubber .tick:hover .r, #revision-scrubber .tick.cur .r { color: var(--ink); }
+#revision-scrubber .tick .chip { opacity: 0.55; transition: opacity 120ms; }
+#revision-scrubber .tick.cur .chip, #revision-scrubber .tick:hover .chip { opacity: 1; }
+
+/* The diff list, in the History tile's row style. */
+#revision-scrubber .diff { margin-top: 12px; border: 1px solid var(--line); background: var(--code-bg); }
+#revision-scrubber .diff-head { display: flex; align-items: baseline; gap: 10px; padding: 8px 12px; border-bottom: 1px solid var(--line); font-size: var(--t-sm); line-height: var(--t-sm-lh); }
+#revision-scrubber .diff-head .msg { color: var(--ink); font-weight: 500; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#revision-scrubber .diff-head .when { margin-left: auto; color: var(--ink-3); font-size: var(--t-xs); white-space: nowrap; }
+#revision-scrubber .rows { min-height: 102px; font-size: var(--t-sm); line-height: var(--t-sm-lh); }
+#revision-scrubber .row { display: flex; gap: 10px; padding: 8px 12px; border-bottom: 1px solid var(--line); animation: rs-in 220ms ease-out; }
+#revision-scrubber .row:last-child { border-bottom: 0; }
+#revision-scrubber .row .id { color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+#revision-scrubber .row .note { margin-left: auto; color: var(--ink-3); white-space: nowrap; }
+#revision-scrubber .row.rm .id { color: var(--ink-3); text-decoration: line-through; }
+#revision-scrubber .row.mv, #revision-scrubber .row.mv .id { color: var(--ink-3); }
+#revision-scrubber .m-add { color: var(--accent); }
+#revision-scrubber .m-chg { color: var(--warn); }
+#revision-scrubber .m-rm { color: var(--danger); }
+@keyframes rs-in { from { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  #revision-scrubber .n, #revision-scrubber .cv.ready .n, #revision-scrubber .e, #revision-scrubber .e.on { transition: none; }
+  #revision-scrubber .row { animation: none; }
+}
+
+/* Neighbours, as Features draws them today. */
+#revision-scrubber .share { display: flex; flex-direction: column; gap: 8px; }
+#revision-scrubber .link { display: flex; align-items: center; gap: 8px; height: 32px; padding: 0 4px 0 10px; border: 1px solid var(--line-2); background: var(--surface); }
+#revision-scrubber .link .mono { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--t-sm); color: var(--ink-2); }
+#revision-scrubber .fake-btn { border: 1px solid var(--line); background: var(--surface); padding: 2px 8px; font-size: var(--t-xs); line-height: var(--t-xs-lh); font-weight: 500; color: var(--ink); box-shadow: var(--shadow-sm); }
+#revision-scrubber .md { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; border: 1px solid var(--line); background: var(--code-bg); padding: 8px 10px; font-size: var(--t-sm); line-height: var(--t-sm-lh); color: var(--ink-2); }
+#revision-scrubber .repo { border: 1px solid var(--line); background: var(--surface); font-size: var(--t-sm); line-height: var(--t-sm-lh); }
+#revision-scrubber .repo-head { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--line); color: var(--ink-2); }
+#revision-scrubber .repo-head b { font-weight: 600; color: var(--ink); }
+#revision-scrubber .repo-head .mono { font-size: var(--t-xs); color: var(--ink-3); }
+#revision-scrubber .repo-row { display: flex; gap: 10px; padding: 6px 12px; border-bottom: 1px solid var(--line); color: var(--ink-2); white-space: nowrap; }
+#revision-scrubber .repo-row:last-child { border-bottom: 0; }
+#revision-scrubber .repo-row .mono { color: var(--ink-3); }
+#revision-scrubber .repo-row span:last-child { overflow: hidden; text-overflow: ellipsis; }
+</style>
+
+<script>
+var root = document.getElementById("revision-scrubber");
+var A = window.Archer;
+root.querySelector("[data-repo-icon]").insertAdjacentHTML("afterbegin", A.icon("git-branch"));
+
+// Six revisions of the Acme document. Ids, names and types as the .arch has them.
+var NODES = {
+  web: { tag: "vercel.nextjs", label: "Web app" },
+  api: { tag: "vercel.functions", label: "API" },
+  db: { tag: "supabase.postgres", label: "Postgres" },
+  auth: { tag: "clerk", label: "Auth" },
+  legacy_cron: { tag: "cron", label: "Nightly sync" },
+  billing: { tag: "stripe", label: "Billing" },
+  cache: { tag: "redis", label: "Cache" }
+};
+// Grid slots [column, row]. The agent tidied two boxes in r4: a move, not a change.
+var POS_A = { web: [0, 0], api: [1, 0], db: [2, 0], auth: [1, 1], legacy_cron: [2, 1] };
+var POS_B = { web: [0, 0], api: [1, 0], db: [2, 0], auth: [0, 1], legacy_cron: [1, 1], billing: [2, 1], cache: [1, 1] };
+var REVS = [
+  { who: "you", msg: "Initial version", when: "5 days ago", pos: POS_A,
+    nodes: ["web", "api", "legacy_cron"], edges: ["web-api", "cron-api-a"],
+    marks: { web: "add", api: "add", legacy_cron: "add" },
+    rows: [["+", "web", "added"], ["+", "api", "added"], ["+", "legacy_cron", "added"]] },
+  { who: "you", msg: "Add the database", when: "4 days ago", pos: POS_A,
+    nodes: ["web", "api", "db", "legacy_cron"], edges: ["web-api", "api-db", "cron-api-a"],
+    marks: { db: "add" },
+    rows: [["+", "db", "added"], ["+", "api -> db", "added"]] },
+  { who: "you", msg: "Add sign in", when: "3 days ago", pos: POS_A,
+    nodes: ["web", "api", "db", "auth", "legacy_cron"], edges: ["web-api", "api-db", "web-auth-a", "cron-api-a"],
+    marks: { auth: "add" },
+    rows: [["+", "auth", "added"], ["+", "web -> auth", "\"sign in\""]] },
+  { who: "agent", msg: "Add billing with checkout", when: "2 days ago", pos: POS_B,
+    nodes: ["web", "api", "db", "auth", "legacy_cron", "billing"], edges: ["web-api", "api-db", "web-auth-b", "cron-api-b", "api-billing"],
+    marks: { billing: "add" },
+    rows: [["+", "billing", "added"], ["+", "api -> billing", "\"checkout\""], ["·", "moved 2 boxes", "not a change"]] },
+  { who: "you", msg: "Rename the database", when: "yesterday", pos: POS_B, labels: { db: "Users DB" },
+    nodes: ["web", "api", "db", "auth", "legacy_cron", "billing"], edges: ["web-api", "api-db", "web-auth-b", "cron-api-b", "api-billing"],
+    marks: { db: "chg", web: "chg" },
+    rows: [["~", "db", "name"], ["~", "web", "desc"]] },
+  { who: "agent", msg: "Add a Redis cache", when: "just now", pos: POS_B, labels: { db: "Users DB" },
+    nodes: ["web", "api", "db", "auth", "billing", "cache"], edges: ["web-api", "api-db", "web-auth-b", "api-billing", "api-cache"],
+    marks: { cache: "add", api: "chg" },
+    rows: [["+", "cache", "added"], ["~", "api", "desc, src"], ["−", "legacy_cron", "removed"]] }
+];
+// Each connection, routed on the grid it belongs to (side, offsets in px).
+var EDGES = {
+  "web-api": { pos: POS_A, from: "web", to: "api", kind: "h" },
+  "api-db": { pos: POS_A, from: "api", to: "db", kind: "h" },
+  "web-auth-a": { pos: POS_A, from: "web", to: "auth", kind: "elbow", sdx: 0, tdx: -10, gy: 4 },
+  "cron-api-a": { pos: POS_A, from: "legacy_cron", to: "api", kind: "elbow", sdx: 0, tdx: 10, gy: -4 },
+  "web-auth-b": { pos: POS_B, from: "web", to: "auth", kind: "v", sdx: 0 },
+  "cron-api-b": { pos: POS_B, from: "legacy_cron", to: "api", kind: "v", sdx: -12 },
+  "api-billing": { pos: POS_B, from: "api", to: "billing", kind: "elbow", sdx: 12, tdx: 0, gy: 0 },
+  "api-cache": { pos: POS_B, from: "api", to: "cache", kind: "v", sdx: -12 }
+};
+
+var cv = root.querySelector("[data-cv]"), svg = root.querySelector("[data-edges]");
+var range = root.querySelector("[data-range]"), ticks = root.querySelector("[data-ticks]");
+var rowsEl = root.querySelector("[data-rows]"), msgEl = root.querySelector("[data-msg]"), whenEl = root.querySelector("[data-when]");
+var PAD = 12, GX = 14, GY = 34, NH = 36;
+var nodeEls = {}, edgeEls = {}, cur = 0;
+
+Object.keys(NODES).forEach(function (id) {
+  var wrap = document.createElement("div");
+  wrap.innerHTML = '<div class="node n off" data-id="' + id + '">' + A.typeTile(NODES[id].tag, "xs") +
+    '<span class="node-label">' + A.esc(NODES[id].label) + "</span></div>";
+  nodeEls[id] = wrap.firstChild;
+  cv.appendChild(nodeEls[id]);
+});
+Object.keys(EDGES).forEach(function (k) {
+  var g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+  g.setAttribute("class", "e");
+  g.innerHTML = '<path class="edge-path"/><path class="edge-head"/>';
+  svg.appendChild(g);
+  edgeEls[k] = g;
+});
+ticks.innerHTML = REVS.map(function (r, i) {
+  return '<button type="button" tabindex="-1" class="tick" data-i="' + i + '" aria-label="Revision ' + (i + 1) + '">' +
+    '<span class="r mono">r' + (i + 1) + "</span>" +
+    (r.who === "agent" ? '<span class="chip chip-accent">agent</span>' : '<span class="chip">You</span>') + "</button>";
+}).join("");
+
+function geom() {
+  var W = cv.clientWidth, colW = (W - PAD * 2 - GX * 2) / 3;
+  return { colW: colW, rect: function (pos, id) {
+    var p = pos[id], x = PAD + p[0] * (colW + GX), y = PAD + p[1] * (NH + GY);
+    return { x: x, y: y, w: colW, h: NH, r: x + colW, b: y + NH, cx: x + colW / 2, cy: y + NH / 2 };
+  }, gapY: PAD + NH + GY / 2 };
+}
+function head(x, y, dir) {
+  if (dir === "r") return "M" + x + " " + y + "L" + (x - 8) + " " + (y - 4) + "L" + (x - 8) + " " + (y + 4) + "Z";
+  if (dir === "d") return "M" + x + " " + y + "L" + (x - 4) + " " + (y - 8) + "L" + (x + 4) + " " + (y - 8) + "Z";
+  return "M" + x + " " + y + "L" + (x - 4) + " " + (y + 8) + "L" + (x + 4) + " " + (y + 8) + "Z";
+}
+function layout() {
+  var G = geom(), pos = REVS[cur].pos;
+  Object.keys(nodeEls).forEach(function (id) {
+    var r = G.rect(pos[id] ? pos : POS_B, id);
+    nodeEls[id].style.left = r.x + "px";
+    nodeEls[id].style.top = r.y + "px";
+    nodeEls[id].style.width = r.w + "px";
+  });
+  Object.keys(EDGES).forEach(function (k) {
+    var e = EDGES[k], a = G.rect(e.pos, e.from), b = G.rect(e.pos, e.to), d, h;
+    if (e.kind === "h") { d = "M" + a.r + " " + a.cy + "H" + (b.x - 8); h = head(b.x, b.cy, "r"); }
+    else {
+      var down = b.y > a.y, x1 = a.cx + e.sdx, sy = down ? a.b : a.y, ty = down ? b.y : b.b, s = down ? -8 : 8;
+      if (e.kind === "v") { d = "M" + x1 + " " + sy + "V" + (ty + s); h = head(x1, ty, down ? "d" : "u"); }
+      else {
+        var x2 = b.cx + e.tdx, gy = G.gapY + e.gy;
+        d = "M" + x1 + " " + sy + "V" + gy + "H" + x2 + "V" + (ty + s); h = head(x2, ty, down ? "d" : "u");
+      }
+    }
+    edgeEls[k].firstChild.setAttribute("d", d);
+    edgeEls[k].lastChild.setAttribute("d", h);
+  });
+}
+var MARK = { "+": "m-add", "~": "m-chg", "−": "m-rm", "·": "" };
+function show(i) {
+  cur = i;
+  var r = REVS[i];
+  range.value = i + 1;
+  range.style.setProperty("--p", "calc(" + (i / 5) + " * (100% - 14px) + 7px)");
+  range.setAttribute("aria-valuetext", "r" + (i + 1) + ", " + (r.who === "agent" ? "agent" : "you") + ": " + r.msg);
+  Object.keys(nodeEls).forEach(function (id) {
+    var el = nodeEls[id], on = r.nodes.indexOf(id) >= 0;
+    el.classList.toggle("off", !on);
+    el.classList.toggle("is-add", r.marks[id] === "add");
+    el.classList.toggle("is-chg", r.marks[id] === "chg");
+    el.querySelector(".node-label").textContent = (r.labels && r.labels[id]) || NODES[id].label;
+  });
+  Object.keys(edgeEls).forEach(function (k) { edgeEls[k].classList.toggle("on", r.edges.indexOf(k) >= 0); });
+  layout();
+  [].forEach.call(ticks.children, function (t, j) { t.classList.toggle("cur", j === i); });
+  msgEl.textContent = r.msg;
+  whenEl.textContent = "r" + (i + 1) + " · " + r.when;
+  rowsEl.innerHTML = r.rows.map(function (row) {
+    var cls = row[0] === "−" ? " rm" : row[0] === "·" ? " mv" : "";
+    return '<div class="row' + cls + '"><span class="' + MARK[row[0]] + '">' + row[0] + '</span><span class="id">' + A.esc(row[1]) +
+      '</span><span class="note">' + A.esc(row[2]) + "</span></div>";
+  }).join("");
+}
+
+// Autoplay once, slowly, the first time the tile is in view; any input stops it.
+var timer = null, played = false;
+function stop() { played = true; clearTimeout(timer); timer = null; }
+function step(i) {
+  show(i);
+  if (i < REVS.length - 1) timer = setTimeout(function () { step(i + 1); }, 1400);
+  else timer = null;
+}
+range.addEventListener("input", function () { stop(); show(+range.value - 1); });
+range.addEventListener("pointerdown", stop);
+range.addEventListener("keydown", stop);
+ticks.addEventListener("click", function (e) {
+  var t = e.target.closest(".tick");
+  if (!t) return;
+  stop();
+  show(+t.dataset.i);
+  range.focus({ preventScroll: true });
+});
+
+if (A.reduced || !("IntersectionObserver" in window)) {
+  show(REVS.length - 1);
+} else {
+  show(0);
+  var io = new IntersectionObserver(function (ents) {
+    if (!ents.some(function (en) { return en.isIntersecting; })) return;
+    io.disconnect();
+    if (!played) { played = true; timer = setTimeout(function () { step(1); }, 900); }
+  }, { threshold: 0.6 });
+  io.observe(cv);
+}
+requestAnimationFrame(function () { requestAnimationFrame(function () { cv.classList.add("ready"); }); });
+if ("ResizeObserver" in window) new ResizeObserver(layout).observe(cv);
+else window.addEventListener("resize", layout);
+</script>

@@ -1,0 +1,194 @@
+<section id="type-search" class="joints rule-b">
+  <div class="ts-bar">
+    <div class="ts-search">
+      <label class="sr-only" for="ts-q">Search component types</label>
+      <span class="ts-field">
+        <span class="ts-mag" aria-hidden="true"></span>
+        <input id="ts-q" class="input ts-input" type="search" autocomplete="off" spellcheck="false" placeholder="Search 350 types" aria-controls="ts-results">
+        <button type="button" class="btn btn-ghost ts-clear" aria-label="Clear search" hidden></button>
+      </span>
+    </div>
+    <div class="ts-strip" aria-hidden="true"><div class="ts-track"></div></div>
+    <p class="ts-status body" aria-live="polite"></p>
+  </div>
+  <div class="ts-results" id="ts-results" hidden>
+    <div class="ts-grid"></div>
+    <div class="ts-more"><button type="button" class="btn btn-sm"></button></div>
+  </div>
+</section>
+
+<style>
+#type-search .ts-bar { position: relative; display: flex; align-items: center; height: 96px; }
+@media (min-width: 640px) { #type-search .ts-bar { height: 112px; } }
+#type-search .ts-search { position: relative; z-index: 2; flex: none; padding-left: max(20px, env(safe-area-inset-left, 0px)); padding-right: 4px; }
+@media (min-width: 640px) { #type-search .ts-search { padding-left: 40px; } }
+#type-search .ts-field { position: relative; display: block; width: 172px; }
+@media (min-width: 640px) { #type-search .ts-field { width: 208px; } }
+#type-search .ts-mag { position: absolute; left: 10px; top: 9px; display: flex; color: var(--ink-3); pointer-events: none; }
+#type-search .ts-input { width: 100%; padding-left: 30px; padding-right: 30px; }
+#type-search .ts-input::placeholder { color: var(--ink-3); }
+#type-search .ts-input:placeholder-shown { padding-right: 8px; }
+#type-search .ts-input::-webkit-search-cancel-button { -webkit-appearance: none; appearance: none; }
+#type-search .ts-clear { position: absolute; right: 3px; top: 3px; width: 26px; height: 26px; padding: 0; }
+#type-search .ts-clear[hidden] { display: none; }
+
+/* The carousel, as GlyphCarousel draws it, fading in after the search field. */
+#type-search .ts-strip {
+  --fade: clamp(40px, 15%, 160px);
+  flex: 1; min-width: 0; height: 100%; overflow: hidden;
+  -webkit-mask-image: linear-gradient(to right, transparent, black var(--fade), black calc(100% - var(--fade)), transparent);
+  mask-image: linear-gradient(to right, transparent, black var(--fade), black calc(100% - var(--fade)), transparent);
+}
+#type-search .ts-track { --tile: clamp(40px, 4vw, 48px); --gap: clamp(28px, 3vw, 40px); display: flex; width: max-content; height: 100%; }
+#type-search .ts-row { display: flex; align-items: center; gap: var(--gap); padding-right: var(--gap); }
+@media (prefers-reduced-motion: no-preference) {
+  #type-search .ts-track { animation: ts-run 40s linear infinite; }
+  #type-search .ts-bar:hover .ts-track, #type-search:focus-within .ts-track { animation-play-state: paused; }
+}
+@keyframes ts-run { from { transform: translateX(-50%); } }
+
+#type-search .ts-tile {
+  --type: var(--type-light);
+  display: flex; flex: none; align-items: center; justify-content: center;
+  width: var(--tile, 40px); height: var(--tile, 40px);
+  border: 1px solid color-mix(in srgb, var(--type) 30%, var(--bg));
+  border-radius: var(--r-sm);
+  color: var(--type);
+  background-color: color-mix(in srgb, var(--type) 12%, var(--bg));
+}
+#type-search .ts-tile svg { width: 46%; height: 46%; }
+:root[data-theme="dark"] #type-search .ts-tile { --type: var(--type-dark); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) #type-search .ts-tile { --type: var(--type-dark); } }
+
+/* Searching: the strip gives way to the count, and matches wrap below. */
+#type-search .ts-status { display: none; flex: 1; min-width: 0; padding: 0 20px 0 12px; }
+#type-search .ts-status b { color: var(--ink); font-weight: 600; }
+#type-search .ts-status kbd { font-family: var(--font-mono); font-size: var(--t-xs); color: var(--ink-3); border: 1px solid var(--line); border-radius: var(--r-xs); padding: 0 4px; margin: 0 2px; background: var(--surface); }
+#type-search .ts-hint { color: var(--ink-3); }
+@media (max-width: 639px) { #type-search .ts-hint { display: none; } }
+#type-search.is-searching .ts-strip { display: none; }
+#type-search.is-searching .ts-status { display: block; }
+#type-search.is-searching .ts-bar { height: 72px; }
+@media (min-width: 640px) { #type-search .ts-status { padding-right: 40px; } #type-search.is-searching .ts-bar { height: 88px; } }
+
+#type-search .ts-results { padding: 0 20px 28px; }
+@media (min-width: 640px) { #type-search .ts-results { padding: 0 40px 36px; } }
+#type-search .ts-results[hidden] { display: none; }
+#type-search .ts-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 8px; }
+#type-search .ts-cell { display: flex; flex-direction: column; align-items: center; gap: 6px; min-width: 0; padding: 12px 6px 10px; border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface); }
+#type-search .ts-cell .ts-tile { --tile: 40px; }
+#type-search .ts-name { max-width: 100%; font-size: var(--t-xs); line-height: var(--t-xs-lh); color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#type-search .ts-tag { max-width: 100%; margin-top: -4px; font-family: var(--font-mono); font-size: var(--t-xs); line-height: var(--t-xs-lh); color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#type-search .ts-more { display: flex; justify-content: center; padding-top: 16px; }
+#type-search .ts-more[hidden] { display: none; }
+#type-search .ts-empty { grid-column: 1 / -1; padding: 8px 0; }
+@media (prefers-reduced-motion: no-preference) {
+  #type-search .ts-cell { animation: landing-rise 260ms cubic-bezier(0.2, 0.7, 0.2, 1) backwards; animation-delay: calc(var(--i, 0) * 12ms); }
+}
+</style>
+
+<script>
+var root = document.getElementById("type-search");
+var A = window.Archer, C = A.catalog, TYPES = C.types;
+var input = root.querySelector(".ts-input");
+var clearBtn = root.querySelector(".ts-clear");
+var status = root.querySelector(".ts-status");
+var results = root.querySelector(".ts-results");
+var grid = root.querySelector(".ts-grid");
+var more = root.querySelector(".ts-more");
+var moreBtn = more.querySelector("button");
+
+// Palette group labels (components/Palette.tsx NAMESPACE_LABELS), so "AI" or "Google" find their groups.
+var NS = { generic: "Generic", ai: "AI & agents", network: "Networking", compute: "Compute", storage: "Storage",
+  messaging: "Messaging", data: "Data & analytics", observability: "Observability", security: "Security",
+  platform: "Platform", topology: "Topology", patterns: "Patterns", ai_platforms: "AI platforms", aws: "AWS",
+  gcp: "Google Cloud", azure: "Azure", databases: "Databases", infra: "Infrastructure", saas: "SaaS", vercel: "Vercel" };
+
+// The carousel's own order (GlyphCarousel TAGS): no two neighbours share a color or glyph.
+var TAGS = ["load_balancer", "postgres", "redis", "llm", "aws.lambda", "kubernetes", "mongodb", "agent",
+  "kafka", "cloudflare", "stripe", "aws.s3", "cdn", "anthropic", "mcp", "convex"];
+
+var count = Object.keys(TYPES).length;
+input.placeholder = "Search " + Math.floor(count / 10) * 10 + " types";
+root.querySelector(".ts-mag").innerHTML = A.icon("magnifying-glass");
+clearBtn.innerHTML = A.icon("x");
+
+function tile(tag) {
+  var t = TYPES[tag];
+  return '<span class="ts-tile" style="--type-light:' + t.color + ";--type-dark:" + t.dark + '">' + A.glyph(t.glyph, 24) + "</span>";
+}
+var row = '<div class="ts-row">' + TAGS.filter(function (t) { return TYPES[t]; }).map(tile).join("") + "</div>";
+root.querySelector(".ts-track").innerHTML = row + row;
+
+// Every term must hit the tag, the name, the namespace (or its label) or the glyph.
+// Lower scores rank first: exact, then prefix, then group, then substring, then glyph.
+var index = Object.keys(TYPES).map(function (tag) {
+  var t = TYPES[tag];
+  return { tag: tag, t: t, name: t.name.toLowerCase(), words: (t.name + " " + tag.replace(/[._]/g, " ")).toLowerCase().split(/[^a-z0-9]+/),
+    ns: (t.ns + " " + (NS[t.ns] || "")).toLowerCase(), glyph: t.glyph.toLowerCase() };
+});
+function score(e, term) {
+  if (e.tag === term || e.name === term) return 0;
+  if (e.tag.indexOf(term) === 0 || e.name.indexOf(term) === 0) return 1;
+  if (e.words.some(function (w) { return w.indexOf(term) === 0; })) return 2;
+  if (e.ns.split(/[^a-z0-9]+/).some(function (w) { return w && w.indexOf(term) === 0; })) return 3;
+  if (e.tag.indexOf(term) >= 0 || e.name.indexOf(term) >= 0) return 4;
+  if (e.glyph.indexOf(term) >= 0) return 5;
+  return -1;
+}
+function search(q) {
+  var terms = q.toLowerCase().split(/\s+/).filter(Boolean), out = [];
+  index.forEach(function (e) {
+    var s = 0;
+    for (var i = 0; i < terms.length; i++) { var v = score(e, terms[i]); if (v < 0) return; s += v; }
+    out.push({ e: e, s: s });
+  });
+  out.sort(function (a, b) { return a.s - b.s || a.e.name.localeCompare(b.e.name); });
+  return out.map(function (x) { return x.e; });
+}
+
+var showAll = false;
+function columns() {
+  var cols = getComputedStyle(grid).gridTemplateColumns.split(" ").filter(Boolean).length;
+  return Math.max(cols, 2);
+}
+function update() {
+  var q = input.value.trim();
+  clearBtn.hidden = !input.value;
+  if (!q) {
+    root.classList.remove("is-searching");
+    results.hidden = true;
+    status.innerHTML = "";
+    showAll = false;
+    return;
+  }
+  root.classList.add("is-searching");
+  results.hidden = false;
+  var hits = search(q), shown = hits;
+  var quoted = "<b>'" + A.esc(q) + "'</b>";
+  var hint = ' <span class="ts-hint">· <kbd>Esc</kbd> to clear</span>';
+  if (!hits.length) {
+    status.innerHTML = "No types match " + quoted + "." + hint;
+    grid.innerHTML = '<p class="body ts-empty">Missing one? Add a custom type with its own name, glyph and color, and it shows up in everyone\'s palette.</p>';
+    more.hidden = true;
+    return;
+  }
+  status.innerHTML = hits.length + (hits.length === 1 ? " type matches " : " types match ") + quoted + hint;
+  var cap = columns() * 3;
+  if (!showAll && hits.length > cap) shown = hits.slice(0, cap);
+  grid.innerHTML = shown.map(function (e, i) {
+    return '<div class="ts-cell" style="--i:' + Math.min(i, 30) + '" title="@' + e.tag + '">' + tile(e.tag) +
+      '<span class="ts-name">' + A.esc(e.t.name) + '</span><span class="ts-tag">' + e.tag + "</span></div>";
+  }).join("");
+  more.hidden = shown.length === hits.length;
+  moreBtn.textContent = "Show all " + hits.length;
+}
+
+input.addEventListener("input", function () { showAll = false; update(); });
+input.addEventListener("keydown", function (ev) {
+  if (ev.key === "Escape") { ev.preventDefault(); input.value = ""; update(); }
+});
+clearBtn.addEventListener("click", function () { input.value = ""; update(); input.focus(); });
+moreBtn.addEventListener("click", function () { showAll = true; update(); });
+update();
+</script>

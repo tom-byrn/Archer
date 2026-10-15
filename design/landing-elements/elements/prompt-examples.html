@@ -1,0 +1,350 @@
+<section id="prompt-examples" class="joints rule-b">
+  <div class="pe-hero px">
+    <h1 class="headline text-display pe-headline">Software architecture for your agents.</h1>
+    <p class="lede pe-lede">Drag and drop your system architecture onto a canvas, or let your agent write Archer code to do it for you.</p>
+    <div class="pe-cta">
+      <a class="btn btn-primary btn-lg" href="#top">Sign in with GitHub<span class="pe-i" data-icon="arrow-right"></span></a>
+      <a class="btn btn-lg" href="#top"><span class="pe-i" data-icon="arrow-down"></span>Try the sandbox</a>
+    </div>
+
+    <div class="pe-asks mono" role="tablist" aria-label="Things to ask your agent">
+      <span class="pe-prompt-mark" aria-hidden="true">❯</span>
+    </div>
+
+    <div class="pe-panel" id="pe-panel" role="tabpanel">
+      <div class="pe-col pe-talk">
+        <div class="pe-stack pe-talk-stack"></div>
+        <div class="pe-setup mono">
+          <span>New here?</span>
+          <button type="button" class="pe-setup-copy"><span class="pe-sw"></span>copy setup prompt</button>
+          <span class="sr-only" role="status"></span>
+        </div>
+      </div>
+      <div class="pe-col pe-canvas ground"><div class="pe-stack pe-canvas-stack"></div></div>
+      <div class="pe-col pe-code codebox"><div class="pe-stack pe-code-stack"></div></div>
+    </div>
+  </div>
+</section>
+
+<style>
+#prompt-examples .pe-hero { display: flex; flex-direction: column; align-items: center; text-align: center; padding-top: 64px; padding-bottom: 56px; }
+@media (min-width: 640px) { #prompt-examples .pe-hero { padding-top: 96px; padding-bottom: 64px; } }
+#prompt-examples .pe-headline { max-width: 16ch; }
+#prompt-examples .pe-lede { max-width: 46ch; padding-top: 24px; }
+#prompt-examples .pe-cta { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; padding-top: 32px; }
+#prompt-examples .pe-i { display: inline-flex; }
+
+/* The asks: the hero's mono agent line, one choice per prompt. */
+#prompt-examples .pe-asks { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 4px 20px; padding-top: 24px; font-size: var(--t-sm); line-height: var(--t-sm-lh); color: var(--ink-3); max-width: 100%; }
+#prompt-examples .pe-prompt-mark { color: var(--accent); }
+#prompt-examples .pe-ask {
+  display: inline-flex; align-items: center; padding: 4px 2px; border: 0; background: none; cursor: pointer;
+  font-family: var(--font-mono); font-size: var(--t-sm); line-height: var(--t-sm-lh); color: var(--ink-3); white-space: nowrap;
+  text-decoration: underline; text-decoration-color: transparent; text-underline-offset: 3px; transition: color 100ms, text-decoration-color 100ms;
+}
+#prompt-examples .pe-ask:hover { color: var(--ink-2); text-decoration-color: var(--line-2); }
+#prompt-examples .pe-ask[aria-selected="true"] { color: var(--ink); text-decoration-color: var(--line-2); }
+#prompt-examples .pe-ask::after { content: ""; display: inline-block; width: 0.55em; height: 1.1em; margin-left: 0.3em; background: var(--accent); opacity: 0; }
+#prompt-examples .pe-ask[aria-selected="true"]::after { opacity: 0.7; animation: caret-blink 1s steps(1) infinite; }
+@media (prefers-reduced-motion: reduce) { #prompt-examples .pe-ask[aria-selected="true"]::after { animation: none; } }
+
+/* The panel: the agent's turn, the diagram it drew, the lines it wrote. */
+#prompt-examples .pe-panel {
+  width: 100%; margin-top: 20px; text-align: left; display: grid; grid-template-columns: 1fr;
+  border: 1px solid var(--line-2); background: var(--surface); box-shadow: var(--shadow-md); overflow: hidden;
+}
+@media (min-width: 640px) { #prompt-examples .pe-panel { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } #prompt-examples .pe-talk { grid-column: 1 / -1; } }
+@media (min-width: 1000px) { #prompt-examples .pe-panel { grid-template-columns: 272px minmax(0, 1fr) 292px; } #prompt-examples .pe-talk { grid-column: auto; } }
+#prompt-examples .pe-col { position: relative; min-width: 0; }
+#prompt-examples .pe-stack { display: grid; }
+#prompt-examples .pe-stack > * { grid-area: 1 / 1; min-width: 0; transition: opacity 360ms ease; }
+#prompt-examples .pe-stack > [aria-hidden="true"] { opacity: 0; pointer-events: none; }
+@media (prefers-reduced-motion: reduce) { #prompt-examples .pe-stack > * { transition: none; } }
+
+#prompt-examples .pe-talk { display: flex; flex-direction: column; border-bottom: 1px solid var(--line); }
+@media (min-width: 1000px) { #prompt-examples .pe-talk { border-bottom: 0; border-right: 1px solid var(--line); } }
+#prompt-examples .pe-turn { padding: 14px 16px 12px; display: flex; flex-direction: column; gap: 10px; }
+#prompt-examples .pe-you { display: flex; gap: 8px; font-family: var(--font-mono); font-size: var(--t-sm); line-height: var(--t-sm-lh); color: var(--ink); }
+#prompt-examples .pe-you span:first-child { color: var(--accent); }
+#prompt-examples .pe-calls { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; font-family: var(--font-mono); font-size: var(--t-xs); line-height: var(--t-xs-lh); }
+#prompt-examples .pe-call { display: flex; align-items: center; gap: 6px; min-width: 0; }
+#prompt-examples .pe-call .icon { width: 12px; height: 12px; color: var(--accent); }
+#prompt-examples .pe-call b { font-weight: 500; color: var(--ink-2); white-space: nowrap; }
+#prompt-examples .pe-call i { font-style: normal; color: var(--ink-3); margin-left: auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#prompt-examples .pe-reply { font-size: var(--t-sm); line-height: var(--t-sm-lh); color: var(--ink-2); margin: 0; }
+#prompt-examples .pe-setup { margin-top: auto; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; padding: 10px 16px; border-top: 1px solid var(--line); font-size: var(--t-xs); line-height: var(--t-xs-lh); color: var(--ink-3); }
+#prompt-examples .pe-setup-copy {
+  display: inline-flex; align-items: center; gap: 6px; padding: 0; border: 0; background: none; cursor: pointer; font-family: var(--font-mono); font-size: var(--t-xs);
+  color: var(--ink-2); text-decoration: underline; text-decoration-color: var(--line-2); text-underline-offset: 3px; transition: color 100ms, text-decoration-color 100ms;
+}
+#prompt-examples .pe-setup-copy:hover { color: var(--ink); text-decoration-color: currentColor; }
+
+/* Fresh tool calls arrive one by one when a prompt is picked. */
+@keyframes pe-in { from { opacity: 0; transform: translateY(4px); } }
+@media (prefers-reduced-motion: no-preference) {
+  #prompt-examples .is-run .pe-call, #prompt-examples .is-run .pe-reply { animation: pe-in 320ms cubic-bezier(0.2, 0.7, 0.2, 1) backwards; animation-delay: calc(var(--d) * 260ms + 120ms); }
+}
+
+/* Canvas */
+#prompt-examples .pe-canvas { --edge: var(--ink); overflow: hidden; aspect-ratio: 460 / 236; border-bottom: 1px solid var(--line); }
+@media (min-width: 640px) { #prompt-examples .pe-canvas { aspect-ratio: auto; height: 256px; border-bottom: 0; border-right: 1px solid var(--line); } }
+#prompt-examples .pe-canvas-stack { position: absolute; inset: 0; }
+#prompt-examples .pe-stage { position: absolute; left: 50%; top: 50%; width: 460px; height: 236px; transform-origin: 0 0; }
+#prompt-examples .pe-stage > * { position: absolute; }
+#prompt-examples .pe-stage .node { min-height: 0; padding: 0 9px; gap: 9px; }
+#prompt-examples .pe-stage .plane { display: block; }
+#prompt-examples .pe-stage .plane-head { height: 28px; font-weight: 600; gap: 7px; }
+#prompt-examples .pe-stage .plane-head svg { color: var(--ink-3); }
+#prompt-examples .pe-edges { left: 0; top: 0; overflow: visible; pointer-events: none; }
+#prompt-examples .pe-edges path { fill: none; stroke: var(--edge); stroke-width: 1.5; }
+#prompt-examples .pe-edges polygon { fill: var(--edge); }
+
+/* Shaped components (browser, cylinder) as the canvas draws them. */
+#prompt-examples .pe-shape { --type: var(--type-light); }
+:root[data-theme="dark"] #prompt-examples .pe-shape { --type: var(--type-dark); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) #prompt-examples .pe-shape { --type: var(--type-dark); } }
+#prompt-examples .pe-shape svg { position: absolute; inset: 0; overflow: visible; }
+#prompt-examples .pe-shape .part { fill: color-mix(in srgb, var(--type) 5%, var(--surface)); stroke: color-mix(in srgb, var(--type) 45%, var(--line-2)); stroke-width: 1; }
+#prompt-examples .pe-shape .detail { fill: none; stroke: color-mix(in srgb, var(--type) 45%, var(--line-2)); stroke-width: 1; }
+#prompt-examples .pe-shape .dot { fill: color-mix(in srgb, var(--type) 45%, var(--line-2)); }
+#prompt-examples .pe-shape .content { position: absolute; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+#prompt-examples .pe-shape .glyph { display: flex; color: var(--type); margin-bottom: 2px; }
+#prompt-examples .pe-shape .node-label, #prompt-examples .pe-shape .node-type { max-width: 100%; }
+
+/* Code */
+#prompt-examples .pe-code { padding: 12px 0; overflow: hidden; }
+#prompt-examples .pe-file { padding: 0 16px 6px; font-family: var(--font-mono); font-size: var(--t-xs); line-height: var(--t-xs-lh); color: var(--ink-3); }
+#prompt-examples .pe-lines { margin: 0; font: inherit; white-space: pre; overflow-x: auto; }
+#prompt-examples .pe-line { display: flex; }
+#prompt-examples .pe-line .n { flex: none; width: 36px; padding-right: 12px; text-align: right; color: var(--code-gutter); user-select: none; }
+#prompt-examples .pe-line.gap .n { letter-spacing: 0.1em; }
+</style>
+
+<script>
+var root = document.getElementById("prompt-examples");
+var A = window.Archer, C = A.catalog;
+
+var DEMOS = [
+  {
+    ask: "Map this repo into Archer",
+    file: "shipyard.arch",
+    calls: [["get_guide", "language v0.2"], ["validate_source", "0 problems"], ["create_project", "saved, revision 1"]],
+    reply: "Shipyard is on your canvas: 5 components, with the API and jobs on a Backend plane.",
+    planes: [{ label: "Backend", x: 140, y: 6, w: 172, h: 224 }],
+    nodes: [
+      { id: "web", label: "Web app", tag: "vercel.nextjs", shape: "browser", x: 6, y: 40, w: 106, h: 70 },
+      { id: "api", label: "API", tag: "vercel.functions", x: 156, y: 51, w: 140, h: 48 },
+      { id: "jobs", label: "Jobs", tag: "worker", x: 156, y: 162, w: 140, h: 48 },
+      { id: "db", label: "Postgres", tag: "postgres", shape: "cylinder", x: 340, y: 40, w: 114, h: 70 },
+      { id: "email", label: "Email", tag: "resend", x: 340, y: 162, w: 114, h: 48 }
+    ],
+    edges: [["api", "db"], ["api", "jobs"], ["jobs", "email"], ["web", "api"]],
+    code: [
+      [7, ['plane backend "Backend" {', '  component api "API" @vercel.functions', '  component jobs "Jobs" @worker', "}"]],
+      [18, ["api -> db @sql", 'api -> jobs @queue : "enqueue"', "jobs -> email @http", "web -> api @http"]]
+    ]
+  },
+  {
+    ask: "Add a RAG pipeline to the support bot",
+    file: "support-bot.arch",
+    calls: [["get_project", "Support Bot, revision 6"], ["validate_source", "0 problems"], ["update_project", "saved, revision 7"]],
+    reply: "Added a RAG plane: the agent asks a retriever over a vector store before it answers.",
+    planes: [{ label: "RAG", x: 300, y: 6, w: 154, h: 224 }],
+    nodes: [
+      { id: "widget", label: "Chat Widget", tag: "chat_ui", shape: "browser", x: 6, y: 40, w: 112, h: 70 },
+      { id: "agent", label: "Agent", tag: "agent", x: 148, y: 51, w: 124, h: 48 },
+      { id: "llm", label: "Claude", tag: "anthropic", x: 148, y: 162, w: 124, h: 48 },
+      { id: "retriever", label: "Retriever", tag: "rag", x: 314, y: 51, w: 126, h: 48 },
+      { id: "vectors", label: "Vectors", tag: "vector_db", shape: "cylinder", x: 318, y: 150, w: 118, h: 70 }
+    ],
+    edges: [["agent", "llm"], ["agent", "retriever"], ["retriever", "vectors"], ["widget", "agent"]],
+    code: [
+      [11, ['plane rag "RAG" {', '  component retriever "Retriever" @rag', '  component vectors "Vectors" @vector_db {', "    shape cylinder", "  }", "}"]],
+      [19, ["agent -> retriever @mcp", "retriever -> vectors @reads"]]
+    ]
+  },
+  {
+    ask: "Plan a SaaS with Stripe billing",
+    file: "ledger.arch",
+    calls: [["get_guide", "language v0.2"], ["list_types", "stripe, vercel.functions"], ["create_project", "saved, revision 1"]],
+    reply: "Ledger is on your canvas. Stripe events come back through a webhook that updates the plan.",
+    planes: [{ label: "Billing", x: 150, y: 118, w: 304, h: 112 }],
+    nodes: [
+      { id: "web", label: "Web app", tag: "vercel.nextjs", shape: "browser", x: 6, y: 14, w: 106, h: 70 },
+      { id: "api", label: "API", tag: "vercel.functions", x: 164, y: 25, w: 124, h: 48 },
+      { id: "db", label: "Postgres", tag: "supabase.postgres", shape: "cylinder", x: 324, y: 14, w: 124, h: 70 },
+      { id: "stripe", label: "Stripe", tag: "stripe", x: 164, y: 164, w: 124, h: 48 },
+      { id: "hooks", label: "Webhooks", tag: "vercel.functions", x: 324, y: 164, w: 124, h: 48 }
+    ],
+    edges: [["api", "db"], ["api", "stripe"], ["hooks", "db"], ["stripe", "hooks"], ["web", "api"]],
+    code: [
+      [13, ['plane billing "Billing" {', '  component stripe "Stripe" @stripe', '  component hooks "Webhooks" @vercel.functions', "}"]],
+      [18, ["api -> db @sql", 'api -> stripe @http : "checkout"', 'hooks -> db @sql : "plan"', "stripe -> hooks @webhook", "web -> api @http"]]
+    ]
+  }
+];
+
+/* The setup prompt the hero's "copy prompt" puts on the clipboard (AgentPrompt.tsx). */
+var SITE = "https://tryarcher.dev";
+var PROMPT = "Set me up with Archer (" + SITE + "), an architecture canvas I share with AI agents. Work through these steps in order, and stop where a step says to wait for me.\n\n" +
+  "1. Install the Archer MCP server\nIt's hosted at " + SITE + "/mcp (Streamable HTTP). There's no API key, header or client ID to configure: sign-in happens in the browser.\n" +
+  "- Claude Code: claude mcp add --transport http archer " + SITE + "/mcp\n- Codex: codex mcp add archer --url " + SITE + "/mcp\n- Gemini CLI: gemini mcp add --transport http archer " + SITE + "/mcp\n" +
+  '- Cursor: add "archer": { "url": "' + SITE + '/mcp" } under mcpServers in ~/.cursor/mcp.json\n- VS Code: add "archer": { "type": "http", "url": "' + SITE + '/mcp" } under servers in .vscode/mcp.json\n' +
+  "- Any other client: follow " + SITE + "/docs/mcp\nIf you can't change your own MCP settings (Claude on the web or desktop, for example), give me the exact steps from that page instead. If your client has to restart or reload to pick up the server, tell me and wait.\n\n" +
+  "2. Connect it\nStart the sign-in so my browser opens, or tell me how to (Claude Code: I run /mcp, choose archer, then Authenticate; Codex: codex mcp login archer; Gemini CLI: /mcp auth archer). Wait while I sign in with GitHub, then call get_workspace_info to check you're connected and tell me which workspace you're working in.\n\n" +
+  "3. Learn Archer\nArcher keeps a system's architecture as a document we both edit: its components, what runs inside them and how they connect, written in the .arch language and drawn as a live diagram on my canvas. You work on it through the MCP tools. Everything you save is validated (a broken document is rejected, not saved), recorded in the project's history under your name, and appears on my canvas straight away. Call get_guide now, once: it has the workflows, the error codes and the full language spec.\n\n" +
+  "4. Ask me what we're building\nIf you're working in a codebase right now, ask whether I'd like you to map its architecture into a new Archer project. If not, ask whether I'd like to plan the architecture of a new project together. Wait for my answer before you create anything.";
+
+root.querySelectorAll("[data-icon]").forEach(function (el) { el.innerHTML = A.icon(el.getAttribute("data-icon")); });
+
+var clamp = function (v, lo, hi) { return Math.max(lo, Math.min(hi, v)); };
+var r2 = function (v) { return Math.round(v * 100) / 100; };
+var pt = function (x, y) { return r2(x) + "," + r2(y); };
+var typeVars = function (tag) { var t = C.types[tag] || { color: "#64748b", dark: "#64748b" }; return "--type-light:" + t.color + ";--type-dark:" + t.dark; };
+
+/* Shape outlines from apps/web/lib/shapes.ts (browser, cylinder), for a w x h box. */
+function shapeGeo(shape, w, h) {
+  var x = 1, y = 1; w -= 2; h -= 2;
+  if (shape === "cylinder") {
+    var ry = clamp(h * 0.11, 3, 13), rx = w / 2;
+    return {
+      part: "M" + pt(x, y + ry) + "A" + r2(rx) + "," + r2(ry) + " 0 0 1 " + pt(x + w, y + ry) + "V" + r2(y + h - ry) + "A" + r2(rx) + "," + r2(ry) + " 0 0 1 " + pt(x, y + h - ry) + "Z",
+      detail: "M" + pt(x, y + ry) + "A" + r2(rx) + "," + r2(ry) + " 0 0 0 " + pt(x + w, y + ry),
+      dots: "", content: { x: x + 8, y: y + 2 * ry + 1, w: w - 16, h: h - 3 * ry - 1 }
+    };
+  }
+  var bar = clamp(h * 0.16, 5, 18), b = clamp(bar * 0.13, 1, 2.4), rr = 6, dots = "";
+  for (var i = 0; i < 3; i++) { var cx = x + bar * 0.55 + i * b * 3.4, cy = y + bar / 2; dots += "M" + pt(cx - b, cy) + "a" + b + "," + b + " 0 1 0 " + 2 * b + ",0a" + b + "," + b + " 0 1 0 " + -2 * b + ",0"; }
+  return {
+    part: "M" + pt(x + rr, y) + "H" + r2(x + w - rr) + "A6,6 0 0 1 " + pt(x + w, y + rr) + "V" + r2(y + h - rr) + "A6,6 0 0 1 " + pt(x + w - rr, y + h) + "H" + r2(x + rr) + "A6,6 0 0 1 " + pt(x, y + h - rr) + "V" + r2(y + rr) + "A6,6 0 0 1 " + pt(x + rr, y) + "Z",
+    detail: "M" + pt(x, y + bar) + "H" + r2(x + w), dots: dots, content: { x: x + 8, y: y + bar + 2, w: w - 16, h: h - bar - 4 }
+  };
+}
+
+function nodeHTML(n) {
+  var pos = "left:" + n.x + "px;top:" + n.y + "px;width:" + n.w + "px;height:" + n.h + "px";
+  if (!n.shape) return A.node({ tag: n.tag, label: n.label, style: pos });
+  var g = shapeGeo(n.shape, n.w, n.h), c = g.content, t = C.types[n.tag];
+  return '<div class="pe-shape" style="' + pos + ";" + typeVars(n.tag) + '"><svg width="' + n.w + '" height="' + n.h + '" aria-hidden="true"><path class="part" d="' + g.part + '"/><path class="detail" d="' + g.detail + '"/>' + (g.dots ? '<path class="dot" d="' + g.dots + '"/>' : "") + "</svg>" +
+    '<div class="content" style="left:' + c.x + "px;top:" + c.y + "px;width:" + c.w + "px;height:" + c.h + 'px"><span class="glyph">' + A.glyph(t.glyph, 16) + '</span><div class="node-label">' + A.esc(n.label) + '</div><div class="node-type">' + n.tag + "</div></div></div>";
+}
+
+/* A straight or one-bend connector between two boxes, side to side, with its arrowhead. */
+function edgeSVG(a, b) {
+  var L = 8, W = 4, G = 3;
+  var gx = Math.max(b.x - (a.x + a.w), a.x - (b.x + b.w)), gy = Math.max(b.y - (a.y + a.h), a.y - (b.y + b.h));
+  var acx = a.x + a.w / 2, acy = a.y + a.h / 2, bcx = b.x + b.w / 2, bcy = b.y + b.h / 2, d, p, tip, dx = 0, dy = 0;
+  if (gx >= gy) {
+    dx = bcx > acx ? 1 : -1;
+    var x1 = (dx > 0 ? a.x + a.w : a.x) + dx * G, x2 = (dx > 0 ? b.x : b.x + b.w) - dx * G, y1 = acy, y2 = bcy;
+    var top = Math.max(a.y, b.y), bot = Math.min(a.y + a.h, b.y + b.h);
+    if (bot - top > 20) y1 = y2 = (top + bot) / 2;
+    tip = [x2, y2]; var ex = x2 - dx * L, mx = (x1 + ex) / 2;
+    d = y1 === y2 ? "M" + pt(x1, y1) + "H" + r2(ex) : "M" + pt(x1, y1) + "H" + r2(mx) + "V" + r2(y2) + "H" + r2(ex);
+  } else {
+    dy = bcy > acy ? 1 : -1;
+    var yy1 = (dy > 0 ? a.y + a.h : a.y) + dy * G, yy2 = (dy > 0 ? b.y : b.y + b.h) - dy * G, xx1 = acx, xx2 = bcx;
+    var lf = Math.max(a.x, b.x), rt = Math.min(a.x + a.w, b.x + b.w);
+    if (rt - lf > 20) xx1 = xx2 = (lf + rt) / 2;
+    tip = [xx2, yy2]; var ey = yy2 - dy * L, my = (yy1 + ey) / 2;
+    d = xx1 === xx2 ? "M" + pt(xx1, yy1) + "V" + r2(ey) : "M" + pt(xx1, yy1) + "V" + r2(my) + "H" + r2(xx2) + "V" + r2(ey);
+  }
+  var bx = tip[0] - dx * L, by = tip[1] - dy * L;
+  p = pt(tip[0], tip[1]) + " " + pt(bx - dy * W, by + dx * W) + " " + pt(bx + dy * W, by - dx * W);
+  return '<path d="' + d + '"/><polygon points="' + p + '"/>';
+}
+
+var PLANE_ICON = '<svg width="13" height="13" viewBox="0 0 14 14" aria-hidden="true"><rect x="1.5" y="1.5" width="11" height="11" rx="2" fill="none" stroke="currentColor" stroke-width="1.3"/></svg>';
+
+var asks = root.querySelector(".pe-asks"), talk = root.querySelector(".pe-talk-stack"), canv = root.querySelector(".pe-canvas-stack"), code = root.querySelector(".pe-code-stack");
+var tabs = [], slides = [];
+
+DEMOS.forEach(function (demo, i) {
+  var tab = document.createElement("button");
+  tab.type = "button"; tab.className = "pe-ask"; tab.id = "pe-tab-" + i; tab.textContent = demo.ask;
+  tab.setAttribute("role", "tab"); tab.setAttribute("aria-controls", "pe-panel");
+  asks.appendChild(tab); tabs.push(tab);
+
+  var t = document.createElement("div");
+  t.className = "pe-turn";
+  t.innerHTML = '<div class="pe-you"><span>❯</span><span>' + A.esc(demo.ask) + "</span></div>" +
+    '<ul class="pe-calls">' + demo.calls.map(function (c, k) { return '<li class="pe-call" style="--d:' + k + '">' + A.icon("check") + "<b>" + c[0] + "</b><i>" + A.esc(c[1]) + "</i></li>"; }).join("") + "</ul>" +
+    '<p class="pe-reply" style="--d:' + demo.calls.length + '">' + A.esc(demo.reply) + "</p>";
+  talk.appendChild(t);
+
+  var byId = {}; demo.nodes.forEach(function (n) { byId[n.id] = n; });
+  var s = document.createElement("div");
+  s.className = "pe-stage";
+  s.innerHTML = demo.planes.map(function (p) { return '<div class="plane" style="left:' + p.x + "px;top:" + p.y + "px;width:" + p.w + "px;height:" + p.h + 'px"><div class="plane-head">' + PLANE_ICON + A.esc(p.label) + "</div></div>"; }).join("") +
+    '<svg class="pe-edges" width="460" height="236" aria-hidden="true">' + demo.edges.map(function (e) { return edgeSVG(byId[e[0]], byId[e[1]]); }).join("") + "</svg>" +
+    demo.nodes.map(nodeHTML).join("");
+  s.setAttribute("role", "img");
+  s.setAttribute("aria-label", "Diagram: " + demo.nodes.map(function (n) { return n.label; }).join(", "));
+  canv.appendChild(s);
+
+  var k = document.createElement("div");
+  var rows = [];
+  demo.code.forEach(function (h, hi) {
+    if (hi > 0) rows.push('<span class="pe-line gap"><span class="n">⋯</span></span>');
+    h[1].forEach(function (line, li) { rows.push('<span class="pe-line"><span class="n">' + (h[0] + li) + "</span><span>" + A.highlight(line) + "</span></span>"); });
+  });
+  k.innerHTML = '<div class="pe-file">' + demo.file + '</div><pre class="pe-lines">' + rows.join("") + "</pre>";
+  code.appendChild(k);
+
+  slides.push([t, s, k]);
+});
+
+/* Scale the 460 x 236 drawing to whatever room the canvas column has. */
+var canvasCol = root.querySelector(".pe-canvas");
+function fit() {
+  var w = canvasCol.clientWidth, h = canvasCol.clientHeight;
+  var k = Math.min(w / 460, h / 236) * 0.96;
+  canv.querySelectorAll(".pe-stage").forEach(function (s) { s.style.transform = "scale(" + k + ") translate(-50%, -50%)"; });
+}
+fit();
+if (window.ResizeObserver) new ResizeObserver(fit).observe(canvasCol); else window.addEventListener("resize", fit);
+
+var current = -1;
+function show(i, focus) {
+  if (i === current) return;
+  current = i;
+  tabs.forEach(function (t, k) {
+    var on = k === i;
+    t.setAttribute("aria-selected", on ? "true" : "false");
+    t.tabIndex = on ? 0 : -1;
+    slides[k].forEach(function (el) { el.setAttribute("aria-hidden", on ? "false" : "true"); if ("inert" in el) el.inert = !on; });
+  });
+  root.querySelector("#pe-panel").setAttribute("aria-labelledby", tabs[i].id);
+  var turn = slides[i][0];
+  turn.classList.remove("is-run"); void turn.offsetWidth; turn.classList.add("is-run");
+  if (focus) tabs[i].focus();
+}
+show(0);
+
+/* Cycles until the visitor picks one; holds still while they're looking at it. */
+var stopped = A.reduced, held = false, timer = null;
+function tick() { if (!stopped && !held && !document.hidden) show((current + 1) % DEMOS.length); }
+if (!stopped) timer = setInterval(tick, 5200);
+function stop() { stopped = true; if (timer) clearInterval(timer); }
+root.addEventListener("pointerenter", function () { held = true; });
+root.addEventListener("pointerleave", function () { held = false; });
+root.addEventListener("focusin", function () { held = true; });
+root.addEventListener("focusout", function () { held = false; });
+
+tabs.forEach(function (t, i) { t.addEventListener("click", function () { stop(); show(i); }); });
+asks.addEventListener("keydown", function (e) {
+  var k = e.key, n = DEMOS.length, to = null;
+  if (k === "ArrowRight" || k === "ArrowDown") to = (current + 1) % n;
+  else if (k === "ArrowLeft" || k === "ArrowUp") to = (current + n - 1) % n;
+  else if (k === "Home") to = 0; else if (k === "End") to = n - 1;
+  if (to === null) return;
+  e.preventDefault(); stop(); show(to, true);
+});
+
+var copyBtn = root.querySelector(".pe-setup-copy"), status = root.querySelector('.pe-setup [role="status"]');
+root.querySelector(".pe-sw").outerHTML = A.swapIcon();
+copyBtn.addEventListener("click", function () {
+  A.copy(copyBtn, PROMPT);
+  status.textContent = "Copied"; setTimeout(function () { status.textContent = ""; }, 1600);
+});
+</script>

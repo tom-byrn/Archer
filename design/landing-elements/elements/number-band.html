@@ -1,0 +1,56 @@
+<section id="number-band" class="joints rule-b" aria-label="Archer in numbers">
+  <dl class="nb-grid ruled-grid">
+    <div class="nb-cell">
+      <dt class="nb-num headline" data-to="350" data-suffix="+"><span class="nb-ghost" aria-hidden="true">350+</span><span class="nb-val">350+</span></dt>
+      <dd class="body">component types in the catalog, from Lambda to MCP servers. Add your own.</dd>
+    </div>
+    <div class="nb-cell">
+      <dt class="nb-num headline" data-to="27"><span class="nb-ghost" aria-hidden="true">27</span><span class="nb-val">27</span></dt>
+      <dd class="body">MCP tools your agent can call to read, write, diff and render your architecture.</dd>
+    </div>
+    <div class="nb-cell">
+      <dt class="nb-num headline"><span class="nb-ghost" aria-hidden="true">Every</span><span class="nb-val">Every</span></dt>
+      <dd class="body">revision kept, human or agent, with a diff of what changed.</dd>
+    </div>
+    <div class="nb-cell">
+      <dt class="nb-num headline"><span class="nb-ghost" aria-hidden="true">0</span><span class="nb-val">0</span></dt>
+      <dd class="body">broken documents saved. Agent writes go through the same validation as the canvas.</dd>
+    </div>
+  </dl>
+</section>
+
+<style>
+#number-band .nb-grid { margin: 0; grid-template-columns: repeat(2, minmax(0, 1fr)); border-top: 0; }
+@media (min-width: 768px) { #number-band .nb-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+#number-band .nb-cell { display: flex; flex-direction: column; gap: 10px; padding: 32px 20px; }
+@media (min-width: 640px) { #number-band .nb-cell { padding: 40px 40px 36px; } }
+#number-band .nb-num { display: inline-grid; justify-items: start; font-size: var(--t-dsm); line-height: var(--t-dsm-lh); font-variant-numeric: tabular-nums lining-nums; }
+#number-band .nb-num > span { grid-area: 1 / 1; }
+#number-band .nb-ghost { visibility: hidden; }
+#number-band dd { margin: 0; max-width: 30ch; }
+</style>
+
+<script>
+var root = document.getElementById("number-band");
+var nums = Array.prototype.slice.call(root.querySelectorAll(".nb-num[data-to]"));
+// The final numbers are already in the HTML; count up once, only with motion, only when seen.
+if (!Archer.reduced && nums.length && "IntersectionObserver" in window) {
+  var run = function () {
+    var start = performance.now(), dur = 1100;
+    nums.forEach(function (n) { n.querySelector(".nb-val").textContent = "0" + (n.dataset.suffix || ""); });
+    var tick = function (now) {
+      var t = Math.min(1, (now - start) / dur), e = 1 - Math.pow(1 - t, 3);
+      nums.forEach(function (n) {
+        var to = +n.dataset.to, v = t < 1 ? Math.floor(to * e) : to;
+        n.querySelector(".nb-val").textContent = v + (n.dataset.suffix || "");
+      });
+      if (t < 1) requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  };
+  var io = new IntersectionObserver(function (entries) {
+    if (entries.some(function (e) { return e.isIntersecting; })) { io.disconnect(); run(); }
+  }, { threshold: 0.5 });
+  io.observe(root);
+}
+</script>
