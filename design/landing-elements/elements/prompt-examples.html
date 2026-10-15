@@ -54,7 +54,7 @@
   border: 1px solid var(--line-2); background: var(--surface); box-shadow: var(--shadow-md); overflow: hidden;
 }
 @media (min-width: 640px) { #prompt-examples .pe-panel { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } #prompt-examples .pe-talk { grid-column: 1 / -1; } }
-@media (min-width: 1000px) { #prompt-examples .pe-panel { grid-template-columns: 272px minmax(0, 1fr) 292px; } #prompt-examples .pe-talk { grid-column: auto; } }
+@media (min-width: 1000px) { #prompt-examples .pe-panel { grid-template-columns: 264px minmax(0, 1fr) 316px; } #prompt-examples .pe-talk { grid-column: auto; } }
 #prompt-examples .pe-col { position: relative; min-width: 0; }
 #prompt-examples .pe-stack { display: grid; }
 #prompt-examples .pe-stack > * { grid-area: 1 / 1; min-width: 0; transition: opacity 360ms ease; }
@@ -109,7 +109,7 @@
 #prompt-examples .pe-shape .dot { fill: color-mix(in srgb, var(--type) 45%, var(--line-2)); }
 #prompt-examples .pe-shape .content { position: absolute; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
 #prompt-examples .pe-shape .glyph { display: flex; color: var(--type); margin-bottom: 2px; }
-#prompt-examples .pe-shape .node-label, #prompt-examples .pe-shape .node-type { max-width: 100%; }
+#prompt-examples .pe-shape .node-label, #prompt-examples .pe-shape .node-type { max-width: 100%; line-height: 1.3; }
 
 /* Code */
 #prompt-examples .pe-code { padding: 12px 0; overflow: hidden; }
@@ -135,7 +135,7 @@ var DEMOS = [
       { id: "web", label: "Web app", tag: "vercel.nextjs", shape: "browser", x: 6, y: 40, w: 106, h: 70 },
       { id: "api", label: "API", tag: "vercel.functions", x: 156, y: 51, w: 140, h: 48 },
       { id: "jobs", label: "Jobs", tag: "worker", x: 156, y: 162, w: 140, h: 48 },
-      { id: "db", label: "Postgres", tag: "postgres", shape: "cylinder", x: 340, y: 40, w: 114, h: 70 },
+      { id: "db", label: "Postgres", tag: "postgres", shape: "cylinder", x: 340, y: 37, w: 114, h: 76 },
       { id: "email", label: "Email", tag: "resend", x: 340, y: 162, w: 114, h: 48 }
     ],
     edges: [["api", "db"], ["api", "jobs"], ["jobs", "email"], ["web", "api"]],
@@ -147,7 +147,7 @@ var DEMOS = [
   {
     ask: "Add a RAG pipeline to the support bot",
     file: "support-bot.arch",
-    calls: [["get_project", "Support Bot, revision 6"], ["validate_source", "0 problems"], ["update_project", "saved, revision 7"]],
+    calls: [["get_project", "revision 6"], ["validate_source", "0 problems"], ["update_project", "saved, revision 7"]],
     reply: "Added a RAG plane: the agent asks a retriever over a vector store before it answers.",
     planes: [{ label: "RAG", x: 300, y: 6, w: 154, h: 224 }],
     nodes: [
@@ -155,7 +155,7 @@ var DEMOS = [
       { id: "agent", label: "Agent", tag: "agent", x: 148, y: 51, w: 124, h: 48 },
       { id: "llm", label: "Claude", tag: "anthropic", x: 148, y: 162, w: 124, h: 48 },
       { id: "retriever", label: "Retriever", tag: "rag", x: 314, y: 51, w: 126, h: 48 },
-      { id: "vectors", label: "Vectors", tag: "vector_db", shape: "cylinder", x: 318, y: 150, w: 118, h: 70 }
+      { id: "vectors", label: "Vectors", tag: "vector_db", shape: "cylinder", x: 318, y: 147, w: 118, h: 76 }
     ],
     edges: [["agent", "llm"], ["agent", "retriever"], ["retriever", "vectors"], ["widget", "agent"]],
     code: [
@@ -166,13 +166,13 @@ var DEMOS = [
   {
     ask: "Plan a SaaS with Stripe billing",
     file: "ledger.arch",
-    calls: [["get_guide", "language v0.2"], ["list_types", "stripe, vercel.functions"], ["create_project", "saved, revision 1"]],
+    calls: [["get_guide", "language v0.2"], ["list_types", "@stripe found"], ["create_project", "saved, revision 1"]],
     reply: "Ledger is on your canvas. Stripe events come back through a webhook that updates the plan.",
     planes: [{ label: "Billing", x: 150, y: 118, w: 304, h: 112 }],
     nodes: [
       { id: "web", label: "Web app", tag: "vercel.nextjs", shape: "browser", x: 6, y: 14, w: 106, h: 70 },
       { id: "api", label: "API", tag: "vercel.functions", x: 164, y: 25, w: 124, h: 48 },
-      { id: "db", label: "Postgres", tag: "supabase.postgres", shape: "cylinder", x: 324, y: 14, w: 124, h: 70 },
+      { id: "db", label: "Postgres", tag: "supabase.postgres", shape: "cylinder", x: 324, y: 11, w: 124, h: 76 },
       { id: "stripe", label: "Stripe", tag: "stripe", x: 164, y: 164, w: 124, h: 48 },
       { id: "hooks", label: "Webhooks", tag: "vercel.functions", x: 324, y: 164, w: 124, h: 48 }
     ],

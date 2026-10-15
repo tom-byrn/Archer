@@ -1,0 +1,138 @@
+<section id="client-switcher" class="joints rule-b px">
+  <div class="cs-strip">
+    <p class="eyebrow" id="cs-label">Works with any MCP client</p>
+    <div class="cs-tabs" role="tablist" aria-labelledby="cs-label"></div>
+  </div>
+  <div class="cs-setup" role="tabpanel" id="cs-panel">
+    <div class="cs-line codebox">
+      <span class="cs-where"></span>
+      <code class="cs-code"></code>
+      <button type="button" class="btn btn-ghost btn-sm cs-copy"><span class="cs-sw"></span>Copy</button>
+    </div>
+    <div class="cs-foot">
+      <p class="cs-note"></p>
+      <a class="cs-more" href="#top">Other clients<span class="cs-i"></span></a>
+    </div>
+    <span class="sr-only" role="status"></span>
+  </div>
+</section>
+
+<style>
+#client-switcher { padding-top: 24px; padding-bottom: 20px; }
+#client-switcher .cs-strip { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 40px; }
+#client-switcher .cs-tabs { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 28px; }
+#client-switcher .cs-tab {
+  display: inline-flex; align-items: center; gap: 8px; padding: 2px 0; border: 0; background: none; cursor: pointer;
+  font-size: var(--t-base); line-height: var(--t-base-lh); font-weight: 600; color: var(--ink-3); transition: color 100ms;
+}
+#client-switcher .cs-tab .icon { width: 16px; height: 16px; }
+#client-switcher .cs-tab span { text-decoration: underline; text-decoration-color: transparent; text-underline-offset: 4px; transition: text-decoration-color 100ms; }
+#client-switcher .cs-tab:hover { color: var(--ink-2); }
+#client-switcher .cs-tab[aria-selected="true"] { color: var(--ink); }
+#client-switcher .cs-tab[aria-selected="true"] span { text-decoration-color: var(--line-2); }
+
+#client-switcher .cs-setup { padding-top: 16px; }
+#client-switcher .cs-line { display: flex; align-items: center; gap: 10px; min-height: 40px; padding: 0 4px 0 12px; border: 1px solid var(--line); border-radius: var(--r-md); }
+#client-switcher .cs-where { flex: none; color: var(--ink-3); }
+#client-switcher .cs-where.chip { font-family: var(--font-mono); font-weight: 400; }
+#client-switcher .cs-code { flex: 1; min-width: 0; font: inherit; white-space: pre; overflow-x: auto; padding: 10px 0; scrollbar-width: thin; }
+#client-switcher .cs-code .cs-cmd { color: var(--ink); font-weight: 600; }
+#client-switcher .cs-copy { flex: none; }
+#client-switcher .cs-foot { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 24px; padding-top: 10px; }
+#client-switcher .cs-note { flex: 1 1 320px; margin: 0; font-size: var(--t-sm); line-height: var(--t-sm-lh); color: var(--ink-2); }
+#client-switcher .cs-note code { font-family: var(--font-mono); font-size: var(--t-sm); color: var(--ink); }
+#client-switcher .cs-more { display: inline-flex; align-items: center; gap: 6px; font-size: var(--t-sm); line-height: var(--t-sm-lh); color: var(--ink-2); text-decoration: none; transition: color 100ms; }
+#client-switcher .cs-more:hover { color: var(--ink); }
+#client-switcher .cs-more .icon { width: 12px; height: 12px; }
+
+/* Phones: the line wraps instead of scrolling, so the whole command stays readable. */
+@media (max-width: 639px) {
+  #client-switcher .cs-line { flex-wrap: wrap; align-items: flex-start; gap: 6px 8px; padding: 8px 4px 8px 12px; }
+  #client-switcher .cs-where { padding-top: 0; line-height: 28px; }
+  #client-switcher .cs-where.chip { margin-top: 4px; margin-right: auto; }
+  #client-switcher .cs-code { white-space: pre-wrap; overflow-wrap: anywhere; padding: 4px 0; flex-basis: 0; }
+  #client-switcher .cs-where.chip ~ .cs-code { order: 3; flex-basis: 100%; padding: 0 8px 2px 0; }
+}
+@keyframes cs-in { from { opacity: 0; } }
+@media (prefers-reduced-motion: no-preference) {
+  #client-switcher .is-new .cs-code, #client-switcher .is-new .cs-where, #client-switcher .is-new .cs-note { animation: cs-in 200ms ease-out; }
+}
+</style>
+
+<script>
+var root = document.getElementById("client-switcher");
+var A = window.Archer, URL_ = "https://tryarcher.dev/mcp";
+
+/* Each client's exact setup and how it signs in (docs/mcp.md, "Connect an agent"). */
+var CLIENTS = [
+  { name: "Claude Code", icon: "terminal-window", shell: "claude mcp add --transport http archer " + URL_,
+    note: "Then run <code>/mcp</code> in Claude Code, choose <code>archer</code> and pick Authenticate. Your browser opens to sign in." },
+  { name: "Codex", icon: "terminal-window", shell: "codex mcp add archer --url " + URL_,
+    note: "Codex opens your browser to sign in. To sign in again later, run <code>codex mcp login archer</code>." },
+  { name: "Cursor", icon: "code", file: "~/.cursor/mcp.json", json: '{ "mcpServers": { "archer": { "url": "' + URL_ + '" } } }',
+    note: "Or put it in <code>.cursor/mcp.json</code> for one project. Then connect <code>archer</code> in Cursor's MCP settings and sign in." },
+  { name: "Gemini CLI", icon: "terminal-window", shell: "gemini mcp add --transport http archer " + URL_,
+    note: "Then run <code>/mcp auth archer</code> in Gemini CLI to sign in." },
+  { name: "VS Code", icon: "code", file: ".vscode/mcp.json", json: '{ "servers": { "archer": { "type": "http", "url": "' + URL_ + '" } } }',
+    note: "VS Code opens your browser to sign in the first time the server starts." }
+];
+
+var list = root.querySelector(".cs-tabs"), panel = root.querySelector(".cs-setup");
+var where = root.querySelector(".cs-where"), code = root.querySelector(".cs-code"), note = root.querySelector(".cs-note");
+var copyBtn = root.querySelector(".cs-copy"), status = root.querySelector('[role="status"]');
+root.querySelector(".cs-sw").outerHTML = A.swapIcon();
+root.querySelector(".cs-i").outerHTML = A.icon("arrow-right");
+
+var tabs = CLIENTS.map(function (c, i) {
+  var b = document.createElement("button");
+  b.type = "button"; b.className = "cs-tab"; b.id = "cs-tab-" + i;
+  b.setAttribute("role", "tab"); b.setAttribute("aria-controls", "cs-panel");
+  b.innerHTML = A.icon(c.icon) + "<span>" + c.name + "</span>";
+  list.appendChild(b);
+  return b;
+});
+
+function jsonHTML(s) {
+  return A.esc(s).replace(/(&quot;[^&]*&quot;)(\s*:)?/g, function (m, str, colon) { return colon ? str + colon : '<span class="tok-str">' + str + "</span>"; });
+}
+
+var current = -1;
+function show(i, focus) {
+  if (i === current) return;
+  var first = current === -1;
+  current = i;
+  var c = CLIENTS[i];
+  tabs.forEach(function (t, k) { t.setAttribute("aria-selected", k === i ? "true" : "false"); t.tabIndex = k === i ? 0 : -1; });
+  panel.setAttribute("aria-labelledby", tabs[i].id);
+  if (c.shell) {
+    var sp = c.shell.indexOf(" ");
+    where.className = "cs-where"; where.textContent = "$"; where.setAttribute("aria-hidden", "true");
+    code.innerHTML = '<span class="cs-cmd">' + c.shell.slice(0, sp) + "</span>" + A.esc(c.shell.slice(sp)).replace(/(https:\/\/\S+)/, '<span class="tok-str">$1</span>');
+  } else {
+    where.className = "cs-where chip"; where.textContent = c.file; where.removeAttribute("aria-hidden");
+    code.innerHTML = jsonHTML(c.json);
+  }
+  code.scrollLeft = 0;
+  note.innerHTML = c.note;
+  copyBtn.setAttribute("aria-label", "Copy the " + c.name + " setup");
+  if (!first) { panel.classList.remove("is-new"); void panel.offsetWidth; panel.classList.add("is-new"); }
+  if (focus) tabs[i].focus();
+}
+show(0);
+
+tabs.forEach(function (t, i) { t.addEventListener("click", function () { show(i); }); });
+list.addEventListener("keydown", function (e) {
+  var n = CLIENTS.length, to = null;
+  if (e.key === "ArrowRight" || e.key === "ArrowDown") to = (current + 1) % n;
+  else if (e.key === "ArrowLeft" || e.key === "ArrowUp") to = (current + n - 1) % n;
+  else if (e.key === "Home") to = 0; else if (e.key === "End") to = n - 1;
+  if (to === null) return;
+  e.preventDefault(); show(to, true);
+});
+
+copyBtn.addEventListener("click", function () {
+  var c = CLIENTS[current];
+  A.copy(copyBtn, c.shell || c.json);
+  status.textContent = "Copied"; setTimeout(function () { status.textContent = ""; }, 1600);
+});
+</script>

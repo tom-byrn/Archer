@@ -1,0 +1,263 @@
+<section id="nesting-zoom" class="joints rule-b">
+  <div class="ruled-grid fg">
+    <div class="tile wide">
+      <div>
+        <h3 class="title" data-count>350+ component types</h3>
+        <p class="body">Agents, LLMs, RAG and MCP servers, AWS, GCP, Azure, Vercel, databases, queues and SaaS, each with its own glyph. Missing one? Add a custom type and it shows up in everyone's palette.</p>
+      </div>
+      <div class="visual" aria-hidden="true"><div class="pal" data-pal></div></div>
+    </div>
+    <div class="tile nest">
+      <div>
+        <h3 class="title">Planes and nesting</h3>
+        <p class="body">Lay components out on planes, like a frontend and a backend or a VPC. Any component can hold its own parts: double-click to open it, and breadcrumbs lead back out.</p>
+      </div>
+      <div class="visual">
+        <div class="box" data-box>
+          <div class="head">
+            <div class="head-plane" data-head-plane>
+              <span class="plane-glyph" data-cloud></span>
+              <span class="pn">Private network</span><span class="mono pt">aws.vpc</span>
+            </div>
+            <nav class="head-crumb" data-head-crumb aria-label="Breadcrumb" hidden>
+              <button type="button" class="back" data-back aria-label="Back to Private network"></button>
+              <button type="button" class="crumb" data-up>Private network</button>
+              <span class="sep" data-sep></span>
+              <span class="crumb here" aria-current="page">Jobs</span>
+              <span class="esc"><kbd>esc</kbd> up a level</span>
+            </nav>
+          </div>
+          <div class="stage" data-stage>
+            <div class="plane-view" data-plane-view>
+              <div class="cards">
+                <button type="button" class="mini" data-jobs aria-label="Jobs, kubernetes, 3 parts. Double-click or press Enter to open">
+                  <span data-tile="kubernetes"></span><span class="ml">Jobs</span>
+                  <span class="badge mono" data-badge>3</span>
+                </button>
+                <div class="mini" data-orders><span data-tile="aws.rds"></span><span class="ml">Orders DB</span></div>
+              </div>
+              <p class="hint"><span data-cursor></span><span class="hint-mouse">Double-click Jobs to open it</span><span class="hint-touch">Tap Jobs to open it</span></p>
+            </div>
+            <div class="canvas-view ground" data-canvas-view hidden>
+              <svg class="edges" data-edges aria-hidden="true"></svg>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+#nesting-zoom .ruled-grid { border-top: 0; }
+#nesting-zoom .fg { grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 768px) {
+  #nesting-zoom .fg { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  #nesting-zoom .wide, #nesting-zoom .nest { grid-column: span 2; }
+}
+@media (min-width: 1024px) {
+  #nesting-zoom .fg { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  #nesting-zoom .nest { grid-column: auto; }
+}
+#nesting-zoom .tile { display: flex; flex-direction: column; gap: 20px; padding: 32px 20px; }
+@media (min-width: 640px) { #nesting-zoom .tile { padding: 32px 40px; } }
+#nesting-zoom .tile .body { max-width: 56ch; padding-top: 4px; }
+#nesting-zoom .visual { margin-top: auto; }
+
+/* Palette neighbour, as Features draws it today. */
+#nesting-zoom .pal { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+@media (min-width: 640px) { #nesting-zoom .pal { grid-template-columns: repeat(8, minmax(0, 1fr)); } }
+#nesting-zoom .pal > div { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; height: 70px; border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface); font-size: var(--t-xs); line-height: var(--t-xs-lh); color: var(--ink-2); white-space: nowrap; }
+#nesting-zoom .pal > .own { border-style: dashed; border-color: var(--line-2); background: transparent; }
+#nesting-zoom .pal .own .icon { width: 16px; height: 16px; margin: 7px; }
+
+/* The plane, and the component's own canvas once it is opened. */
+#nesting-zoom .box { border: 1px solid var(--line-2); border-radius: var(--r-lg); background: var(--surface-2); overflow: hidden; }
+#nesting-zoom .head { position: relative; height: 32px; border-bottom: 1px solid var(--line); }
+#nesting-zoom .head-plane, #nesting-zoom .head-crumb { position: absolute; inset: 0; display: flex; align-items: center; transition: opacity 180ms; }
+#nesting-zoom .head-plane { gap: 8px; padding: 0 10px; }
+#nesting-zoom .plane-glyph { display: inline-flex; color: var(--ink-2); }
+#nesting-zoom .pn { font-size: var(--t-sm); line-height: var(--t-sm-lh); font-weight: 600; color: var(--ink); white-space: nowrap; }
+#nesting-zoom .pt { font-size: var(--t-xs); color: var(--ink-3); }
+#nesting-zoom .head-crumb { gap: 2px; padding: 0 8px 0 4px; background: var(--surface); font-size: var(--t-sm); line-height: var(--t-sm-lh); white-space: nowrap; }
+#nesting-zoom .head-crumb[hidden] { display: none; }
+#nesting-zoom .back { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border: 0; border-radius: var(--r-sm); background: none; color: var(--ink-2); cursor: pointer; }
+#nesting-zoom .back:hover, #nesting-zoom button.crumb:hover { background: var(--surface-2); color: var(--ink); }
+#nesting-zoom .crumb { padding: 2px 6px; border: 0; border-radius: var(--r-sm); background: none; color: var(--ink-2); cursor: pointer; }
+#nesting-zoom .crumb.here { color: var(--ink); font-weight: 500; cursor: default; }
+#nesting-zoom .sep { display: inline-flex; color: var(--ink-3); }
+#nesting-zoom .sep .icon { width: 12px; height: 12px; }
+#nesting-zoom .esc { display: none; margin-left: auto; align-items: center; gap: 6px; font-size: var(--t-xs); color: var(--ink-3); }
+@media (min-width: 1200px), (min-width: 360px) and (max-width: 1023px) { #nesting-zoom .esc { display: flex; } }
+#nesting-zoom kbd { display: inline-flex; align-items: center; height: 20px; padding: 0 6px; border: 1px solid var(--line); border-radius: var(--r-sm); background: var(--surface); box-shadow: inset 0 -1px 0 var(--line); font-family: var(--font-sans); font-size: var(--t-xs); font-weight: 500; color: var(--ink-2); }
+
+#nesting-zoom .stage { position: relative; height: 148px; }
+#nesting-zoom .plane-view { position: absolute; inset: 0; display: flex; flex-direction: column; transform-origin: 50% 50%; }
+#nesting-zoom .cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; padding: 12px; }
+#nesting-zoom .mini { position: relative; display: flex; align-items: center; gap: 8px; height: 48px; min-width: 0; padding: 0 8px; border: 1px solid var(--line-2); border-radius: var(--r-md); background: var(--surface); text-align: left; font: inherit; color: inherit; transition: border-color 120ms, box-shadow 120ms; }
+#nesting-zoom button.mini { cursor: pointer; }
+#nesting-zoom button.mini:hover { border-color: color-mix(in srgb, var(--edge-strong) 40%, transparent); }
+#nesting-zoom .mini.selected { box-shadow: 0 0 0 2px var(--surface-2), 0 0 0 4px var(--accent); }
+#nesting-zoom .ml { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--t-sm); line-height: var(--t-sm-lh); font-weight: 600; color: var(--ink); }
+#nesting-zoom .badge { display: inline-flex; align-items: center; gap: 4px; margin-left: auto; padding: 0 4px; border-radius: var(--r-sm); background: var(--surface-3); font-size: var(--t-xs); line-height: var(--t-xs-lh); color: var(--ink-2); flex: none; }
+#nesting-zoom .badge .icon { width: 12px; height: 12px; }
+#nesting-zoom .hint { flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; margin: 0; padding-bottom: 12px; font-size: var(--t-xs); line-height: var(--t-xs-lh); color: var(--ink-3); }
+#nesting-zoom .hint .icon { width: 12px; height: 12px; }
+#nesting-zoom .hint-touch { display: none; }
+@media (hover: none) { #nesting-zoom .hint-mouse, #nesting-zoom .esc { display: none; } #nesting-zoom .hint-touch { display: inline; } }
+
+#nesting-zoom .canvas-view { position: absolute; inset: 0; --edge: var(--ink); }
+#nesting-zoom .canvas-view[hidden] { display: none; }
+#nesting-zoom .edges { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+#nesting-zoom .part { position: absolute; }
+#nesting-zoom .ctx { position: absolute; display: flex; align-items: center; gap: 8px; height: 48px; padding: 0 8px; border: 1px dashed var(--line-2); border-radius: var(--r-md); background: color-mix(in srgb, var(--surface) 70%, transparent); text-align: left; font: inherit; color: inherit; cursor: pointer; }
+#nesting-zoom .ctx:hover { border-color: color-mix(in srgb, var(--edge-strong) 50%, transparent); background: var(--surface); }
+#nesting-zoom .ctx .type-tile { background: none; width: 16px !important; height: 16px !important; }
+#nesting-zoom .ctx .ctx-label { font-size: var(--t-sm); line-height: 1.25; font-weight: 600; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#nesting-zoom .ctx .node-type { display: block; }
+</style>
+
+<script>
+var root = document.getElementById("nesting-zoom");
+var A = window.Archer;
+var reduced = A.reduced;
+
+// Palette neighbour (Features PALETTE), with the count rounded down as the page does.
+var PALETTE = ["aws.lambda", "aws.sqs", "aws.s3", "kubernetes", "postgres", "redis", "kafka", "vercel.nextjs", "convex", "stripe", "clerk", "openai", "anthropic", "agent", "mcp"];
+root.querySelector("[data-count]").textContent = Math.floor(A.catalog.count / 10) * 10 + "+ component types";
+root.querySelector("[data-pal]").innerHTML = PALETTE.map(function (t) {
+  return "<div>" + A.typeTile(t, "md") + A.esc((A.type(t) || {}).name || t) + "</div>";
+}).join("") + '<div class="own">' + A.icon("plus") + "Your own</div>";
+
+root.querySelector("[data-cloud]").innerHTML = A.glyph("cloud", 16);
+root.querySelector("[data-back]").innerHTML = A.icon("caret-left");
+root.querySelector("[data-sep]").innerHTML = A.icon("caret-right");
+root.querySelector("[data-cursor]").innerHTML = A.icon("cursor");
+root.querySelector("[data-badge]").insertAdjacentHTML("afterbegin", A.icon("stack"));
+[].forEach.call(root.querySelectorAll("[data-tile]"), function (el) { el.outerHTML = A.typeTile(el.getAttribute("data-tile"), "sm"); });
+
+var box = root.querySelector("[data-box]"), stage = root.querySelector("[data-stage]");
+var planeView = root.querySelector("[data-plane-view]"), canvasView = root.querySelector("[data-canvas-view]");
+var headPlane = root.querySelector("[data-head-plane]"), headCrumb = root.querySelector("[data-head-crumb]");
+var jobs = root.querySelector("[data-jobs]"), orders = root.querySelector("[data-orders]"), back = root.querySelector("[data-back]"), up = root.querySelector("[data-up]");
+var svg = root.querySelector("[data-edges]");
+
+// Inside Jobs: its three parts, and Orders DB outside it as a context node.
+//   component jobs "Jobs" @kubernetes { scheduler @cron, queue @queue, worker @worker }
+//   jobs.scheduler -> jobs.queue, jobs.queue -> jobs.worker, jobs.worker -> orders_db
+var PARTS = [
+  { id: "scheduler", tag: "cron", label: "Scheduler", at: [0, 0] },
+  { id: "queue", tag: "queue", label: "Queue", at: [1, 0] },
+  { id: "worker", tag: "worker", label: "Worker", at: [1, 1] }
+];
+var partEls = PARTS.map(function (p) {
+  var w = document.createElement("div");
+  w.innerHTML = A.node({ tag: p.tag, label: p.label, cls: "part" });
+  canvasView.appendChild(w.firstChild);
+  return canvasView.lastChild;
+});
+var ctx = document.createElement("button");
+ctx.type = "button";
+ctx.className = "ctx";
+ctx.setAttribute("aria-label", "Orders DB, outside Jobs. Go there");
+ctx.innerHTML = A.typeTile("aws.rds", "xs") + '<span style="min-width:0"><span class="ctx-label" style="display:block">Orders DB</span><span class="node-type">orders_db</span></span>';
+canvasView.appendChild(ctx);
+svg.innerHTML = '<g><path class="edge-path"/><path class="edge-head"/></g>'.repeat(3);
+
+function layoutCanvas() {
+  var W = stage.clientWidth, H = stage.clientHeight, P = 12, GX = 28, NH = 48;
+  var colW = (W - P * 2 - GX) / 2, gy = H - P * 2 - NH * 2;
+  var at = function (c, r) { return { x: P + c * (colW + GX), y: P + r * (NH + gy) }; };
+  PARTS.forEach(function (p, i) {
+    var q = at(p.at[0], p.at[1]);
+    partEls[i].style.cssText = "left:" + q.x + "px;top:" + q.y + "px;width:" + colW + "px";
+  });
+  var c = at(0, 1);
+  ctx.style.cssText = "left:" + c.x + "px;top:" + c.y + "px;width:" + colW + "px";
+  var s = at(0, 0), qd = at(1, 0), wk = at(1, 1), cy0 = s.y + NH / 2, cy1 = wk.y + NH / 2, qx = qd.x + colW / 2;
+  var paths = [
+    ["M" + (s.x + colW) + " " + cy0 + "H" + (qd.x - 8), "M" + qd.x + " " + cy0 + "l-8 -4v8z"],
+    ["M" + qx + " " + (qd.y + NH) + "V" + (wk.y - 8), "M" + qx + " " + wk.y + "l-4 -8h8z"],
+    ["M" + wk.x + " " + cy1 + "H" + (c.x + colW + 8), "M" + (c.x + colW) + " " + cy1 + "l8 -4v8z"]
+  ];
+  [].forEach.call(svg.children, function (g, i) { g.firstChild.setAttribute("d", paths[i][0]); g.lastChild.setAttribute("d", paths[i][1]); });
+}
+
+var open = false, busy = null;
+var EASE = "cubic-bezier(0.2, 0.7, 0.2, 1)";
+function jobsInset() {
+  var s = stage.getBoundingClientRect(), j = jobs.getBoundingClientRect();
+  return "inset(" + (j.top - s.top) + "px " + (s.right - j.right) + "px " + (s.bottom - j.bottom) + "px " + (j.left - s.left) + "px round 6px)";
+}
+function origin() {
+  var s = stage.getBoundingClientRect(), j = jobs.getBoundingClientRect();
+  return (j.left - s.left + j.width / 2) + "px " + (j.top - s.top + j.height / 2) + "px";
+}
+function swapHead(toCrumb) {
+  headCrumb.hidden = false;
+  headPlane.style.opacity = toCrumb ? "0" : "1";
+  headCrumb.style.opacity = toCrumb ? "1" : "0";
+  headPlane.style.visibility = toCrumb ? "hidden" : "";
+  if (!toCrumb) headCrumb.hidden = true;
+}
+function zoomIn() {
+  if (open) return;
+  open = true;
+  jobs.classList.remove("selected");
+  canvasView.hidden = false;
+  layoutCanvas();
+  swapHead(true);
+  if (busy) busy.forEach(function (a) { a.cancel(); });
+  if (!reduced) {
+    var o = origin();
+    planeView.style.transformOrigin = o;
+    canvasView.style.transformOrigin = o;
+    busy = [
+      canvasView.animate([{ clipPath: jobsInset(), opacity: 0.2, transform: "scale(0.94)" }, { clipPath: "inset(0px 0px 0px 0px round 0px)", opacity: 1, transform: "none" }], { duration: 540, easing: EASE }),
+      planeView.animate([{ opacity: 1, transform: "none" }, { opacity: 0, transform: "scale(1.25)" }], { duration: 360, easing: EASE, fill: "forwards" }),
+      headCrumb.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 220, easing: "ease-out" })
+    ];
+    busy[1].onfinish = function () { if (open) planeView.style.visibility = "hidden"; };
+  } else {
+    planeView.style.visibility = "hidden";
+  }
+  back.focus({ preventScroll: true });
+}
+function zoomOut(focusTarget) {
+  if (!open) return;
+  open = false;
+  if (busy) busy.forEach(function (a) { a.cancel(); });
+  planeView.style.visibility = "";
+  swapHead(false);
+  var done = function () { canvasView.hidden = true; };
+  if (!reduced) {
+    var o = origin();
+    planeView.style.transformOrigin = o;
+    busy = [
+      canvasView.animate([{ clipPath: "inset(0px 0px 0px 0px round 0px)", opacity: 1, transform: "none" }, { clipPath: jobsInset(), opacity: 0, transform: "scale(0.94)" }], { duration: 440, easing: EASE, fill: "forwards" }),
+      planeView.animate([{ opacity: 0, transform: "scale(1.25)" }, { opacity: 1, transform: "none" }], { duration: 440, easing: EASE })
+    ];
+    busy[0].onfinish = function () { if (!open) { done(); busy[0].cancel(); } };
+  } else done();
+  (focusTarget || jobs).classList.add("selected");
+  if (focusTarget !== orders) jobs.focus({ preventScroll: true });
+}
+
+// Double-click opens (as on the canvas); so do Enter, Space and a tap. One click selects.
+var lastPointer = "mouse";
+jobs.addEventListener("pointerdown", function (e) { lastPointer = e.pointerType; });
+jobs.addEventListener("click", function (e) {
+  if (e.detail === 0 || lastPointer === "touch" || lastPointer === "pen") zoomIn();
+  else { orders.classList.remove("selected"); jobs.classList.add("selected"); }
+});
+jobs.addEventListener("dblclick", zoomIn);
+back.addEventListener("click", function () { zoomOut(); });
+up.addEventListener("click", function () { zoomOut(); });
+ctx.addEventListener("click", function () { jobs.classList.remove("selected"); zoomOut(orders); back.blur(); });
+orders.addEventListener("click", function () { jobs.classList.remove("selected"); orders.classList.add("selected"); });
+root.addEventListener("keydown", function (e) { if (e.key === "Escape" && open) { e.preventDefault(); zoomOut(); } });
+document.addEventListener("pointerdown", function (e) {
+  if (!box.contains(e.target)) { jobs.classList.remove("selected"); orders.classList.remove("selected"); }
+});
+if ("ResizeObserver" in window) new ResizeObserver(function () { if (open) layoutCanvas(); }).observe(stage);
+</script>

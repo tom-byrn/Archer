@@ -1,0 +1,295 @@
+<section id="agent-replay" class="joints rule-b">
+  <div class="ar-head px">
+    <h2 class="headline ar-h">Your agent works on the same canvas</h2>
+    <p class="lede ar-lede">Agents read and write the project through MCP, with the same checks as the editor. A broken write is rejected with the reason; a good one is saved and badged for review.</p>
+  </div>
+  <div class="ar-wrap px">
+    <div class="panel ar-panel">
+      <div class="panel-head ar-bar">
+        <span class="ar-bar-title"><span class="ar-bar-icon"></span><span class="mono">claude code · acme</span></span>
+        <span class="ar-bar-actions">
+          <button type="button" class="btn btn-ghost btn-sm ar-toggle" aria-pressed="false"><span class="ar-toggle-icon"></span><span class="ar-toggle-label">Pause</span></button>
+          <button type="button" class="btn btn-ghost btn-sm ar-replay"><span class="ar-replay-icon"></span>Replay</button>
+        </span>
+      </div>
+      <div class="ar-body">
+        <div class="ar-log codebox" aria-label="Agent session transcript">
+          <div class="ar-line ar-user" data-at="300" data-type="1300"><span class="ar-m ar-prompt"></span><span class="ar-c ar-typed">Add a cache in front of the database</span></div>
+
+          <div class="ar-gap" data-at="1700"></div>
+          <div class="ar-line ar-call" data-at="1700" data-done="2500" data-result="ok"><span class="ar-m"><i class="ar-dot"></i></span><span class="ar-c"><b class="ar-tool">get_project</b><span class="ar-args">(project_id: <span class="tok-str">"acme"</span>)</span></span></div>
+          <div class="ar-line" data-at="1700"><span class="ar-m ar-elbow">└</span><span class="ar-c"><span class="chip ar-chip" data-done="2500">Acme · 5 components</span></span></div>
+
+          <div class="ar-line ar-note" data-at="3000"><span class="ar-m"></span><span class="ar-c">Adding a Redis cache on the Backend plane, between the API and Postgres.</span></div>
+
+          <div class="ar-gap" data-at="3700"></div>
+          <div class="ar-line ar-call" data-at="3700" data-done="5300" data-result="err"><span class="ar-m"><i class="ar-dot"></i></span><span class="ar-c"><b class="ar-tool">update_project</b><span class="ar-args">(summary: <span class="tok-str">"Add a Redis cache"</span>)</span></span></div>
+          <div class="ar-line ar-add" data-at="4000"><span class="ar-m">+</span><span class="ar-c" data-arch='component cache "Cache" @redis'>component cache "Cache" @redis</span></div>
+          <div class="ar-line ar-add" data-at="4250"><span class="ar-m">+</span><span class="ar-c" data-arch="api -> cache @reads">api -> cache @reads</span></div>
+          <div class="ar-line ar-add" data-at="4500"><span class="ar-m">+</span><span class="ar-c" data-arch='cache -> backend @reads : "on miss"'>cache -> backend @reads : "on miss"</span></div>
+          <div class="ar-line" data-at="4500"><span class="ar-m ar-elbow">└</span><span class="ar-c"><span class="chip chip-danger ar-chip" data-done="5300">E101 rejected · nothing saved</span></span></div>
+          <div class="ar-line ar-err" data-at="5300"><span class="ar-m"></span><span class="ar-c">line 22: Connection target 'backend' is a plane: connections join components, so point it at a component on the plane.</span></div>
+
+          <div class="ar-line ar-note" data-at="6600"><span class="ar-m"></span><span class="ar-c">backend is a plane. Pointing it at db instead.</span></div>
+
+          <div class="ar-gap" data-at="7300"></div>
+          <div class="ar-line ar-call" data-at="7300" data-done="8700" data-result="ok"><span class="ar-m"><i class="ar-dot"></i></span><span class="ar-c"><b class="ar-tool">update_project</b><span class="ar-args">(summary: <span class="tok-str">"Add a Redis cache in front of Postgres"</span>)</span></span></div>
+          <div class="ar-line ar-del" data-at="7600"><span class="ar-m">-</span><span class="ar-c">cache -> backend @reads : "on miss"</span></div>
+          <div class="ar-line ar-add" data-at="7850"><span class="ar-m">+</span><span class="ar-c" data-arch='cache -> db @reads : "on miss"'>cache -> db @reads : "on miss"</span></div>
+          <div class="ar-line" data-at="7850"><span class="ar-m ar-elbow">└</span><span class="ar-c"><span class="chip chip-accent ar-chip" data-done="8700">saved · revision 14 · badged for review</span></span></div>
+
+          <div class="ar-gap" data-at="9100"></div>
+          <div class="ar-line ar-user" data-at="9100"><span class="ar-m ar-prompt"></span><span class="ar-c"><span class="caret" aria-hidden="true"></span></span></div>
+        </div>
+        <div class="ar-canvas ground" aria-label="Acme canvas: the Cache component appears after the saved write">
+          <span class="chip ar-rev mono"><span class="ar-rev-n">revision 14</span></span>
+          <span class="chip chip-danger ar-toast" aria-hidden="true">Rejected · canvas unchanged</span>
+          <div class="ar-stage"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+#agent-replay .ar-head { display: flex; flex-direction: column; align-items: center; text-align: center; padding-top: 64px; }
+@media (min-width: 640px) { #agent-replay .ar-head { padding-top: 80px; } }
+#agent-replay .ar-h { max-width: 18ch; font-size: var(--t-dsm); line-height: var(--t-dsm-lh); }
+@media (min-width: 640px) { #agent-replay .ar-h { font-size: var(--t-dmd); line-height: var(--t-dmd-lh); } }
+#agent-replay .ar-lede { max-width: 56ch; padding-top: 16px; }
+#agent-replay .ar-wrap { padding-top: 48px; padding-bottom: 48px; }
+@media (min-width: 640px) { #agent-replay .ar-wrap { padding-bottom: 64px; } }
+
+#agent-replay .ar-panel { overflow: hidden; box-shadow: var(--shadow-sm); }
+#agent-replay .ar-bar { height: 44px; padding: 0 8px 0 14px; }
+#agent-replay .ar-bar-title { display: flex; align-items: center; gap: 8px; min-width: 0; color: var(--ink-2); font-size: var(--t-sm); white-space: nowrap; overflow: hidden; }
+#agent-replay .ar-bar-icon { display: inline-flex; color: var(--ink-3); }
+#agent-replay .ar-bar-actions { margin-left: auto; display: flex; gap: 2px; }
+#agent-replay .ar-toggle-icon, #agent-replay .ar-replay-icon { display: inline-flex; }
+#agent-replay .ar-body { display: grid; }
+@media (min-width: 1024px) { #agent-replay .ar-body { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
+
+/* Transcript */
+#agent-replay .ar-log { padding: 16px 16px 18px 12px; border-bottom: 1px solid var(--line); }
+@media (min-width: 1024px) { #agent-replay .ar-log { border-bottom: 0; border-right: 1px solid var(--line); padding: 18px 20px 20px 14px; } }
+#agent-replay .ar-line { display: flex; gap: 8px; min-height: 20px; transition: opacity 220ms; }
+#agent-replay .ar-m { flex: none; width: 14px; display: inline-flex; justify-content: center; color: var(--ink-3); }
+#agent-replay .ar-c { min-width: 0; overflow-wrap: anywhere; }
+#agent-replay .ar-gap { height: 10px; }
+#agent-replay .ar-prompt { color: var(--accent); align-items: center; }
+#agent-replay .ar-user .ar-c { color: var(--ink); }
+#agent-replay .ar-tool { font-weight: 600; color: var(--ink); }
+#agent-replay .ar-args { color: var(--ink-2); }
+#agent-replay .ar-dot { display: block; width: 7px; height: 7px; margin-top: 7px; border-radius: var(--r-xs); background: var(--ink-3); transition: background-color 160ms; }
+#agent-replay .ar-call.is-ok .ar-dot { background: var(--accent); }
+#agent-replay .ar-call.is-err .ar-dot { background: var(--danger); }
+#agent-replay .ar-call.is-running .ar-dot { animation: ar-pulse 900ms ease-in-out infinite; }
+@keyframes ar-pulse { 50% { opacity: 0.25; } }
+#agent-replay .ar-elbow { color: var(--code-gutter); }
+#agent-replay .ar-chip { margin: 1px 0 3px; }
+#agent-replay .ar-chip.is-running { background: var(--surface-2); color: var(--ink-3); }
+#agent-replay .ar-note .ar-c { font-family: var(--font-sans); font-size: var(--t-base); color: var(--ink-2); }
+#agent-replay .ar-add .ar-m { color: var(--accent); }
+#agent-replay .ar-add { background: var(--accent-soft); margin-left: -4px; padding-left: 4px; border-radius: var(--r-xs); }
+#agent-replay .ar-del .ar-m { color: var(--danger); }
+#agent-replay .ar-del .ar-c { color: var(--ink-3); text-decoration: line-through; }
+#agent-replay .ar-err .ar-c { color: var(--danger); }
+#agent-replay .is-hidden { visibility: hidden; opacity: 0; }
+
+/* Canvas */
+#agent-replay .ar-canvas { position: relative; overflow: hidden; min-height: 280px; }
+#agent-replay .ar-stage { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
+#agent-replay .ar-stage .node { position: absolute; }
+#agent-replay .ar-stage .plane { position: absolute; transition: border-color 160ms, box-shadow 160ms; }
+#agent-replay .ar-plane-icon { width: 12px; height: 12px; border: 1px solid var(--ink-3); border-radius: var(--r-xs); }
+#agent-replay .ar-edges { position: absolute; left: 0; top: 0; overflow: visible; pointer-events: none; }
+#agent-replay .ar-stage .edge-label { position: absolute; transform: translate(-50%, -50%); line-height: 16px; }
+#agent-replay .ar-rev { position: absolute; left: 12px; top: 12px; z-index: 2; background: var(--surface); border: 1px solid var(--line); transition: color 200ms, border-color 200ms; }
+#agent-replay .ar-rev.is-new { color: var(--accent); border-color: var(--accent); }
+#agent-replay .ar-toast { position: absolute; right: 12px; top: 12px; z-index: 2; opacity: 0; transform: translateY(-4px); transition: opacity 160ms, transform 160ms; }
+#agent-replay .ar-canvas.is-rejected .ar-toast { opacity: 1; transform: none; }
+#agent-replay .ar-canvas.is-rejected .plane-backend { border-color: var(--danger); box-shadow: 0 0 0 3px var(--danger-soft); }
+#agent-replay .ar-canvas.is-shaking .ar-shake { animation: ar-shake 420ms cubic-bezier(0.36, 0.07, 0.19, 0.97); }
+@keyframes ar-shake { 20%, 60% { transform: translateX(-5px); } 40%, 80% { transform: translateX(5px); } }
+
+/* The agent's additions: shown at rest, drawn in on the save during the replay. */
+#agent-replay .ar-new { transition: opacity 260ms, transform 320ms cubic-bezier(0.2, 0.7, 0.2, 1); }
+#agent-replay .ar-new-edge { stroke-dasharray: 1; stroke-dashoffset: 0; transition: stroke-dashoffset 520ms cubic-bezier(0.4, 0, 0.2, 1) 160ms; }
+#agent-replay .ar-canvas.is-before .ar-new { opacity: 0; transform: scale(0.94); }
+#agent-replay .ar-canvas.is-before .ar-new-edge { stroke-dashoffset: 1; transition: none; }
+#agent-replay .ar-canvas.is-before .ar-new-head { opacity: 0; }
+#agent-replay .ar-new-head { transition: opacity 120ms 620ms; }
+#agent-replay .ar-badge { position: absolute; top: -9px; right: -8px; background: var(--accent); color: var(--accent-ink); box-shadow: var(--shadow-sm); }
+#agent-replay .ar-badge .icon { width: 11px; height: 11px; }
+
+@media (prefers-reduced-motion: reduce) {
+  #agent-replay .ar-bar-actions { display: none; }
+}
+</style>
+
+<script>
+var root = document.getElementById("agent-replay");
+var log = root.querySelector(".ar-log"), canvas = root.querySelector(".ar-canvas"), stage = root.querySelector(".ar-stage");
+var toggle = root.querySelector(".ar-toggle"), replay = root.querySelector(".ar-replay");
+var A = Archer;
+
+root.querySelector(".ar-bar-icon").innerHTML = A.icon("terminal-window");
+root.querySelector(".ar-replay-icon").innerHTML = A.icon("arrow-counter-clockwise");
+root.querySelectorAll(".ar-prompt").forEach(function (m) { m.innerHTML = A.icon("caret-right"); });
+root.querySelectorAll("[data-arch]").forEach(function (c) { c.innerHTML = A.highlight(c.getAttribute("data-arch")); });
+root.querySelectorAll(".ar-del .ar-c").forEach(function (c) { c.innerHTML = A.highlight(c.textContent); });
+
+// ---- The Acme canvas (apps/web/lib/landingSample.ts), plus the agent's Cache. ----
+// Two layouts, like the landing sandbox: wide, and two columns for a phone.
+var LAYOUTS = {
+  wide: {
+    w: 600, h: 340,
+    plane: [196, 24, 388, 216],
+    nodes: { web: [16, 72, 132], auth: [16, 262, 132], api: [216, 72, 128], db: [436, 72, 128], cache: [356, 168, 132], billing: [216, 270, 128] },
+    edges: {
+      "web-api": [[148, 96], [216, 96]], "web-auth": [[82, 120], [82, 262]], "api-db": [[344, 96], [436, 96]],
+      "api-billing": [[264, 120], [264, 270]], "api-cache": [[312, 120], [312, 192], [356, 192]], "cache-db": [[488, 192], [530, 192], [530, 120]]
+    },
+    labels: { "web-auth": [82, 191], "api-billing": [264, 254] }
+  },
+  narrow: {
+    w: 360, h: 436,
+    plane: [8, 96, 344, 248],
+    nodes: { web: [19, 16, 150], auth: [194, 16, 150], api: [24, 146, 140], db: [196, 146, 140], cache: [196, 256, 140], billing: [24, 376, 140] },
+    edges: {
+      "web-api": [[94, 64], [94, 146]], "web-auth": [[169, 40], [194, 40]], "api-db": [[164, 170], [196, 170]],
+      "api-billing": [[60, 194], [60, 376]], "api-cache": [[130, 194], [130, 280], [196, 280]], "cache-db": [[266, 256], [266, 194]]
+    },
+    labels: { "api-billing": [60, 360] }
+  }
+};
+var NODES = { web: ["vercel.nextjs", "Web app"], auth: ["clerk", "Auth"], api: ["vercel.functions", "API"], db: ["supabase.postgres", "Postgres"], cache: ["redis", "Cache"], billing: ["stripe", "Billing"] };
+var LABELS = { "web-auth": "sign in", "api-billing": "checkout" };
+var NEW_EDGES = { "api-cache": 1, "cache-db": 1 };
+var current = null;
+
+function d(pts) {
+  var s = "M" + pts[0].join(" ");
+  for (var i = 1; i < pts.length; i++) {
+    var p = pts[i], q = pts[i - 1], n = pts[i + 1];
+    if (!n) { s += " L" + p.join(" "); break; }
+    var r = 6, ix = Math.sign(p[0] - q[0]), iy = Math.sign(p[1] - q[1]), ox = Math.sign(n[0] - p[0]), oy = Math.sign(n[1] - p[1]);
+    s += " L" + (p[0] - ix * r) + " " + (p[1] - iy * r) + " Q" + p.join(" ") + " " + (p[0] + ox * r) + " " + (p[1] + oy * r);
+  }
+  return s;
+}
+function build(name) {
+  var L = LAYOUTS[name], h = "";
+  current = name;
+  var pl = L.plane;
+  h += '<div class="plane plane-backend ar-shake" style="left:' + pl[0] + "px;top:" + pl[1] + "px;width:" + pl[2] + "px;height:" + pl[3] + 'px"><div class="plane-head"><span class="ar-plane-icon"></span>Backend</div></div>';
+  var svg = '<svg class="ar-edges" width="' + L.w + '" height="' + L.h + '" viewBox="0 0 ' + L.w + " " + L.h + '" aria-hidden="true"><defs><marker id="ar-head" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path class="edge-head" d="M0 0 L10 5 L0 10 Z"/></marker>' +
+    '<marker id="ar-head-new" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path class="edge-head ar-new-head" d="M0 0 L10 5 L0 10 Z"/></marker></defs>';
+  Object.keys(L.edges).forEach(function (k) {
+    var isNew = NEW_EDGES[k];
+    svg += '<path class="edge-path' + (isNew ? " ar-new-edge" : "") + '"' + (isNew ? ' pathLength="1"' : "") + ' d="' + d(L.edges[k]) + '" marker-end="url(#' + (isNew ? "ar-head-new" : "ar-head") + ')"/>';
+  });
+  svg += "</svg>";
+  h += svg;
+  Object.keys(L.nodes).forEach(function (id) {
+    var n = L.nodes[id], t = NODES[id], isNew = id === "cache";
+    var card = A.node({ tag: t[0], label: t[1], cls: isNew ? "ar-new" : "", style: "left:" + n[0] + "px;top:" + n[1] + "px;width:" + n[2] + "px" });
+    if (isNew) card = card.replace(/<\/div>$/, '<span class="chip ar-badge" title="Changed by an agent since you last reviewed">' + A.icon("robot") + "Agent</span></div>");
+    h += card;
+  });
+  Object.keys(L.labels || {}).forEach(function (k) {
+    var p = L.labels[k];
+    h += '<span class="edge-label" style="left:' + p[0] + "px;top:" + p[1] + 'px">' + LABELS[k] + "</span>";
+  });
+  stage.innerHTML = h;
+  stage.style.width = L.w + "px";
+  stage.style.height = L.h + "px";
+}
+function fit() {
+  var w = canvas.clientWidth, name = w < 470 ? "narrow" : "wide";
+  if (name !== current) build(name);
+  var L = LAYOUTS[name], pad = name === "wide" ? 24 : 12, top = 44;
+  var s = Math.min(1, (w - pad * 2) / L.w);
+  var minH = log.offsetHeight && window.matchMedia("(min-width: 1024px)").matches ? 0 : 0;
+  var hh = Math.max(L.h * s + top + 16, minH);
+  canvas.style.height = window.matchMedia("(min-width: 1024px)").matches ? "" : hh + "px";
+  var ch = canvas.clientHeight;
+  var x = (w - L.w * s) / 2, y = Math.max(top, (ch - L.h * s) / 2 + 10);
+  stage.style.transform = "translate(" + x + "px," + y + "px) scale(" + s + ")";
+}
+fit();
+if ("ResizeObserver" in window) new ResizeObserver(fit).observe(canvas);
+else window.addEventListener("resize", fit);
+
+// ---- The replay. The page's markup is the finished session; the clock rewinds it. ----
+if (A.reduced) return;
+
+var steps = Array.prototype.slice.call(log.querySelectorAll("[data-at]"));
+var calls = Array.prototype.slice.call(log.querySelectorAll(".ar-call"));
+var chips = Array.prototype.slice.call(log.querySelectorAll(".ar-chip"));
+chips.forEach(function (c) { c._final = c.innerHTML; c._done = +c.dataset.done; });
+var typed = log.querySelector(".ar-typed"), typedText = typed.textContent, typedLine = typed.closest("[data-at]");
+var rev = root.querySelector(".ar-rev-n"), revChip = root.querySelector(".ar-rev");
+var T_REJECT = 5300, T_SAVE = 8700, T_END = 13600;
+var t = T_END, playing = false, userPaused = false, inView = false, last = 0, shown = -1;
+
+function apply(time) {
+  steps.forEach(function (s) { s.classList.toggle("is-hidden", time < +s.dataset.at); });
+  var a = +typedLine.dataset.at, b = +typedLine.dataset.type;
+  var n = time >= b ? typedText.length : Math.max(0, Math.floor(((time - a) / (b - a)) * typedText.length));
+  if (n !== shown) { typed.textContent = typedText.slice(0, n); shown = n; }
+  calls.forEach(function (c) {
+    var done = time >= +c.dataset.done;
+    c.classList.toggle("is-running", !done);
+    c.classList.toggle("is-ok", done && c.dataset.result === "ok");
+    c.classList.toggle("is-err", done && c.dataset.result === "err");
+  });
+  chips.forEach(function (c) {
+    var done = time >= c._done, want = done ? "done" : "run";
+    if (c._state === want) return;
+    c._state = want;
+    c.classList.toggle("is-running", !done);
+    c.innerHTML = done ? c._final : "running…";
+  });
+  var saved = time >= T_SAVE;
+  canvas.classList.toggle("is-before", !saved);
+  rev.textContent = saved ? "revision 14" : "revision 13";
+  revChip.classList.toggle("is-new", saved && time < T_SAVE + 2600);
+  var rejecting = time >= T_REJECT && time < T_REJECT + 1700;
+  canvas.classList.toggle("is-rejected", rejecting);
+  canvas.classList.toggle("is-shaking", time >= T_REJECT && time < T_REJECT + 450);
+}
+function frame(now) {
+  if (!playing) return;
+  var dt = Math.min(64, now - last);
+  last = now;
+  t += dt;
+  if (t >= T_END) { t = 0; }
+  apply(t);
+  requestAnimationFrame(frame);
+}
+function setPlaying(on) {
+  if (on === playing) return;
+  playing = on;
+  if (on) { last = performance.now(); requestAnimationFrame(frame); }
+}
+function sync() { setPlaying(inView && !userPaused); }
+function paintToggle() {
+  toggle.querySelector(".ar-toggle-icon").innerHTML = A.icon(userPaused ? "play" : "pause");
+  toggle.querySelector(".ar-toggle-label").textContent = userPaused ? "Play" : "Pause";
+  toggle.setAttribute("aria-pressed", String(userPaused));
+}
+toggle.addEventListener("click", function () { userPaused = !userPaused; paintToggle(); sync(); });
+replay.addEventListener("click", function () { t = 0; apply(0); userPaused = false; paintToggle(); sync(); });
+paintToggle();
+
+// Start from the top the first time the panel is in view; pause while it's off screen.
+var started = false;
+if ("IntersectionObserver" in window) {
+  new IntersectionObserver(function (entries) {
+    inView = entries[0].isIntersecting;
+    if (inView && !started) { started = true; t = 0; apply(0); }
+    sync();
+  }, { threshold: 0.35 }).observe(root.querySelector(".ar-panel"));
+}
+</script>

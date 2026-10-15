@@ -1,0 +1,220 @@
+<section id="readme-embed" class="joints rule-b">
+  <div class="ruled-grid fg">
+    <div class="tile">
+      <div>
+        <h3 class="title">History with real diffs</h3>
+        <p class="body">Every revision is kept, human or agent. Diffs list what was added, removed or changed. Moving boxes around never counts.</p>
+      </div>
+      <div class="visual" aria-hidden="true">
+        <div class="hist mono">
+          <div class="row"><span class="m-add">+</span><span class="id">cache</span><span class="note">added</span></div>
+          <div class="row"><span class="m-chg">~</span><span class="id">api</span><span class="note">desc, src</span></div>
+          <div class="row rm"><span class="m-rm">−</span><span class="id">legacy_cron</span><span class="note">removed</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="tile">
+      <div>
+        <h3 class="title">Share a live link</h3>
+        <p class="body">A read-only link for anyone, and an SVG that stays current, for READMEs and docs. Edit the diagram and every README that shows it redraws.</p>
+      </div>
+      <div class="visual">
+        <div class="share">
+          <div class="link">
+            <span class="mono">tryarcher.dev/share/k3v9x2</span>
+            <button type="button" class="copy-btn" data-copy-link></button>
+          </div>
+          <div class="md">
+            <span class="mono md-text">![Architecture](…/k3v9x2/<span class="tok-str">image.svg</span>)</span>
+            <button type="button" class="icon-btn" data-copy-md aria-label="Copy Markdown"></button>
+          </div>
+          <div class="readme">
+            <div class="readme-head" data-readme-head><span>README.md</span></div>
+            <div class="readme-body">
+              <h4 class="readme-h2">Architecture</h4>
+              <div class="img" role="img" data-img aria-label="Architecture diagram of Acme"></div>
+            </div>
+          </div>
+          <div class="ctl">
+            <div class="seg" role="group" aria-label="Document revision">
+              <button type="button" data-rev="0" aria-pressed="true">rev 12</button>
+              <button type="button" data-rev="1" aria-pressed="false">rev 13</button>
+            </div>
+            <span class="note" data-note aria-live="polite">Same URL · updated 3 days ago</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="tile last">
+      <div>
+        <h3 class="title">Linked to your repo</h3>
+        <p class="body">Link a GitHub repo and branch. src paths open the code, and commits sit next to architecture revisions.</p>
+      </div>
+      <div class="visual" aria-hidden="true">
+        <div class="repo">
+          <div class="repo-head" data-repo-icon><b>acme/platform</b><span class="mono">main</span></div>
+          <div class="repo-row"><span class="mono">4f1c2a9</span><span>Add Redis cache layer</span></div>
+          <div class="repo-row"><span class="mono">b83e011</span><span>Move checkout into Billing</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+#readme-embed .ruled-grid { border-top: 0; }
+#readme-embed .fg { grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 768px) {
+  #readme-embed .fg { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  #readme-embed .last { grid-column: span 2; }
+}
+@media (min-width: 1024px) {
+  #readme-embed .fg { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  #readme-embed .last { grid-column: auto; }
+}
+#readme-embed .tile { display: flex; flex-direction: column; gap: 20px; padding: 32px 20px; }
+@media (min-width: 640px) { #readme-embed .tile { padding: 32px 40px; } }
+#readme-embed .tile .body { max-width: 56ch; padding-top: 4px; }
+#readme-embed .visual { margin-top: auto; }
+
+/* Share tile: today's link field and Markdown line, then the README they feed. */
+#readme-embed .share { display: flex; flex-direction: column; gap: 8px; }
+#readme-embed .link { display: flex; align-items: center; gap: 8px; height: 32px; padding: 0 4px 0 10px; border: 1px solid var(--line-2); background: var(--surface); }
+#readme-embed .link > .mono { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--t-sm); color: var(--ink-2); }
+#readme-embed .copy-btn { display: inline-flex; align-items: center; gap: 4px; border: 1px solid var(--line); background: var(--surface); padding: 2px 8px; font-size: var(--t-xs); line-height: var(--t-xs-lh); font-weight: 500; color: var(--ink); box-shadow: var(--shadow-sm); cursor: pointer; }
+#readme-embed .copy-btn:hover { background: var(--surface-2); }
+#readme-embed .copy-btn .swap-icon, #readme-embed .copy-btn .icon { width: 12px; height: 12px; }
+#readme-embed .md { display: flex; align-items: center; gap: 8px; border: 1px solid var(--line); background: var(--code-bg); padding: 0 4px 0 10px; height: 36px; }
+#readme-embed .md-text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--t-sm); line-height: var(--t-sm-lh); color: var(--ink-2); }
+#readme-embed .icon-btn { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; flex: none; border: 0; border-radius: var(--r-sm); background: none; color: var(--ink-2); cursor: pointer; }
+#readme-embed .icon-btn:hover { background: var(--surface-2); color: var(--ink); }
+
+#readme-embed .readme { margin-top: 4px; border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface); overflow: hidden; }
+#readme-embed .readme-head { display: flex; align-items: center; gap: 8px; height: 36px; padding: 0 12px; border-bottom: 1px solid var(--line); background: var(--surface-2); font-size: var(--t-sm); font-weight: 600; color: var(--ink); }
+#readme-embed .readme-head .icon { color: var(--ink-2); }
+#readme-embed .readme-body { padding: 12px 12px 12px; }
+#readme-embed .readme-h2 { margin: 0 0 12px; padding-bottom: 6px; border-bottom: 1px solid var(--line); font-size: var(--t-xl); line-height: var(--t-xl-lh); font-weight: 600; color: var(--ink); }
+#readme-embed .img { display: grid; }
+#readme-embed .img > svg { grid-area: 1 / 1; display: block; width: 100%; height: auto; transition: opacity 450ms ease; }
+#readme-embed .img > svg.off { opacity: 0; }
+@media (prefers-reduced-motion: reduce) { #readme-embed .img > svg { transition: none; } }
+
+/* The image as lib/svg.ts draws it, in the page's tokens. */
+#readme-embed .g-ground { fill: var(--ground); }
+#readme-embed .g-card { fill: var(--surface); stroke: var(--line-2); }
+#readme-embed .g-plane { fill: color-mix(in srgb, var(--surface-2) 50%, transparent); stroke: var(--line-2); }
+#readme-embed .g-rule { stroke: var(--line); }
+#readme-embed .g-title { font: 700 15px var(--font-sans); fill: var(--ink); }
+#readme-embed .g-brand { font: 600 10px var(--font-sans); letter-spacing: 0.04em; fill: var(--ink-3); }
+#readme-embed .g-name { font: 600 12.5px var(--font-sans); fill: var(--ink); }
+#readme-embed .g-plane-name { font: 600 12px var(--font-sans); fill: var(--ink); }
+#readme-embed .g-sub { font: 10px var(--font-mono); fill: var(--ink-3); }
+#readme-embed .g-edge { fill: none; stroke: var(--edge); stroke-width: 1.5; }
+#readme-embed .g-head { fill: var(--edge); }
+#readme-embed .g-chip { fill: var(--surface); stroke: var(--line); }
+#readme-embed .g-chip-type { font: 10px var(--font-mono); fill: var(--ink-2); }
+#readme-embed .g-chip-label { font: 10px var(--font-sans); fill: var(--ink); }
+#readme-embed .g-type { --type: var(--type-light); color: var(--type); }
+#readme-embed .g-ink2 { color: var(--ink-2); }
+:root[data-theme="dark"] #readme-embed .g-type { --type: var(--type-dark); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) #readme-embed .g-type { --type: var(--type-dark); } }
+
+#readme-embed .ctl { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+#readme-embed .seg { display: inline-flex; padding: 2px; gap: 2px; border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface-2); }
+#readme-embed .seg button { height: 24px; padding: 0 10px; border: 0; border-radius: var(--r-sm); background: none; font-size: var(--t-sm); font-weight: 500; color: var(--ink-2); cursor: pointer; transition: background-color 100ms, color 100ms; }
+#readme-embed .seg button:hover { color: var(--ink); }
+#readme-embed .seg button[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: var(--shadow-sm); }
+#readme-embed .ctl .note { font-size: var(--t-xs); line-height: var(--t-xs-lh); color: var(--ink-3); }
+
+/* Neighbours, as Features draws them today. */
+#readme-embed .hist { border: 1px solid var(--line); background: var(--code-bg); font-size: var(--t-sm); line-height: var(--t-sm-lh); }
+#readme-embed .hist .row { display: flex; gap: 10px; padding: 8px 12px; border-bottom: 1px solid var(--line); }
+#readme-embed .hist .row:last-child { border-bottom: 0; }
+#readme-embed .hist .id { color: var(--ink); }
+#readme-embed .hist .note { margin-left: auto; color: var(--ink-3); }
+#readme-embed .hist .rm .id { color: var(--ink-3); text-decoration: line-through; }
+#readme-embed .m-add { color: var(--accent); }
+#readme-embed .m-chg { color: var(--warn); }
+#readme-embed .m-rm { color: var(--danger); }
+#readme-embed .repo { border: 1px solid var(--line); background: var(--surface); font-size: var(--t-sm); line-height: var(--t-sm-lh); }
+#readme-embed .repo-head { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--line); color: var(--ink-2); }
+#readme-embed .repo-head b { font-weight: 600; color: var(--ink); }
+#readme-embed .repo-head .mono { font-size: var(--t-xs); color: var(--ink-3); }
+#readme-embed .repo-row { display: flex; gap: 10px; padding: 6px 12px; border-bottom: 1px solid var(--line); color: var(--ink-2); white-space: nowrap; }
+#readme-embed .repo-row:last-child { border-bottom: 0; }
+#readme-embed .repo-row .mono { color: var(--ink-3); }
+#readme-embed .repo-row span:last-child { overflow: hidden; text-overflow: ellipsis; }
+</style>
+
+<script>
+var root = document.getElementById("readme-embed");
+var A = window.Archer, C = A.catalog;
+var URL_ = "https://tryarcher.dev/share/k3v9x2";
+var MD = "![Architecture](" + URL_ + "/image.svg)";
+
+root.querySelector("[data-repo-icon]").insertAdjacentHTML("afterbegin", A.icon("git-branch"));
+root.querySelector("[data-readme-head]").insertAdjacentHTML("afterbegin", A.icon("file"));
+var linkBtn = root.querySelector("[data-copy-link]"), mdBtn = root.querySelector("[data-copy-md]");
+linkBtn.innerHTML = A.swapIcon() + "Copy";
+mdBtn.innerHTML = A.swapIcon();
+linkBtn.addEventListener("click", function () { A.copy(linkBtn, URL_); });
+mdBtn.addEventListener("click", function () { A.copy(mdBtn, MD); });
+
+// The Acme document at two revisions, drawn the way /share/<slug>/image.svg draws it.
+// rev 13 is an agent's edit: billing joins with `api -> billing @http : "checkout"`,
+// and db is renamed "Users DB".
+var esc = A.esc;
+function fit(s, w, per) { var n = Math.floor(w / per); return s.length <= n ? s : s.slice(0, Math.max(1, n - 1)) + "…"; }
+function glyph(tag, x, y, size) {
+  var t = C.types[tag];
+  return '<g class="g-type" style="--type-light:' + t.color + ";--type-dark:" + t.dark + '">' +
+    '<svg x="' + x + '" y="' + y + '" width="' + size + '" height="' + size + '" viewBox="' + C.viewBox + '">' + C.glyphs[t.glyph] + "</svg></g>";
+}
+function card(c) {
+  var t = C.types[c.tag], tx = c.x + 8, ty = c.y + (c.h - 26) / 2, textX = c.x + 42, textW = c.w - 42 - 6, mid = c.y + c.h / 2;
+  return '<rect class="g-card" x="' + c.x + '" y="' + c.y + '" width="' + c.w + '" height="' + c.h + '" rx="6"/>' +
+    '<g class="g-type" style="--type-light:' + t.color + ";--type-dark:" + t.dark + '"><rect x="' + tx + '" y="' + ty + '" width="26" height="26" rx="5" fill="currentColor" fill-opacity="0.14"/></g>' +
+    glyph(c.tag, tx + 5, ty + 5, 16) +
+    '<text class="g-name" x="' + textX + '" y="' + (mid - 2) + '">' + esc(fit(c.name, textW, 6.3)) + "</text>" +
+    '<text class="g-sub" x="' + textX + '" y="' + (mid + 11) + '">' + esc(fit(c.tag, textW, 6.1)) + "</text>";
+}
+function chip(x, y, type, label) {
+  var tw = type.length * 6.1, lw = label.length * 5.4 + 9, w = tw + lw + 12;
+  return '<rect class="g-chip" x="' + (x - w / 2) + '" y="' + (y - 9) + '" width="' + w + '" height="18" rx="4"/>' +
+    '<text class="g-chip-type" x="' + (x - w / 2 + 6) + '" y="' + (y + 3.5) + '">' + type + "</text>" +
+    '<text class="g-chip-label" x="' + (x - w / 2 + 6 + tw + 4) + '" y="' + (y + 3.5) + '">· ' + esc(label) + "</text>";
+}
+function arrowH(x1, x2, y) { return '<path class="g-edge" d="M' + x1 + " " + y + "H" + (x2 - 7) + '"/><path class="g-head" d="M' + x2 + " " + y + "l-8 -4v8z" + '"/>'; }
+function arrowV(x, y1, y2) { return '<path class="g-edge" d="M' + x + " " + y1 + "V" + (y2 - 7) + '"/><path class="g-head" d="M' + x + " " + y2 + "l-4 -8h8z" + '"/>'; }
+function draw(rev) {
+  var W = 390, H = 228, s = "";
+  s += '<rect class="g-ground" width="' + W + '" height="' + H + '"/>';
+  s += '<text class="g-title" x="12" y="24">Acme</text><text class="g-brand" x="' + (W - 12) + '" y="24" text-anchor="end">ARCHER</text>';
+  // Backend plane with api and db on it.
+  s += '<rect class="g-plane" x="136" y="40" width="242" height="96" rx="8"/><path class="g-rule" d="M136.5 66h241"/>';
+  s += '<g class="g-ink2"><svg x="145" y="45" width="15" height="15" viewBox="' + C.viewBox + '">' + C.glyphs.box + "</svg></g>";
+  s += '<text class="g-plane-name" x="166" y="57.5">Backend</text>';
+  s += arrowH(120, 146, 100) + arrowH(242, 262, 100) + arrowV(66, 124, 168);
+  if (rev) s += arrowV(194, 124, 168);
+  s += card({ x: 12, y: 76, w: 108, h: 48, tag: "vercel.nextjs", name: "Web app" });
+  s += card({ x: 146, y: 76, w: 96, h: 48, tag: "vercel.functions", name: "API" });
+  s += card({ x: 262, y: 76, w: 106, h: 48, tag: "supabase.postgres", name: rev ? "Users DB" : "Postgres" });
+  s += card({ x: 12, y: 168, w: 108, h: 48, tag: "clerk", name: "Auth" });
+  if (rev) s += card({ x: 146, y: 168, w: 96, h: 48, tag: "stripe", name: "Billing" });
+  s += chip(66, 146, "http", "sign in");
+  if (rev) s += chip(194, 152, "http", "checkout");
+  return '<svg viewBox="0 0 ' + W + " " + H + '" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" class="' + (rev ? "off" : "") + '">' + s + "</svg>";
+}
+var img = root.querySelector("[data-img]");
+img.innerHTML = draw(0) + draw(1);
+var layers = img.children, note = root.querySelector("[data-note]"), segs = root.querySelectorAll("[data-rev]");
+var NOTES = ["Same URL · updated 3 days ago", "Same URL · updated just now"];
+function setRev(i) {
+  layers[0].classList.toggle("off", i !== 0);
+  layers[1].classList.toggle("off", i !== 1);
+  [].forEach.call(segs, function (b) { b.setAttribute("aria-pressed", String(+b.dataset.rev === i)); });
+  note.textContent = NOTES[i];
+  img.setAttribute("aria-label", i ? "Architecture diagram of Acme at rev 13, with Billing" : "Architecture diagram of Acme at rev 12");
+}
+[].forEach.call(segs, function (b) { b.addEventListener("click", function () { setRev(+b.dataset.rev); }); });
+</script>

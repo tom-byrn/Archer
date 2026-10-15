@@ -268,7 +268,7 @@ button, input, textarea { font: inherit; color: inherit; }
   border: 1px solid var(--line-2); background: var(--surface); box-shadow: var(--shadow-md); overflow: hidden;
 }
 @media (min-width: 640px) { #prompt-examples .pe-panel { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } #prompt-examples .pe-talk { grid-column: 1 / -1; } }
-@media (min-width: 1000px) { #prompt-examples .pe-panel { grid-template-columns: 272px minmax(0, 1fr) 292px; } #prompt-examples .pe-talk { grid-column: auto; } }
+@media (min-width: 1000px) { #prompt-examples .pe-panel { grid-template-columns: 264px minmax(0, 1fr) 316px; } #prompt-examples .pe-talk { grid-column: auto; } }
 #prompt-examples .pe-col { position: relative; min-width: 0; }
 #prompt-examples .pe-stack { display: grid; }
 #prompt-examples .pe-stack > * { grid-area: 1 / 1; min-width: 0; transition: opacity 360ms ease; }
@@ -323,7 +323,7 @@ button, input, textarea { font: inherit; color: inherit; }
 #prompt-examples .pe-shape .dot { fill: color-mix(in srgb, var(--type) 45%, var(--line-2)); }
 #prompt-examples .pe-shape .content { position: absolute; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
 #prompt-examples .pe-shape .glyph { display: flex; color: var(--type); margin-bottom: 2px; }
-#prompt-examples .pe-shape .node-label, #prompt-examples .pe-shape .node-type { max-width: 100%; }
+#prompt-examples .pe-shape .node-label, #prompt-examples .pe-shape .node-type { max-width: 100%; line-height: 1.3; }
 
 /* Code */
 #prompt-examples .pe-code { padding: 12px 0; overflow: hidden; }
@@ -332,6 +332,248 @@ button, input, textarea { font: inherit; color: inherit; }
 #prompt-examples .pe-line { display: flex; }
 #prompt-examples .pe-line .n { flex: none; width: 36px; padding-right: 12px; text-align: right; color: var(--code-gutter); user-select: none; }
 #prompt-examples .pe-line.gap .n { letter-spacing: 0.1em; }
+
+
+#client-switcher { padding-top: 24px; padding-bottom: 20px; }
+#client-switcher .cs-strip { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 40px; }
+#client-switcher .cs-tabs { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 28px; }
+#client-switcher .cs-tab {
+  display: inline-flex; align-items: center; gap: 8px; padding: 2px 0; border: 0; background: none; cursor: pointer;
+  font-size: var(--t-base); line-height: var(--t-base-lh); font-weight: 600; color: var(--ink-3); transition: color 100ms;
+}
+#client-switcher .cs-tab .icon { width: 16px; height: 16px; }
+#client-switcher .cs-tab span { text-decoration: underline; text-decoration-color: transparent; text-underline-offset: 4px; transition: text-decoration-color 100ms; }
+#client-switcher .cs-tab:hover { color: var(--ink-2); }
+#client-switcher .cs-tab[aria-selected="true"] { color: var(--ink); }
+#client-switcher .cs-tab[aria-selected="true"] span { text-decoration-color: var(--line-2); }
+
+#client-switcher .cs-setup { padding-top: 16px; }
+#client-switcher .cs-line { display: flex; align-items: center; gap: 10px; min-height: 40px; padding: 0 4px 0 12px; border: 1px solid var(--line); border-radius: var(--r-md); }
+#client-switcher .cs-where { flex: none; color: var(--ink-3); }
+#client-switcher .cs-where.chip { font-family: var(--font-mono); font-weight: 400; }
+#client-switcher .cs-code { flex: 1; min-width: 0; font: inherit; white-space: pre; overflow-x: auto; padding: 10px 0; scrollbar-width: thin; }
+#client-switcher .cs-code .cs-cmd { color: var(--ink); font-weight: 600; }
+#client-switcher .cs-copy { flex: none; }
+#client-switcher .cs-foot { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 24px; padding-top: 10px; }
+#client-switcher .cs-note { flex: 1 1 320px; margin: 0; font-size: var(--t-sm); line-height: var(--t-sm-lh); color: var(--ink-2); }
+#client-switcher .cs-note code { font-family: var(--font-mono); font-size: var(--t-sm); color: var(--ink); }
+#client-switcher .cs-more { display: inline-flex; align-items: center; gap: 6px; font-size: var(--t-sm); line-height: var(--t-sm-lh); color: var(--ink-2); text-decoration: none; transition: color 100ms; }
+#client-switcher .cs-more:hover { color: var(--ink); }
+#client-switcher .cs-more .icon { width: 12px; height: 12px; }
+
+/* Phones: the line wraps instead of scrolling, so the whole command stays readable. */
+@media (max-width: 639px) {
+  #client-switcher .cs-line { flex-wrap: wrap; align-items: flex-start; gap: 6px 8px; padding: 8px 4px 8px 12px; }
+  #client-switcher .cs-where { padding-top: 0; line-height: 28px; }
+  #client-switcher .cs-where.chip { margin-top: 4px; margin-right: auto; }
+  #client-switcher .cs-code { white-space: pre-wrap; overflow-wrap: anywhere; padding: 4px 0; flex-basis: 0; }
+  #client-switcher .cs-where.chip ~ .cs-code { order: 3; flex-basis: 100%; padding: 0 8px 2px 0; }
+}
+@keyframes cs-in { from { opacity: 0; } }
+@media (prefers-reduced-motion: no-preference) {
+  #client-switcher .is-new .cs-code, #client-switcher .is-new .cs-where, #client-switcher .is-new .cs-note { animation: cs-in 200ms ease-out; }
+}
+
+
+#linked-source { padding-top: 48px; padding-bottom: 48px; }
+@media (min-width: 640px) { #linked-source { padding-top: 64px; padding-bottom: 64px; } }
+#linked-source .ls-box { overflow: hidden; border: 1px solid var(--line-2); background: var(--surface); box-shadow: var(--shadow-md); }
+#linked-source .ls-head { display: flex; align-items: center; gap: 4px; height: 44px; padding: 0 8px 0 16px; border-bottom: 1px solid var(--line); }
+#linked-source .ls-file { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--t-sm); color: var(--ink-2); }
+#linked-source .ls-hint { margin-left: 8px; margin-right: auto; }
+#linked-source .ls-hint .icon { width: 12px; height: 12px; }
+#linked-source .ls-i { display: inline-flex; }
+@media (max-width: 479px) { #linked-source .ls-hint { display: none; } #linked-source .ls-head .ls-reset { margin-left: auto; } }
+
+#linked-source .ls-body { display: grid; grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 1024px) { #linked-source .ls-body { grid-template-columns: minmax(0, 1fr) 340px; } }
+
+/* Canvas. Connectors read as ink on the landing canvas, as in landing.css. */
+#linked-source .ls-canvas { --edge: var(--ink); --edge-strong: #000; position: relative; height: 440px; overflow: hidden; touch-action: manipulation; }
+:root[data-theme="dark"] #linked-source .ls-canvas { --edge-strong: #fff; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) #linked-source .ls-canvas { --edge-strong: #fff; } }
+@media (min-width: 640px) { #linked-source .ls-canvas { height: 528px; } }
+#linked-source .ls-stage { position: absolute; left: 50%; top: 50%; transform-origin: 0 0; }
+#linked-source .ls-stage > * { position: absolute; }
+#linked-source .ls-stage > *, #linked-source .ls-edge { transition: opacity 120ms ease; }
+#linked-source .is-dim { opacity: 0.6; }
+
+#linked-source .plane { cursor: default; transition: border-color 120ms ease, opacity 120ms ease; }
+#linked-source .plane-head { height: 32px; gap: 10px; padding: 0 12px; font-size: var(--t-base); cursor: pointer; border-radius: var(--r-lg) var(--r-lg) 0 0; }
+#linked-source .plane-head svg { color: var(--ink-3); }
+#linked-source .plane.is-hl, #linked-source .plane.is-sel { border-color: var(--accent); }
+#linked-source .plane-head:focus-visible { box-shadow: inset 0 0 0 2px var(--accent); }
+
+#linked-source .ls-node { cursor: pointer; outline: none; }
+#linked-source .ls-node.node { padding: 0 10px; gap: 10px; border-radius: var(--r-md); }
+#linked-source .ls-node .type-tile { width: 32px !important; height: 32px !important; }
+#linked-source .ls-node .node-label { line-height: 1.25; }
+#linked-source .ls-node .node-type { line-height: 1.3; }
+#linked-source .ls-node.node.is-hl, #linked-source .ls-node.node.is-sel { box-shadow: 0 0 0 2px var(--ground), 0 0 0 4px var(--accent); }
+#linked-source .ls-node.node:focus-visible { box-shadow: 0 0 0 2px var(--ground), 0 0 0 4px var(--accent); }
+#linked-source .ls-shape:focus-visible { box-shadow: none; }
+
+/* Shaped components (browser, cylinder), as apps/web/lib/shapes.ts draws them. */
+#linked-source .ls-shape { --type: var(--type-light); --stroke: color-mix(in srgb, var(--type) 45%, var(--line-2)); }
+:root[data-theme="dark"] #linked-source .ls-shape { --type: var(--type-dark); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) #linked-source .ls-shape { --type: var(--type-dark); } }
+#linked-source .ls-shape:hover { --stroke: color-mix(in srgb, var(--edge-strong) 40%, var(--line-2)); }
+#linked-source .ls-shape.is-hl, #linked-source .ls-shape.is-sel { --stroke: var(--accent); }
+#linked-source .ls-shape > svg { position: absolute; inset: 0; overflow: visible; pointer-events: none; }
+#linked-source .ls-shape .part { fill: color-mix(in srgb, var(--type) 5%, var(--surface)); stroke: var(--stroke); stroke-width: 1; transition: stroke 120ms ease; }
+#linked-source .ls-shape.is-hl .part, #linked-source .ls-shape.is-sel .part { stroke-width: 2; }
+#linked-source .ls-shape .detail { fill: none; stroke: var(--stroke); stroke-width: 1; }
+#linked-source .ls-shape .dot { fill: var(--stroke); }
+#linked-source .ls-shape .content { position: absolute; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+#linked-source .ls-shape .glyph { display: flex; color: var(--type); margin-bottom: 4px; }
+#linked-source .ls-shape .node-label, #linked-source .ls-shape .node-type { max-width: 100%; line-height: 1.3; }
+
+#linked-source .ls-edges { left: 0; top: 0; overflow: visible; pointer-events: none; }
+#linked-source .ls-edge path { fill: none; stroke: var(--edge); stroke-width: 1.5; transition: stroke 120ms ease; }
+#linked-source .ls-edge polygon { fill: var(--edge); transition: fill 120ms ease; }
+#linked-source .ls-edge .hit { stroke: transparent; stroke-width: 14; pointer-events: stroke; cursor: pointer; }
+#linked-source .ls-edge.is-hl path:not(.hit) { stroke: var(--edge-strong); stroke-width: 2; }
+#linked-source .ls-edge.is-hl polygon { fill: var(--edge-strong); }
+#linked-source .ls-stage .edge-label { transform: translate(-50%, -50%); opacity: 0; visibility: hidden; pointer-events: none; transition: opacity 120ms ease, visibility 120ms; z-index: 2; }
+#linked-source .ls-stage .edge-label.is-hl { opacity: 1; visibility: visible; }
+
+/* Source pane (SourcePane). */
+#linked-source .ls-source { max-height: 220px; overflow: auto; background: var(--code-bg); border-top: 1px solid var(--line); }
+@media (min-width: 1024px) { #linked-source .ls-source { max-height: 528px; border-top: 0; border-left: 1px solid var(--line); } }
+#linked-source .ls-pre { margin: 0; padding: 12px 0; font-family: var(--font-mono); font-size: var(--t-sm); line-height: 20px; color: var(--code-fg); outline: none; }
+#linked-source .ls-pre:focus-visible { box-shadow: inset 0 0 0 2px var(--accent); border-radius: 0; }
+#linked-source .ls-line { display: block; padding: 0 16px; min-height: 20px; border-left: 2px solid transparent; white-space: pre; transition: background-color 120ms ease, border-color 120ms ease; outline: none; }
+#linked-source .ls-line[data-t] { cursor: default; }
+#linked-source .ls-line.is-hl { background: var(--accent-soft); border-left-color: var(--accent); }
+#linked-source .ls-line.is-sel { border-left-color: var(--accent); }
+#linked-source .ls-line:focus-visible { box-shadow: inset 0 0 0 1px var(--accent); border-radius: 0; }
+@keyframes ls-flash { from { background: var(--accent-soft); border-left-color: var(--accent); } }
+@keyframes ls-flash-strong { from { background: color-mix(in srgb, var(--accent-soft) 100%, var(--accent) 22%); border-left-color: var(--accent); } }
+@media (prefers-reduced-motion: no-preference) {
+  #linked-source .ls-line.is-changed { animation: ls-flash 1400ms ease-out; }
+  #linked-source .ls-line.is-changed.is-hl, #linked-source .ls-line.is-changed.is-sel { animation-name: ls-flash-strong; }
+}
+
+
+#agent-replay .ar-head { display: flex; flex-direction: column; align-items: center; text-align: center; padding-top: 64px; }
+@media (min-width: 640px) { #agent-replay .ar-head { padding-top: 80px; } }
+#agent-replay .ar-h { max-width: 18ch; font-size: var(--t-dsm); line-height: var(--t-dsm-lh); }
+@media (min-width: 640px) { #agent-replay .ar-h { font-size: var(--t-dmd); line-height: var(--t-dmd-lh); } }
+#agent-replay .ar-lede { max-width: 56ch; padding-top: 16px; }
+#agent-replay .ar-wrap { padding-top: 48px; padding-bottom: 48px; }
+@media (min-width: 640px) { #agent-replay .ar-wrap { padding-bottom: 64px; } }
+
+#agent-replay .ar-panel { overflow: hidden; box-shadow: var(--shadow-sm); }
+#agent-replay .ar-bar { height: 44px; padding: 0 8px 0 14px; }
+#agent-replay .ar-bar-title { display: flex; align-items: center; gap: 8px; min-width: 0; color: var(--ink-2); font-size: var(--t-sm); white-space: nowrap; overflow: hidden; }
+#agent-replay .ar-bar-icon { display: inline-flex; color: var(--ink-3); }
+#agent-replay .ar-bar-actions { margin-left: auto; display: flex; gap: 2px; }
+#agent-replay .ar-toggle-icon, #agent-replay .ar-replay-icon { display: inline-flex; }
+#agent-replay .ar-body { display: grid; }
+@media (min-width: 1024px) { #agent-replay .ar-body { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
+
+/* Transcript */
+#agent-replay .ar-log { padding: 16px 16px 18px 12px; border-bottom: 1px solid var(--line); }
+@media (min-width: 1024px) { #agent-replay .ar-log { border-bottom: 0; border-right: 1px solid var(--line); padding: 18px 20px 20px 14px; } }
+#agent-replay .ar-line { display: flex; gap: 8px; min-height: 20px; transition: opacity 220ms; }
+#agent-replay .ar-m { flex: none; width: 14px; display: inline-flex; justify-content: center; color: var(--ink-3); }
+#agent-replay .ar-c { min-width: 0; overflow-wrap: anywhere; }
+#agent-replay .ar-gap { height: 10px; }
+#agent-replay .ar-prompt { color: var(--accent); align-items: center; }
+#agent-replay .ar-user .ar-c { color: var(--ink); }
+#agent-replay .ar-tool { font-weight: 600; color: var(--ink); }
+#agent-replay .ar-args { color: var(--ink-2); }
+#agent-replay .ar-dot { display: block; width: 7px; height: 7px; margin-top: 7px; border-radius: var(--r-xs); background: var(--ink-3); transition: background-color 160ms; }
+#agent-replay .ar-call.is-ok .ar-dot { background: var(--accent); }
+#agent-replay .ar-call.is-err .ar-dot { background: var(--danger); }
+#agent-replay .ar-call.is-running .ar-dot { animation: ar-pulse 900ms ease-in-out infinite; }
+@keyframes ar-pulse { 50% { opacity: 0.25; } }
+#agent-replay .ar-elbow { color: var(--code-gutter); }
+#agent-replay .ar-chip { margin: 1px 0 3px; }
+#agent-replay .ar-chip.is-running { background: var(--surface-2); color: var(--ink-3); }
+#agent-replay .ar-note .ar-c { font-family: var(--font-sans); font-size: var(--t-base); color: var(--ink-2); }
+#agent-replay .ar-add .ar-m { color: var(--accent); }
+#agent-replay .ar-add { background: var(--accent-soft); margin-left: -4px; padding-left: 4px; border-radius: var(--r-xs); }
+#agent-replay .ar-del .ar-m { color: var(--danger); }
+#agent-replay .ar-del .ar-c { color: var(--ink-3); text-decoration: line-through; }
+#agent-replay .ar-err .ar-c { color: var(--danger); }
+#agent-replay .is-hidden { visibility: hidden; opacity: 0; }
+
+/* Canvas */
+#agent-replay .ar-canvas { position: relative; overflow: hidden; min-height: 280px; }
+#agent-replay .ar-stage { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
+#agent-replay .ar-stage .node { position: absolute; }
+#agent-replay .ar-stage .plane { position: absolute; transition: border-color 160ms, box-shadow 160ms; }
+#agent-replay .ar-plane-icon { width: 12px; height: 12px; border: 1px solid var(--ink-3); border-radius: var(--r-xs); }
+#agent-replay .ar-edges { position: absolute; left: 0; top: 0; overflow: visible; pointer-events: none; }
+#agent-replay .ar-stage .edge-label { position: absolute; transform: translate(-50%, -50%); line-height: 16px; }
+#agent-replay .ar-rev { position: absolute; left: 12px; top: 12px; z-index: 2; background: var(--surface); border: 1px solid var(--line); transition: color 200ms, border-color 200ms; }
+#agent-replay .ar-rev.is-new { color: var(--accent); border-color: var(--accent); }
+#agent-replay .ar-toast { position: absolute; right: 12px; top: 12px; z-index: 2; opacity: 0; transform: translateY(-4px); transition: opacity 160ms, transform 160ms; }
+#agent-replay .ar-canvas.is-rejected .ar-toast { opacity: 1; transform: none; }
+#agent-replay .ar-canvas.is-rejected .plane-backend { border-color: var(--danger); box-shadow: 0 0 0 3px var(--danger-soft); }
+#agent-replay .ar-canvas.is-shaking .ar-shake { animation: ar-shake 420ms cubic-bezier(0.36, 0.07, 0.19, 0.97); }
+@keyframes ar-shake { 20%, 60% { transform: translateX(-5px); } 40%, 80% { transform: translateX(5px); } }
+
+/* The agent's additions: shown at rest, drawn in on the save during the replay. */
+#agent-replay .ar-new { transition: opacity 260ms, transform 320ms cubic-bezier(0.2, 0.7, 0.2, 1); }
+#agent-replay .ar-new-edge { stroke-dasharray: 1; stroke-dashoffset: 0; transition: stroke-dashoffset 520ms cubic-bezier(0.4, 0, 0.2, 1) 160ms; }
+#agent-replay .ar-canvas.is-before .ar-new { opacity: 0; transform: scale(0.94); }
+#agent-replay .ar-canvas.is-before .ar-new-edge { stroke-dashoffset: 1; transition: none; }
+#agent-replay .ar-canvas.is-before .ar-new-head { opacity: 0; }
+#agent-replay .ar-new-head { transition: opacity 120ms 620ms; }
+#agent-replay .ar-badge { position: absolute; top: -9px; right: -8px; background: var(--accent); color: var(--accent-ink); box-shadow: var(--shadow-sm); }
+#agent-replay .ar-badge .icon { width: 11px; height: 11px; }
+
+@media (prefers-reduced-motion: reduce) {
+  #agent-replay .ar-bar-actions { display: none; }
+}
+
+
+#example-strip .es-head { display: flex; flex-direction: column; align-items: center; text-align: center; padding-top: 64px; }
+@media (min-width: 640px) { #example-strip .es-head { padding-top: 80px; } }
+#example-strip .es-h { font-size: var(--t-dsm); line-height: var(--t-dsm-lh); }
+@media (min-width: 640px) { #example-strip .es-h { font-size: var(--t-dmd); line-height: var(--t-dmd-lh); } }
+#example-strip .es-lede { max-width: 52ch; padding-top: 16px; }
+
+/* Desktop: a ruled 3 x 2 grid like Features. Phone: one ruled row that scrolls and snaps. */
+#example-strip .es-row { margin-top: 48px; grid-auto-flow: column; grid-auto-columns: 84%; overflow-x: auto; scroll-snap-type: x mandatory; overscroll-behavior-x: contain; scrollbar-width: none; }
+#example-strip .es-row::-webkit-scrollbar { display: none; }
+@media (min-width: 640px) { #example-strip .es-row { grid-auto-columns: 46%; } }
+@media (min-width: 1024px) { #example-strip .es-row { grid-auto-flow: row; grid-template-columns: repeat(3, minmax(0, 1fr)); overflow: visible; } }
+
+#example-strip .es-card { position: relative; display: flex; flex-direction: column; padding: 24px 20px 28px; scroll-snap-align: start; }
+@media (min-width: 640px) { #example-strip .es-card { padding: 28px 28px 32px; } }
+#example-strip .es-fig { border: 1px solid var(--line); border-radius: var(--r-md); padding: 8px; margin-bottom: 20px; transition: border-color 120ms; }
+#example-strip .es-fig > svg { display: block; width: 100%; height: auto; overflow: visible; }
+#example-strip .es-card .body { padding-top: 4px; }
+#example-strip .es-chips { display: flex; flex-wrap: wrap; gap: 6px; padding-top: 14px; }
+#example-strip .es-link { display: inline-flex; align-items: center; gap: 6px; align-self: flex-start; margin-top: auto; padding-top: 18px; font-size: var(--t-sm); font-weight: 500; color: var(--ink); text-decoration: none; }
+#example-strip .es-link .icon { transition: transform 120ms; }
+/* The whole card opens the sandbox; the link carries the name for screen readers. */
+#example-strip .es-link::after { content: ""; position: absolute; inset: 0; }
+#example-strip .es-link:focus-visible { box-shadow: none; }
+#example-strip .es-card:has(.es-link:focus-visible) { box-shadow: inset 0 0 0 2px var(--accent); }
+#example-strip .es-card:hover .es-fig { border-color: var(--line-2); }
+#example-strip .es-card:hover .es-link .icon { transform: translateX(2px); }
+
+/* Mini diagram: the canvas's cards, planes and edges, drawn small. */
+#example-strip .es-box { fill: var(--surface); stroke: var(--line-2); stroke-width: 1; }
+#example-strip .es-under { fill: var(--surface); stroke: var(--line-2); stroke-width: 1; }
+#example-strip .es-plane { fill: color-mix(in srgb, var(--surface-2) 50%, transparent); stroke: var(--line-2); stroke-width: 1; }
+#example-strip .es-plane-rule { stroke: var(--line); stroke-width: 1; }
+#example-strip .es-plane-label { font-size: var(--t-xs); font-weight: 600; fill: var(--ink-2); }
+#example-strip .es-label { font-size: var(--t-xs); font-weight: 600; fill: var(--ink); }
+#example-strip .es-count-bg { fill: var(--surface-3); }
+#example-strip .es-count { font-family: var(--font-mono); font-size: var(--t-xs); fill: var(--ink-2); }
+#example-strip .es-tile { --type: var(--type-light); color: var(--type); }
+#example-strip .es-tile rect { fill: color-mix(in srgb, var(--type) 14%, transparent); }
+:root[data-theme="dark"] #example-strip .es-tile { --type: var(--type-dark); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) #example-strip .es-tile { --type: var(--type-dark); } }
+#example-strip .es-edge { fill: none; stroke: var(--edge); stroke-width: 1.25; transition: stroke 120ms; }
+#example-strip .es-arrow { fill: var(--edge); transition: fill 120ms; }
+#example-strip .es-card:hover .es-edge { stroke: var(--edge-strong); }
+#example-strip .es-card:hover .es-arrow { fill: var(--edge-strong); }
 
 
 #revision-scrubber .ruled-grid { border-top: 0; }
@@ -350,11 +592,11 @@ button, input, textarea { font: inherit; color: inherit; }
 #revision-scrubber .visual { margin-top: auto; }
 
 /* Mini canvas: the Acme document at the chosen revision. */
-#revision-scrubber .cv { position: relative; height: 130px; border: 1px solid var(--line); border-radius: var(--r-md); overflow: hidden; --edge: var(--ink); }
+#revision-scrubber .cv { position: relative; height: 122px; border: 1px solid var(--line); border-radius: var(--r-md); overflow: hidden; --edge: var(--ink); }
 #revision-scrubber .edges { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
 #revision-scrubber .e { opacity: 0; transition: opacity 200ms; }
 #revision-scrubber .e.on { opacity: 1; transition: opacity 260ms 320ms; }
-#revision-scrubber .n { position: absolute; min-height: 36px; height: 36px; padding: 0 6px; gap: 6px; transition: opacity 260ms, transform 300ms cubic-bezier(0.2, 0.7, 0.2, 1), border-color 200ms; }
+#revision-scrubber .n { position: absolute; min-height: 36px; height: 36px; padding: 0 5px; gap: 5px; transition: opacity 260ms, transform 300ms cubic-bezier(0.2, 0.7, 0.2, 1), border-color 200ms; }
 #revision-scrubber .cv.ready .n { transition: opacity 260ms, transform 300ms cubic-bezier(0.2, 0.7, 0.2, 1), left 420ms cubic-bezier(0.2, 0.7, 0.2, 1), top 420ms cubic-bezier(0.2, 0.7, 0.2, 1), border-color 200ms; }
 #revision-scrubber .n .node-label { font-size: var(--t-sm); line-height: var(--t-sm-lh); }
 #revision-scrubber .n.off { opacity: 0; transform: scale(0.85); pointer-events: none; }
@@ -424,6 +666,158 @@ button, input, textarea { font: inherit; color: inherit; }
 #revision-scrubber .repo-row:last-child { border-bottom: 0; }
 #revision-scrubber .repo-row .mono { color: var(--ink-3); }
 #revision-scrubber .repo-row span:last-child { overflow: hidden; text-overflow: ellipsis; }
+
+
+#nesting-zoom .ruled-grid { border-top: 0; }
+#nesting-zoom .fg { grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 768px) {
+  #nesting-zoom .fg { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  #nesting-zoom .wide, #nesting-zoom .nest { grid-column: span 2; }
+}
+@media (min-width: 1024px) {
+  #nesting-zoom .fg { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  #nesting-zoom .nest { grid-column: auto; }
+}
+#nesting-zoom .tile { display: flex; flex-direction: column; gap: 20px; padding: 32px 20px; }
+@media (min-width: 640px) { #nesting-zoom .tile { padding: 32px 40px; } }
+#nesting-zoom .tile .body { max-width: 56ch; padding-top: 4px; }
+#nesting-zoom .visual { margin-top: auto; }
+
+/* Palette neighbour, as Features draws it today. */
+#nesting-zoom .pal { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+@media (min-width: 640px) { #nesting-zoom .pal { grid-template-columns: repeat(8, minmax(0, 1fr)); } }
+#nesting-zoom .pal > div { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; height: 70px; border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface); font-size: var(--t-xs); line-height: var(--t-xs-lh); color: var(--ink-2); white-space: nowrap; }
+#nesting-zoom .pal > .own { border-style: dashed; border-color: var(--line-2); background: transparent; }
+#nesting-zoom .pal .own .icon { width: 16px; height: 16px; margin: 7px; }
+
+/* The plane, and the component's own canvas once it is opened. */
+#nesting-zoom .box { border: 1px solid var(--line-2); border-radius: var(--r-lg); background: var(--surface-2); overflow: hidden; }
+#nesting-zoom .head { position: relative; height: 32px; border-bottom: 1px solid var(--line); }
+#nesting-zoom .head-plane, #nesting-zoom .head-crumb { position: absolute; inset: 0; display: flex; align-items: center; transition: opacity 180ms; }
+#nesting-zoom .head-plane { gap: 8px; padding: 0 10px; }
+#nesting-zoom .plane-glyph { display: inline-flex; color: var(--ink-2); }
+#nesting-zoom .pn { font-size: var(--t-sm); line-height: var(--t-sm-lh); font-weight: 600; color: var(--ink); white-space: nowrap; }
+#nesting-zoom .pt { font-size: var(--t-xs); color: var(--ink-3); }
+#nesting-zoom .head-crumb { gap: 2px; padding: 0 8px 0 4px; background: var(--surface); font-size: var(--t-sm); line-height: var(--t-sm-lh); white-space: nowrap; }
+#nesting-zoom .head-crumb[hidden] { display: none; }
+#nesting-zoom .back { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border: 0; border-radius: var(--r-sm); background: none; color: var(--ink-2); cursor: pointer; }
+#nesting-zoom .back:hover, #nesting-zoom button.crumb:hover { background: var(--surface-2); color: var(--ink); }
+#nesting-zoom .crumb { padding: 2px 6px; border: 0; border-radius: var(--r-sm); background: none; color: var(--ink-2); cursor: pointer; }
+#nesting-zoom .crumb.here { color: var(--ink); font-weight: 500; cursor: default; }
+#nesting-zoom .sep { display: inline-flex; color: var(--ink-3); }
+#nesting-zoom .sep .icon { width: 12px; height: 12px; }
+#nesting-zoom .esc { display: none; margin-left: auto; align-items: center; gap: 6px; font-size: var(--t-xs); color: var(--ink-3); }
+@media (min-width: 1200px), (min-width: 360px) and (max-width: 1023px) { #nesting-zoom .esc { display: flex; } }
+#nesting-zoom kbd { display: inline-flex; align-items: center; height: 20px; padding: 0 6px; border: 1px solid var(--line); border-radius: var(--r-sm); background: var(--surface); box-shadow: inset 0 -1px 0 var(--line); font-family: var(--font-sans); font-size: var(--t-xs); font-weight: 500; color: var(--ink-2); }
+
+#nesting-zoom .stage { position: relative; height: 148px; }
+#nesting-zoom .plane-view { position: absolute; inset: 0; display: flex; flex-direction: column; transform-origin: 50% 50%; }
+#nesting-zoom .cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; padding: 12px; }
+#nesting-zoom .mini { position: relative; display: flex; align-items: center; gap: 8px; height: 48px; min-width: 0; padding: 0 8px; border: 1px solid var(--line-2); border-radius: var(--r-md); background: var(--surface); text-align: left; font: inherit; color: inherit; transition: border-color 120ms, box-shadow 120ms; }
+#nesting-zoom button.mini { cursor: pointer; }
+#nesting-zoom button.mini:hover { border-color: color-mix(in srgb, var(--edge-strong) 40%, transparent); }
+#nesting-zoom .mini.selected { box-shadow: 0 0 0 2px var(--surface-2), 0 0 0 4px var(--accent); }
+#nesting-zoom .ml { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--t-sm); line-height: var(--t-sm-lh); font-weight: 600; color: var(--ink); }
+#nesting-zoom .badge { display: inline-flex; align-items: center; gap: 4px; margin-left: auto; padding: 0 4px; border-radius: var(--r-sm); background: var(--surface-3); font-size: var(--t-xs); line-height: var(--t-xs-lh); color: var(--ink-2); flex: none; }
+#nesting-zoom .badge .icon { width: 12px; height: 12px; }
+#nesting-zoom .hint { flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; margin: 0; padding-bottom: 12px; font-size: var(--t-xs); line-height: var(--t-xs-lh); color: var(--ink-3); }
+#nesting-zoom .hint .icon { width: 12px; height: 12px; }
+#nesting-zoom .hint-touch { display: none; }
+@media (hover: none) { #nesting-zoom .hint-mouse, #nesting-zoom .esc { display: none; } #nesting-zoom .hint-touch { display: inline; } }
+
+#nesting-zoom .canvas-view { position: absolute; inset: 0; --edge: var(--ink); }
+#nesting-zoom .canvas-view[hidden] { display: none; }
+#nesting-zoom .edges { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+#nesting-zoom .part { position: absolute; }
+#nesting-zoom .ctx { position: absolute; display: flex; align-items: center; gap: 8px; height: 48px; padding: 0 8px; border: 1px dashed var(--line-2); border-radius: var(--r-md); background: color-mix(in srgb, var(--surface) 70%, transparent); text-align: left; font: inherit; color: inherit; cursor: pointer; }
+#nesting-zoom .ctx:hover { border-color: color-mix(in srgb, var(--edge-strong) 50%, transparent); background: var(--surface); }
+#nesting-zoom .ctx .type-tile { background: none; width: 16px !important; height: 16px !important; }
+#nesting-zoom .ctx .ctx-label { font-size: var(--t-sm); line-height: 1.25; font-weight: 600; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#nesting-zoom .ctx .node-type { display: block; }
+
+
+#readme-embed .ruled-grid { border-top: 0; }
+#readme-embed .fg { grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 768px) {
+  #readme-embed .fg { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  #readme-embed .last { grid-column: span 2; }
+}
+@media (min-width: 1024px) {
+  #readme-embed .fg { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  #readme-embed .last { grid-column: auto; }
+}
+#readme-embed .tile { display: flex; flex-direction: column; gap: 20px; padding: 32px 20px; }
+@media (min-width: 640px) { #readme-embed .tile { padding: 32px 40px; } }
+#readme-embed .tile .body { max-width: 56ch; padding-top: 4px; }
+#readme-embed .visual { margin-top: auto; }
+
+/* Share tile: today's link field and Markdown line, then the README they feed. */
+#readme-embed .share { display: flex; flex-direction: column; gap: 8px; }
+#readme-embed .link { display: flex; align-items: center; gap: 8px; height: 32px; padding: 0 4px 0 10px; border: 1px solid var(--line-2); background: var(--surface); }
+#readme-embed .link > .mono { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--t-sm); color: var(--ink-2); }
+#readme-embed .copy-btn { display: inline-flex; align-items: center; gap: 4px; border: 1px solid var(--line); background: var(--surface); padding: 2px 8px; font-size: var(--t-xs); line-height: var(--t-xs-lh); font-weight: 500; color: var(--ink); box-shadow: var(--shadow-sm); cursor: pointer; }
+#readme-embed .copy-btn:hover { background: var(--surface-2); }
+#readme-embed .copy-btn .swap-icon, #readme-embed .copy-btn .icon { width: 12px; height: 12px; }
+#readme-embed .md { display: flex; align-items: center; gap: 8px; border: 1px solid var(--line); background: var(--code-bg); padding: 0 4px 0 10px; height: 36px; }
+#readme-embed .md-text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--t-sm); line-height: var(--t-sm-lh); color: var(--ink-2); }
+#readme-embed .icon-btn { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; flex: none; border: 0; border-radius: var(--r-sm); background: none; color: var(--ink-2); cursor: pointer; }
+#readme-embed .icon-btn:hover { background: var(--surface-2); color: var(--ink); }
+
+#readme-embed .readme { margin-top: 4px; border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface); overflow: hidden; }
+#readme-embed .readme-head { display: flex; align-items: center; gap: 8px; height: 36px; padding: 0 12px; border-bottom: 1px solid var(--line); background: var(--surface-2); font-size: var(--t-sm); font-weight: 600; color: var(--ink); }
+#readme-embed .readme-head .icon { color: var(--ink-2); }
+#readme-embed .readme-body { padding: 12px 12px 12px; }
+#readme-embed .readme-h2 { margin: 0 0 12px; padding-bottom: 6px; border-bottom: 1px solid var(--line); font-size: var(--t-xl); line-height: var(--t-xl-lh); font-weight: 600; color: var(--ink); }
+#readme-embed .img { display: grid; }
+#readme-embed .img > svg { grid-area: 1 / 1; display: block; width: 100%; height: auto; transition: opacity 450ms ease; }
+#readme-embed .img > svg.off { opacity: 0; }
+@media (prefers-reduced-motion: reduce) { #readme-embed .img > svg { transition: none; } }
+
+/* The image as lib/svg.ts draws it, in the page's tokens. */
+#readme-embed .g-ground { fill: var(--ground); }
+#readme-embed .g-card { fill: var(--surface); stroke: var(--line-2); }
+#readme-embed .g-plane { fill: color-mix(in srgb, var(--surface-2) 50%, transparent); stroke: var(--line-2); }
+#readme-embed .g-rule { stroke: var(--line); }
+#readme-embed .g-title { font: 700 15px var(--font-sans); fill: var(--ink); }
+#readme-embed .g-brand { font: 600 10px var(--font-sans); letter-spacing: 0.04em; fill: var(--ink-3); }
+#readme-embed .g-name { font: 600 12.5px var(--font-sans); fill: var(--ink); }
+#readme-embed .g-plane-name { font: 600 12px var(--font-sans); fill: var(--ink); }
+#readme-embed .g-sub { font: 10px var(--font-mono); fill: var(--ink-3); }
+#readme-embed .g-edge { fill: none; stroke: var(--edge); stroke-width: 1.5; }
+#readme-embed .g-head { fill: var(--edge); }
+#readme-embed .g-chip { fill: var(--surface); stroke: var(--line); }
+#readme-embed .g-chip-type { font: 10px var(--font-mono); fill: var(--ink-2); }
+#readme-embed .g-chip-label { font: 10px var(--font-sans); fill: var(--ink); }
+#readme-embed .g-type { --type: var(--type-light); color: var(--type); }
+#readme-embed .g-ink2 { color: var(--ink-2); }
+:root[data-theme="dark"] #readme-embed .g-type { --type: var(--type-dark); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) #readme-embed .g-type { --type: var(--type-dark); } }
+
+#readme-embed .ctl { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+#readme-embed .seg { display: inline-flex; padding: 2px; gap: 2px; border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface-2); }
+#readme-embed .seg button { height: 24px; padding: 0 10px; border: 0; border-radius: var(--r-sm); background: none; font-size: var(--t-sm); font-weight: 500; color: var(--ink-2); cursor: pointer; transition: background-color 100ms, color 100ms; }
+#readme-embed .seg button:hover { color: var(--ink); }
+#readme-embed .seg button[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: var(--shadow-sm); }
+#readme-embed .ctl .note { font-size: var(--t-xs); line-height: var(--t-xs-lh); color: var(--ink-3); }
+
+/* Neighbours, as Features draws them today. */
+#readme-embed .hist { border: 1px solid var(--line); background: var(--code-bg); font-size: var(--t-sm); line-height: var(--t-sm-lh); }
+#readme-embed .hist .row { display: flex; gap: 10px; padding: 8px 12px; border-bottom: 1px solid var(--line); }
+#readme-embed .hist .row:last-child { border-bottom: 0; }
+#readme-embed .hist .id { color: var(--ink); }
+#readme-embed .hist .note { margin-left: auto; color: var(--ink-3); }
+#readme-embed .hist .rm .id { color: var(--ink-3); text-decoration: line-through; }
+#readme-embed .m-add { color: var(--accent); }
+#readme-embed .m-chg { color: var(--warn); }
+#readme-embed .m-rm { color: var(--danger); }
+#readme-embed .repo { border: 1px solid var(--line); background: var(--surface); font-size: var(--t-sm); line-height: var(--t-sm-lh); }
+#readme-embed .repo-head { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--line); color: var(--ink-2); }
+#readme-embed .repo-head b { font-weight: 600; color: var(--ink); }
+#readme-embed .repo-head .mono { font-size: var(--t-xs); color: var(--ink-3); }
+#readme-embed .repo-row { display: flex; gap: 10px; padding: 6px 12px; border-bottom: 1px solid var(--line); color: var(--ink-2); white-space: nowrap; }
+#readme-embed .repo-row:last-child { border-bottom: 0; }
+#readme-embed .repo-row .mono { color: var(--ink-3); }
+#readme-embed .repo-row span:last-child { overflow: hidden; text-overflow: ellipsis; }
 
 
 #break-it .bi-grid { border-top: 0; }
@@ -684,7 +1078,7 @@ window.ARCHER_ICONS={"arrow-right": "<path d=\"M224.49,136.49l-72,72a12,12,0,0,1
   <h1 class="headline text-display" style="max-width:16ch;padding-top:16px">Twelve new pieces for the landing page</h1>
   <p class="lede" style="max-width:56ch;padding-top:20px">Each one is drawn in the page's current style: same tokens, type, ruled column and canvas cards. Pick the ones you like and they drop into the existing page without touching the rest of the app.</p>
 </section>
-<nav id="elements" class="toc ruled-grid joints rule-b" aria-label="Elements"><a href="#el-prompt-examples"><span>01</span>Prompt to diagram</a><a href="#el-revision-scrubber"><span>06</span>Revision scrubber</a><a href="#el-break-it"><span>09</span>Try to break it</a><a href="#el-type-search"><span>10</span>Searchable type band</a><a href="#el-number-band"><span>11</span>Numbers band</a><a href="#el-comparison"><span>12</span>A drawing vs. an Archer document</a></nav>
+<nav id="elements" class="toc ruled-grid joints rule-b" aria-label="Elements"><a href="#el-prompt-examples"><span>01</span>Prompt to diagram</a><a href="#el-client-switcher"><span>02</span>Client strip that installs</a><a href="#el-linked-source"><span>03</span>Linked source in the sandbox</a><a href="#el-agent-replay"><span>04</span>Agent session replay</a><a href="#el-example-strip"><span>05</span>Start from an example</a><a href="#el-revision-scrubber"><span>06</span>Revision scrubber</a><a href="#el-nesting-zoom"><span>07</span>Open a component</a><a href="#el-readme-embed"><span>08</span>Live README embed</a><a href="#el-break-it"><span>09</span>Try to break it</a><a href="#el-type-search"><span>10</span>Searchable type band</a><a href="#el-number-band"><span>11</span>Numbers band</a><a href="#el-comparison"><span>12</span>A drawing vs. an Archer document</a></nav>
       <article id="el-prompt-examples"><header class="el-meta joints rule-b px">
   <p class="eyebrow">Element 01</p>
   <h2>Prompt to diagram</h2>
@@ -716,6 +1110,168 @@ window.ARCHER_ICONS={"arrow-right": "<path d=\"M224.49,136.49l-72,72a12,12,0,0,1
       <div class="pe-col pe-canvas ground"><div class="pe-stack pe-canvas-stack"></div></div>
       <div class="pe-col pe-code codebox"><div class="pe-stack pe-code-stack"></div></div>
     </div>
+  </div>
+</section></article>
+<article id="el-client-switcher"><header class="el-meta joints rule-b px">
+  <p class="eyebrow">Element 02</p>
+  <h2>Client strip that installs</h2>
+  <p class="body">The 'Works with any MCP client' strip becomes tabs: click a client and its exact one-line setup appears under it with a copy button.</p>
+  <dl><div><dt>Goes in</dt><dd>Replaces the client logos strip under the hero</dd></div><div><dt>Reuses</dt><dd>ClientLogos, CopyPromptButton's copy and SwapIcon</dd></div><div><dt>Effort</dt><dd>S</dd></div></dl>
+</header>
+<section id="client-switcher" class="joints rule-b px">
+  <div class="cs-strip">
+    <p class="eyebrow" id="cs-label">Works with any MCP client</p>
+    <div class="cs-tabs" role="tablist" aria-labelledby="cs-label"></div>
+  </div>
+  <div class="cs-setup" role="tabpanel" id="cs-panel">
+    <div class="cs-line codebox">
+      <span class="cs-where"></span>
+      <code class="cs-code"></code>
+      <button type="button" class="btn btn-ghost btn-sm cs-copy"><span class="cs-sw"></span>Copy</button>
+    </div>
+    <div class="cs-foot">
+      <p class="cs-note"></p>
+      <a class="cs-more" href="#top">Other clients<span class="cs-i"></span></a>
+    </div>
+    <span class="sr-only" role="status"></span>
+  </div>
+</section></article>
+<article id="el-linked-source"><header class="el-meta joints rule-b px">
+  <p class="eyebrow">Element 03</p>
+  <h2>Linked source in the sandbox</h2>
+  <p class="body">Hovering a line of code lights up the component it draws, and hovering a component lights its lines. Changed lines flash the way they do today. It makes 'the canvas is the code' obvious in one gesture.</p>
+  <dl><div><dt>Goes in</dt><dd>The existing sandbox (an enhancement, no new section)</dd></div><div><dt>Reuses</dt><dd>Sandbox, SourcePane, ArchCanvas selection</dd></div><div><dt>Effort</dt><dd>S</dd></div></dl>
+</header>
+<section id="linked-source" class="joints rule-b px">
+  <div class="ls-box">
+    <div class="ls-head">
+      <span class="ls-file mono">architecture.arch</span>
+      <span class="chip ls-hint" aria-live="polite"></span>
+      <button type="button" class="btn btn-ghost btn-sm ls-reset" disabled><span class="ls-i" data-icon="arrow-counter-clockwise"></span>Reset</button>
+      <a class="btn btn-ghost btn-sm" href="#top">See more<span class="ls-i" data-icon="arrow-right"></span></a>
+    </div>
+    <div class="ls-body">
+      <div class="ls-canvas ground" aria-label="Canvas">
+        <div class="ls-stage"></div>
+      </div>
+      <div class="ls-source">
+        <pre class="ls-pre" tabindex="0" aria-label="Document source. Arrow keys move between lines."></pre>
+      </div>
+    </div>
+  </div>
+</section></article>
+<article id="el-agent-replay"><header class="el-meta joints rule-b px">
+  <p class="eyebrow">Element 04</p>
+  <h2>Agent session replay</h2>
+  <p class="body">A short, looping transcript of a coding agent using the MCP tools: it reads the guide, writes a document, gets rejected with E101, fixes it and saves. A small canvas beside it updates on each call.</p>
+  <dl><div><dt>Goes in</dt><dd>New band between the sandbox and Features</dd></div><div><dt>Reuses</dt><dd>Canvas cards, Chip, the hero's terminal caret</dd></div><div><dt>Effort</dt><dd>M</dd></div></dl>
+</header>
+<section id="agent-replay" class="joints rule-b">
+  <div class="ar-head px">
+    <h2 class="headline ar-h">Your agent works on the same canvas</h2>
+    <p class="lede ar-lede">Agents read and write the project through MCP, with the same checks as the editor. A broken write is rejected with the reason; a good one is saved and badged for review.</p>
+  </div>
+  <div class="ar-wrap px">
+    <div class="panel ar-panel">
+      <div class="panel-head ar-bar">
+        <span class="ar-bar-title"><span class="ar-bar-icon"></span><span class="mono">claude code · acme</span></span>
+        <span class="ar-bar-actions">
+          <button type="button" class="btn btn-ghost btn-sm ar-toggle" aria-pressed="false"><span class="ar-toggle-icon"></span><span class="ar-toggle-label">Pause</span></button>
+          <button type="button" class="btn btn-ghost btn-sm ar-replay"><span class="ar-replay-icon"></span>Replay</button>
+        </span>
+      </div>
+      <div class="ar-body">
+        <div class="ar-log codebox" aria-label="Agent session transcript">
+          <div class="ar-line ar-user" data-at="300" data-type="1300"><span class="ar-m ar-prompt"></span><span class="ar-c ar-typed">Add a cache in front of the database</span></div>
+
+          <div class="ar-gap" data-at="1700"></div>
+          <div class="ar-line ar-call" data-at="1700" data-done="2500" data-result="ok"><span class="ar-m"><i class="ar-dot"></i></span><span class="ar-c"><b class="ar-tool">get_project</b><span class="ar-args">(project_id: <span class="tok-str">"acme"</span>)</span></span></div>
+          <div class="ar-line" data-at="1700"><span class="ar-m ar-elbow">└</span><span class="ar-c"><span class="chip ar-chip" data-done="2500">Acme · 5 components</span></span></div>
+
+          <div class="ar-line ar-note" data-at="3000"><span class="ar-m"></span><span class="ar-c">Adding a Redis cache on the Backend plane, between the API and Postgres.</span></div>
+
+          <div class="ar-gap" data-at="3700"></div>
+          <div class="ar-line ar-call" data-at="3700" data-done="5300" data-result="err"><span class="ar-m"><i class="ar-dot"></i></span><span class="ar-c"><b class="ar-tool">update_project</b><span class="ar-args">(summary: <span class="tok-str">"Add a Redis cache"</span>)</span></span></div>
+          <div class="ar-line ar-add" data-at="4000"><span class="ar-m">+</span><span class="ar-c" data-arch='component cache "Cache" @redis'>component cache "Cache" @redis</span></div>
+          <div class="ar-line ar-add" data-at="4250"><span class="ar-m">+</span><span class="ar-c" data-arch="api -> cache @reads">api -> cache @reads</span></div>
+          <div class="ar-line ar-add" data-at="4500"><span class="ar-m">+</span><span class="ar-c" data-arch='cache -> backend @reads : "on miss"'>cache -> backend @reads : "on miss"</span></div>
+          <div class="ar-line" data-at="4500"><span class="ar-m ar-elbow">└</span><span class="ar-c"><span class="chip chip-danger ar-chip" data-done="5300">E101 rejected · nothing saved</span></span></div>
+          <div class="ar-line ar-err" data-at="5300"><span class="ar-m"></span><span class="ar-c">line 22: Connection target 'backend' is a plane: connections join components, so point it at a component on the plane.</span></div>
+
+          <div class="ar-line ar-note" data-at="6600"><span class="ar-m"></span><span class="ar-c">backend is a plane. Pointing it at db instead.</span></div>
+
+          <div class="ar-gap" data-at="7300"></div>
+          <div class="ar-line ar-call" data-at="7300" data-done="8700" data-result="ok"><span class="ar-m"><i class="ar-dot"></i></span><span class="ar-c"><b class="ar-tool">update_project</b><span class="ar-args">(summary: <span class="tok-str">"Add a Redis cache in front of Postgres"</span>)</span></span></div>
+          <div class="ar-line ar-del" data-at="7600"><span class="ar-m">-</span><span class="ar-c">cache -> backend @reads : "on miss"</span></div>
+          <div class="ar-line ar-add" data-at="7850"><span class="ar-m">+</span><span class="ar-c" data-arch='cache -> db @reads : "on miss"'>cache -> db @reads : "on miss"</span></div>
+          <div class="ar-line" data-at="7850"><span class="ar-m ar-elbow">└</span><span class="ar-c"><span class="chip chip-accent ar-chip" data-done="8700">saved · revision 14 · badged for review</span></span></div>
+
+          <div class="ar-gap" data-at="9100"></div>
+          <div class="ar-line ar-user" data-at="9100"><span class="ar-m ar-prompt"></span><span class="ar-c"><span class="caret" aria-hidden="true"></span></span></div>
+        </div>
+        <div class="ar-canvas ground" aria-label="Acme canvas: the Cache component appears after the saved write">
+          <span class="chip ar-rev mono"><span class="ar-rev-n">revision 14</span></span>
+          <span class="chip chip-danger ar-toast" aria-hidden="true">Rejected · canvas unchanged</span>
+          <div class="ar-stage"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section></article>
+<article id="el-example-strip"><header class="el-meta joints rule-b px">
+  <p class="eyebrow">Element 05</p>
+  <h2>Start from an example</h2>
+  <p class="body">A ruled row of the worked examples, each with a small drawing of its diagram and an 'Open in sandbox' link. It shows range (link shortener to music streaming) and gives people a second way in.</p>
+  <dl><div><dt>Goes in</dt><dd>Under the sandbox, or above the FAQ</dd></div><div><dt>Reuses</dt><dd>/language/examples data, prerendered example SVGs, /sandbox/&lt;slug&gt;</dd></div><div><dt>Effort</dt><dd>S</dd></div></dl>
+</header>
+<section id="example-strip" class="joints rule-b">
+  <div class="es-head px">
+    <h2 class="headline es-h">Start from an example</h2>
+    <p class="lede es-lede">Worked examples, from a link shortener to a whole streaming service. Open one in the sandbox and change anything.</p>
+  </div>
+  <div class="es-row ruled-grid" role="list">
+    <article class="es-card" role="listitem" data-slug="components-and-connections">
+      <div class="es-fig ground" aria-hidden="true"></div>
+      <h3 class="title">Link Shortener</h3>
+      <p class="body">The smallest useful document: a few typed components and the connections between them.</p>
+      <div class="es-chips"><span class="chip">components</span><span class="chip">connections</span><span class="chip">labels</span></div>
+      <a class="es-link" href="/sandbox/components-and-connections">Open in sandbox</a>
+    </article>
+    <article class="es-card" role="listitem" data-slug="descriptions-and-payloads">
+      <div class="es-fig ground" aria-hidden="true"></div>
+      <h3 class="title">Billing Service</h3>
+      <p class="body">Descriptions, src pointers into the code, and JSON, YAML and table payloads that validate.</p>
+      <div class="es-chips"><span class="chip">descriptions</span><span class="chip">source links</span><span class="chip">payloads</span></div>
+      <a class="es-link" href="/sandbox/descriptions-and-payloads">Open in sandbox</a>
+    </article>
+    <article class="es-card" role="listitem" data-slug="shapes">
+      <div class="es-fig ground" aria-hidden="true"></div>
+      <h3 class="title">Support Desk</h3>
+      <p class="body">A person, a robot, a cloud, a book: shapes draw each component as what it is.</p>
+      <div class="es-chips"><span class="chip">shapes</span></div>
+      <a class="es-link" href="/sandbox/shapes">Open in sandbox</a>
+    </article>
+    <article class="es-card" role="listitem" data-slug="planes">
+      <div class="es-fig ground" aria-hidden="true"></div>
+      <h3 class="title">Photo Sharing</h3>
+      <p class="body">Planes are titled regions: the user's devices on one, the AWS account and its VPC on another.</p>
+      <div class="es-chips"><span class="chip">planes</span><span class="chip">planes inside planes</span></div>
+      <a class="es-link" href="/sandbox/planes">Open in sandbox</a>
+    </article>
+    <article class="es-card" role="listitem" data-slug="nesting">
+      <div class="es-fig ground" aria-hidden="true"></div>
+      <h3 class="title">Food Delivery</h3>
+      <p class="body">Orders holds its API, checkout, tracker and database. It's one box with a count; open it to see the parts.</p>
+      <div class="es-chips"><span class="chip">nesting</span><span class="chip">paths</span></div>
+      <a class="es-link" href="/sandbox/nesting">Open in sandbox</a>
+    </article>
+    <article class="es-card" role="listitem" data-slug="music-streaming">
+      <div class="es-fig ground" aria-hidden="true"></div>
+      <h3 class="title">Music Streaming</h3>
+      <p class="body">A whole product in one file: nine boxes at the top level, and each part opens to more.</p>
+      <div class="es-chips"><span class="chip">nesting</span><span class="chip">planes</span><span class="chip">arrow kinds</span></div>
+      <a class="es-link" href="/sandbox/music-streaming">Open in sandbox</a>
+    </article>
   </div>
 </section></article>
 <article id="el-revision-scrubber"><header class="el-meta joints rule-b px">
@@ -754,6 +1310,129 @@ window.ARCHER_ICONS={"arrow-right": "<path d=\"M224.49,136.49l-72,72a12,12,0,0,1
         <div class="share">
           <div class="link"><span class="mono">tryarcher.dev/share/k3v9x2</span><span class="fake-btn">Copy</span></div>
           <div class="md mono">![Architecture](…/k3v9x2/<span class="tok-str">image.svg</span>)</div>
+        </div>
+      </div>
+    </div>
+    <div class="tile last">
+      <div>
+        <h3 class="title">Linked to your repo</h3>
+        <p class="body">Link a GitHub repo and branch. src paths open the code, and commits sit next to architecture revisions.</p>
+      </div>
+      <div class="visual" aria-hidden="true">
+        <div class="repo">
+          <div class="repo-head" data-repo-icon><b>acme/platform</b><span class="mono">main</span></div>
+          <div class="repo-row"><span class="mono">4f1c2a9</span><span>Add Redis cache layer</span></div>
+          <div class="repo-row"><span class="mono">b83e011</span><span>Move checkout into Billing</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section></article>
+<article id="el-nesting-zoom"><header class="el-meta joints rule-b px">
+  <p class="eyebrow">Element 07</p>
+  <h2>Open a component</h2>
+  <p class="body">The Planes and nesting tile becomes clickable: double-click 'Jobs' and the card zooms open into its parts with a breadcrumb, then back out.</p>
+  <dl><div><dt>Goes in</dt><dd>Replaces the visual in the 'Planes and nesting' tile</dd></div><div><dt>Reuses</dt><dd>MiniNode, nested badge, the editor's breadcrumb</dd></div><div><dt>Effort</dt><dd>M</dd></div></dl>
+</header>
+<section id="nesting-zoom" class="joints rule-b">
+  <div class="ruled-grid fg">
+    <div class="tile wide">
+      <div>
+        <h3 class="title" data-count>350+ component types</h3>
+        <p class="body">Agents, LLMs, RAG and MCP servers, AWS, GCP, Azure, Vercel, databases, queues and SaaS, each with its own glyph. Missing one? Add a custom type and it shows up in everyone's palette.</p>
+      </div>
+      <div class="visual" aria-hidden="true"><div class="pal" data-pal></div></div>
+    </div>
+    <div class="tile nest">
+      <div>
+        <h3 class="title">Planes and nesting</h3>
+        <p class="body">Lay components out on planes, like a frontend and a backend or a VPC. Any component can hold its own parts: double-click to open it, and breadcrumbs lead back out.</p>
+      </div>
+      <div class="visual">
+        <div class="box" data-box>
+          <div class="head">
+            <div class="head-plane" data-head-plane>
+              <span class="plane-glyph" data-cloud></span>
+              <span class="pn">Private network</span><span class="mono pt">aws.vpc</span>
+            </div>
+            <nav class="head-crumb" data-head-crumb aria-label="Breadcrumb" hidden>
+              <button type="button" class="back" data-back aria-label="Back to Private network"></button>
+              <button type="button" class="crumb" data-up>Private network</button>
+              <span class="sep" data-sep></span>
+              <span class="crumb here" aria-current="page">Jobs</span>
+              <span class="esc"><kbd>esc</kbd> up a level</span>
+            </nav>
+          </div>
+          <div class="stage" data-stage>
+            <div class="plane-view" data-plane-view>
+              <div class="cards">
+                <button type="button" class="mini" data-jobs aria-label="Jobs, kubernetes, 3 parts. Double-click or press Enter to open">
+                  <span data-tile="kubernetes"></span><span class="ml">Jobs</span>
+                  <span class="badge mono" data-badge>3</span>
+                </button>
+                <div class="mini" data-orders><span data-tile="aws.rds"></span><span class="ml">Orders DB</span></div>
+              </div>
+              <p class="hint"><span data-cursor></span><span class="hint-mouse">Double-click Jobs to open it</span><span class="hint-touch">Tap Jobs to open it</span></p>
+            </div>
+            <div class="canvas-view ground" data-canvas-view hidden>
+              <svg class="edges" data-edges aria-hidden="true"></svg>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section></article>
+<article id="el-readme-embed"><header class="el-meta joints rule-b px">
+  <p class="eyebrow">Element 08</p>
+  <h2>Live README embed</h2>
+  <p class="body">The Share tile shows a README as GitHub renders it, with the architecture image inside. Toggle a revision and the image redraws, so 'an SVG that stays current' is something you watch happen.</p>
+  <dl><div><dt>Goes in</dt><dd>Replaces the visual in the 'Share a live link' tile</dd></div><div><dt>Reuses</dt><dd>Share tile, lib/svg.ts output style</dd></div><div><dt>Effort</dt><dd>S</dd></div></dl>
+</header>
+<section id="readme-embed" class="joints rule-b">
+  <div class="ruled-grid fg">
+    <div class="tile">
+      <div>
+        <h3 class="title">History with real diffs</h3>
+        <p class="body">Every revision is kept, human or agent. Diffs list what was added, removed or changed. Moving boxes around never counts.</p>
+      </div>
+      <div class="visual" aria-hidden="true">
+        <div class="hist mono">
+          <div class="row"><span class="m-add">+</span><span class="id">cache</span><span class="note">added</span></div>
+          <div class="row"><span class="m-chg">~</span><span class="id">api</span><span class="note">desc, src</span></div>
+          <div class="row rm"><span class="m-rm">−</span><span class="id">legacy_cron</span><span class="note">removed</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="tile">
+      <div>
+        <h3 class="title">Share a live link</h3>
+        <p class="body">A read-only link for anyone, and an SVG that stays current, for READMEs and docs. Edit the diagram and every README that shows it redraws.</p>
+      </div>
+      <div class="visual">
+        <div class="share">
+          <div class="link">
+            <span class="mono">tryarcher.dev/share/k3v9x2</span>
+            <button type="button" class="copy-btn" data-copy-link></button>
+          </div>
+          <div class="md">
+            <span class="mono md-text">![Architecture](…/k3v9x2/<span class="tok-str">image.svg</span>)</span>
+            <button type="button" class="icon-btn" data-copy-md aria-label="Copy Markdown"></button>
+          </div>
+          <div class="readme">
+            <div class="readme-head" data-readme-head><span>README.md</span></div>
+            <div class="readme-body">
+              <h4 class="readme-h2">Architecture</h4>
+              <div class="img" role="img" data-img aria-label="Architecture diagram of Acme"></div>
+            </div>
+          </div>
+          <div class="ctl">
+            <div class="seg" role="group" aria-label="Document revision">
+              <button type="button" data-rev="0" aria-pressed="true">rev 12</button>
+              <button type="button" data-rev="1" aria-pressed="false">rev 13</button>
+            </div>
+            <span class="note" data-note aria-live="polite">Same URL · updated 3 days ago</span>
+          </div>
         </div>
       </div>
     </div>
@@ -934,7 +1613,7 @@ var DEMOS = [
       { id: "web", label: "Web app", tag: "vercel.nextjs", shape: "browser", x: 6, y: 40, w: 106, h: 70 },
       { id: "api", label: "API", tag: "vercel.functions", x: 156, y: 51, w: 140, h: 48 },
       { id: "jobs", label: "Jobs", tag: "worker", x: 156, y: 162, w: 140, h: 48 },
-      { id: "db", label: "Postgres", tag: "postgres", shape: "cylinder", x: 340, y: 40, w: 114, h: 70 },
+      { id: "db", label: "Postgres", tag: "postgres", shape: "cylinder", x: 340, y: 37, w: 114, h: 76 },
       { id: "email", label: "Email", tag: "resend", x: 340, y: 162, w: 114, h: 48 }
     ],
     edges: [["api", "db"], ["api", "jobs"], ["jobs", "email"], ["web", "api"]],
@@ -946,7 +1625,7 @@ var DEMOS = [
   {
     ask: "Add a RAG pipeline to the support bot",
     file: "support-bot.arch",
-    calls: [["get_project", "Support Bot, revision 6"], ["validate_source", "0 problems"], ["update_project", "saved, revision 7"]],
+    calls: [["get_project", "revision 6"], ["validate_source", "0 problems"], ["update_project", "saved, revision 7"]],
     reply: "Added a RAG plane: the agent asks a retriever over a vector store before it answers.",
     planes: [{ label: "RAG", x: 300, y: 6, w: 154, h: 224 }],
     nodes: [
@@ -954,7 +1633,7 @@ var DEMOS = [
       { id: "agent", label: "Agent", tag: "agent", x: 148, y: 51, w: 124, h: 48 },
       { id: "llm", label: "Claude", tag: "anthropic", x: 148, y: 162, w: 124, h: 48 },
       { id: "retriever", label: "Retriever", tag: "rag", x: 314, y: 51, w: 126, h: 48 },
-      { id: "vectors", label: "Vectors", tag: "vector_db", shape: "cylinder", x: 318, y: 150, w: 118, h: 70 }
+      { id: "vectors", label: "Vectors", tag: "vector_db", shape: "cylinder", x: 318, y: 147, w: 118, h: 76 }
     ],
     edges: [["agent", "llm"], ["agent", "retriever"], ["retriever", "vectors"], ["widget", "agent"]],
     code: [
@@ -965,13 +1644,13 @@ var DEMOS = [
   {
     ask: "Plan a SaaS with Stripe billing",
     file: "ledger.arch",
-    calls: [["get_guide", "language v0.2"], ["list_types", "stripe, vercel.functions"], ["create_project", "saved, revision 1"]],
+    calls: [["get_guide", "language v0.2"], ["list_types", "@stripe found"], ["create_project", "saved, revision 1"]],
     reply: "Ledger is on your canvas. Stripe events come back through a webhook that updates the plan.",
     planes: [{ label: "Billing", x: 150, y: 118, w: 304, h: 112 }],
     nodes: [
       { id: "web", label: "Web app", tag: "vercel.nextjs", shape: "browser", x: 6, y: 14, w: 106, h: 70 },
       { id: "api", label: "API", tag: "vercel.functions", x: 164, y: 25, w: 124, h: 48 },
-      { id: "db", label: "Postgres", tag: "supabase.postgres", shape: "cylinder", x: 324, y: 14, w: 124, h: 70 },
+      { id: "db", label: "Postgres", tag: "supabase.postgres", shape: "cylinder", x: 324, y: 11, w: 124, h: 76 },
       { id: "stripe", label: "Stripe", tag: "stripe", x: 164, y: 164, w: 124, h: 48 },
       { id: "hooks", label: "Webhooks", tag: "vercel.functions", x: 324, y: 164, w: 124, h: 48 }
     ],
@@ -1149,6 +1828,721 @@ copyBtn.addEventListener("click", function () {
 
 })();
 (function(){
+var root = document.getElementById("client-switcher");
+var A = window.Archer, URL_ = "https://tryarcher.dev/mcp";
+
+/* Each client's exact setup and how it signs in (docs/mcp.md, "Connect an agent"). */
+var CLIENTS = [
+  { name: "Claude Code", icon: "terminal-window", shell: "claude mcp add --transport http archer " + URL_,
+    note: "Then run <code>/mcp</code> in Claude Code, choose <code>archer</code> and pick Authenticate. Your browser opens to sign in." },
+  { name: "Codex", icon: "terminal-window", shell: "codex mcp add archer --url " + URL_,
+    note: "Codex opens your browser to sign in. To sign in again later, run <code>codex mcp login archer</code>." },
+  { name: "Cursor", icon: "code", file: "~/.cursor/mcp.json", json: '{ "mcpServers": { "archer": { "url": "' + URL_ + '" } } }',
+    note: "Or put it in <code>.cursor/mcp.json</code> for one project. Then connect <code>archer</code> in Cursor's MCP settings and sign in." },
+  { name: "Gemini CLI", icon: "terminal-window", shell: "gemini mcp add --transport http archer " + URL_,
+    note: "Then run <code>/mcp auth archer</code> in Gemini CLI to sign in." },
+  { name: "VS Code", icon: "code", file: ".vscode/mcp.json", json: '{ "servers": { "archer": { "type": "http", "url": "' + URL_ + '" } } }',
+    note: "VS Code opens your browser to sign in the first time the server starts." }
+];
+
+var list = root.querySelector(".cs-tabs"), panel = root.querySelector(".cs-setup");
+var where = root.querySelector(".cs-where"), code = root.querySelector(".cs-code"), note = root.querySelector(".cs-note");
+var copyBtn = root.querySelector(".cs-copy"), status = root.querySelector('[role="status"]');
+root.querySelector(".cs-sw").outerHTML = A.swapIcon();
+root.querySelector(".cs-i").outerHTML = A.icon("arrow-right");
+
+var tabs = CLIENTS.map(function (c, i) {
+  var b = document.createElement("button");
+  b.type = "button"; b.className = "cs-tab"; b.id = "cs-tab-" + i;
+  b.setAttribute("role", "tab"); b.setAttribute("aria-controls", "cs-panel");
+  b.innerHTML = A.icon(c.icon) + "<span>" + c.name + "</span>";
+  list.appendChild(b);
+  return b;
+});
+
+function jsonHTML(s) {
+  return A.esc(s).replace(/(&quot;[^&]*&quot;)(\s*:)?/g, function (m, str, colon) { return colon ? str + colon : '<span class="tok-str">' + str + "</span>"; });
+}
+
+var current = -1;
+function show(i, focus) {
+  if (i === current) return;
+  var first = current === -1;
+  current = i;
+  var c = CLIENTS[i];
+  tabs.forEach(function (t, k) { t.setAttribute("aria-selected", k === i ? "true" : "false"); t.tabIndex = k === i ? 0 : -1; });
+  panel.setAttribute("aria-labelledby", tabs[i].id);
+  if (c.shell) {
+    var sp = c.shell.indexOf(" ");
+    where.className = "cs-where"; where.textContent = "$"; where.setAttribute("aria-hidden", "true");
+    code.innerHTML = '<span class="cs-cmd">' + c.shell.slice(0, sp) + "</span>" + A.esc(c.shell.slice(sp)).replace(/(https:\/\/\S+)/, '<span class="tok-str">$1</span>');
+  } else {
+    where.className = "cs-where chip"; where.textContent = c.file; where.removeAttribute("aria-hidden");
+    code.innerHTML = jsonHTML(c.json);
+  }
+  code.scrollLeft = 0;
+  note.innerHTML = c.note;
+  copyBtn.setAttribute("aria-label", "Copy the " + c.name + " setup");
+  if (!first) { panel.classList.remove("is-new"); void panel.offsetWidth; panel.classList.add("is-new"); }
+  if (focus) tabs[i].focus();
+}
+show(0);
+
+tabs.forEach(function (t, i) { t.addEventListener("click", function () { show(i); }); });
+list.addEventListener("keydown", function (e) {
+  var n = CLIENTS.length, to = null;
+  if (e.key === "ArrowRight" || e.key === "ArrowDown") to = (current + 1) % n;
+  else if (e.key === "ArrowLeft" || e.key === "ArrowUp") to = (current + n - 1) % n;
+  else if (e.key === "Home") to = 0; else if (e.key === "End") to = n - 1;
+  if (to === null) return;
+  e.preventDefault(); show(to, true);
+});
+
+copyBtn.addEventListener("click", function () {
+  var c = CLIENTS[current];
+  A.copy(copyBtn, c.shell || c.json);
+  status.textContent = "Copied"; setTimeout(function () { status.textContent = ""; }, 1600);
+});
+
+})();
+(function(){
+var root = document.getElementById("linked-source");
+var A = window.Archer, C = A.catalog, CELL = 40;
+root.querySelectorAll("[data-icon]").forEach(function (el) { el.innerHTML = A.icon(el.getAttribute("data-icon")); });
+
+/* The sandbox's document (lib/landingSample.ts), in canonical form: what format() prints. */
+var BODY = [
+  'arch "Acme" v0.2', "",
+  'component web "Web app" @vercel.nextjs {', "  shape browser", "}", "",
+  'component auth "Auth" @clerk', "",
+  'plane backend "Backend" {', '  component api "API" @vercel.functions', '  component db "Postgres" @supabase.postgres {', "    shape cylinder", "  }", "}", "",
+  'component billing "Billing" @stripe', "",
+  'api -> billing @http : "checkout"', "api -> db @sql", "web -> api @http", 'web -> auth @http : "sign in"', "",
+  "layout {"
+];
+/* Which line draws what. */
+var BODY_T = [null, null, "n:web", "n:web", "n:web", null, "n:auth", null, "p:backend", "n:api", "n:db", "n:db", "n:db", "p:backend", null, "n:billing", null, "e:0", "e:1", "e:2", "e:3", null, null];
+
+var ITEMS = {
+  web: { label: "Web app", tag: "vercel.nextjs", shape: "browser" },
+  auth: { label: "Auth", tag: "clerk" },
+  api: { label: "API", tag: "vercel.functions", plane: "backend" },
+  db: { label: "Postgres", tag: "supabase.postgres", shape: "cylinder", plane: "backend" },
+  billing: { label: "Billing", tag: "stripe" },
+  backend: { label: "Backend", isPlane: true }
+};
+var EDGES = [["api", "billing", "checkout"], ["api", "db"], ["web", "api"], ["web", "auth", "sign in"]];
+
+/* Wide and narrow layouts, as the real sandbox picks by viewport. Stage = the drawable area in cells. */
+var narrow = window.matchMedia("(max-width: 639px)").matches;
+var INITIAL = narrow
+  ? { web: [1, 0, 4, 3], auth: [8, 0, 4, 3], backend: [0, 5, 6, 11], api: [1, 2, 4, 3], db: [1, 7, 4, 3], billing: [8, 7, 4, 3] }
+  : { web: [0, 3, 4, 3], auth: [0, 9, 4, 3], backend: [6, 1, 12, 6], api: [1, 2, 4, 3], db: [7, 2, 4, 3], billing: [7, 9, 4, 3] };
+var STAGE = narrow ? { x: -1, y: -1, w: 14, h: 18 } : { x: -1, y: 0, w: 20, h: 13 };
+var layout = {};
+function resetLayout() { Object.keys(INITIAL).forEach(function (k) { layout[k] = INITIAL[k].slice(); }); }
+resetLayout();
+var IDS = Object.keys(INITIAL).sort();
+
+function layoutLine(id) { var l = layout[id]; return "  " + id + ": { at: [" + l[0] + ", " + l[1] + "], size: [" + l[2] + ", " + l[3] + "] }"; }
+function lines() {
+  var out = BODY.map(function (t, i) { return { text: t, t: BODY_T[i] }; });
+  IDS.forEach(function (id) { out.push({ text: layoutLine(id), t: (ITEMS[id].isPlane ? "p:" : "n:") + id, layout: id }); });
+  out.push({ text: "}", t: null });
+  return out;
+}
+/* Box in stage pixels; components on a plane are placed relative to it. */
+function box(id) {
+  var l = layout[id], it = ITEMS[id], ox = 0, oy = 0;
+  if (it.plane) { ox = layout[it.plane][0]; oy = layout[it.plane][1]; }
+  return { x: (l[0] + ox - STAGE.x) * CELL, y: (l[1] + oy - STAGE.y) * CELL, w: l[2] * CELL, h: l[3] * CELL };
+}
+
+var clamp = function (v, lo, hi) { return Math.max(lo, Math.min(hi, v)); };
+var r2 = function (v) { return Math.round(v * 100) / 100; };
+var pt = function (x, y) { return r2(x) + "," + r2(y); };
+
+function shapeGeo(shape, w, h) {
+  var x = 1, y = 1; w -= 2; h -= 2;
+  if (shape === "cylinder") {
+    var ry = clamp(h * 0.11, 3, 13), rx = w / 2;
+    return {
+      part: "M" + pt(x, y + ry) + "A" + r2(rx) + "," + r2(ry) + " 0 0 1 " + pt(x + w, y + ry) + "V" + r2(y + h - ry) + "A" + r2(rx) + "," + r2(ry) + " 0 0 1 " + pt(x, y + h - ry) + "Z",
+      detail: "M" + pt(x, y + ry) + "A" + r2(rx) + "," + r2(ry) + " 0 0 0 " + pt(x + w, y + ry),
+      dots: "", content: { x: x + 8, y: y + 2 * ry + 3, w: w - 16, h: h - 3 * ry - 5 }
+    };
+  }
+  var bar = clamp(h * 0.16, 5, 18), b = clamp(bar * 0.13, 1, 2.4), dots = "";
+  for (var i = 0; i < 3; i++) { var cx = x + bar * 0.55 + i * b * 3.4, cy = y + bar / 2; dots += "M" + pt(cx - b, cy) + "a" + b + "," + b + " 0 1 0 " + 2 * b + ",0a" + b + "," + b + " 0 1 0 " + -2 * b + ",0"; }
+  return {
+    part: "M" + pt(x + 6, y) + "H" + r2(x + w - 6) + "A6,6 0 0 1 " + pt(x + w, y + 6) + "V" + r2(y + h - 6) + "A6,6 0 0 1 " + pt(x + w - 6, y + h) + "H" + r2(x + 6) + "A6,6 0 0 1 " + pt(x, y + h - 6) + "V" + r2(y + 6) + "A6,6 0 0 1 " + pt(x + 6, y) + "Z",
+    detail: "M" + pt(x, y + bar) + "H" + r2(x + w), dots: dots, content: { x: x + 8, y: y + bar + 3, w: w - 16, h: h - bar - 6 }
+  };
+}
+
+/* Side to side, straight when the boxes face each other, else with one bend; arrowhead at the target. */
+function route(a, b) {
+  var L = 11, W = 5.5, G = 5, dx = 0, dy = 0, d, tip, mid;
+  var gx = Math.max(b.x - (a.x + a.w), a.x - (b.x + b.w)), gy = Math.max(b.y - (a.y + a.h), a.y - (b.y + b.h));
+  var acx = a.x + a.w / 2, acy = a.y + a.h / 2, bcx = b.x + b.w / 2, bcy = b.y + b.h / 2;
+  if (gx >= gy) {
+    dx = bcx > acx ? 1 : -1;
+    var x1 = (dx > 0 ? a.x + a.w : a.x) + dx * G, x2 = (dx > 0 ? b.x : b.x + b.w) - dx * G, y1 = acy, y2 = bcy;
+    var top = Math.max(a.y, b.y), bot = Math.min(a.y + a.h, b.y + b.h);
+    if (bot - top > 30) y1 = y2 = Math.round((top + bot) / 2);
+    tip = [x2, y2]; var ex = x2 - dx * L, mx = Math.round((x1 + ex) / 2);
+    d = y1 === y2 ? "M" + pt(x1, y1) + "H" + r2(ex) : "M" + pt(x1, y1) + "H" + mx + "V" + r2(y2) + "H" + r2(ex);
+    mid = y1 === y2 ? [(x1 + x2) / 2, y1] : [mx, (y1 + y2) / 2];
+  } else {
+    dy = bcy > acy ? 1 : -1;
+    var yy1 = (dy > 0 ? a.y + a.h : a.y) + dy * G, yy2 = (dy > 0 ? b.y : b.y + b.h) - dy * G, xx1 = acx, xx2 = bcx;
+    var lf = Math.max(a.x, b.x), rt = Math.min(a.x + a.w, b.x + b.w);
+    if (rt - lf > 30) xx1 = xx2 = Math.round((lf + rt) / 2);
+    tip = [xx2, yy2]; var ey = yy2 - dy * L, my = Math.round((yy1 + ey) / 2);
+    d = xx1 === xx2 ? "M" + pt(xx1, yy1) + "V" + r2(ey) : "M" + pt(xx1, yy1) + "V" + my + "H" + r2(xx2) + "V" + r2(ey);
+    mid = xx1 === xx2 ? [xx1, (yy1 + yy2) / 2] : [(xx1 + xx2) / 2, my];
+  }
+  var bx = tip[0] - dx * L, by = tip[1] - dy * L;
+  return { d: d, arrow: pt(tip[0], tip[1]) + " " + pt(bx - dy * W, by + dx * W) + " " + pt(bx + dy * W, by - dx * W), mid: mid };
+}
+
+/* ---- Build the canvas ---- */
+var stage = root.querySelector(".ls-stage"), pre = root.querySelector(".ls-pre"), source = root.querySelector(".ls-source");
+var canvas = root.querySelector(".ls-canvas"), hint = root.querySelector(".ls-hint"), resetBtn = root.querySelector(".ls-reset");
+stage.style.width = STAGE.w * CELL + "px"; stage.style.height = STAGE.h * CELL + "px";
+var PLANE_ICON = '<svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><rect x="1.5" y="1.5" width="11" height="11" rx="2" fill="none" stroke="currentColor" stroke-width="1.3"/></svg>';
+var els = {};
+
+var plane = document.createElement("div");
+plane.className = "plane"; plane.dataset.t = "p:backend";
+plane.innerHTML = '<div class="plane-head" tabindex="0" role="button" aria-label="Backend plane. Arrow keys move it.">' + PLANE_ICON + "Backend</div>";
+stage.appendChild(plane); els.backend = plane;
+
+var svgNS = "http://www.w3.org/2000/svg";
+var svg = document.createElementNS(svgNS, "svg");
+svg.setAttribute("class", "ls-edges"); svg.setAttribute("width", STAGE.w * CELL); svg.setAttribute("height", STAGE.h * CELL); svg.setAttribute("aria-hidden", "true");
+stage.appendChild(svg);
+var edgeEls = EDGES.map(function (e, i) {
+  var g = document.createElementNS(svgNS, "g");
+  g.setAttribute("class", "ls-edge"); g.dataset.t = "e:" + i;
+  g.innerHTML = '<path class="hit"/><path class="line"/><polygon/>';
+  svg.appendChild(g);
+  var label = null;
+  if (e[2]) { label = document.createElement("span"); label.className = "edge-label"; label.textContent = e[2]; stage.appendChild(label); }
+  return { g: g, label: label };
+});
+
+["web", "auth", "api", "db", "billing"].forEach(function (id) {
+  var it = ITEMS[id], t = C.types[it.tag], el = document.createElement("div");
+  el.dataset.t = "n:" + id; el.tabIndex = 0; el.setAttribute("role", "button");
+  el.setAttribute("aria-label", it.label + ", " + it.tag + ". Arrow keys move it.");
+  if (it.shape) {
+    el.className = "ls-node ls-shape";
+    el.style.cssText = "--type-light:" + t.color + ";--type-dark:" + t.dark;
+  } else {
+    el.className = "ls-node node";
+    el.innerHTML = A.typeTile(it.tag, "md").replace(/<svg width="17" height="17"/, '<svg width="18" height="18"') +
+      '<div style="min-width:0"><div class="node-label">' + it.label + '</div><div class="node-type">' + it.tag + "</div></div>";
+  }
+  stage.appendChild(el); els[id] = el;
+});
+
+function drawShape(id) {
+  var it = ITEMS[id], b = box(id), g = shapeGeo(it.shape, b.w, b.h), c = g.content, el = els[id];
+  if (el.dataset.size === b.w + "x" + b.h) return;
+  el.dataset.size = b.w + "x" + b.h;
+  el.innerHTML = '<svg width="' + b.w + '" height="' + b.h + '" aria-hidden="true"><path class="part" d="' + g.part + '"/><path class="detail" d="' + g.detail + '"/>' + (g.dots ? '<path class="dot" d="' + g.dots + '"/>' : "") + "</svg>" +
+    '<div class="content" style="left:' + c.x + "px;top:" + c.y + "px;width:" + c.w + "px;height:" + c.h + 'px"><span class="glyph">' + A.glyph(C.types[it.tag].glyph, 18) + '</span><div class="node-label">' + it.label + '</div><div class="node-type">' + it.tag + "</div></div>";
+}
+
+function place() {
+  Object.keys(els).forEach(function (id) {
+    var b = box(id), s = els[id].style;
+    s.left = b.x + "px"; s.top = b.y + "px"; s.width = b.w + "px"; s.height = b.h + "px";
+    if (ITEMS[id].shape) drawShape(id);
+  });
+  EDGES.forEach(function (e, i) {
+    var r = route(box(e[0]), box(e[1])), el = edgeEls[i], paths = el.g.querySelectorAll("path");
+    paths[0].setAttribute("d", r.d); paths[1].setAttribute("d", r.d);
+    el.g.querySelector("polygon").setAttribute("points", r.arrow);
+    if (el.label) { el.label.style.left = r.mid[0] + "px"; el.label.style.top = r.mid[1] + "px"; }
+  });
+}
+
+/* ---- Build the source ---- */
+var lineEls = [];
+function renderSource() {
+  pre.innerHTML = "";
+  lineEls = lines().map(function (l, i) {
+    var s = document.createElement("span");
+    s.className = "ls-line"; s.dataset.i = i; s.innerHTML = A.highlight(l.text) || "";
+    if (l.t) { s.dataset.t = l.t; s.tabIndex = -1; }
+    if (l.layout) s.dataset.layout = l.layout;
+    pre.appendChild(s);
+    return s;
+  });
+}
+
+/* ---- Fit the stage to the canvas, as fitView does ---- */
+function fit() {
+  var k = Math.min(canvas.clientWidth / (STAGE.w * CELL), canvas.clientHeight / (STAGE.h * CELL));
+  stage.style.transform = "scale(" + k + ") translate(-50%, -50%)";
+}
+
+/* ---- Highlight: what the pointer or focus is on, else the selection ---- */
+var hover = null, focusT = null, selected = null;
+function related(t) {
+  var k = t.slice(0, 1), id = t.slice(2), set = {};
+  set[t] = true;
+  if (k === "e") { var e = EDGES[+id]; set["n:" + e[0]] = set["n:" + e[1]] = true; }
+  if (k === "n") EDGES.forEach(function (e, i) { if (e[0] === id || e[1] === id) set["e:" + i] = true; });
+  if (k === "p") Object.keys(ITEMS).forEach(function (n) { if (ITEMS[n].plane === id) set["n:" + n] = true; });
+  if (k === "n" && ITEMS[id].plane) set["p:" + ITEMS[id].plane] = true;
+  return set;
+}
+function paint() {
+  var t = hover || focusT, rel = t ? related(t) : null, sel = selected;
+  stage.querySelectorAll("[data-t]").forEach(function (el) {
+    var me = el.dataset.t;
+    el.classList.toggle("is-hl", me === t);
+    el.classList.toggle("is-sel", me === sel);
+    el.classList.toggle("is-dim", !!rel && !rel[me]);
+  });
+  edgeEls.forEach(function (e, i) { if (e.label) e.label.classList.toggle("is-hl", t === "e:" + i || sel === "e:" + i); });
+  lineEls.forEach(function (el) {
+    var me = el.dataset.t;
+    el.classList.toggle("is-hl", !!me && me === t);
+    el.classList.toggle("is-sel", !!me && me === sel && me !== t);
+  });
+  if (sel) setHint("keyboard", touch ? "Selected" : "Arrow keys move it");
+  else setHint("cursor", touch ? "Tap a line or a box" : "Hover a line or a box");
+}
+var touch = window.matchMedia("(hover: none)").matches, hintText = "";
+function setHint(icon, text) { if (text === hintText) return; hintText = text; hint.innerHTML = A.icon(icon) + text; }
+
+/* Pointer: one handler per side, through data-t. */
+function over(e) { var el = e.target.closest("[data-t]"); var t = el ? el.dataset.t : null; if (t !== hover) { hover = t; paint(); } }
+[canvas, pre].forEach(function (side) {
+  side.addEventListener("pointerover", over);
+  side.addEventListener("pointerleave", function () { if (hover) { hover = null; paint(); } });
+});
+
+/* Lines: focus highlights; arrow keys move between the lines that draw something. */
+pre.addEventListener("focusin", function (e) { var t = e.target.dataset && e.target.dataset.t; focusT = t || null; paint(); });
+pre.addEventListener("focusout", function () { focusT = null; paint(); });
+pre.addEventListener("keydown", function (e) {
+  if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
+  var mapped = lineEls.filter(function (l) { return l.dataset.t; });
+  var at = mapped.indexOf(document.activeElement);
+  var next = e.key === "ArrowDown" ? (at < 0 ? 0 : Math.min(mapped.length - 1, at + 1)) : (at < 0 ? mapped.length - 1 : Math.max(0, at - 1));
+  e.preventDefault();
+  mapped[next].focus({ preventScroll: true });
+  keepVisible(mapped[next], false);
+});
+
+/* Selecting and moving: click a box or a plane's title, then arrow keys. */
+function select(t) { selected = t; paint(); }
+canvas.addEventListener("click", function (e) {
+  var el = e.target.closest(".ls-node, .plane-head");
+  if (el) { var t = el.closest("[data-t]").dataset.t; select(t); el.focus({ preventScroll: true }); return; }
+  var edge = e.target.closest(".ls-edge");
+  select(edge ? edge.dataset.t : null);
+});
+canvas.addEventListener("focusin", function (e) {
+  var el = e.target.closest(".ls-node, .plane-head");
+  if (el) select(el.closest("[data-t]").dataset.t);
+});
+canvas.addEventListener("keydown", function (e) {
+  if (e.key === "Escape") { select(null); e.target.blur(); return; }
+  var step = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[e.key];
+  if (!step || !selected || selected[0] === "e") return;
+  e.preventDefault();
+  move(selected.slice(2), step[0], step[1]);
+});
+
+function move(id, dx, dy) {
+  var l = layout[id], it = ITEMS[id], x = l[0] + dx, y = l[1] + dy;
+  if (it.plane) { var p = layout[it.plane]; x = clamp(x, 0, p[2] - l[2]); y = clamp(y, 1, p[3] - l[3]); }
+  else { x = clamp(x, STAGE.x, STAGE.x + STAGE.w - l[2]); y = clamp(y, STAGE.y, STAGE.y + STAGE.h - l[3]); }
+  if (it.isPlane) {
+    // Keep the plane's parts inside it and the whole plane on the canvas.
+    x = clamp(x, STAGE.x, STAGE.x + STAGE.w - l[2]); y = clamp(y, STAGE.y, STAGE.y + STAGE.h - l[3]);
+  }
+  if (x === l[0] && y === l[1]) return;
+  l[0] = x; l[1] = y;
+  place();
+  var line = pre.querySelector('[data-layout="' + id + '"]');
+  line.innerHTML = A.highlight(layoutLine(id));
+  line.classList.remove("is-changed"); void line.offsetWidth; line.classList.add("is-changed");
+  keepVisible(line, true);
+  resetBtn.disabled = IDS.every(function (k) { return layout[k][0] === INITIAL[k][0] && layout[k][1] === INITIAL[k][1]; });
+}
+
+/* Scroll inside the pane only; scrollIntoView would move the page too. */
+function keepVisible(line, center) {
+  var top = line.offsetTop, h = source.clientHeight, st = source.scrollTop;
+  if (top >= st + 8 && top + 20 <= st + h - 8) return;
+  source.scrollTo({ top: Math.max(0, center ? top - h / 2 : top - 24), behavior: A.reduced ? "auto" : "smooth" });
+}
+
+resetBtn.addEventListener("click", function () {
+  resetLayout(); selected = null; place(); renderSource(); paint(); resetBtn.disabled = true; source.scrollTop = 0;
+});
+
+renderSource(); place(); fit(); paint();
+if (window.ResizeObserver) new ResizeObserver(fit).observe(canvas); else window.addEventListener("resize", fit);
+
+})();
+(function(){
+var root = document.getElementById("agent-replay");
+var log = root.querySelector(".ar-log"), canvas = root.querySelector(".ar-canvas"), stage = root.querySelector(".ar-stage");
+var toggle = root.querySelector(".ar-toggle"), replay = root.querySelector(".ar-replay");
+var A = Archer;
+
+root.querySelector(".ar-bar-icon").innerHTML = A.icon("terminal-window");
+root.querySelector(".ar-replay-icon").innerHTML = A.icon("arrow-counter-clockwise");
+root.querySelectorAll(".ar-prompt").forEach(function (m) { m.innerHTML = A.icon("caret-right"); });
+root.querySelectorAll("[data-arch]").forEach(function (c) { c.innerHTML = A.highlight(c.getAttribute("data-arch")); });
+root.querySelectorAll(".ar-del .ar-c").forEach(function (c) { c.innerHTML = A.highlight(c.textContent); });
+
+// ---- The Acme canvas (apps/web/lib/landingSample.ts), plus the agent's Cache. ----
+// Two layouts, like the landing sandbox: wide, and two columns for a phone.
+var LAYOUTS = {
+  wide: {
+    w: 600, h: 340,
+    plane: [196, 24, 388, 216],
+    nodes: { web: [16, 72, 132], auth: [16, 262, 132], api: [216, 72, 128], db: [436, 72, 128], cache: [356, 168, 132], billing: [216, 270, 128] },
+    edges: {
+      "web-api": [[148, 96], [216, 96]], "web-auth": [[82, 120], [82, 262]], "api-db": [[344, 96], [436, 96]],
+      "api-billing": [[264, 120], [264, 270]], "api-cache": [[312, 120], [312, 192], [356, 192]], "cache-db": [[488, 192], [530, 192], [530, 120]]
+    },
+    labels: { "web-auth": [82, 191], "api-billing": [264, 254] }
+  },
+  narrow: {
+    w: 360, h: 436,
+    plane: [8, 96, 344, 248],
+    nodes: { web: [19, 16, 150], auth: [194, 16, 150], api: [24, 146, 140], db: [196, 146, 140], cache: [196, 256, 140], billing: [24, 376, 140] },
+    edges: {
+      "web-api": [[94, 64], [94, 146]], "web-auth": [[169, 40], [194, 40]], "api-db": [[164, 170], [196, 170]],
+      "api-billing": [[60, 194], [60, 376]], "api-cache": [[130, 194], [130, 280], [196, 280]], "cache-db": [[266, 256], [266, 194]]
+    },
+    labels: { "api-billing": [60, 360] }
+  }
+};
+var NODES = { web: ["vercel.nextjs", "Web app"], auth: ["clerk", "Auth"], api: ["vercel.functions", "API"], db: ["supabase.postgres", "Postgres"], cache: ["redis", "Cache"], billing: ["stripe", "Billing"] };
+var LABELS = { "web-auth": "sign in", "api-billing": "checkout" };
+var NEW_EDGES = { "api-cache": 1, "cache-db": 1 };
+var current = null;
+
+function d(pts) {
+  var s = "M" + pts[0].join(" ");
+  for (var i = 1; i < pts.length; i++) {
+    var p = pts[i], q = pts[i - 1], n = pts[i + 1];
+    if (!n) { s += " L" + p.join(" "); break; }
+    var r = 6, ix = Math.sign(p[0] - q[0]), iy = Math.sign(p[1] - q[1]), ox = Math.sign(n[0] - p[0]), oy = Math.sign(n[1] - p[1]);
+    s += " L" + (p[0] - ix * r) + " " + (p[1] - iy * r) + " Q" + p.join(" ") + " " + (p[0] + ox * r) + " " + (p[1] + oy * r);
+  }
+  return s;
+}
+function build(name) {
+  var L = LAYOUTS[name], h = "";
+  current = name;
+  var pl = L.plane;
+  h += '<div class="plane plane-backend ar-shake" style="left:' + pl[0] + "px;top:" + pl[1] + "px;width:" + pl[2] + "px;height:" + pl[3] + 'px"><div class="plane-head"><span class="ar-plane-icon"></span>Backend</div></div>';
+  var svg = '<svg class="ar-edges" width="' + L.w + '" height="' + L.h + '" viewBox="0 0 ' + L.w + " " + L.h + '" aria-hidden="true"><defs><marker id="ar-head" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path class="edge-head" d="M0 0 L10 5 L0 10 Z"/></marker>' +
+    '<marker id="ar-head-new" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path class="edge-head ar-new-head" d="M0 0 L10 5 L0 10 Z"/></marker></defs>';
+  Object.keys(L.edges).forEach(function (k) {
+    var isNew = NEW_EDGES[k];
+    svg += '<path class="edge-path' + (isNew ? " ar-new-edge" : "") + '"' + (isNew ? ' pathLength="1"' : "") + ' d="' + d(L.edges[k]) + '" marker-end="url(#' + (isNew ? "ar-head-new" : "ar-head") + ')"/>';
+  });
+  svg += "</svg>";
+  h += svg;
+  Object.keys(L.nodes).forEach(function (id) {
+    var n = L.nodes[id], t = NODES[id], isNew = id === "cache";
+    var card = A.node({ tag: t[0], label: t[1], cls: isNew ? "ar-new" : "", style: "left:" + n[0] + "px;top:" + n[1] + "px;width:" + n[2] + "px" });
+    if (isNew) card = card.replace(/<\/div>$/, '<span class="chip ar-badge" title="Changed by an agent since you last reviewed">' + A.icon("robot") + "Agent</span></div>");
+    h += card;
+  });
+  Object.keys(L.labels || {}).forEach(function (k) {
+    var p = L.labels[k];
+    h += '<span class="edge-label" style="left:' + p[0] + "px;top:" + p[1] + 'px">' + LABELS[k] + "</span>";
+  });
+  stage.innerHTML = h;
+  stage.style.width = L.w + "px";
+  stage.style.height = L.h + "px";
+}
+function fit() {
+  var w = canvas.clientWidth, name = w < 470 ? "narrow" : "wide";
+  if (name !== current) build(name);
+  var L = LAYOUTS[name], pad = name === "wide" ? 24 : 12, top = 44;
+  var s = Math.min(1, (w - pad * 2) / L.w);
+  var minH = log.offsetHeight && window.matchMedia("(min-width: 1024px)").matches ? 0 : 0;
+  var hh = Math.max(L.h * s + top + 16, minH);
+  canvas.style.height = window.matchMedia("(min-width: 1024px)").matches ? "" : hh + "px";
+  var ch = canvas.clientHeight;
+  var x = (w - L.w * s) / 2, y = Math.max(top, (ch - L.h * s) / 2 + 10);
+  stage.style.transform = "translate(" + x + "px," + y + "px) scale(" + s + ")";
+}
+fit();
+if ("ResizeObserver" in window) new ResizeObserver(fit).observe(canvas);
+else window.addEventListener("resize", fit);
+
+// ---- The replay. The page's markup is the finished session; the clock rewinds it. ----
+if (A.reduced) return;
+
+var steps = Array.prototype.slice.call(log.querySelectorAll("[data-at]"));
+var calls = Array.prototype.slice.call(log.querySelectorAll(".ar-call"));
+var chips = Array.prototype.slice.call(log.querySelectorAll(".ar-chip"));
+chips.forEach(function (c) { c._final = c.innerHTML; c._done = +c.dataset.done; });
+var typed = log.querySelector(".ar-typed"), typedText = typed.textContent, typedLine = typed.closest("[data-at]");
+var rev = root.querySelector(".ar-rev-n"), revChip = root.querySelector(".ar-rev");
+var T_REJECT = 5300, T_SAVE = 8700, T_END = 13600;
+var t = T_END, playing = false, userPaused = false, inView = false, last = 0, shown = -1;
+
+function apply(time) {
+  steps.forEach(function (s) { s.classList.toggle("is-hidden", time < +s.dataset.at); });
+  var a = +typedLine.dataset.at, b = +typedLine.dataset.type;
+  var n = time >= b ? typedText.length : Math.max(0, Math.floor(((time - a) / (b - a)) * typedText.length));
+  if (n !== shown) { typed.textContent = typedText.slice(0, n); shown = n; }
+  calls.forEach(function (c) {
+    var done = time >= +c.dataset.done;
+    c.classList.toggle("is-running", !done);
+    c.classList.toggle("is-ok", done && c.dataset.result === "ok");
+    c.classList.toggle("is-err", done && c.dataset.result === "err");
+  });
+  chips.forEach(function (c) {
+    var done = time >= c._done, want = done ? "done" : "run";
+    if (c._state === want) return;
+    c._state = want;
+    c.classList.toggle("is-running", !done);
+    c.innerHTML = done ? c._final : "running…";
+  });
+  var saved = time >= T_SAVE;
+  canvas.classList.toggle("is-before", !saved);
+  rev.textContent = saved ? "revision 14" : "revision 13";
+  revChip.classList.toggle("is-new", saved && time < T_SAVE + 2600);
+  var rejecting = time >= T_REJECT && time < T_REJECT + 1700;
+  canvas.classList.toggle("is-rejected", rejecting);
+  canvas.classList.toggle("is-shaking", time >= T_REJECT && time < T_REJECT + 450);
+}
+function frame(now) {
+  if (!playing) return;
+  var dt = Math.min(64, now - last);
+  last = now;
+  t += dt;
+  if (t >= T_END) { t = 0; }
+  apply(t);
+  requestAnimationFrame(frame);
+}
+function setPlaying(on) {
+  if (on === playing) return;
+  playing = on;
+  if (on) { last = performance.now(); requestAnimationFrame(frame); }
+}
+function sync() { setPlaying(inView && !userPaused); }
+function paintToggle() {
+  toggle.querySelector(".ar-toggle-icon").innerHTML = A.icon(userPaused ? "play" : "pause");
+  toggle.querySelector(".ar-toggle-label").textContent = userPaused ? "Play" : "Pause";
+  toggle.setAttribute("aria-pressed", String(userPaused));
+}
+toggle.addEventListener("click", function () { userPaused = !userPaused; paintToggle(); sync(); });
+replay.addEventListener("click", function () { t = 0; apply(0); userPaused = false; paintToggle(); sync(); });
+paintToggle();
+
+// Start from the top the first time the panel is in view; pause while it's off screen.
+var started = false;
+if ("IntersectionObserver" in window) {
+  new IntersectionObserver(function (entries) {
+    inView = entries[0].isIntersecting;
+    if (inView && !started) { started = true; t = 0; apply(0); }
+    sync();
+  }, { threshold: 0.35 }).observe(root.querySelector(".ar-panel"));
+}
+
+})();
+(function(){
+var root = document.getElementById("example-strip");
+var C = Archer.catalog, NS = "http://www.w3.org/2000/svg";
+// Phosphor icons a component in these examples picks (`icon devices`, `icon music_notes`)
+// that aren't catalog glyphs; copied from @archer/catalog/icons.
+var EXTRA = {
+  devices: '<path fill="currentColor" d="M224,72H208V64a24,24,0,0,0-24-24H40A24,24,0,0,0,16,64v96a24,24,0,0,0,24,24H152v8a24,24,0,0,0,24,24h48a24,24,0,0,0,24-24V96A24,24,0,0,0,224,72ZM40,168a8,8,0,0,1-8-8V64a8,8,0,0,1,8-8H184a8,8,0,0,1,8,8v8H176a24,24,0,0,0-24,24v72Zm192,24a8,8,0,0,1-8,8H176a8,8,0,0,1-8-8V96a8,8,0,0,1,8-8h48a8,8,0,0,1,8,8Zm-96,16a8,8,0,0,1-8,8H88a8,8,0,0,1,0-16h40A8,8,0,0,1,136,208Zm80-96a8,8,0,0,1-8,8H192a8,8,0,0,1,0-16h16A8,8,0,0,1,216,112Z"/>',
+  music_notes: '<path fill="currentColor" d="M212.92,17.69a8,8,0,0,0-6.86-1.45l-128,32A8,8,0,0,0,72,56V166.08A36,36,0,1,0,88,196V110.25l112-28v51.83A36,36,0,1,0,216,164V24A8,8,0,0,0,212.92,17.69ZM52,216a20,20,0,1,1,20-20A20,20,0,0,1,52,216ZM88,93.75V62.25l112-28v31.5ZM180,184a20,20,0,1,1,20-20A20,20,0,0,1,180,184Z"/>'
+};
+
+// Each example's top level, from its source in packages/mcp/src/examples.ts.
+// Nodes: [id, label, type tag or null, cx, cy, opts]. opts.n = components nested inside,
+// opts.icon = the component's `icon`. Edges: [from, to, opts]; opts.both for `<->`, opts.via "h"|"v".
+var W = 340, H = 206;
+var EX = {
+  "components-and-connections": {
+    nodes: [["browser", "Browser", "browser", 48, 60], ["app", "Web App", "vercel.nextjs", 150, 60], ["api", "API", "vercel.functions", 252, 60],
+            ["cache", "Hot Links", "redis", 214, 148], ["db", "Links", "postgres", 306, 148]],
+    edges: [["browser", "app"], ["app", "api"], ["api", "cache"], ["api", "db"]]
+  },
+  "descriptions-and-payloads": {
+    nodes: [["dashboard", "Dashboard", "vercel.nextjs", 70, 64], ["api", "Billing API", "service", 196, 64],
+            ["db", "Billing DB", "postgres", 168, 150], ["stripe", "Stripe", "stripe", 286, 150]],
+    edges: [["dashboard", "api"], ["api", "db"], ["api", "stripe"]]
+  },
+  "shapes": {
+    nodes: [["customer", "Customer", "user", 50, 34], ["widget", "Chat Widget", "chat_ui", 160, 34], ["agent", "Support Agent", "agent", 160, 100],
+            ["claude", "Claude", "anthropic", 284, 48], ["articles", "Help Articles", "knowledge_base", 284, 100], ["orders", "Orders", "postgres", 284, 146],
+            ["handoffs", "Handoffs", "queue", 284, 188], ["team", "Support Team", "user", 160, 188]],
+    edges: [["customer", "widget"], ["widget", "agent"], ["agent", "claude"], ["agent", "articles"], ["agent", "orders", { via: "h" }],
+            ["agent", "handoffs", { via: "h" }], ["handoffs", "team"]]
+  },
+  "planes": {
+    planes: [["Frontend", 74, 36, 104, 140], ["AWS", 190, 6, 146, 198], ["VPC", 200, 94, 128, 104]],
+    nodes: [["user", "User", "user", 34, 106], ["web", "Web App", "vercel.nextjs", 126, 80], ["mobile", "Mobile App", "mobile", 126, 136],
+            ["api", "API", "aws.api_gateway", 226, 54], ["photos", "Photos", "aws.s3", 294, 54],
+            ["uploads", "Uploads", "aws.lambda", 246, 136], ["db", "Metadata", "aws.rds", 284, 178]],
+    edges: [["user", "web", { via: "h" }], ["user", "mobile", { via: "h" }], ["web", "api", { via: "h" }], ["mobile", "api", { via: "h" }],
+            ["api", "uploads"], ["uploads", "photos"], ["uploads", "db"]]
+  },
+  "nesting": {
+    nodes: [["app", "Customer App", "mobile", 64, 58], ["orders", "Orders", "service", 184, 58, { n: 4 }], ["stripe", "Stripe", "stripe", 292, 58],
+            ["courier", "Courier App", "mobile", 64, 150], ["dispatch", "Dispatch", "service", 184, 150]],
+    edges: [["app", "orders"], ["orders", "stripe"], ["orders", "dispatch"], ["courier", "dispatch"], ["courier", "orders", { via: "v" }]]
+  },
+  "music-streaming": {
+    planes: [["Platform", 126, 56, 210, 146]],
+    nodes: [["auth", "Accounts", "auth0", 56, 30], ["apps", "Listener Apps", null, 62, 100, { n: 2, icon: "devices" }],
+            ["labels", "Record Labels", "external", 62, 150], ["stripe", "Stripe", "stripe", 278, 26],
+            ["edge", "Edge", "aws", 176, 100, { n: 3, icon: "globe" }], ["services", "Services", "aws.eks", 278, 100, { n: 6 }],
+            ["content", "Ingestion", null, 178, 150, { n: 4, icon: "music_notes" }], ["storage", "Storage", null, 282, 150, { n: 7, icon: "database" }],
+            ["analytics", "Analytics", null, 282, 186, { n: 3, icon: "chart" }]],
+    edges: [["apps", "auth"], ["apps", "edge"], ["edge", "services"], ["edge", "content"],
+            ["services", "storage"], ["storage", "analytics"], ["labels", "content"], ["services", "stripe", { both: true }]]
+  }
+};
+
+var NH = 24, measure = document.createElement("canvas").getContext("2d");
+function textWidth(s) {
+  measure.font = "600 11px Inter, ui-sans-serif, system-ui, sans-serif";
+  return Math.ceil(measure.measureText(s).width);
+}
+function el(name, attrs, parent) {
+  var e = document.createElementNS(NS, name);
+  for (var k in attrs) e.setAttribute(k, attrs[k]);
+  if (parent) parent.appendChild(e);
+  return e;
+}
+function glyphFor(tag, icon) {
+  if (icon) return EXTRA[icon] || C.glyphs[icon] || null;
+  var t = tag && C.types[tag];
+  return t ? C.glyphs[t.glyph] || C.glyphs.box : null;
+}
+
+// Orthogonal route between two boxes, like the canvas: straight when they face each
+// other, otherwise one step through the middle of the gap.
+function route(a, b, via) {
+  var hgap = b.l >= a.r ? b.l - a.r : a.l >= b.r ? a.l - b.r : -1;
+  var vgap = b.t >= a.b ? b.t - a.b : a.t >= b.b ? a.t - b.b : -1;
+  var horiz = via ? via === "h" : hgap >= 0 && (vgap < 0 || hgap >= vgap);
+  function lane(a0, a1, b0, b1, aim, m) {
+    var lo = Math.max(a0 + m, b0 + m), hi = Math.min(a1 - m, b1 - m);
+    if (lo <= hi) { var s = Math.min(Math.max(aim, lo), hi); return [s, s]; }
+    // No shared lane: leave from the middle, so edges fanning out of one box share a trunk.
+    var s1 = Math.min(Math.max((a0 + a1) / 2, a0 + m), a1 - m);
+    return [s1, Math.min(Math.max(s1, b0 + m), b1 - m)];
+  }
+  if (horiz) {
+    var right = b.cx > a.cx, x0 = right ? a.r : a.l, x1 = right ? b.l : b.r;
+    var ys = lane(a.t, a.b, b.t, b.b, b.cy, 6);
+    if (ys[0] === ys[1]) return [[x0, ys[0]], [x1, ys[1]]];
+    var mx = (x0 + x1) / 2;
+    return [[x0, ys[0]], [mx, ys[0]], [mx, ys[1]], [x1, ys[1]]];
+  }
+  var down = b.cy > a.cy, y0 = down ? a.b : a.t, y1 = down ? b.t : b.b;
+  var xs = lane(a.l, a.r, b.l, b.r, (a.cx + b.cx) / 2, 10);
+  if (xs[0] === xs[1]) return [[xs[0], y0], [xs[1], y1]];
+  var my = (y0 + y1) / 2;
+  return [[xs[0], y0], [xs[0], my], [xs[1], my], [xs[1], y1]];
+}
+function pathD(pts) {
+  var d = "M" + pts[0][0] + " " + pts[0][1], r = 4;
+  for (var i = 1; i < pts.length; i++) {
+    var p = pts[i], n = pts[i + 1];
+    if (!n) { d += " L" + p[0] + " " + p[1]; break; }
+    var q = pts[i - 1];
+    var inx = Math.sign(p[0] - q[0]), iny = Math.sign(p[1] - q[1]), outx = Math.sign(n[0] - p[0]), outy = Math.sign(n[1] - p[1]);
+    var rr = Math.min(r, Math.abs(p[0] - q[0] + p[1] - q[1]) / 2, Math.abs(n[0] - p[0] + n[1] - p[1]) / 2);
+    d += " L" + (p[0] - inx * rr) + " " + (p[1] - iny * rr) + " Q" + p[0] + " " + p[1] + " " + (p[0] + outx * rr) + " " + (p[1] + outy * rr);
+  }
+  return d;
+}
+function arrow(g, tip, from) {
+  var dx = Math.sign(tip[0] - from[0]), dy = Math.sign(tip[1] - from[1]), s = 5;
+  var bx = tip[0] - dx * s * 1.3, by = tip[1] - dy * s * 1.3;
+  el("path", { class: "es-arrow", d: "M" + tip[0] + " " + tip[1] + " L" + (bx - dy * s * 0.75) + " " + (by + dx * s * 0.75) + " L" + (bx + dy * s * 0.75) + " " + (by - dx * s * 0.75) + "Z" }, g);
+}
+
+function draw(fig, ex) {
+  var svg = el("svg", { viewBox: "0 0 " + W + " " + H, role: "presentation" }, fig);
+  (ex.planes || []).forEach(function (p) {
+    var g = el("g", {}, svg);
+    el("rect", { class: "es-plane", x: p[1] + 0.5, y: p[2] + 0.5, width: p[3], height: p[4], rx: 6 }, g);
+    el("line", { class: "es-plane-rule", x1: p[1] + 1, x2: p[1] + p[3], y1: p[2] + 18.5, y2: p[2] + 18.5 }, g);
+    el("text", { class: "es-plane-label", x: p[1] + 8, y: p[2] + 13.5 }, g).textContent = p[0];
+  });
+  var boxes = {}, edgeLayer = el("g", {}, svg), nodeLayer = el("g", {}, svg);
+  ex.nodes.forEach(function (n) {
+    var o = n[5] || {}, g = glyphFor(n[2], o.icon);
+    var w = (g ? 27 : 9) + textWidth(n[1]) + 9 + (o.n ? 20 : 0);
+    var b = { cx: n[3], cy: n[4], l: n[3] - w / 2, r: n[3] + w / 2, t: n[4] - NH / 2, b: n[4] + NH / 2 };
+    boxes[n[0]] = b;
+    var x = Math.round(b.l) + 0.5, y = Math.round(b.t) + 0.5, grp = el("g", {}, nodeLayer);
+    if (o.n) el("rect", { class: "es-under", x: x + 3, y: y + 3, width: Math.round(w), height: NH, rx: 5 }, grp);
+    el("rect", { class: "es-box", x: x, y: y, width: Math.round(w), height: NH, rx: 5 }, grp);
+    var tx = x + 9;
+    if (g) {
+      var t = n[2] && C.types[n[2]];
+      var tile = el("g", { class: "es-tile", style: t ? "--type-light:" + t.color + ";--type-dark:" + t.dark : "--type-light:var(--edge);--type-dark:var(--edge)" }, grp);
+      el("rect", { x: x + 4.5, y: y + 4.5, width: 15, height: 15, rx: 3 }, tile);
+      var gs = el("svg", { x: x + 7, y: y + 7, width: 10, height: 10, viewBox: C.viewBox }, tile);
+      gs.innerHTML = g;
+      tx = x + 25;
+    }
+    el("text", { class: "es-label", x: tx, y: y + 16 }, grp).textContent = n[1];
+    if (o.n) {
+      el("rect", { class: "es-count-bg", x: x + w - 21, y: y + 5, width: 15, height: 14, rx: 3 }, grp);
+      el("text", { class: "es-count", x: x + w - 13.5, y: y + 15.5, "text-anchor": "middle" }, grp).textContent = o.n;
+    }
+  });
+  ex.edges.forEach(function (e) {
+    var o = e[2] || {}, pts = route(boxes[e[0]], boxes[e[1]], o.via);
+    pts = pts.map(function (p) { return [Math.round(p[0]) + 0.5, Math.round(p[1]) + 0.5]; });
+    var g = el("g", {}, edgeLayer);
+    el("path", { class: "es-edge", d: pathD(pts) }, g);
+    arrow(g, pts[pts.length - 1], pts[pts.length - 2]);
+    if (o.both) arrow(g, pts[0], pts[1]);
+  });
+  // Center the drawing in its frame, as the canvas fits the view.
+  try {
+    var bb = svg.getBBox();
+    if (bb.width) svg.setAttribute("viewBox", [Math.round(bb.x + bb.width / 2 - W / 2), Math.round(bb.y + bb.height / 2 - H / 2), W, H].join(" "));
+  } catch (err) {}
+}
+
+function render() {
+  root.querySelectorAll(".es-card").forEach(function (card) {
+    var ex = EX[card.dataset.slug], fig = card.querySelector(".es-fig");
+    fig.textContent = "";
+    if (ex) draw(fig, ex);
+  });
+}
+render();
+// Box widths follow the labels, so measure again once Inter has loaded.
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(render);
+root.querySelectorAll(".es-card").forEach(function (card) {
+  var link = card.querySelector(".es-link");
+  link.insertAdjacentHTML("beforeend", Archer.icon("arrow-right"));
+  link.setAttribute("aria-label", "Open " + card.querySelector(".title").textContent + " in the sandbox");
+});
+
+})();
+(function(){
 var root = document.getElementById("revision-scrubber");
 var A = window.Archer;
 root.querySelector("[data-repo-icon]").insertAdjacentHTML("afterbegin", A.icon("git-branch"));
@@ -1159,7 +2553,7 @@ var NODES = {
   api: { tag: "vercel.functions", label: "API" },
   db: { tag: "supabase.postgres", label: "Postgres" },
   auth: { tag: "clerk", label: "Auth" },
-  legacy_cron: { tag: "cron", label: "Nightly sync" },
+  legacy_cron: { tag: "cron", label: "Cron" },
   billing: { tag: "stripe", label: "Billing" },
   cache: { tag: "redis", label: "Cache" }
 };
@@ -1183,11 +2577,11 @@ var REVS = [
     nodes: ["web", "api", "db", "auth", "legacy_cron", "billing"], edges: ["web-api", "api-db", "web-auth-b", "cron-api-b", "api-billing"],
     marks: { billing: "add" },
     rows: [["+", "billing", "added"], ["+", "api -> billing", "\"checkout\""], ["·", "moved 2 boxes", "not a change"]] },
-  { who: "you", msg: "Rename the database", when: "yesterday", pos: POS_B, labels: { db: "Users DB" },
+  { who: "you", msg: "Rename the database", when: "yesterday", pos: POS_B, labels: { db: "Main DB" },
     nodes: ["web", "api", "db", "auth", "legacy_cron", "billing"], edges: ["web-api", "api-db", "web-auth-b", "cron-api-b", "api-billing"],
     marks: { db: "chg", web: "chg" },
     rows: [["~", "db", "name"], ["~", "web", "desc"]] },
-  { who: "agent", msg: "Add a Redis cache", when: "just now", pos: POS_B, labels: { db: "Users DB" },
+  { who: "agent", msg: "Add a Redis cache", when: "just now", pos: POS_B, labels: { db: "Main DB" },
     nodes: ["web", "api", "db", "auth", "billing", "cache"], edges: ["web-api", "api-db", "web-auth-b", "api-billing", "api-cache"],
     marks: { cache: "add", api: "chg" },
     rows: [["+", "cache", "added"], ["~", "api", "desc, src"], ["−", "legacy_cron", "removed"]] }
@@ -1207,7 +2601,7 @@ var EDGES = {
 var cv = root.querySelector("[data-cv]"), svg = root.querySelector("[data-edges]");
 var range = root.querySelector("[data-range]"), ticks = root.querySelector("[data-ticks]");
 var rowsEl = root.querySelector("[data-rows]"), msgEl = root.querySelector("[data-msg]"), whenEl = root.querySelector("[data-when]");
-var PAD = 12, GX = 14, GY = 34, NH = 36;
+var PAD = 8, GX = 10, GY = 34, NH = 36;
 var nodeEls = {}, edgeEls = {}, cur = 0;
 
 Object.keys(NODES).forEach(function (id) {
@@ -1324,6 +2718,224 @@ if (A.reduced || !("IntersectionObserver" in window)) {
 requestAnimationFrame(function () { requestAnimationFrame(function () { cv.classList.add("ready"); }); });
 if ("ResizeObserver" in window) new ResizeObserver(layout).observe(cv);
 else window.addEventListener("resize", layout);
+
+})();
+(function(){
+var root = document.getElementById("nesting-zoom");
+var A = window.Archer;
+var reduced = A.reduced;
+
+// Palette neighbour (Features PALETTE), with the count rounded down as the page does.
+var PALETTE = ["aws.lambda", "aws.sqs", "aws.s3", "kubernetes", "postgres", "redis", "kafka", "vercel.nextjs", "convex", "stripe", "clerk", "openai", "anthropic", "agent", "mcp"];
+root.querySelector("[data-count]").textContent = Math.floor(A.catalog.count / 10) * 10 + "+ component types";
+root.querySelector("[data-pal]").innerHTML = PALETTE.map(function (t) {
+  return "<div>" + A.typeTile(t, "md") + A.esc((A.type(t) || {}).name || t) + "</div>";
+}).join("") + '<div class="own">' + A.icon("plus") + "Your own</div>";
+
+root.querySelector("[data-cloud]").innerHTML = A.glyph("cloud", 16);
+root.querySelector("[data-back]").innerHTML = A.icon("caret-left");
+root.querySelector("[data-sep]").innerHTML = A.icon("caret-right");
+root.querySelector("[data-cursor]").innerHTML = A.icon("cursor");
+root.querySelector("[data-badge]").insertAdjacentHTML("afterbegin", A.icon("stack"));
+[].forEach.call(root.querySelectorAll("[data-tile]"), function (el) { el.outerHTML = A.typeTile(el.getAttribute("data-tile"), "sm"); });
+
+var box = root.querySelector("[data-box]"), stage = root.querySelector("[data-stage]");
+var planeView = root.querySelector("[data-plane-view]"), canvasView = root.querySelector("[data-canvas-view]");
+var headPlane = root.querySelector("[data-head-plane]"), headCrumb = root.querySelector("[data-head-crumb]");
+var jobs = root.querySelector("[data-jobs]"), orders = root.querySelector("[data-orders]"), back = root.querySelector("[data-back]"), up = root.querySelector("[data-up]");
+var svg = root.querySelector("[data-edges]");
+
+// Inside Jobs: its three parts, and Orders DB outside it as a context node.
+//   component jobs "Jobs" @kubernetes { scheduler @cron, queue @queue, worker @worker }
+//   jobs.scheduler -> jobs.queue, jobs.queue -> jobs.worker, jobs.worker -> orders_db
+var PARTS = [
+  { id: "scheduler", tag: "cron", label: "Scheduler", at: [0, 0] },
+  { id: "queue", tag: "queue", label: "Queue", at: [1, 0] },
+  { id: "worker", tag: "worker", label: "Worker", at: [1, 1] }
+];
+var partEls = PARTS.map(function (p) {
+  var w = document.createElement("div");
+  w.innerHTML = A.node({ tag: p.tag, label: p.label, cls: "part" });
+  canvasView.appendChild(w.firstChild);
+  return canvasView.lastChild;
+});
+var ctx = document.createElement("button");
+ctx.type = "button";
+ctx.className = "ctx";
+ctx.setAttribute("aria-label", "Orders DB, outside Jobs. Go there");
+ctx.innerHTML = A.typeTile("aws.rds", "xs") + '<span style="min-width:0"><span class="ctx-label" style="display:block">Orders DB</span><span class="node-type">orders_db</span></span>';
+canvasView.appendChild(ctx);
+svg.innerHTML = '<g><path class="edge-path"/><path class="edge-head"/></g>'.repeat(3);
+
+function layoutCanvas() {
+  var W = stage.clientWidth, H = stage.clientHeight, P = 12, GX = 28, NH = 48;
+  var colW = (W - P * 2 - GX) / 2, gy = H - P * 2 - NH * 2;
+  var at = function (c, r) { return { x: P + c * (colW + GX), y: P + r * (NH + gy) }; };
+  PARTS.forEach(function (p, i) {
+    var q = at(p.at[0], p.at[1]);
+    partEls[i].style.cssText = "left:" + q.x + "px;top:" + q.y + "px;width:" + colW + "px";
+  });
+  var c = at(0, 1);
+  ctx.style.cssText = "left:" + c.x + "px;top:" + c.y + "px;width:" + colW + "px";
+  var s = at(0, 0), qd = at(1, 0), wk = at(1, 1), cy0 = s.y + NH / 2, cy1 = wk.y + NH / 2, qx = qd.x + colW / 2;
+  var paths = [
+    ["M" + (s.x + colW) + " " + cy0 + "H" + (qd.x - 8), "M" + qd.x + " " + cy0 + "l-8 -4v8z"],
+    ["M" + qx + " " + (qd.y + NH) + "V" + (wk.y - 8), "M" + qx + " " + wk.y + "l-4 -8h8z"],
+    ["M" + wk.x + " " + cy1 + "H" + (c.x + colW + 8), "M" + (c.x + colW) + " " + cy1 + "l8 -4v8z"]
+  ];
+  [].forEach.call(svg.children, function (g, i) { g.firstChild.setAttribute("d", paths[i][0]); g.lastChild.setAttribute("d", paths[i][1]); });
+}
+
+var open = false, busy = null;
+var EASE = "cubic-bezier(0.2, 0.7, 0.2, 1)";
+function jobsInset() {
+  var s = stage.getBoundingClientRect(), j = jobs.getBoundingClientRect();
+  return "inset(" + (j.top - s.top) + "px " + (s.right - j.right) + "px " + (s.bottom - j.bottom) + "px " + (j.left - s.left) + "px round 6px)";
+}
+function origin() {
+  var s = stage.getBoundingClientRect(), j = jobs.getBoundingClientRect();
+  return (j.left - s.left + j.width / 2) + "px " + (j.top - s.top + j.height / 2) + "px";
+}
+function swapHead(toCrumb) {
+  headCrumb.hidden = false;
+  headPlane.style.opacity = toCrumb ? "0" : "1";
+  headCrumb.style.opacity = toCrumb ? "1" : "0";
+  headPlane.style.visibility = toCrumb ? "hidden" : "";
+  if (!toCrumb) headCrumb.hidden = true;
+}
+function zoomIn() {
+  if (open) return;
+  open = true;
+  jobs.classList.remove("selected");
+  canvasView.hidden = false;
+  layoutCanvas();
+  swapHead(true);
+  if (busy) busy.forEach(function (a) { a.cancel(); });
+  if (!reduced) {
+    var o = origin();
+    planeView.style.transformOrigin = o;
+    canvasView.style.transformOrigin = o;
+    busy = [
+      canvasView.animate([{ clipPath: jobsInset(), opacity: 0.2, transform: "scale(0.94)" }, { clipPath: "inset(0px 0px 0px 0px round 0px)", opacity: 1, transform: "none" }], { duration: 540, easing: EASE }),
+      planeView.animate([{ opacity: 1, transform: "none" }, { opacity: 0, transform: "scale(1.25)" }], { duration: 360, easing: EASE, fill: "forwards" }),
+      headCrumb.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 220, easing: "ease-out" })
+    ];
+    busy[1].onfinish = function () { if (open) planeView.style.visibility = "hidden"; };
+  } else {
+    planeView.style.visibility = "hidden";
+  }
+  back.focus({ preventScroll: true });
+}
+function zoomOut(focusTarget) {
+  if (!open) return;
+  open = false;
+  if (busy) busy.forEach(function (a) { a.cancel(); });
+  planeView.style.visibility = "";
+  swapHead(false);
+  var done = function () { canvasView.hidden = true; };
+  if (!reduced) {
+    var o = origin();
+    planeView.style.transformOrigin = o;
+    busy = [
+      canvasView.animate([{ clipPath: "inset(0px 0px 0px 0px round 0px)", opacity: 1, transform: "none" }, { clipPath: jobsInset(), opacity: 0, transform: "scale(0.94)" }], { duration: 440, easing: EASE, fill: "forwards" }),
+      planeView.animate([{ opacity: 0, transform: "scale(1.25)" }, { opacity: 1, transform: "none" }], { duration: 440, easing: EASE })
+    ];
+    busy[0].onfinish = function () { if (!open) { done(); busy[0].cancel(); } };
+  } else done();
+  (focusTarget || jobs).classList.add("selected");
+  if (focusTarget !== orders) jobs.focus({ preventScroll: true });
+}
+
+// Double-click opens (as on the canvas); so do Enter, Space and a tap. One click selects.
+var lastPointer = "mouse";
+jobs.addEventListener("pointerdown", function (e) { lastPointer = e.pointerType; });
+jobs.addEventListener("click", function (e) {
+  if (e.detail === 0 || lastPointer === "touch" || lastPointer === "pen") zoomIn();
+  else { orders.classList.remove("selected"); jobs.classList.add("selected"); }
+});
+jobs.addEventListener("dblclick", zoomIn);
+back.addEventListener("click", function () { zoomOut(); });
+up.addEventListener("click", function () { zoomOut(); });
+ctx.addEventListener("click", function () { jobs.classList.remove("selected"); zoomOut(orders); back.blur(); });
+orders.addEventListener("click", function () { jobs.classList.remove("selected"); orders.classList.add("selected"); });
+root.addEventListener("keydown", function (e) { if (e.key === "Escape" && open) { e.preventDefault(); zoomOut(); } });
+document.addEventListener("pointerdown", function (e) {
+  if (!box.contains(e.target)) { jobs.classList.remove("selected"); orders.classList.remove("selected"); }
+});
+if ("ResizeObserver" in window) new ResizeObserver(function () { if (open) layoutCanvas(); }).observe(stage);
+
+})();
+(function(){
+var root = document.getElementById("readme-embed");
+var A = window.Archer, C = A.catalog;
+var URL_ = "https://tryarcher.dev/share/k3v9x2";
+var MD = "![Architecture](" + URL_ + "/image.svg)";
+
+root.querySelector("[data-repo-icon]").insertAdjacentHTML("afterbegin", A.icon("git-branch"));
+root.querySelector("[data-readme-head]").insertAdjacentHTML("afterbegin", A.icon("file"));
+var linkBtn = root.querySelector("[data-copy-link]"), mdBtn = root.querySelector("[data-copy-md]");
+linkBtn.innerHTML = A.swapIcon() + "Copy";
+mdBtn.innerHTML = A.swapIcon();
+linkBtn.addEventListener("click", function () { A.copy(linkBtn, URL_); });
+mdBtn.addEventListener("click", function () { A.copy(mdBtn, MD); });
+
+// The Acme document at two revisions, drawn the way /share/<slug>/image.svg draws it.
+// rev 13 is an agent's edit: billing joins with `api -> billing @http : "checkout"`,
+// and db is renamed "Users DB".
+var esc = A.esc;
+function fit(s, w, per) { var n = Math.floor(w / per); return s.length <= n ? s : s.slice(0, Math.max(1, n - 1)) + "…"; }
+function glyph(tag, x, y, size) {
+  var t = C.types[tag];
+  return '<g class="g-type" style="--type-light:' + t.color + ";--type-dark:" + t.dark + '">' +
+    '<svg x="' + x + '" y="' + y + '" width="' + size + '" height="' + size + '" viewBox="' + C.viewBox + '">' + C.glyphs[t.glyph] + "</svg></g>";
+}
+function card(c) {
+  var t = C.types[c.tag], tx = c.x + 8, ty = c.y + (c.h - 26) / 2, textX = c.x + 42, textW = c.w - 42 - 6, mid = c.y + c.h / 2;
+  return '<rect class="g-card" x="' + c.x + '" y="' + c.y + '" width="' + c.w + '" height="' + c.h + '" rx="6"/>' +
+    '<g class="g-type" style="--type-light:' + t.color + ";--type-dark:" + t.dark + '"><rect x="' + tx + '" y="' + ty + '" width="26" height="26" rx="5" fill="currentColor" fill-opacity="0.14"/></g>' +
+    glyph(c.tag, tx + 5, ty + 5, 16) +
+    '<text class="g-name" x="' + textX + '" y="' + (mid - 2) + '">' + esc(fit(c.name, textW, 6.3)) + "</text>" +
+    '<text class="g-sub" x="' + textX + '" y="' + (mid + 11) + '">' + esc(fit(c.tag, textW, 6.1)) + "</text>";
+}
+function chip(x, y, type, label) {
+  var tw = type.length * 6.1, lw = label.length * 5.4 + 9, w = tw + lw + 12;
+  return '<rect class="g-chip" x="' + (x - w / 2) + '" y="' + (y - 9) + '" width="' + w + '" height="18" rx="4"/>' +
+    '<text class="g-chip-type" x="' + (x - w / 2 + 6) + '" y="' + (y + 3.5) + '">' + type + "</text>" +
+    '<text class="g-chip-label" x="' + (x - w / 2 + 6 + tw + 4) + '" y="' + (y + 3.5) + '">· ' + esc(label) + "</text>";
+}
+function arrowH(x1, x2, y) { return '<path class="g-edge" d="M' + x1 + " " + y + "H" + (x2 - 7) + '"/><path class="g-head" d="M' + x2 + " " + y + "l-8 -4v8z" + '"/>'; }
+function arrowV(x, y1, y2) { return '<path class="g-edge" d="M' + x + " " + y1 + "V" + (y2 - 7) + '"/><path class="g-head" d="M' + x + " " + y2 + "l-4 -8h8z" + '"/>'; }
+function draw(rev) {
+  var W = 390, H = 228, s = "";
+  s += '<rect class="g-ground" width="' + W + '" height="' + H + '"/>';
+  s += '<text class="g-title" x="12" y="24">Acme</text><text class="g-brand" x="' + (W - 12) + '" y="24" text-anchor="end">ARCHER</text>';
+  // Backend plane with api and db on it.
+  s += '<rect class="g-plane" x="136" y="40" width="242" height="96" rx="8"/><path class="g-rule" d="M136.5 66h241"/>';
+  s += '<g class="g-ink2"><svg x="145" y="45" width="15" height="15" viewBox="' + C.viewBox + '">' + C.glyphs.box + "</svg></g>";
+  s += '<text class="g-plane-name" x="166" y="57.5">Backend</text>';
+  s += arrowH(120, 146, 100) + arrowH(242, 262, 100) + arrowV(66, 124, 168);
+  if (rev) s += arrowV(194, 124, 168);
+  s += card({ x: 12, y: 76, w: 108, h: 48, tag: "vercel.nextjs", name: "Web app" });
+  s += card({ x: 146, y: 76, w: 96, h: 48, tag: "vercel.functions", name: "API" });
+  s += card({ x: 262, y: 76, w: 106, h: 48, tag: "supabase.postgres", name: rev ? "Users DB" : "Postgres" });
+  s += card({ x: 12, y: 168, w: 108, h: 48, tag: "clerk", name: "Auth" });
+  if (rev) s += card({ x: 146, y: 168, w: 96, h: 48, tag: "stripe", name: "Billing" });
+  s += chip(66, 146, "http", "sign in");
+  if (rev) s += chip(194, 152, "http", "checkout");
+  return '<svg viewBox="0 0 ' + W + " " + H + '" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" class="' + (rev ? "off" : "") + '">' + s + "</svg>";
+}
+var img = root.querySelector("[data-img]");
+img.innerHTML = draw(0) + draw(1);
+var layers = img.children, note = root.querySelector("[data-note]"), segs = root.querySelectorAll("[data-rev]");
+var NOTES = ["Same URL · updated 3 days ago", "Same URL · updated just now"];
+function setRev(i) {
+  layers[0].classList.toggle("off", i !== 0);
+  layers[1].classList.toggle("off", i !== 1);
+  [].forEach.call(segs, function (b) { b.setAttribute("aria-pressed", String(+b.dataset.rev === i)); });
+  note.textContent = NOTES[i];
+  img.setAttribute("aria-label", i ? "Architecture diagram of Acme at rev 13, with Billing" : "Architecture diagram of Acme at rev 12");
+}
+[].forEach.call(segs, function (b) { b.addEventListener("click", function () { setRev(+b.dataset.rev); }); });
 
 })();
 (function(){
