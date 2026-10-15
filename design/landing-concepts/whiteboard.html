@@ -1,0 +1,1362 @@
+<!doctype html>
+<!--
+  Concept: Whiteboard. Every architecture starts as a marker sketch that goes stale the day it is drawn.
+  The hero is a hand-drawn whiteboard of the Acme system that straightens, snaps to the grid and writes its
+  own .arch source when you flip "Sketch / Source"; below, each feature is a before/after pair of marker vs. Archer.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Archer — Whiteboard</title>
+<meta name="description" content="Archer turns the architecture sketch into a source of truth your agents can read: a canvas that compiles to and from .arch code.">
+<script>try{var s=localStorage.getItem("archer-wb-theme");if(s==="light"||s==="dark")document.documentElement.setAttribute("data-theme",s)}catch(e){}</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;600;700&amp;family=Hanken+Grotesk:wght@400;500;600;700;800&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap">
+<style>
+:root{
+  --bg:#f6f7f8;
+  --bg-2:#eef0f2;
+  --board:#fdfefe;
+  --board-ghost:rgba(38,58,92,.07);
+  --frame-a:#eceff2;
+  --frame-b:#c9cfd6;
+  --frame-line:#b4bcc5;
+  --tray-a:#dfe3e8;
+  --tray-b:#c3cad2;
+  --ink:#141c27;
+  --ink-2:#465364;
+  --ink-3:#667284;
+  --line:#dde2e7;
+  --line-2:#c9d0d8;
+  --surface:#ffffff;
+  --surface-2:#f2f4f6;
+  --code-bg:#f7f8fa;
+  --accent:#2350c2;
+  --accent-soft:#e7edfb;
+  --card-line:#29364a;
+  --edge:#566275;
+  --plane-fill:rgba(35,80,194,.035);
+  --plane-line:#b9c3d2;
+  --grid-dot:#cdd4dc;
+  --m-black:#24272c;
+  --m-blue:#1d5ed6;
+  --m-red:#d4372c;
+  --m-green:#178a47;
+  --sticky:#ffe680;
+  --sticky-ink:#3b3417;
+  --add:#1d7f45;
+  --add-bg:#e5f4ea;
+  --del:#c03a2b;
+  --del-bg:#fbe9e6;
+  --chg:#9a6200;
+  --chg-bg:#fbf1dc;
+  --agent:#5b3fc4;
+  --agent-bg:#efebfd;
+  --btn-bg:#141c27;
+  --btn-ink:#ffffff;
+  --focus:#1d5ed6;
+  --k-kw:#7a3fb8;
+  --k-str:#17804a;
+  --k-typ:#2350c2;
+  --k-id:#141c27;
+  --k-pun:#7b8696;
+  --k-arw:#c2410c;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#151d1b;
+    --bg-2:#1a2421;
+    --board:#21302b;
+    --board-ghost:rgba(232,240,236,.06);
+    --frame-a:#6b5139;
+    --frame-b:#3f2f21;
+    --frame-line:#2b2017;
+    --tray-a:#5d4631;
+    --tray-b:#3a2b1e;
+    --ink:#eef3f0;
+    --ink-2:#bccac4;
+    --ink-3:#93a39d;
+    --line:#2f3f3a;
+    --line-2:#3c4e48;
+    --surface:#1e2a27;
+    --surface-2:#25332f;
+    --code-bg:#1a2522;
+    --accent:#9cc3ff;
+    --accent-soft:#263a4a;
+    --card-line:#dbe6e1;
+    --edge:#aebdb7;
+    --plane-fill:rgba(156,195,255,.05);
+    --plane-line:#4f645d;
+    --grid-dot:#3c504a;
+    --m-black:#f1efe4;
+    --m-blue:#a8cdf3;
+    --m-red:#f6a59e;
+    --m-green:#aee0b6;
+    --sticky:#efe08a;
+    --sticky-ink:#3b3417;
+    --add:#8fdcaa;
+    --add-bg:#1f3a2c;
+    --del:#f5a297;
+    --del-bg:#43272a;
+    --chg:#f0c674;
+    --chg-bg:#3f3420;
+    --agent:#c7b8ff;
+    --agent-bg:#322c4f;
+    --btn-bg:#eef3f0;
+    --btn-ink:#14201d;
+    --focus:#a8cdf3;
+    --k-kw:#d4b1ff;
+    --k-str:#9fe0b2;
+    --k-typ:#9cc3ff;
+    --k-id:#eef3f0;
+    --k-pun:#8a9a94;
+    --k-arw:#ffb38a;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#151d1b;
+  --bg-2:#1a2421;
+  --board:#21302b;
+  --board-ghost:rgba(232,240,236,.06);
+  --frame-a:#6b5139;
+  --frame-b:#3f2f21;
+  --frame-line:#2b2017;
+  --tray-a:#5d4631;
+  --tray-b:#3a2b1e;
+  --ink:#eef3f0;
+  --ink-2:#bccac4;
+  --ink-3:#93a39d;
+  --line:#2f3f3a;
+  --line-2:#3c4e48;
+  --surface:#1e2a27;
+  --surface-2:#25332f;
+  --code-bg:#1a2522;
+  --accent:#9cc3ff;
+  --accent-soft:#263a4a;
+  --card-line:#dbe6e1;
+  --edge:#aebdb7;
+  --plane-fill:rgba(156,195,255,.05);
+  --plane-line:#4f645d;
+  --grid-dot:#3c504a;
+  --m-black:#f1efe4;
+  --m-blue:#a8cdf3;
+  --m-red:#f6a59e;
+  --m-green:#aee0b6;
+  --sticky:#efe08a;
+  --sticky-ink:#3b3417;
+  --add:#8fdcaa;
+  --add-bg:#1f3a2c;
+  --del:#f5a297;
+  --del-bg:#43272a;
+  --chg:#f0c674;
+  --chg-bg:#3f3420;
+  --agent:#c7b8ff;
+  --agent-bg:#322c4f;
+  --btn-bg:#eef3f0;
+  --btn-ink:#14201d;
+  --focus:#a8cdf3;
+  --k-kw:#d4b1ff;
+  --k-str:#9fe0b2;
+  --k-typ:#9cc3ff;
+  --k-id:#eef3f0;
+  --k-pun:#8a9a94;
+  --k-arw:#ffb38a;
+  color-scheme:dark;
+}
+
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Hanken Grotesk",ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-size:17px;line-height:1.55;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+a{color:inherit}
+button{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--focus);outline-offset:3px;border-radius:6px}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+.hand{font-family:"Caveat","Bradley Hand","Segoe Print","Comic Sans MS",cursive}
+.mono{font-family:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+.wrap{max-width:1280px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+@media (min-width:720px){.wrap{padding-left:max(32px,env(safe-area-inset-left,0px));padding-right:max(32px,env(safe-area-inset-right,0px))}}
+
+/* ---------- nav ---------- */
+.nav{display:flex;align-items:center;gap:20px;height:68px}
+.brand{display:flex;align-items:center;gap:10px;text-decoration:none;font-weight:800;font-size:20px;letter-spacing:-.02em}
+.brand svg{display:block}
+.nav-links{display:flex;gap:4px;margin-left:12px}
+.nav-links a{text-decoration:none;color:var(--ink-2);font-size:15px;font-weight:500;padding:6px 10px;border-radius:6px}
+.nav-links a:hover{color:var(--ink);background:var(--bg-2)}
+.nav-end{margin-left:auto;display:flex;align-items:center;gap:8px}
+.icon-btn{display:inline-grid;place-items:center;width:38px;height:38px;border-radius:8px;border:1px solid var(--line);background:var(--surface);cursor:pointer;color:var(--ink-2)}
+.icon-btn:hover{color:var(--ink);border-color:var(--line-2)}
+.icon-btn svg{width:18px;height:18px}
+.theme-btn .ti{display:none}
+.theme-btn[data-mode="system"] .ti-sys,.theme-btn[data-mode="light"] .ti-sun,.theme-btn[data-mode="dark"] .ti-moon{display:block}
+@media (max-width:820px){.nav-links{display:none}}
+
+/* ---------- buttons ---------- */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:9px;height:46px;padding:0 18px;border-radius:9px;font-weight:600;font-size:16px;text-decoration:none;border:1px solid var(--line-2);background:var(--surface);color:var(--ink);cursor:pointer;white-space:nowrap;transition:transform .15s ease,background-color .15s ease,border-color .15s ease}
+.btn:hover{border-color:var(--ink-3)}
+.btn:active{transform:translateY(1px)}
+.btn-primary{background:var(--btn-bg);color:var(--btn-ink);border-color:var(--btn-bg)}
+.btn-primary:hover{border-color:var(--btn-bg);filter:brightness(1.12)}
+.btn-ghost{background:transparent;border-color:transparent;color:var(--ink-2)}
+.btn-ghost:hover{color:var(--ink);border-color:var(--line-2)}
+.cta-row .btn-ghost{padding:0 10px;margin-left:-6px}
+.btn-sm{height:34px;padding:0 12px;font-size:14px;border-radius:7px}
+.swap{position:relative;display:inline-block;width:17px;height:17px;flex:none}
+.swap svg{position:absolute;inset:0;width:17px;height:17px;transition:opacity .22s ease,transform .32s cubic-bezier(.3,1.5,.5,1)}
+.swap .i-check{opacity:0;transform:scale(.4) rotate(-30deg)}
+.copied .swap .i-copy{opacity:0;transform:scale(.4) rotate(30deg)}
+.copied .swap .i-check{opacity:1;transform:none}
+
+/* ---------- hero ---------- */
+.hero{padding-top:28px}
+.hero-top{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:48px;align-items:center}
+.h1{margin:0;font-weight:800;letter-spacing:-.035em;line-height:.98;font-size:clamp(46px,6.2vw,88px)}
+.h1 .h-hand{display:block;font-family:"Caveat","Bradley Hand","Segoe Print",cursive;font-weight:700;letter-spacing:0;color:var(--m-blue);font-size:1.1em;line-height:.9;transform:rotate(-1.6deg);transform-origin:left bottom;margin-bottom:.06em;position:relative;width:max-content;max-width:100%}
+.h1 .h-hand svg{position:absolute;left:-2%;bottom:-.08em;width:104%;height:.22em;overflow:visible}
+.h1 .h-set{display:block}
+.lede{margin:0 0 22px;font-size:clamp(17px,1.5vw,20px);color:var(--ink-2);max-width:34em}
+.cta-row{display:flex;flex-wrap:wrap;gap:10px}
+.clients{margin:18px 0 0;font-size:14px;color:var(--ink-3)}
+.clients b{color:var(--ink-2);font-weight:600}
+@media (max-width:900px){.hero-top{grid-template-columns:1fr;gap:22px}}
+
+/* board */
+.board-frame{--t:0;margin-top:40px;border-radius:14px;padding:10px;background:linear-gradient(160deg,var(--frame-a),var(--frame-b));box-shadow:0 1px 0 var(--frame-line) inset,0 30px 60px -40px rgba(10,20,30,.45),0 2px 6px -2px rgba(10,20,30,.18)}
+.board{position:relative;border-radius:6px;background:var(--board);overflow:hidden;box-shadow:inset 0 0 0 1px var(--frame-line),inset 0 2px 10px rgba(0,0,0,.06)}
+.board-inner{position:relative;display:grid;grid-template-columns:minmax(0,1.62fr) minmax(0,1fr);gap:20px;padding:22px 22px 22px 14px;align-items:center}
+.ghosts{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.ghosts path{fill:none;stroke:var(--board-ghost);stroke-linecap:round}
+.diagram{position:relative;width:100%;height:auto;display:block;overflow:visible}
+.tray{display:flex;align-items:center;gap:18px;margin-top:10px;padding:10px 14px;border-radius:8px;background:linear-gradient(180deg,var(--tray-a),var(--tray-b));box-shadow:inset 0 1px 0 rgba(255,255,255,.35),inset 0 -1px 0 rgba(0,0,0,.12)}
+.markers{flex:none;display:block}
+.switch-wrap{display:flex;align-items:center;gap:12px;margin-left:auto}
+.sw-label{font-size:15px;font-weight:600;color:var(--ink-2);cursor:pointer;user-select:none}
+.sw-label.l-sketch{font-family:"Caveat",cursive;font-size:24px;font-weight:700;color:var(--m-black);line-height:1}
+.sw-label.l-source{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:14px;font-weight:600;color:var(--ink)}
+.switch{position:relative;width:76px;height:38px;border-radius:999px;border:1px solid var(--line-2);background:var(--surface);cursor:pointer;padding:0;flex:none;box-shadow:inset 0 1px 3px rgba(0,0,0,.12)}
+.switch::before{content:"";position:absolute;inset:3px;border-radius:999px;background:var(--accent-soft);opacity:var(--t);transition:none}
+.knob{position:absolute;top:4px;left:calc(4px + var(--t) * 38px);width:28px;height:28px;border-radius:50%;background:var(--btn-bg);display:grid;place-items:center;box-shadow:0 2px 5px rgba(0,0,0,.25)}
+.knob svg{width:16px;height:16px;color:var(--btn-ink)}
+.scrub{display:flex;align-items:center;gap:10px;flex:1;max-width:340px}
+.scrub label{font-size:13px;color:var(--ink-2);font-weight:600;white-space:nowrap}
+input[type="range"]{-webkit-appearance:none;appearance:none;width:100%;height:28px;background:transparent;cursor:pointer;margin:0}
+input[type="range"]::-webkit-slider-runnable-track{height:4px;border-radius:4px;background:linear-gradient(90deg,var(--ink) calc(var(--t)*100%),var(--line-2) calc(var(--t)*100%))}
+input[type="range"]::-moz-range-track{height:4px;border-radius:4px;background:var(--line-2)}
+input[type="range"]::-moz-range-progress{height:4px;border-radius:4px;background:var(--ink)}
+input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;border-radius:50%;background:var(--surface);border:2px solid var(--ink);margin-top:-7px}
+input[type="range"]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;background:var(--surface);border:2px solid var(--ink)}
+.replay{flex:none}
+@media (max-width:900px){
+  .board-inner{grid-template-columns:1fr;padding:14px 12px 14px}
+  .markers{display:none}
+  .tray{flex-wrap:wrap;gap:10px 14px}
+  .switch-wrap{margin-left:0}
+  .scrub{order:3;flex-basis:100%;max-width:none}
+  .replay{margin-left:auto}
+}
+
+/* diagram svg internals */
+.dg text{font-family:"Hanken Grotesk",ui-sans-serif,system-ui,sans-serif}
+.dg .hand-t{font-family:"Caveat","Bradley Hand","Segoe Print",cursive;font-weight:700}
+.dg .mk path,.dg .mk circle,.dg .mk ellipse{fill:none;stroke-linecap:round;stroke-linejoin:round}
+.dg .mk .s-black{stroke:var(--m-black)}
+.dg .mk .s-blue{stroke:var(--m-blue)}
+.dg .mk .s-red{stroke:var(--m-red)}
+.dg .mk .s-green{stroke:var(--m-green)}
+.dg .mk .w1{stroke-width:2.7}
+.dg .mk .w2{stroke-width:1.6;opacity:.55}
+.dg .f-black{fill:var(--m-black)}
+.dg .f-blue{fill:var(--m-blue)}
+.dg .f-red{fill:var(--m-red)}
+.dg .f-green{fill:var(--m-green)}
+.dg .ink .card{fill:var(--surface);stroke:var(--card-line);stroke-width:1.4}
+.dg .ink .card-top{fill:var(--surface-2);stroke:var(--card-line);stroke-width:1.4}
+.dg .ink .bar{fill:none;stroke:var(--card-line);stroke-width:1.2}
+.dg .ink .dot{fill:var(--ink-3)}
+.dg .ink .edge{fill:none;stroke:var(--edge);stroke-width:1.5}
+.dg .ink .plane{fill:var(--plane-fill);stroke:var(--plane-line);stroke-width:1.3}
+.dg .c-label{font-size:15.5px;font-weight:700;fill:var(--ink);letter-spacing:-.01em}
+.dg .c-tag{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:10.5px;fill:var(--ink-3)}
+.dg .c-desc{font-size:11.5px;fill:var(--ink-2)}
+.dg .p-title{font-size:13.5px;font-weight:700;fill:var(--ink-2);letter-spacing:.01em}
+.dg .p-tag{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:10px;fill:var(--ink-3)}
+.dg .e-pill{fill:var(--board);stroke:var(--line-2);stroke-width:1}
+.dg .e-lab{font-size:11.5px;font-weight:600;fill:var(--ink-2)}
+.dg .e-proto{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:10px;fill:var(--ink-3)}
+.dg .gl-bg{fill:var(--accent-soft)}
+.dg .gl{fill:none;stroke:var(--accent);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.dg .ah{fill:var(--edge)}
+.dg .node{cursor:default}
+.dg .node.hot .card,.dg .node.hot .card-top{stroke:var(--accent);stroke-width:2}
+.dg .smear{fill:var(--board)}
+:root[data-theme="dark"] .dg .mk,:root[data-theme="dark"] .dg .hand-t{filter:url(#chalk)}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .dg .mk,:root:not([data-theme="light"]) .dg .hand-t{filter:url(#chalk)}}
+
+/* source panel */
+.src{position:relative;min-width:0;align-self:stretch;display:flex;flex-direction:column;border-radius:10px;min-height:440px;
+  background:color-mix(in srgb,var(--code-bg) calc(var(--t)*100%),transparent);
+  border:1.5px dashed color-mix(in srgb,var(--line-2) calc((1 - var(--t))*100%),transparent);
+  box-shadow:0 0 0 1px color-mix(in srgb,var(--line) calc(var(--t)*100%),transparent)}
+.src-head{display:flex;align-items:center;gap:10px;padding:11px 14px;border-bottom:1px solid color-mix(in srgb,var(--line) calc(var(--t)*100%),transparent);font-size:13px}
+.src-file{font-family:"JetBrains Mono",ui-monospace,monospace;font-weight:600;color:var(--ink);opacity:calc(.35 + var(--t)*.65)}
+.src-branch{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:11.5px;color:var(--ink-3);padding:1px 7px;border:1px solid var(--line-2);border-radius:5px;opacity:var(--t)}
+.src-status{margin-left:auto;display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;color:var(--ink-3);white-space:nowrap}
+.src-status.ok{color:var(--add)}
+.src-status svg{width:14px;height:14px}
+.src-body{position:relative;flex:1;padding:12px 0 14px;overflow-x:auto;overflow-y:hidden}
+.code{margin:0;font-family:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.6px;line-height:19.5px;color:var(--k-id);white-space:pre;counter-reset:ln}
+.code .ln{display:block;padding:0 14px 0 0;transition:background-color .2s ease}
+.code .ln::before{counter-increment:ln;content:counter(ln);display:inline-block;width:34px;padding-right:12px;text-align:right;color:var(--k-pun);opacity:.6}
+.code .ln.hl{background:var(--accent-soft)}
+.code .kw{color:var(--k-kw);font-weight:600}
+.code .str{color:var(--k-str)}
+.code .typ{color:var(--k-typ)}
+.code .pun{color:var(--k-pun)}
+.code .arw{color:var(--k-arw);font-weight:600}
+.code .def{font-weight:600}
+.caret{display:inline-block;width:7px;height:15px;margin-left:1px;vertical-align:-3px;background:var(--accent);animation:blink 1s steps(1) infinite}
+@keyframes blink{50%{opacity:0}}
+.sticky{position:absolute;left:50%;top:44%;width:212px;padding:22px 18px 20px;background:var(--sticky);color:var(--sticky-ink);font-family:"Caveat",cursive;font-weight:700;font-size:27px;line-height:1.05;transform:translate(-50%,-50%) rotate(-3deg);box-shadow:0 10px 18px -12px rgba(0,0,0,.45);pointer-events:none}
+.sticky small{display:block;margin-top:10px;font-size:20px;font-weight:600;opacity:.75}
+@media (max-width:900px){.src{min-height:0}.src-body{min-height:300px}.code{font-size:11.6px;line-height:18px}.code .ln::before{width:28px;padding-right:9px}}
+@media (max-width:420px){.code{font-size:10.3px;line-height:16.5px}.code .ln::before{width:24px;padding-right:7px}.board-frame{padding:6px}.board-inner{padding:10px 8px}.src-branch,.st-more{display:none}}
+
+/* ---------- sections ---------- */
+section{padding:112px 0 0}
+.eyebrow{font-family:"Caveat",cursive;font-weight:700;font-size:26px;color:var(--m-red);margin:0 0 4px;line-height:1;transform:rotate(-1.5deg);transform-origin:left;display:inline-block}
+.h2{margin:0;font-size:clamp(34px,4.4vw,56px);line-height:1.04;letter-spacing:-.03em;font-weight:800;max-width:15em}
+.h2 .hw{font-family:"Caveat",cursive;font-weight:700;letter-spacing:0;color:var(--m-blue);font-size:1.18em}
+.sec-lede{margin:18px 0 0;max-width:38em;color:var(--ink-2);font-size:18px}
+
+/* pairs */
+.pairs{margin-top:56px;display:flex;flex-direction:column}
+.pair{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1fr) minmax(0,1.25fr);gap:28px;align-items:center;padding:36px 0;border-top:1px solid var(--line)}
+.pair:last-child{border-bottom:1px solid var(--line)}
+.pair h3{margin:0 0 10px;font-size:26px;letter-spacing:-.02em;line-height:1.15}
+.pair h3 .q{font-family:"Caveat",cursive;font-weight:700;font-size:1.3em;letter-spacing:0;color:var(--m-black);display:block;line-height:1;margin-bottom:6px}
+.pair p{margin:0;color:var(--ink-2);font-size:16.5px}
+.sk-card{position:relative;border-radius:8px;background:var(--board);box-shadow:inset 0 0 0 1px var(--line);overflow:hidden}
+.sk-card .tag,.ar-card .tag{position:absolute;top:10px;left:12px;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3)}
+.sk-card svg{display:block;width:100%;height:auto}
+.sk text{font-family:"Caveat","Bradley Hand",cursive;font-weight:700}
+.sk path,.sk ellipse{fill:none;stroke-linecap:round;stroke-linejoin:round}
+.sk .s-black{stroke:var(--m-black)}.sk .s-blue{stroke:var(--m-blue)}.sk .s-red{stroke:var(--m-red)}.sk .s-green{stroke:var(--m-green)}
+.sk .w1{stroke-width:2.4}.sk .w2{stroke-width:1.4;opacity:.5}
+.sk .f-black{fill:var(--m-black)}.sk .f-blue{fill:var(--m-blue)}.sk .f-red{fill:var(--m-red)}.sk .f-green{fill:var(--m-green)}
+.sk .old{opacity:.5}
+.sk .ghost{opacity:.16}
+.sk .smudge{fill:var(--board)}
+.sk .ring{stroke:#8a5a2b;opacity:.35}
+.sk .phone{fill:var(--surface-2)}
+.sk .photo{fill:#8d969f;opacity:.35}
+.sk .blurry{filter:url(#blur2)}
+.sk .glare{fill:url(#glare)}
+:root[data-theme="dark"] .sk-card .sk-ink{filter:url(#chalk2)}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .sk-card .sk-ink{filter:url(#chalk2)}}
+.arrow-between{display:none}
+.ar-card{position:relative;border-radius:10px;background:var(--surface);border:1px solid var(--line);padding:40px 16px 16px;font-size:14px}
+@media (max-width:980px){
+  .pair{grid-template-columns:1fr 1fr;gap:18px 18px}
+  .pair .pair-text{grid-column:1 / -1}
+}
+@media (max-width:620px){
+  .pair{grid-template-columns:1fr;padding:28px 0}
+}
+
+/* revision mock */
+.rev{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:12px}
+.rev li{display:grid;grid-template-columns:28px minmax(0,1fr);gap:10px}
+.av{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;font-size:12px;font-weight:700;background:var(--surface-2);color:var(--ink-2);border:1px solid var(--line)}
+.av.agent{background:var(--agent-bg);color:var(--agent);border-color:transparent}
+.av svg{width:15px;height:15px}
+.who{display:flex;align-items:center;gap:7px;flex-wrap:wrap;font-weight:600;font-size:14px;line-height:1.3}
+.who time{font-weight:500;color:var(--ink-3);font-size:12.5px}
+.badge{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;padding:1px 7px;border-radius:999px;background:var(--agent-bg);color:var(--agent)}
+.badge.review{background:var(--chg-bg);color:var(--chg)}
+.diff{margin:5px 0 0;padding:0;list-style:none;font-family:"JetBrains Mono",ui-monospace,monospace;font-size:11.8px;line-height:1.55;display:block}
+.diff span{display:block;padding:1px 7px;border-radius:4px;margin-top:2px;overflow-wrap:anywhere}
+.d-add{background:var(--add-bg);color:var(--add)}
+.d-del{background:var(--del-bg);color:var(--del)}
+.d-chg{background:var(--chg-bg);color:var(--chg)}
+.foot-note{margin:14px 0 0;padding-top:10px;border-top:1px dashed var(--line-2);font-size:13px;color:var(--ink-3)}
+
+/* repo mock */
+.repo-head{display:flex;flex-wrap:wrap;align-items:center;gap:8px;font-size:13.5px}
+.chip{display:inline-flex;align-items:center;gap:5px;font-family:"JetBrains Mono",ui-monospace,monospace;font-size:12px;padding:2px 8px;border-radius:6px;border:1px solid var(--line-2);color:var(--ink-2);background:var(--surface-2)}
+.chip svg{width:13px;height:13px}
+.timeline{list-style:none;margin:14px 0 0;padding:0 0 0 14px;border-left:2px solid var(--line)}
+.timeline li{position:relative;padding:5px 0 7px 10px;font-size:13.5px;line-height:1.4}
+.timeline li::before{content:"";position:absolute;left:-20px;top:10px;width:10px;height:10px;border-radius:50%;background:var(--surface);border:2px solid var(--ink-3)}
+.timeline li.r::before{border-color:var(--accent);background:var(--accent-soft)}
+.timeline .sha{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:12px;color:var(--ink-3);margin-right:6px}
+.timeline .kind{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);margin-right:6px}
+.timeline li.r .kind{color:var(--accent)}
+.srcline{margin-top:12px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:9px 11px;border-radius:7px;background:var(--code-bg);border:1px solid var(--line);font-family:"JetBrains Mono",ui-monospace,monospace;font-size:12.5px}
+.srcline a{font-family:"Hanken Grotesk",sans-serif;font-weight:600;font-size:13px;color:var(--accent);text-decoration:none;display:inline-flex;align-items:center;gap:4px}
+.srcline a:hover{text-decoration:underline}
+
+/* share mock */
+.share-row{display:flex;gap:8px}
+.field{flex:1;min-width:0;display:flex;align-items:center;gap:8px;height:34px;padding:0 10px;border-radius:7px;border:1px solid var(--line-2);background:var(--code-bg);font-family:"JetBrains Mono",ui-monospace,monospace;font-size:12.5px;color:var(--ink);overflow:hidden;white-space:nowrap}
+.field svg{flex:none;width:14px;height:14px;color:var(--ink-3)}
+.field span{overflow:hidden;text-overflow:ellipsis}
+.readme{margin-top:12px;border-radius:8px;border:1px solid var(--line);overflow:hidden}
+.readme-head{display:flex;justify-content:space-between;align-items:center;padding:7px 10px;font-size:12px;font-weight:600;color:var(--ink-3);background:var(--surface-2);border-bottom:1px solid var(--line)}
+.readme code{display:block;padding:9px 10px;font-family:"JetBrains Mono",ui-monospace,monospace;font-size:11.5px;color:var(--ink-2);overflow-wrap:anywhere;border-bottom:1px solid var(--line)}
+.readme svg{display:block;width:100%;height:auto;background:var(--board)}
+.mini text{font-family:"Hanken Grotesk",sans-serif;font-size:11px;font-weight:700;fill:var(--ink)}
+.mini .mb{fill:var(--surface);stroke:var(--card-line);stroke-width:1.1}
+.mini .mp{fill:var(--plane-fill);stroke:var(--plane-line);stroke-width:1}
+.mini .me{fill:none;stroke:var(--edge);stroke-width:1.2}
+.mini .mah{fill:var(--edge)}
+.mini .mpt{font-size:9px;fill:var(--ink-3);font-weight:600}
+
+/* terminal mock */
+.term{border-radius:8px;background:var(--code-bg);border:1px solid var(--line);padding:12px 12px;font-family:"JetBrains Mono",ui-monospace,monospace;font-size:12px;line-height:1.6;color:var(--ink-2);white-space:pre-wrap;overflow-wrap:anywhere;margin:0}
+.term .p{color:var(--accent);font-weight:600}
+.term .t{color:var(--k-kw);font-weight:600}
+.term .s{color:var(--k-str)}
+.term .k{color:var(--ink)}
+.term .c{color:var(--ink-3)}
+.term .okl{color:var(--add)}
+
+/* question grid */
+.qgrid{margin-top:56px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0;border-top:1px solid var(--line)}
+.qa{padding:28px 28px 30px 0;border-bottom:1px solid var(--line)}
+.qa:not(:nth-child(3n+1)){padding-left:28px;border-left:1px solid var(--line)}
+.qa .qh{font-family:"Caveat",cursive;font-weight:700;font-size:28px;line-height:1.05;margin:0 0 12px;transform:rotate(-1.2deg);transform-origin:left}
+.qa:nth-child(4n+1) .qh{color:var(--m-blue)}
+.qa:nth-child(4n+2) .qh{color:var(--m-red)}
+.qa:nth-child(4n+3) .qh{color:var(--m-green)}
+.qa:nth-child(4n+4) .qh{color:var(--m-black)}
+.qa h3{margin:0 0 6px;font-size:18px;letter-spacing:-.01em}
+.qa p{margin:0;color:var(--ink-2);font-size:16px}
+@media (max-width:980px){
+  .qgrid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .qa,.qa:not(:nth-child(3n+1)){padding:24px 22px 26px 0;border-left:0}
+  .qa:nth-child(2n){padding-left:22px;border-left:1px solid var(--line)}
+}
+@media (max-width:620px){
+  .qgrid{grid-template-columns:1fr}
+  .qa,.qa:nth-child(2n),.qa:not(:nth-child(3n+1)){padding:22px 0;border-left:0}
+}
+
+/* mcp */
+.mcp{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:56px;align-items:start;margin-top:48px}
+.tabs{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+.tab{height:34px;padding:0 13px;border-radius:7px;border:1px solid var(--line);background:transparent;cursor:pointer;font-size:14px;font-weight:600;color:var(--ink-2)}
+.tab:hover{color:var(--ink);border-color:var(--line-2)}
+.tab[aria-selected="true"]{background:var(--btn-bg);border-color:var(--btn-bg);color:var(--btn-ink)}
+.cmd{position:relative;border-radius:10px;background:var(--code-bg);border:1px solid var(--line);padding:16px 16px 16px 16px}
+.cmd pre{margin:0;font-family:"JetBrains Mono",ui-monospace,monospace;font-size:13.5px;line-height:1.6;white-space:pre-wrap;overflow-wrap:anywhere;color:var(--ink);padding-right:96px}
+.cmd .btn{position:absolute;top:10px;right:10px}
+.cmd-note{margin:12px 0 0;color:var(--ink-2);font-size:15.5px}
+.cmd-note code,.inline-code{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:.88em;background:var(--surface-2);border:1px solid var(--line);padding:1px 5px;border-radius:5px}
+.prompt-box{margin-top:28px;padding:18px 18px;border-radius:10px;border:1.5px dashed var(--line-2);display:flex;gap:16px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.prompt-box p{margin:0;max-width:30em;color:var(--ink-2);font-size:15.5px}
+.prompt-box b{color:var(--ink)}
+.chat{border-radius:12px;border:1px solid var(--line);background:var(--surface);overflow:hidden}
+.chat-head{display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--line);font-size:13px;font-weight:600;color:var(--ink-3)}
+.chat-head .dots{display:flex;gap:5px}
+.chat-head .dots i{width:9px;height:9px;border-radius:50%;background:var(--line-2);display:block}
+.chat-body{padding:16px;display:flex;flex-direction:column;gap:14px;font-size:14.5px}
+.msg-you{align-self:flex-end;max-width:85%;background:var(--surface-2);border-radius:10px 10px 2px 10px;padding:9px 12px}
+.msg-agent{max-width:100%}
+.msg-agent .who{margin-bottom:6px}
+.call{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-family:"JetBrains Mono",ui-monospace,monospace;font-size:12px;padding:6px 9px;border-radius:7px;border:1px solid var(--line);background:var(--code-bg);margin:6px 0;color:var(--ink-2)}
+.call b{color:var(--k-kw);font-weight:600}
+.call .okl{color:var(--add);margin-left:auto;display:inline-flex;align-items:center;gap:4px}
+.call .okl svg{width:13px;height:13px}
+.call .bad{color:var(--del);margin-left:auto}
+@media (max-width:900px){.mcp{grid-template-columns:1fr;gap:36px}}
+
+/* closing */
+.closing{padding:120px 0 0}
+.closing-card{position:relative;border-radius:14px;padding:10px;background:linear-gradient(160deg,var(--frame-a),var(--frame-b))}
+.closing-inner{position:relative;border-radius:6px;background:var(--board);padding:clamp(36px,6vw,80px) clamp(20px,5vw,72px);overflow:hidden;box-shadow:inset 0 0 0 1px var(--frame-line)}
+.closing-inner .old-note{font-family:"Caveat",cursive;font-weight:700;font-size:clamp(26px,3vw,36px);color:var(--m-red);margin:0 0 6px;position:relative;display:inline-block;transform:rotate(-2deg)}
+.closing-inner .old-note svg{position:absolute;left:-3%;top:44%;width:106%;height:18px;overflow:visible}
+.closing h2{margin:0;font-size:clamp(40px,6.2vw,84px);line-height:1;letter-spacing:-.04em;font-weight:800;max-width:12em}
+.closing .sec-lede{margin-bottom:28px}
+.closing-grid{position:absolute;inset:0;background-image:radial-gradient(var(--grid-dot) 1.1px,transparent 1.3px);background-size:40px 40px;background-position:20px 20px;opacity:.7;pointer-events:none;-webkit-mask-image:linear-gradient(90deg,transparent 30%,#000 90%);mask-image:linear-gradient(90deg,transparent 30%,#000 90%)}
+.closing-inner > *:not(.closing-grid){position:relative}
+
+/* footer */
+footer{margin-top:96px;border-top:1px solid var(--line);padding:48px 0 40px;background:var(--bg-2)}
+.foot{display:grid;grid-template-columns:minmax(0,1.4fr) repeat(3,minmax(0,1fr));gap:32px}
+.foot h4{margin:0 0 12px;font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3)}
+.foot ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.foot a{text-decoration:none;color:var(--ink-2);font-size:15px}
+.foot a:hover{color:var(--ink);text-decoration:underline}
+.foot .tagline{margin:12px 0 0;color:var(--ink-3);font-size:15px;max-width:22em}
+.foot-bottom{margin-top:40px;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;color:var(--ink-3);font-size:14px}
+.foot-bottom .hand{font-size:21px;color:var(--ink-3);font-weight:600}
+@media (max-width:760px){.foot{grid-template-columns:1fr 1fr}.foot > div:first-child{grid-column:1 / -1}}
+
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{transition:none !important;animation:none !important}
+}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <filter id="chalk" x="-5%" y="-5%" width="110%" height="110%">
+      <feTurbulence type="fractalNoise" baseFrequency="1.1" numOctaves="2" seed="4" result="n"></feTurbulence>
+      <feColorMatrix in="n" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1.9 -0.45" result="na"></feColorMatrix>
+      <feComposite in="SourceGraphic" in2="na" operator="in" result="g"></feComposite>
+      <feDisplacementMap in="g" in2="n" scale="1.6" xChannelSelector="R" yChannelSelector="G"></feDisplacementMap>
+    </filter>
+    <filter id="chalk2" x="-5%" y="-5%" width="110%" height="110%">
+      <feTurbulence type="fractalNoise" baseFrequency="1.2" numOctaves="2" seed="9" result="n"></feTurbulence>
+      <feColorMatrix in="n" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1.9 -0.4" result="na"></feColorMatrix>
+      <feComposite in="SourceGraphic" in2="na" operator="in"></feComposite>
+    </filter>
+    <filter id="blur2"><feGaussianBlur stdDeviation="1.3"></feGaussianBlur></filter>
+    <filter id="smudge" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="7"></feGaussianBlur></filter>
+    <linearGradient id="glare" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0"></stop>
+      <stop offset=".45" stop-color="#ffffff" stop-opacity=".0"></stop>
+      <stop offset=".55" stop-color="#ffffff" stop-opacity=".75"></stop>
+      <stop offset=".7" stop-color="#ffffff" stop-opacity="0"></stop>
+    </linearGradient>
+  </defs>
+</svg>
+
+<header class="wrap nav">
+  <a class="brand" href="#" aria-label="Archer home">
+    <svg width="28" height="28" viewBox="0 0 28 28" aria-hidden="true"><rect x="2" y="3" width="10" height="9" rx="2.5" fill="none" stroke="currentColor" stroke-width="2.2"></rect><rect x="16" y="16" width="10" height="9" rx="2.5" fill="currentColor"></rect><path d="M12 7.5h4.5a3 3 0 0 1 3 3V13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"></path><path d="M16.8 11.2l2.7 2.9 2.7-2.9" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+    archer
+  </a>
+  <nav class="nav-links" aria-label="Primary">
+    <a href="#how">How it works</a>
+    <a href="#agents">Agents</a>
+    <a href="#">Language</a>
+    <a href="#">Examples</a>
+  </nav>
+  <div class="nav-end">
+    <button class="icon-btn theme-btn" id="themeBtn" type="button" data-mode="system" aria-label="Theme: system">
+      <svg class="ti ti-sys" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"></circle><path d="M12 3.5v17" ></path><path d="M12 3.5a8.5 8.5 0 0 1 0 17z" fill="currentColor"></path></svg>
+      <svg class="ti ti-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4.2"></circle><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M5.3 18.7l1.6-1.6M17.1 6.9l1.6-1.6"></path></svg>
+      <svg class="ti ti-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5z"></path></svg>
+    </button>
+    <a class="btn btn-primary btn-sm" href="#">Sign in with GitHub</a>
+  </div>
+</header>
+
+<main>
+<!-- ================= HERO ================= -->
+<section class="hero wrap" style="padding-top:28px" aria-labelledby="hero-title">
+  <div class="hero-top">
+    <h1 class="h1" id="hero-title">
+      <span class="h-hand">Your whiteboard,<svg viewBox="0 0 300 20" preserveAspectRatio="none" aria-hidden="true"><path d="M3 13 C 60 6, 120 15, 180 9 S 270 7, 297 11" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" opacity=".55"></path></svg></span>
+      <span class="h-set">but it compiles.</span>
+    </h1>
+    <div>
+      <p class="lede">Draw your system on a canvas, or let your agent write it in Archer code. Either way you get one diagram that stays true, and that your agents can read.</p>
+      <div class="cta-row">
+        <a class="btn btn-primary" href="#">Sign in with GitHub</a>
+        <a class="btn" href="#">Try the sandbox</a>
+        <button class="btn btn-ghost copy-prompt" type="button"><span class="swap" aria-hidden="true"><svg class="i-copy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="8" width="12" height="12" rx="2"></rect><path d="M16 8V5.5A1.5 1.5 0 0 0 14.5 4h-9A1.5 1.5 0 0 0 4 5.5v9A1.5 1.5 0 0 0 5.5 16H8"></path></svg><svg class="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 12.5l5 5 10-11"></path></svg></span>Copy agent prompt</button>
+      </div>
+      <p class="clients">Works with <b>Claude Code</b>, <b>Codex</b>, <b>Cursor</b>, <b>Gemini CLI</b>, <b>VS Code</b> and any other MCP client.</p>
+    </div>
+  </div>
+
+  <div class="board-frame">
+    <div class="board" id="board">
+      <svg class="ghosts" viewBox="0 0 1200 600" preserveAspectRatio="xMidYMid slice" aria-hidden="true" id="ghosts">
+        <path d="M80 110 C 220 60, 330 140, 470 90 S 640 60, 700 120" stroke-width="26"></path>
+        <path d="M120 470 C 260 520, 420 430, 560 500" stroke-width="18"></path>
+        <path d="M760 80 C 860 140, 980 60, 1120 130" stroke-width="22"></path>
+        <path d="M820 520 C 900 470, 1030 560, 1140 500" stroke-width="30"></path>
+        <path d="M380 300 C 420 250, 520 260, 560 320 S 660 380, 700 330" stroke-width="12"></path>
+      </svg>
+      <div class="board-inner">
+        <svg class="diagram dg" id="diagram" role="img" aria-labelledby="dg-title dg-desc">
+          <title id="dg-title">The Acme system, sketched and compiled</title>
+          <desc id="dg-desc">A web app calls an API over HTTP and signs in through Auth. The API, inside the Backend plane, reads Postgres over SQL and calls Billing for checkout.</desc>
+        </svg>
+        <div class="src" id="src">
+          <div class="src-head">
+            <span class="src-file">acme.arch</span>
+            <span class="src-branch">main</span>
+            <span class="src-status" id="srcStatus" aria-live="polite">not written down</span>
+          </div>
+          <div class="src-body">
+            <pre class="code" id="code" aria-hidden="true"></pre>
+            <pre class="sr-only" id="codeFull"></pre>
+            <div class="sticky" id="sticky" aria-hidden="true">the real diagram is in Priya's head.<small>(ask her)</small></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="tray">
+      <svg class="markers" width="230" height="22" viewBox="0 0 230 22" aria-hidden="true">
+        <g><rect x="2" y="6" width="58" height="11" rx="5" fill="#2a2d33"></rect><rect x="44" y="5" width="20" height="13" rx="5" fill="#15171a"></rect><rect x="8" y="9" width="24" height="5" rx="2" fill="#ffffff" opacity=".35"></rect></g>
+        <g><rect x="76" y="6" width="58" height="11" rx="5" fill="#1d5ed6"></rect><rect x="118" y="5" width="20" height="13" rx="5" fill="#123f95"></rect><rect x="82" y="9" width="24" height="5" rx="2" fill="#ffffff" opacity=".35"></rect></g>
+        <g><rect x="150" y="6" width="58" height="11" rx="5" fill="#d4372c"></rect><rect x="192" y="5" width="20" height="13" rx="5" fill="#97241c"></rect><rect x="156" y="9" width="24" height="5" rx="2" fill="#ffffff" opacity=".35"></rect></g>
+      </svg>
+      <div class="switch-wrap">
+        <span class="sw-label l-sketch" id="lblSketch">Sketch</span>
+        <button class="switch" id="switch" type="button" role="switch" aria-checked="false" aria-labelledby="lblSketch swHidden lblSource"><span class="sr-only" id="swHidden">to</span><span class="knob"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 7l-5 5 5 5M16 7l5 5-5 5"></path></svg></span></button>
+        <span class="sw-label l-source" id="lblSource">Source</span>
+      </div>
+      <div class="scrub">
+        <label for="range">Scrub</label>
+        <input type="range" id="range" min="0" max="1000" step="1" value="0" aria-valuetext="Sketch">
+      </div>
+      <button class="icon-btn replay" id="replay" type="button" aria-label="Replay the transformation"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12a8 8 0 1 0 2.4-5.7"></path><path d="M4 4v4.5h4.5"></path></svg></button>
+    </div>
+  </div>
+</section>
+
+<!-- ================= PAIRS ================= -->
+<section class="wrap" id="how" aria-labelledby="pairs-title">
+  <p class="eyebrow">the day after the meeting</p>
+  <h2 class="h2" id="pairs-title">A whiteboard is perfect for about an hour.</h2>
+  <p class="sec-lede">Then someone erases half of it, the photo lives in a chat thread, and nobody can say what is still true. Here is what each of those moments looks like in Archer.</p>
+
+  <div class="pairs">
+    <article class="pair">
+      <div class="pair-text">
+        <h3><span class="q">who changed this?</span>Every revision, with a real diff.</h3>
+        <p>Every save is kept, whether a person or an agent made it. Diffs list what was added, removed or changed, and agent edits stay badged until you review them.</p>
+      </div>
+      <div class="sk-card">
+        <span class="tag">Whiteboard</span>
+        <svg class="sk" id="sk1" viewBox="0 0 320 220" role="img" aria-label="A sketch with a box half erased and a note asking who moved the queue">
+          <g class="sk-ink" data-ink=""></g>
+          <ellipse class="smudge" cx="268" cy="78" rx="46" ry="40" filter="url(#smudge)"></ellipse>
+          <g class="sk-ink" data-top=""></g>
+          <text x="72" y="96" text-anchor="middle" font-size="26" class="f-black">api</text>
+          <text x="228" y="88" text-anchor="middle" font-size="26" class="f-black" opacity=".85">que</text>
+          <text x="70" y="160" text-anchor="middle" font-size="22" class="f-black ghost">cache</text>
+          <text x="204" y="196" text-anchor="middle" font-size="25" class="f-red" transform="rotate(-4 204 196)">who moved the queue??</text>
+        </svg>
+      </div>
+      <div class="ar-card">
+        <span class="tag">Archer · History</span>
+        <ul class="rev">
+          <li>
+            <span class="av agent" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="7" width="16" height="12" rx="3"></rect><path d="M12 7V4M9 13h.01M15 13h.01"></path></svg></span>
+            <div>
+              <div class="who">Claude Code <span class="badge">agent</span><span class="badge review">needs review</span><time>2 min ago</time></div>
+              <div class="diff"><span class="d-add">+ component jobs "Jobs" @queue</span><span class="d-add">+ api -&gt; jobs @publishes</span></div>
+            </div>
+          </li>
+          <li>
+            <span class="av" aria-hidden="true">PR</span>
+            <div>
+              <div class="who">Priya <time>yesterday</time></div>
+              <div class="diff"><span class="d-del">- component cache "Cache" @redis</span><span class="d-chg">~ api -&gt; db label "reads"</span></div>
+            </div>
+          </li>
+        </ul>
+        <p class="foot-note">Moving boxes around never counts as a change.</p>
+      </div>
+    </article>
+
+    <article class="pair">
+      <div class="pair-text">
+        <h3><span class="q">is this still true?</span>The file on your branch is the truth.</h3>
+        <p>Link a GitHub repo and branch, and the <span class="inline-code">.arch</span> file there becomes the source of truth, with the canvas as its working copy. <span class="inline-code">src</span> paths open the code, and commits sit next to revisions.</p>
+      </div>
+      <div class="sk-card">
+        <span class="tag">Whiteboard</span>
+        <svg class="sk" id="sk2" viewBox="0 0 320 220" role="img" aria-label="A faded old sketch with a coffee ring and a note asking when it was last updated">
+          <g class="sk-ink" data-ink=""></g>
+          <g class="old">
+            <text x="82" y="110" text-anchor="middle" font-size="25" class="f-black">monolith</text>
+            <text x="228" y="122" text-anchor="middle" font-size="24" class="f-black">db</text>
+          </g>
+          <text x="306" y="34" text-anchor="end" font-size="23" class="f-red" transform="rotate(3 306 34)">updated: march?</text>
+          <text x="306" y="56" text-anchor="end" font-size="20" class="f-red" transform="rotate(3 306 56)">(which year)</text>
+          <text x="24" y="190" font-size="23" class="f-blue" transform="rotate(-3 24 190)">TODO: add the queue</text>
+        </svg>
+      </div>
+      <div class="ar-card">
+        <span class="tag">Archer · Repo link</span>
+        <div class="repo-head">
+          <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5.5A1.5 1.5 0 0 1 5.5 4H18v14H5.5A1.5 1.5 0 0 0 4 19.5z"></path><path d="M4 19.5A1.5 1.5 0 0 0 5.5 21H18v-3"></path></svg>acme/platform</span>
+          <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="6" r="2.2"></circle><circle cx="6" cy="18" r="2.2"></circle><circle cx="18" cy="8" r="2.2"></circle><path d="M6 8.2v7.6M18 10.2c0 4-6 3-11 6.3"></path></svg>main</span>
+          <span class="chip">architecture/acme.arch</span>
+        </div>
+        <ul class="timeline">
+          <li><span class="kind">commit</span><span class="sha">a41f2c9</span>Handle Stripe webhooks in billing <span style="color:var(--ink-3)">· 3h</span></li>
+          <li class="r"><span class="kind">revision 18</span>Added billing -&gt; api @http : "webhooks" <span style="color:var(--ink-3)">· 3h</span></li>
+          <li><span class="kind">commit</span><span class="sha">7c0e1b2</span>Move sessions to Auth <span style="color:var(--ink-3)">· 1d</span></li>
+        </ul>
+        <div class="srcline"><span><span style="color:var(--k-kw);font-weight:600">src</span> <span style="color:var(--k-str)">"services/billing"</span></span><a href="#">Open the code <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17L17 7M9 7h8v8"></path></svg></a></div>
+      </div>
+    </article>
+
+    <article class="pair">
+      <div class="pair-text">
+        <h3><span class="q">can you send me the diagram?</span>A live link and an SVG that keeps up.</h3>
+        <p>Share a read-only link with anyone. The SVG behind it updates when the diagram does, so the picture in your README is never last quarter's screenshot.</p>
+      </div>
+      <div class="sk-card">
+        <span class="tag">Whiteboard</span>
+        <svg class="sk" id="sk3" viewBox="0 0 320 220" role="img" aria-label="A blurry phone photo of a whiteboard, taken at an angle with glare">
+          <g transform="rotate(-8 160 104)">
+            <rect class="phone" x="92" y="20" width="136" height="168" rx="16"></rect>
+            <rect class="photo" x="102" y="38" width="116" height="132" rx="3"></rect>
+            <g class="blurry sk-ink" data-photo=""></g>
+            <rect class="glare" x="102" y="38" width="116" height="132"></rect>
+            <g class="sk-ink" data-ink=""></g>
+          </g>
+          <text x="312" y="206" text-anchor="end" font-size="21" class="f-black" transform="rotate(-2 312 206)">IMG_4471.jpg (sorry, glare)</text>
+        </svg>
+      </div>
+      <div class="ar-card">
+        <span class="tag">Archer · Share</span>
+        <div class="share-row">
+          <div class="field"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 14a4.5 4.5 0 0 0 6.4 0l3-3a4.5 4.5 0 0 0-6.4-6.4l-1 1"></path><path d="M14 10a4.5 4.5 0 0 0-6.4 0l-3 3a4.5 4.5 0 0 0 6.4 6.4l1-1"></path></svg><span id="shareUrl">tryarcher.dev/share/k3v9x2</span></div>
+          <button class="btn btn-sm copy-btn" type="button" data-copy="https://tryarcher.dev/share/k3v9x2"><span class="swap" aria-hidden="true"><svg class="i-copy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="8" width="12" height="12" rx="2"></rect><path d="M16 8V5.5A1.5 1.5 0 0 0 14.5 4h-9A1.5 1.5 0 0 0 4 5.5v9A1.5 1.5 0 0 0 5.5 16H8"></path></svg><svg class="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 12.5l5 5 10-11"></path></svg></span>Copy</button>
+        </div>
+        <div class="readme">
+          <div class="readme-head"><span>README.md</span><span class="mono" style="font-weight:500">image.svg</span></div>
+          <code>![Architecture](https://tryarcher.dev/share/k3v9x2/image.svg)</code>
+          <svg class="mini" viewBox="0 0 380 150" role="img" aria-label="The Acme diagram rendered as an SVG">
+            <defs><marker id="mah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="mah"></path></marker></defs>
+            <rect class="mp" x="122" y="14" width="244" height="76" rx="8"></rect>
+            <text class="mpt" x="132" y="28">Backend</text>
+            <rect class="mb" x="14" y="36" width="78" height="40" rx="6"></rect><text x="53" y="60" text-anchor="middle">Web app</text>
+            <rect class="mb" x="14" y="100" width="78" height="40" rx="6"></rect><text x="53" y="124" text-anchor="middle">Auth</text>
+            <rect class="mb" x="140" y="36" width="78" height="40" rx="6"></rect><text x="179" y="60" text-anchor="middle">API</text>
+            <rect class="mb" x="270" y="36" width="78" height="40" rx="6"></rect><text x="309" y="60" text-anchor="middle">Postgres</text>
+            <rect class="mb" x="140" y="100" width="78" height="40" rx="6"></rect><text x="179" y="124" text-anchor="middle">Billing</text>
+            <path class="me" d="M92 56H138" marker-end="url(#mah)"></path>
+            <path class="me" d="M53 76V98" marker-end="url(#mah)"></path>
+            <path class="me" d="M218 56H268" marker-end="url(#mah)"></path>
+            <path class="me" d="M179 76V98" marker-end="url(#mah)"></path>
+          </svg>
+        </div>
+      </div>
+    </article>
+
+    <article class="pair">
+      <div class="pair-text">
+        <h3><span class="q">agents can't read whiteboards.</span>They read Archer over MCP.</h3>
+        <p>Your agent reads and writes the same document you draw: components, connections, and the schemas and notes inside them. Its writes go through the same validation as the canvas, so a broken document is rejected, not saved.</p>
+      </div>
+      <div class="sk-card">
+        <span class="tag">Whiteboard</span>
+        <svg class="sk" id="sk4" viewBox="0 0 320 220" role="img" aria-label="A sketch of an agent looking at a whiteboard with a big question mark between them">
+          <g class="sk-ink" data-ink=""></g>
+          <text x="66" y="112" text-anchor="middle" font-size="24" class="f-black">your agent</text>
+          <text x="66" y="88" text-anchor="middle" font-size="22" class="f-black">&gt;_</text>
+          <text x="156" y="80" text-anchor="middle" font-size="44" class="f-red">?</text>
+          <text x="250" y="204" text-anchor="middle" font-size="22" class="f-red" transform="rotate(-3 250 204)">it can't read this</text>
+        </svg>
+      </div>
+      <div class="ar-card">
+        <span class="tag">Archer · MCP</span>
+<pre class="term"><span class="p">&gt;</span> <span class="t">get_project</span>({ <span class="k">project_id</span>: <span class="s">"k57bmtyf4pmj"</span> })
+<span class="c">{</span>
+  <span class="k">"title"</span>: <span class="s">"Acme"</span>,
+  <span class="k">"valid"</span>: <span class="okl">true</span>,
+  <span class="k">"repository"</span>: { <span class="k">"full_name"</span>: <span class="s">"acme/platform"</span>, <span class="k">"branch"</span>: <span class="s">"main"</span> },
+  <span class="k">"source"</span>: <span class="s">"arch \"Acme\" v0.2\n\ncomponent web \"Web app\" @vercel.nextjs {\n  shape browser\n}…"</span>
+<span class="c">}</span></pre>
+      </div>
+    </article>
+  </div>
+</section>
+
+<!-- ================= Q&A ================= -->
+<section class="wrap" aria-labelledby="more-title">
+  <p class="eyebrow" style="color:var(--m-green)">questions from the margins</p>
+  <h2 class="h2" id="more-title">Everything else you'd scribble in the corner.</h2>
+  <div class="qgrid">
+    <div class="qa"><p class="qh">can it draw our AWS stuff?</p><h3>80+ component types</h3><p>Agents, LLMs, RAG, MCP servers, AWS, GCP, Azure, Vercel, databases, queues and SaaS, each with its own glyph. Add custom types for anything missing.</p></div>
+    <div class="qa"><p class="qh">frontend over here, backend over there</p><h3>Planes and nesting</h3><p>Lay components out on titled planes like frontend, backend or VPC. Any component can hold its own parts: double-click to open it, breadcrumbs lead back out.</p></div>
+    <div class="qa"><p class="qh">where's the schema??</p><h3>Data inside components</h3><p>Attach a schema, API contract or notes as JSON, YAML or tables, validated as you type. Your agent gets all of it.</p></div>
+    <div class="qa"><p class="qh">can the whole team edit it?</p><h3>Teams and roles</h3><p>Personal and team workspaces with owners, editors and viewers. Invite people by email.</p></div>
+    <div class="qa"><p class="qh">do I need an account to try?</p><h3>No</h3><p>Open an example sandbox and change anything. Nothing is saved, and leaving the page discards your edits.</p></div>
+    <div class="qa"><p class="qh">we already have a codebase</p><h3>Start from your repo</h3><p>Copy the agent prompt into your coding agent and it maps the repo into a new Archer project, then asks before it creates anything.</p></div>
+  </div>
+</section>
+
+<!-- ================= MCP ================= -->
+<section class="wrap" id="agents" aria-labelledby="mcp-title">
+  <p class="eyebrow" style="color:var(--m-blue)">one command</p>
+  <h2 class="h2" id="mcp-title">Hand your agent the <span class="hw">marker.</span></h2>
+  <p class="sec-lede">Archer's MCP server is hosted at <span class="inline-code">tryarcher.dev/mcp</span>. There is no API key to paste: your agent opens the browser and you sign in with GitHub.</p>
+  <div class="mcp">
+    <div>
+      <div class="tabs" role="tablist" aria-label="MCP client">
+        <button class="tab" role="tab" type="button" id="tab-claude" aria-selected="true" aria-controls="cmdPanel" data-client="claude">Claude Code</button>
+        <button class="tab" role="tab" type="button" id="tab-codex" aria-selected="false" aria-controls="cmdPanel" data-client="codex" tabindex="-1">Codex</button>
+        <button class="tab" role="tab" type="button" id="tab-gemini" aria-selected="false" aria-controls="cmdPanel" data-client="gemini" tabindex="-1">Gemini CLI</button>
+        <button class="tab" role="tab" type="button" id="tab-cursor" aria-selected="false" aria-controls="cmdPanel" data-client="cursor" tabindex="-1">Cursor</button>
+        <button class="tab" role="tab" type="button" id="tab-vscode" aria-selected="false" aria-controls="cmdPanel" data-client="vscode" tabindex="-1">VS Code</button>
+      </div>
+      <div class="cmd" id="cmdPanel" role="tabpanel" aria-labelledby="tab-claude">
+        <pre id="cmdText">claude mcp add --transport http archer https://tryarcher.dev/mcp</pre>
+        <button class="btn btn-sm copy-btn" type="button" id="cmdCopy" data-copy="claude mcp add --transport http archer https://tryarcher.dev/mcp"><span class="swap" aria-hidden="true"><svg class="i-copy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="8" width="12" height="12" rx="2"></rect><path d="M16 8V5.5A1.5 1.5 0 0 0 14.5 4h-9A1.5 1.5 0 0 0 4 5.5v9A1.5 1.5 0 0 0 5.5 16H8"></path></svg><svg class="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 12.5l5 5 10-11"></path></svg></span>Copy</button>
+      </div>
+      <p class="cmd-note" id="cmdNote">Then run <code>/mcp</code>, choose <code>archer</code> and sign in with GitHub.</p>
+      <div class="prompt-box">
+        <p><b>Not sure where to start?</b> The agent prompt installs the server, signs you in and offers to map your codebase.</p>
+        <button class="btn copy-prompt" type="button"><span class="swap" aria-hidden="true"><svg class="i-copy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="8" width="12" height="12" rx="2"></rect><path d="M16 8V5.5A1.5 1.5 0 0 0 14.5 4h-9A1.5 1.5 0 0 0 4 5.5v9A1.5 1.5 0 0 0 5.5 16H8"></path></svg><svg class="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 12.5l5 5 10-11"></path></svg></span>Copy agent prompt</button>
+      </div>
+    </div>
+    <div class="chat" aria-label="Example agent session">
+      <div class="chat-head"><span class="dots" aria-hidden="true"><i></i><i></i><i></i></span>acme-platform</div>
+      <div class="chat-body">
+        <div class="msg-you">Map this repo into Archer.</div>
+        <div class="msg-agent">
+          <div class="who">Claude Code <span class="badge">agent</span></div>
+          <div class="call"><span><b>get_guide</b>()</span><span class="okl"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 12.5l5 5 10-11"></path></svg>read</span></div>
+          <div class="call"><span><b>create_project</b>({ source: "arch \"Acme\" v0.2 …" })</span><span class="bad">E101 rejected</span></div>
+          <div>A plane can't be a connection endpoint. Pointing that edge at <span class="inline-code">api</span> instead.</div>
+          <div class="call"><span><b>create_project</b>({ source: "arch \"Acme\" v0.2 …" })</span><span class="okl"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 12.5l5 5 10-11"></path></svg>saved</span></div>
+          <div>Saved revision 1: 5 components and 4 connections, with Postgres and the API on a Backend plane. It's on your canvas now.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= CLOSING ================= -->
+<section class="wrap closing" aria-labelledby="close-title">
+  <div class="closing-card">
+    <div class="closing-inner">
+      <div class="closing-grid" aria-hidden="true"></div>
+      <p class="old-note">photograph the whiteboard<svg viewBox="0 0 300 18" preserveAspectRatio="none" aria-hidden="true"><path d="M2 10 C 70 4, 150 14, 220 7 S 290 9, 298 8" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round"></path></svg></p>
+      <h2 id="close-title">Draw it once. Keep it true.</h2>
+      <p class="sec-lede">Start in the sandbox with no account, or sign in and give your agent the marker.</p>
+      <div class="cta-row">
+        <a class="btn btn-primary" href="#">Sign in with GitHub</a>
+        <a class="btn" href="#">Try the sandbox</a>
+        <button class="btn btn-ghost copy-prompt" type="button"><span class="swap" aria-hidden="true"><svg class="i-copy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="8" width="12" height="12" rx="2"></rect><path d="M16 8V5.5A1.5 1.5 0 0 0 14.5 4h-9A1.5 1.5 0 0 0 4 5.5v9A1.5 1.5 0 0 0 5.5 16H8"></path></svg><svg class="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 12.5l5 5 10-11"></path></svg></span>Copy agent prompt</button>
+      </div>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <div class="foot">
+      <div>
+        <a class="brand" href="#" aria-label="Archer home">
+          <svg width="26" height="26" viewBox="0 0 28 28" aria-hidden="true"><rect x="2" y="3" width="10" height="9" rx="2.5" fill="none" stroke="currentColor" stroke-width="2.2"></rect><rect x="16" y="16" width="10" height="9" rx="2.5" fill="currentColor"></rect><path d="M12 7.5h4.5a3 3 0 0 1 3 3V13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"></path><path d="M16.8 11.2l2.7 2.9 2.7-2.9" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+          archer
+        </a>
+        <p class="tagline">Software architecture for you and your agents, in one document.</p>
+      </div>
+      <div>
+        <h4>Product</h4>
+        <ul><li><a href="#">Try the sandbox</a></li><li><a href="#">Examples</a></li><li><a href="#agents">Agent setup</a></li></ul>
+      </div>
+      <div>
+        <h4>Docs</h4>
+        <ul><li><a href="#">Language reference</a></li><li><a href="#">MCP server</a></li><li><a href="#">CLI</a></li></ul>
+      </div>
+      <div>
+        <h4>Account</h4>
+        <ul><li><a href="#">Sign in with GitHub</a></li><li><a href="#">Workspaces</a></li><li><a href="#">Send feedback</a></li></ul>
+      </div>
+    </div>
+    <div class="foot-bottom"><span>© 2026 Archer · tryarcher.dev</span><span class="hand">sketched on a whiteboard first</span></div>
+  </div>
+</footer>
+<div class="sr-only" role="status" id="copyStatus"></div>
+
+<script>
+(function(){
+"use strict";
+var NS="http://www.w3.org/2000/svg";
+var reduce=window.matchMedia&&window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+/* ---------------- theme ---------------- */
+var themeBtn=document.getElementById("themeBtn");
+function currentMode(){var a=document.documentElement.getAttribute("data-theme");return a==="light"||a==="dark"?a:"system";}
+function setMode(m){
+  if(m==="system")document.documentElement.removeAttribute("data-theme");else document.documentElement.setAttribute("data-theme",m);
+  try{if(m==="system")localStorage.removeItem("archer-wb-theme");else localStorage.setItem("archer-wb-theme",m);}catch(e){}
+  themeBtn.setAttribute("data-mode",m);themeBtn.setAttribute("aria-label","Theme: "+m);
+}
+themeBtn.setAttribute("data-mode",currentMode());themeBtn.setAttribute("aria-label","Theme: "+currentMode());
+themeBtn.addEventListener("click",function(){var m=currentMode();setMode(m==="system"?"light":m==="light"?"dark":"system");});
+
+/* ---------------- copy ---------------- */
+var SITE="https://tryarcher.dev";
+var PROMPT="Set me up with Archer ("+SITE+"), an architecture canvas I share with AI agents. Work through these steps in order, and stop where a step says to wait for me.\n\n1. Install the Archer MCP server\nIt's hosted at "+SITE+"/mcp (Streamable HTTP). There's no API key, header or client ID to configure: sign-in happens in the browser.\n- Claude Code: claude mcp add --transport http archer "+SITE+"/mcp\n- Codex: codex mcp add archer --url "+SITE+"/mcp\n- Gemini CLI: gemini mcp add --transport http archer "+SITE+"/mcp\n- Cursor: add \"archer\": { \"url\": \""+SITE+"/mcp\" } under mcpServers in ~/.cursor/mcp.json\n- VS Code: add \"archer\": { \"type\": \"http\", \"url\": \""+SITE+"/mcp\" } under servers in .vscode/mcp.json\n- Any other client: follow "+SITE+"/docs/mcp\nIf you can't change your own MCP settings (Claude on the web or desktop, for example), give me the exact steps from that page instead. If your client has to restart or reload to pick up the server, tell me and wait.\n\n2. Connect it\nStart the sign-in so my browser opens, or tell me how to (Claude Code: I run /mcp, choose archer, then Authenticate; Codex: codex mcp login archer; Gemini CLI: /mcp auth archer). Wait while I sign in with GitHub, then call get_workspace_info to check you're connected and tell me which workspace you're working in.\n\n3. Learn Archer\nArcher keeps a system's architecture as a document we both edit: its components, what runs inside them and how they connect, written in the .arch language and drawn as a live diagram on my canvas. You work on it through the MCP tools. Everything you save is validated (a broken document is rejected, not saved), recorded in the project's history under your name, and appears on my canvas straight away. Call get_guide now, once: it has the workflows, the error codes and the full language spec.\n\n4. Ask me what we're building\nIf you're working in a codebase right now, ask whether I'd like you to map its architecture into a new Archer project. If not, ask whether I'd like to plan the architecture of a new project together. Wait for my answer before you create anything.";
+var status=document.getElementById("copyStatus");
+function copyText(btn,text){
+  var done=function(){btn.classList.add("copied");status.textContent="Copied";clearTimeout(btn._t);btn._t=setTimeout(function(){btn.classList.remove("copied");status.textContent="";},1600);};
+  try{
+    navigator.clipboard.writeText(text).then(done).catch(function(){status.textContent="Couldn't copy. Select the text and copy it instead.";});
+  }catch(e){status.textContent="Couldn't copy. Select the text and copy it instead.";}
+}
+Array.prototype.forEach.call(document.querySelectorAll(".copy-prompt"),function(b){b.addEventListener("click",function(){copyText(b,PROMPT);});});
+Array.prototype.forEach.call(document.querySelectorAll(".copy-btn"),function(b){b.addEventListener("click",function(){copyText(b,b.getAttribute("data-copy"));});});
+
+/* ---------------- MCP tabs ---------------- */
+var CLIENTS={
+  claude:{cmd:"claude mcp add --transport http archer https://tryarcher.dev/mcp",note:"Then run <code>/mcp</code>, choose <code>archer</code> and sign in with GitHub."},
+  codex:{cmd:"codex mcp add archer --url https://tryarcher.dev/mcp",note:"Codex notices the sign-in and opens the browser. Later, <code>codex mcp login archer</code> signs in again."},
+  gemini:{cmd:"gemini mcp add --transport http archer https://tryarcher.dev/mcp",note:"Then run <code>/mcp auth archer</code> in Gemini CLI to sign in."},
+  cursor:{cmd:'{\n  "mcpServers": {\n    "archer": { "url": "https://tryarcher.dev/mcp" }\n  }\n}',note:"Add this to <code>~/.cursor/mcp.json</code>, then connect <code>archer</code> in Cursor's MCP settings and sign in."},
+  vscode:{cmd:'{\n  "servers": {\n    "archer": { "type": "http", "url": "https://tryarcher.dev/mcp" }\n  }\n}',note:"Add this to <code>.vscode/mcp.json</code>. VS Code opens the browser to sign in the first time the server starts."}
+};
+var tabs=Array.prototype.slice.call(document.querySelectorAll(".tab"));
+function selectTab(tab,focus){
+  tabs.forEach(function(t){var on=t===tab;t.setAttribute("aria-selected",on?"true":"false");t.tabIndex=on?0:-1;});
+  var c=CLIENTS[tab.getAttribute("data-client")];
+  document.getElementById("cmdText").textContent=c.cmd;
+  document.getElementById("cmdCopy").setAttribute("data-copy",c.cmd);
+  document.getElementById("cmdNote").innerHTML=c.note;
+  document.getElementById("cmdPanel").setAttribute("aria-labelledby",tab.id);
+  if(focus)tab.focus();
+}
+tabs.forEach(function(t,i){
+  t.addEventListener("click",function(){selectTab(t);});
+  t.addEventListener("keydown",function(e){
+    var j=null;if(e.key==="ArrowRight")j=(i+1)%tabs.length;else if(e.key==="ArrowLeft")j=(i-1+tabs.length)%tabs.length;else if(e.key==="Home")j=0;else if(e.key==="End")j=tabs.length-1;
+    if(j!==null){e.preventDefault();selectTab(tabs[j],true);}
+  });
+});
+
+/* ---------------- sketch geometry ---------------- */
+function clamp(v,a,b){a=a===undefined?0:a;b=b===undefined?1:b;return Math.min(b,Math.max(a,v));}
+function lerp(a,b,t){return a+(b-a)*t;}
+function sm(a,b,t){var x=clamp((t-a)/(b-a));return x*x*(3-2*x);}
+function eio(x){return x<.5?4*x*x*x:1-Math.pow(-2*x+2,3)/2;}
+function f(v){return Math.round(v*10)/10;}
+function rng(seed){return function(){seed|=0;seed=seed+0x6D2B79F5|0;var t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+function phases(seed){var r=rng(seed*7919+13);return[r()*6.283,r()*6.283,r()*6.283];}
+function noise(s,ph){return .55*Math.sin(s*.026+ph[0])+.3*Math.sin(s*.063+ph[1])+.15*Math.sin(s*.17+ph[2]);}
+
+function compose(segs,closed,exact){
+  var L=0;segs.forEach(function(g){L+=g.L;});
+  return{L:L,closed:closed,exact:exact,at:function(s){
+    if(closed){s=((s%L)+L)%L;}else s=clamp(s,0,L);
+    for(var i=0;i<segs.length;i++){var g=segs[i];if(s<=g.L||i===segs.length-1)return g.f(Math.min(s,g.L));s-=g.L;}
+  }};
+}
+function lineSeg(x0,y0,x1,y1){var L=Math.hypot(x1-x0,y1-y0)||.0001;var nx=-(y1-y0)/L,ny=(x1-x0)/L;return{L:L,f:function(u){return[x0+(x1-x0)*u/L,y0+(y1-y0)*u/L,nx,ny];}};}
+function arcSeg(cx,cy,rx,ry,a0,a1){var L=Math.abs(a1-a0)*(rx+ry)/2||.0001;return{L:L,f:function(u){var a=a0+(a1-a0)*u/L;var c=Math.cos(a),s=Math.sin(a);return[cx+c*rx,cy+s*ry,c,s];}};}
+function rrShape(x,y,w,h,r){
+  r=Math.max(0,Math.min(r,w/2,h/2));var P=Math.PI;
+  var segs=[lineSeg(x+r,y,x+w-r,y),arcSeg(x+w-r,y+r,r,r,-P/2,0),lineSeg(x+w,y+r,x+w,y+h-r),arcSeg(x+w-r,y+h-r,r,r,0,P/2),lineSeg(x+w-r,y+h,x+r,y+h),arcSeg(x+r,y+h-r,r,r,P/2,P),lineSeg(x,y+h-r,x,y+r),arcSeg(x+r,y+r,r,r,P,1.5*P)];
+  // normals of line segs computed as left-hand; fix to outward for clockwise path
+  segs.forEach(function(g,i){if(i%2===0){var of=g.f;g.f=function(u){var p=of(u);return[p[0],p[1],-p[2],-p[3]];};}});
+  var ex="M"+f(x+r)+","+f(y)+"H"+f(x+w-r)+"A"+f(r)+","+f(r)+" 0 0 1 "+f(x+w)+","+f(y+r)+"V"+f(y+h-r)+"A"+f(r)+","+f(r)+" 0 0 1 "+f(x+w-r)+","+f(y+h)+"H"+f(x+r)+"A"+f(r)+","+f(r)+" 0 0 1 "+f(x)+","+f(y+h-r)+"V"+f(y+r)+"A"+f(r)+","+f(r)+" 0 0 1 "+f(x+r)+","+f(y)+"Z";
+  return compose(segs,true,ex);
+}
+function ellShape(cx,cy,rx,ry){
+  var ex="M"+f(cx-rx)+","+f(cy)+"a"+f(rx)+","+f(ry)+" 0 1 0 "+f(2*rx)+",0a"+f(rx)+","+f(ry)+" 0 1 0 "+f(-2*rx)+",0Z";
+  return compose([arcSeg(cx,cy,rx,ry,Math.PI,3*Math.PI)],true,ex);
+}
+function polyShape(pts){
+  var segs=[];for(var i=0;i<pts.length-1;i++)segs.push(lineSeg(pts[i][0],pts[i][1],pts[i+1][0],pts[i+1][1]));
+  var ex="M"+pts.map(function(p){return f(p[0])+","+f(p[1]);}).join("L");
+  return compose(segs,false,ex);
+}
+function quadShape(A,B,bend){
+  var mx=(A[0]+B[0])/2,my=(A[1]+B[1])/2,dx=B[0]-A[0],dy=B[1]-A[1],d=Math.hypot(dx,dy)||1;
+  var C=[mx-dy/d*bend,my+dx/d*bend];
+  var L=d+Math.abs(bend)*.6;
+  var seg={L:L,f:function(s){var u=s/L,a=(1-u)*(1-u),b=2*(1-u)*u,c=u*u;var x=a*A[0]+b*C[0]+c*B[0],y=a*A[1]+b*C[1]+c*B[1];var tx=2*(1-u)*(C[0]-A[0])+2*u*(B[0]-C[0]),ty=2*(1-u)*(C[1]-A[1])+2*u*(B[1]-C[1]);var tl=Math.hypot(tx,ty)||1;return[x,y,-ty/tl,tx/tl];}};
+  var sh=compose([seg],false,Math.abs(bend)<.05?"M"+f(A[0])+","+f(A[1])+"L"+f(B[0])+","+f(B[1]):null);
+  sh.C=C;return sh;
+}
+function cat(p){
+  var d="M"+f(p[0][0])+","+f(p[0][1]);
+  for(var i=0;i<p.length-1;i++){var p0=p[i-1]||p[i],p1=p[i],p2=p[i+1],p3=p[i+2]||p2;
+    d+="C"+f(p1[0]+(p2[0]-p0[0])/6)+","+f(p1[1]+(p2[1]-p0[1])/6)+" "+f(p2[0]-(p3[0]-p1[0])/6)+","+f(p2[1]-(p3[1]-p1[1])/6)+" "+f(p2[0])+","+f(p2[1]);}
+  return d;
+}
+function wobPts(sh,amp,ph,ov,step){
+  step=step||6;var s0=sh.closed?-ov:0,s1=sh.closed?sh.L+ov:sh.L;var n=Math.max(2,Math.ceil((s1-s0)/step));var pts=[];
+  for(var i=0;i<=n;i++){var s=s0+(s1-s0)*i/n;var p=sh.at(s);var o=amp*noise(s-s0,ph);pts.push([p[0]+p[2]*o,p[1]+p[3]*o]);}
+  return pts;
+}
+function wob(sh,amp,ph,ov,step){
+  if(amp<.04&&ov<.4&&sh.exact)return sh.exact;
+  return cat(wobPts(sh,amp,ph,ov,step));
+}
+function mk(tag,attrs,parent){var e=document.createElementNS(NS,tag);for(var k in attrs)e.setAttribute(k,attrs[k]);if(parent)parent.appendChild(e);return e;}
+function txt(parent,x,y,s,cls,attrs){var e=mk("text",Object.assign({x:x,y:y,"class":cls},attrs||{}),parent);e.textContent=s;return e;}
+
+/* ---------------- static sketches (feature cards) ---------------- */
+function strokePair(g,d1,d2,color){mk("path",{d:d1,"class":"w1 s-"+color},g);mk("path",{d:d2,"class":"w2 s-"+color},g);}
+function rRect(g,x,y,w,h,color,seed,amp){amp=amp||2.6;var sh=rrShape(x,y,w,h,5);strokePair(g,wob(sh,amp,phases(seed),12),wob(sh,amp*1.25,phases(seed+50),18),color);}
+function rEll(g,cx,cy,rx,ry,color,seed,amp){amp=amp||2;var sh=ellShape(cx,cy,rx,ry);strokePair(g,wob(sh,amp,phases(seed),10),wob(sh,amp*1.2,phases(seed+50),14),color);}
+function rLine(g,pts,color,seed,amp){amp=amp||1.8;var sh=polyShape(pts);strokePair(g,wob(sh,amp,phases(seed),0),wob(sh,amp*1.3,phases(seed+50),0),color);}
+function rArrow(g,A,B,bend,color,seed,dash){
+  var sh=quadShape(A,B,bend);var d=wob(sh,1.6,phases(seed),0);
+  var p=mk("path",{d:d,"class":"w1 s-"+color},g);if(dash)p.setAttribute("stroke-dasharray","8 7");
+  var e=sh.at(sh.L),q=sh.at(sh.L-10);var ang=Math.atan2(e[1]-q[1],e[0]-q[0]);
+  [0.5,-0.5].forEach(function(da){var a=ang+Math.PI+da;mk("path",{d:"M"+f(e[0])+","+f(e[1])+"L"+f(e[0]+Math.cos(a)*13)+","+f(e[1]+Math.sin(a)*13),"class":"w1 s-"+color},g);});
+}
+function rCyl(g,x,y,w,h,color,seed){
+  var ry=10;rEll(g,x+w/2,y+ry,w/2,ry,color,seed,1.4);
+  var body=compose([lineSeg(x,y+ry,x,y+h-ry),arcSeg(x+w/2,y+h-ry,w/2,ry,Math.PI,0),lineSeg(x+w,y+h-ry,x+w,y+ry)],false,null);
+  strokePair(g,wob(body,1.8,phases(seed+3),0),wob(body,2.2,phases(seed+9),0),color);
+}
+(function(){
+  var s1=document.getElementById("sk1"),g1=s1.querySelector("[data-ink]"),t1=s1.querySelector("[data-top]");
+  rRect(g1,24,52,96,62,"black",3);rRect(g1,192,46,104,62,"black",4);
+  rArrow(g1,[124,84],[196,78],-10,"blue",5);
+  var gh=mk("g",{"class":"ghost"},g1);rRect(gh,28,124,86,50,"black",6,2);
+  var s2=document.getElementById("sk2"),g2=mk("g",{"class":"old"},s2.querySelector("[data-ink]"));
+  rRect(g2,26,72,112,64,"black",11);rCyl(g2,198,72,62,72,"black",12);rArrow(g2,[142,104],[192,106],-8,"black",13);
+  var ringG=s2.querySelector("[data-ink]");var rs=ellShape(258,168,30,26);mk("path",{d:wob(rs,1.3,phases(14),20),"class":"ring",style:"stroke-width:5"},ringG);mk("path",{d:wob(ellShape(258,168,25,21),1.5,phases(15),8),"class":"ring",style:"stroke-width:2"},ringG);
+  var s3=document.getElementById("sk3"),ph=s3.querySelector("[data-photo]"),pi=s3.querySelector("[data-ink]");
+  rRect(ph,112,60,40,26,"black",21,1.4);rRect(ph,168,58,40,26,"black",22,1.4);rRect(ph,138,118,44,30,"black",23,1.4);rArrow(ph,[152,73],[168,72],-3,"blue",24);rArrow(ph,[134,86],[152,118],4,"blue",25);
+  rLine(pi,[[148,30],[172,30]],"black",26,.6);
+  var s4=document.getElementById("sk4"),g4=s4.querySelector("[data-ink]");
+  rRect(g4,14,58,106,72,"black",31);
+  rRect(g4,200,40,104,80,"black",32);rLine(g4,[[226,120],[214,168]],"black",33);rLine(g4,[[278,120],[290,168]],"black",34);
+  rRect(g4,212,54,30,20,"black",35,1.2);rRect(g4,262,58,30,20,"black",36,1.2);rLine(g4,[[244,64],[260,66]],"blue",37,1);rLine(g4,[[220,96],[240,90],[258,100],[284,92]],"red",38,1.4);
+  rArrow(g4,[124,96],[194,84],-14,"blue",39,true);
+})();
+
+/* ---------------- hero data ---------------- */
+var SRC=['arch "Acme" v0.2','','component web "Web app" @vercel.nextjs {','  shape browser','}','component auth "Auth" @clerk {','  desc "Sign-in and sessions"','}','','plane backend "Backend" {','  component api "API" @vercel.functions','  component db "Postgres" @supabase.postgres {','    shape cylinder','  }','}','','component billing "Billing" @stripe {','  desc "Checkout and Stripe webhooks"','}','','web -> api @http','web -> auth @http : "sign in"','api -> db @sql','api -> billing @http : "checkout"'];
+var LINEMAP=[[],[],["web"],["web"],["web"],["auth"],["auth"],["auth"],[],["backend"],["api","backend"],["db","backend"],["db","backend"],["db","backend"],["backend"],[],["billing"],["billing"],["billing"],[],["web","api"],["web","auth"],["api","db"],["api","billing"]];
+document.getElementById("codeFull").textContent=SRC.join("\n");
+
+function tokenize(line){
+  var re=/("(?:[^"\\]|\\.)*")|(@[\w.]+)|(->)|\b(arch|component|plane|shape|desc)\b|(v0\.2)|([{}:])|(\s+)|([\w.]+)|(.)/g,m,out=[],prevKw=null;
+  while((m=re.exec(line))){
+    var c="";
+    if(m[1])c="str";else if(m[2])c="typ";else if(m[3])c="arw";else if(m[4])c="kw";else if(m[5])c="pun";else if(m[6])c="pun";else if(m[7])c="";else if(m[8])c=(prevKw==="component"||prevKw==="plane")?"def":"";
+    out.push([m[0],c]);
+    if(!m[7])prevKw=m[4]||null;
+  }
+  return out;
+}
+var TOK=SRC.map(tokenize);
+var TOTAL=SRC.reduce(function(a,l){return a+l.length+1;},0);
+function esc(s){return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
+
+var BOXW=160,BOXH=120;
+var SK={
+  web:{dx:-18,dy:16,rot:-3.4,dw:16,dh:-10,seed:1,hand:"web app",hrot:-4,kind:"browser",label:"Web app",tag:"@vercel.nextjs",glyph:"globe"},
+  auth:{dx:12,dy:24,rot:2.6,dw:-22,dh:-16,seed:2,hand:"auth",hrot:3,kind:"card",label:"Auth",tag:"@clerk",glyph:"key",desc:["Sign-in and sessions"]},
+  api:{dx:-10,dy:-12,rot:1.8,dw:-14,dh:8,seed:3,hand:"API",hrot:-2,kind:"card",label:"API",tag:"@vercel.functions",glyph:"bolt"},
+  db:{dx:20,dy:8,rot:-2.2,dw:-22,dh:14,seed:4,hand:"postgres",hrot:-5,kind:"cyl",label:"Postgres",tag:"@supabase.postgres",glyph:"db"},
+  billing:{dx:26,dy:20,rot:-3.2,dw:6,dh:-18,seed:5,hand:"billing $$",hrot:2,kind:"card",label:"Billing",tag:"@stripe",glyph:"card",desc:["Checkout and","Stripe webhooks"]}
+};
+var LAYOUTS={
+  land:{
+    vb:[-40,4,800,500],
+    boxes:{web:[0,120],auth:[0,360],api:[280,120],db:[520,120],billing:[280,360]},
+    plane:[240,40,480,240],
+    planeHand:[262,30],
+    edges:[
+      {a:"web",as:"r",b:"api",bs:"l",bend:-24,seed:41,proto:"http",lp:[220,172],anchor:"middle"},
+      {a:"web",as:"b",b:"auth",bs:"t",bend:20,seed:42,label:"sign in",proto:"http",lp:[90,306],anchor:"start",hand:"sign in",hp:[96,312]},
+      {a:"api",as:"r",b:"db",bs:"l",bend:16,seed:43,proto:"sql",lp:[480,172],anchor:"middle"},
+      {a:"api",as:"b",b:"billing",bs:"t",bend:-22,seed:44,label:"checkout",proto:"http",lp:[370,306],anchor:"start",hand:"checkout",hp:[378,314]}
+    ],
+    erase:[-26,22],
+    cache:[566,342,136,74],
+    authNote:{at:[174,334],rot:-8,from:[184,342],to:[150,366],bend:-12},
+    stripeNote:{at:[466,470],rot:-4,from:[462,458],to:[446,432],bend:10}
+  },
+  port:{
+    vb:[-32,8,456,700],
+    boxes:{web:[0,90],auth:[240,90],api:[0,320],db:[240,320],billing:[0,560]},
+    plane:[-20,262,440,200],
+    planeHand:[-10,254],
+    edges:[
+      {a:"web",as:"b",b:"api",bs:"t",bend:-16,seed:41,proto:"http",lp:[92,250],anchor:"start"},
+      {a:"web",as:"r",b:"auth",bs:"l",bend:-14,seed:42,label:"sign in",proto:"http",lp:[200,128],anchor:"middle",hand:"sign in",hp:[200,124]},
+      {a:"api",as:"r",b:"db",bs:"l",bend:12,seed:43,proto:"sql",lp:[200,370],anchor:"middle"},
+      {a:"api",as:"b",b:"billing",bs:"t",bend:-18,seed:44,label:"checkout",proto:"http",lp:[92,516],anchor:"start",hand:"checkout",hp:[96,520]}
+    ],
+    erase:[-26,20],
+    cache:[250,520,130,66],
+    authNote:{at:[262,58],rot:-6,from:[318,64],to:[318,88],bend:-6},
+    stripeNote:{at:[190,640],rot:-4,from:[186,628],to:[166,612],bend:8}
+  }
+};
+var GLYPHS={
+  globe:'<circle cx="12" cy="12" r="8.5"></circle><ellipse cx="12" cy="12" rx="3.8" ry="8.5"></ellipse><path d="M3.5 12h17"></path>',
+  key:'<circle cx="8" cy="12" r="4"></circle><path d="M12 12h9M18 12v3.2M15 12v2.4"></path>',
+  bolt:'<path d="M13.5 2.5L5 13.5h6.5L10.5 21.5 19 10.5h-6.5z"></path>',
+  db:'<ellipse cx="12" cy="6" rx="7.5" ry="3"></ellipse><path d="M4.5 6v12c0 1.7 3.4 3 7.5 3s7.5-1.3 7.5-3V6M4.5 12c0 1.7 3.4 3 7.5 3s7.5-1.3 7.5-3"></path>',
+  card:'<rect x="2.5" y="5" width="19" height="14" rx="2.2"></rect><path d="M2.5 10h19M6 15h4"></path>'
+};
+var A=3.4;
+
+var svg=document.getElementById("diagram"),board=document.getElementById("board"),frame=board.parentNode;
+var codeEl=document.getElementById("code"),statusEl=document.getElementById("srcStatus"),sticky=document.getElementById("sticky");
+var L=null,R={},layoutKey=null,T=0,lastChars=-1;
+
+function build(key){
+  layoutKey=key;L=LAYOUTS[key];
+  var keep=[svg.querySelector("title"),svg.querySelector("desc")];
+  while(svg.lastChild)svg.removeChild(svg.lastChild);
+  keep.forEach(function(k){svg.appendChild(k);});
+  svg.setAttribute("viewBox",L.vb.join(" "));
+  var defs=mk("defs",{},svg);
+  var pat=mk("pattern",{id:"gridDots",width:40,height:40,patternUnits:"userSpaceOnUse"},defs);
+  mk("circle",{cx:0,cy:0,r:1.5,fill:"var(--grid-dot)"},pat);mk("circle",{cx:40,cy:0,r:1.5,fill:"var(--grid-dot)"},pat);mk("circle",{cx:0,cy:40,r:1.5,fill:"var(--grid-dot)"},pat);mk("circle",{cx:40,cy:40,r:1.5,fill:"var(--grid-dot)"},pat);
+  var mar=mk("marker",{id:"ah",viewBox:"0 0 10 10",refX:"9.2",refY:"5",markerWidth:"8",markerHeight:"8",markerUnits:"userSpaceOnUse",orient:"auto"},defs);
+  mk("path",{d:"M0 0.6L10 5L0 9.4z","class":"ah"},mar);
+  mar.setAttribute("markerWidth","9");mar.setAttribute("markerHeight","9");
+  R={};
+  R.grid=mk("rect",{x:L.vb[0],y:L.vb[1],width:L.vb[2],height:L.vb[3],fill:"url(#gridDots)"},svg);
+  // plane
+  var pg=mk("g",{"class":"plane-g"},svg);
+  R.plane={g:pg};
+  R.plane.ink=mk("g",{"class":"ink"},pg);R.plane.inkP=mk("path",{"class":"plane"},R.plane.ink);
+  R.plane.mk=mk("g",{"class":"mk"},pg);R.plane.mkP=mk("path",{"class":"w1 s-green","stroke-dasharray":"14 10"},R.plane.mk);
+  R.plane.crisp=mk("g",{},pg);
+  txt(R.plane.crisp,L.plane[0]+16,L.plane[1]+26,"Backend","p-title");
+  txt(R.plane.crisp,L.plane[0]+82,L.plane[1]+26,"plane","p-tag");
+  R.plane.hand=txt(pg,L.planeHand[0],L.planeHand[1],"BACKEND","hand-t f-green",{"font-size":"27"});
+  R.plane.crisp.addEventListener("mouseenter",function(){hl(["backend"]);});
+  // edges
+  var eg=mk("g",{},svg);R.edges=[];
+  L.edges.forEach(function(E){
+    var o={E:E};
+    o.ink=mk("path",{"class":"edge","marker-end":"url(#ah)"},mk("g",{"class":"ink"},eg));o.inkG=o.ink.parentNode;
+    var mg=mk("g",{"class":"mk"},eg);o.mkG=mg;
+    o.mk1=mk("path",{"class":"w1 s-blue"},mg);o.mk2=mk("path",{"class":"w1 s-blue"},mg);o.mk3=mk("path",{"class":"w1 s-blue"},mg);
+    o.crisp=mk("g",{},eg);
+    var lab=E.label?E.label+"  ":"";
+    var pill=mk("rect",{"class":"e-pill",rx:5,height:19},o.crisp);
+    var t=mk("text",{x:E.lp[0],y:E.lp[1]+4,"text-anchor":E.anchor},o.crisp);
+    if(E.label){var t1=mk("tspan",{"class":"e-lab"},t);t1.textContent=E.label+" ";}
+    var t2=mk("tspan",{"class":"e-proto"},t);t2.textContent="@"+E.proto;
+    o.pill=pill;o.text=t;
+    if(E.hand)o.hand=txt(eg,E.hp[0],E.hp[1],E.hand,"hand-t f-blue",{"font-size":"22","text-anchor":E.anchor==="middle"?"middle":"start"});
+    R.edges.push(o);
+  });
+  // nodes
+  var ng=mk("g",{},svg);R.nodes={};
+  Object.keys(SK).forEach(function(id){
+    var s=SK[id],o={id:id,s:s};
+    o.g=mk("g",{"class":"node","data-id":id},ng);
+    o.ink=mk("g",{"class":"ink"},o.g);
+    o.body=mk("path",{"class":"card"},o.ink);
+    if(s.kind==="cyl")o.top=mk("path",{"class":"card-top"},o.ink);
+    if(s.kind==="browser"){o.bar=mk("path",{"class":"bar"},o.ink);o.dots=[0,1,2].map(function(i){return mk("circle",{"class":"dot",r:2.6,cx:14+i*10,cy:10},o.ink);});}
+    o.mkG=mk("g",{"class":"mk"},o.g);
+    o.m1=mk("path",{"class":"w1 s-black"},o.mkG);o.m2=mk("path",{"class":"w2 s-black"},o.mkG);
+    if(s.kind==="cyl"){o.mt1=mk("path",{"class":"w1 s-black"},o.mkG);o.mt2=mk("path",{"class":"w2 s-black"},o.mkG);o.hatch=mk("path",{"class":"w2 s-black"},o.mkG);}
+    if(s.kind==="browser"){o.mbar=mk("path",{"class":"w1 s-black"},o.mkG);o.mdots=mk("path",{"class":"w1 s-black"},o.mkG);}
+    var oy=s.kind==="browser"?14:s.kind==="cyl"?16:0;o.oy=oy;
+    o.crisp=mk("g",{},o.g);
+    o.glyph=mk("g",{},o.crisp);
+    mk("rect",{"class":"gl-bg",x:0,y:0,width:30,height:30,rx:7},o.glyph);
+    var gi=mk("g",{"class":"gl",transform:"translate(4 4) scale(.92)"},o.glyph);gi.innerHTML=GLYPHS[s.glyph];
+    o.label=txt(o.crisp,14,60+oy,s.label,"c-label");
+    o.tag=txt(o.crisp,14,77+oy,s.tag,"c-tag");
+    if(s.desc){s.desc.forEach(function(line,i){txt(o.crisp,14,(s.desc.length>1?94:98)+i*14,line,"c-desc");});}
+    o.hand=txt(o.g,0,0,s.hand,"hand-t f-black",{"font-size":s.hand.length>6?"27":"30","text-anchor":"middle"});
+    o.g.addEventListener("mouseenter",function(){hl([id]);});
+    o.g.addEventListener("mouseleave",function(){hl([]);});
+    R.nodes[id]=o;
+  });
+  // notes
+  var nt=mk("g",{},svg);
+  R.erase=mk("g",{},nt);
+  var eb=mk("g",{"class":"mk"},R.erase);
+  var es=rrShape(L.erase[0],L.erase[1],156,46,4);mk("path",{d:wob(es,2.4,phases(61),14),"class":"w1 s-red"},eb);mk("path",{d:wob(es,2.8,phases(62),18),"class":"w2 s-red"},eb);
+  txt(R.erase,L.erase[0]+78,L.erase[1]+32,"DO NOT ERASE","hand-t f-red",{"font-size":"27","text-anchor":"middle"});
+  R.erase.setAttribute("transform","rotate(-4 "+(L.erase[0]+78)+" "+(L.erase[1]+23)+")");
+  R.cache=mk("g",{},nt);var cg=mk("g",{"class":"mk"},R.cache);var c=L.cache;
+  var cs=rrShape(c[0],c[1],c[2],c[3],5);mk("path",{d:wob(cs,2.6,phases(71),14),"class":"w1 s-black"},cg);
+  txt(R.cache,c[0]+c[2]/2,c[1]+c[3]/2+9,"cache?","hand-t f-black",{"font-size":"28","text-anchor":"middle"});
+  var xg=mk("g",{"class":"mk"},R.cache);
+  mk("path",{d:wob(polyShape([[c[0]-6,c[1]-4],[c[0]+c[2]+6,c[1]+c[3]+4]]),2,phases(72),0),"class":"w1 s-red"},xg);
+  mk("path",{d:wob(polyShape([[c[0]+c[2]+4,c[1]-6],[c[0]-4,c[1]+c[3]+6]]),2,phases(73),0),"class":"w1 s-red"},xg);
+  function note(spec,text,color,target,seed){
+    var o={spec:spec,target:target};
+    o.arrow=mk("g",{"class":"mk"},nt);
+    var sh=quadShape(spec.from,spec.to,spec.bend);mk("path",{d:wob(sh,1.3,phases(seed),0),"class":"w1 s-"+color},o.arrow);
+    var e=sh.at(sh.L),q=sh.at(sh.L-8),ang=Math.atan2(e[1]-q[1],e[0]-q[0]);
+    [0.5,-0.5].forEach(function(da){var a=ang+Math.PI+da;mk("path",{d:"M"+f(e[0])+","+f(e[1])+"L"+f(e[0]+Math.cos(a)*11)+","+f(e[1]+Math.sin(a)*11),"class":"w1 s-"+color},o.arrow);});
+    o.text=txt(nt,0,0,text,"hand-t f-"+color,{"font-size":"26"});
+    return o;
+  }
+  R.authNote=note(L.authNote,"auth here??","red","auth",81);
+  R.stripeNote=note(L.stripeNote,"stripe webhooks!","green","billing",82);
+  // measure label widths for hand->crisp travel
+  Object.keys(R.nodes).forEach(function(id){var o=R.nodes[id];try{o.lw=o.label.getComputedTextLength();}catch(e){o.lw=60;}});
+  R.edges.forEach(function(o){var w=60;try{w=o.text.getComputedTextLength();}catch(e){}o.tw=w;var x=o.E.anchor==="middle"?o.E.lp[0]-w/2:o.E.lp[0];o.pill.setAttribute("x",f(x-7));o.pill.setAttribute("y",f(o.E.lp[1]-10));o.pill.setAttribute("width",f(w+14));});
+  lastChars=-1;
+  draw(T);
+}
+
+function anchor(r,side){var g=3;if(side==="r")return[r.x+r.w+g,r.y+r.h/2];if(side==="l")return[r.x-g,r.y+r.h/2];if(side==="t")return[r.x+r.w/2,r.y-g];return[r.x+r.w/2,r.y+r.h+g];}
+
+function draw(t){
+  T=t;
+  var pos=eio(clamp((t-.04)/.62)),k=1-pos;
+  var st=eio(clamp((t-.06)/.66)),amp=A*(1-st),ovr=amp/A;
+  frame.style.setProperty("--t",t.toFixed(3));
+  var mkOp=1-sm(.48,.92,t),inkOp=sm(.26,.78,t),handOp=1-sm(.26,.6,t),crispOp=sm(.48,.86,t),glyphT=sm(.6,.95,t);
+  R.grid.setAttribute("opacity",f(sm(.35,.85,t)*10)/10);
+  var cur={};
+  Object.keys(R.nodes).forEach(function(id){
+    var o=R.nodes[id],s=o.s,b=L.boxes[id];
+    var x=b[0]+s.dx*k,y=b[1]+s.dy*k,w=BOXW+s.dw*k,h=BOXH+s.dh*k,rot=s.rot*k;
+    cur[id]={x:x,y:y,w:w,h:h};
+    o.g.setAttribute("transform","translate("+f(x)+" "+f(y)+") rotate("+f(rot)+" "+f(w/2)+" "+f(h/2)+")");
+    var ph1=phases(s.seed),ph2=phases(s.seed+40);
+    if(s.kind==="cyl"){
+      var ry=lerp(15,13,pos);
+      var top=ellShape(w/2,ry,w/2,ry);
+      var body=compose([lineSeg(0,ry,0,h-ry),arcSeg(w/2,h-ry,w/2,ry,Math.PI,0),lineSeg(w,h-ry,w,ry)],false,"M0,"+f(ry)+"V"+f(h-ry)+"A"+f(w/2)+","+f(ry)+" 0 0 0 "+f(w)+","+f(h-ry)+"V"+f(ry));
+      var bd=wob(body,amp,ph1,0),td=wob(top,amp*.8,ph2,10*ovr);
+      o.body.setAttribute("d",(amp<.04?body.exact:bd)+"Z");o.top.setAttribute("d",td);
+      o.m1.setAttribute("d",bd);o.m2.setAttribute("d",wob(body,amp*1.25,phases(s.seed+90),0));
+      o.mt1.setAttribute("d",td);o.mt2.setAttribute("d",wob(top,amp*1.1,phases(s.seed+91),14*ovr));
+      var hd="";for(var i=0;i<5;i++){var hx=22+i*24;hd+="M"+f(hx)+","+f(h-26)+"L"+f(hx+16)+","+f(h-54);}
+      o.hatch.setAttribute("d",hd);o.hatch.style.opacity=f((1-sm(.05,.35,t))*.55*100)/100;
+    }else{
+      var shp=rrShape(0,0,w,h,lerp(4,10,pos));
+      var d1=wob(shp,amp,ph1,16*ovr);
+      o.body.setAttribute("d",d1);o.m1.setAttribute("d",d1);o.m2.setAttribute("d",wob(shp,amp*1.25,ph2,24*ovr));
+      if(s.kind==="browser"){
+        var by=lerp(26,22,pos);var bar=polyShape([[0,by],[w,by]]);var bdd=wob(bar,amp*.7,phases(s.seed+7),0);
+        o.bar.setAttribute("d",bdd);o.mbar.setAttribute("d",bdd);
+        o.dots.forEach(function(dt,i){dt.setAttribute("cy",f(by/2));dt.setAttribute("cx",14+i*10);});
+        var md="";for(var j=0;j<3;j++){var cx=14+j*11,cy=by/2;md+="M"+f(cx-3)+","+f(cy)+"a3,3 0 1 0 6,0a3,3 0 1 0 -6,0";}
+        o.mdots.setAttribute("d",md);
+      }
+    }
+    o.ink.style.opacity=inkOp;o.mkG.style.opacity=mkOp;
+    o.crisp.style.opacity=crispOp;
+    o.glyph.setAttribute("transform","translate(14 "+(14+o.oy)+") translate(15 15) scale("+f(lerp(.4,1,glyphT)*100)/100+") translate(-15 -15)");
+    o.glyph.style.opacity=glyphT;
+    var hx0=w/2,hy0=h/2+10+o.oy*.4,hx1=14+o.lw/2,hy1=60+o.oy,hp=sm(.1,.6,t);
+    o.hand.setAttribute("x",f(lerp(hx0,hx1,hp)));o.hand.setAttribute("y",f(lerp(hy0,hy1,hp)));
+    o.hand.setAttribute("transform","rotate("+f(s.hrot*k)+" "+f(hx0)+" "+f(hy0)+")");
+    o.hand.style.opacity=handOp;
+  });
+  // plane
+  var P=L.plane,pcx=P[0]+P[2]/2-8*k,pcy=P[1]+P[3]/2+10*k,pa=P[2]/2,pb=P[3]/2;
+  var pd;
+  if(pos>.999&&amp<.04){pd=rrShape(P[0],P[1],P[2],P[3],14).exact;}
+  else{
+    var N=200,ov=0.22*ovr,sa=pa+30*k,sb=pb+26*k,rr=14,base=[],rotP=-1.8*k*Math.PI/180;
+    for(var i2=0;i2<=N;i2++){
+      var th=-Math.PI*0.75-ov+(2*Math.PI+2*ov)*i2/N,c=Math.cos(th),sn=Math.sin(th);
+      var ex=Math.pow(Math.abs(c),2/2.6)*sa*Math.sign(c),ey=Math.pow(Math.abs(sn),2/2.6)*sb*Math.sign(sn);
+      var tx=pa/Math.max(Math.abs(c),1e-6),ty=pb/Math.max(Math.abs(sn),1e-6),tt=Math.min(tx,ty),rx=c*tt,ryy=sn*tt;
+      if(Math.abs(rx)>pa-rr&&Math.abs(ryy)>pb-rr){var Cx=Math.sign(c)*(pa-rr),Cy=Math.sign(sn)*(pb-rr),dc=c*Cx+sn*Cy,disc=dc*dc-(Cx*Cx+Cy*Cy)+rr*rr;var tq=dc+Math.sqrt(Math.max(0,disc));rx=c*tq;ryy=sn*tq;}
+      var px=lerp(ex,rx,pos),py=lerp(ey,ryy,pos);
+      var qx=px*Math.cos(rotP)-py*Math.sin(rotP),qy=px*Math.sin(rotP)+py*Math.cos(rotP);
+      base.push([pcx+qx,pcy+qy,c,sn]);
+    }
+    var acc=0,pts=[],php=phases(51);
+    for(var i3=0;i3<base.length;i3++){if(i3>0)acc+=Math.hypot(base[i3][0]-base[i3-1][0],base[i3][1]-base[i3-1][1]);var o2=amp*1.3*noise(acc,php);pts.push([base[i3][0]+base[i3][2]*o2,base[i3][1]+base[i3][3]*o2]);}
+    pd=cat(pts);
+  }
+  R.plane.inkP.setAttribute("d",pd);R.plane.mkP.setAttribute("d",pd);
+  R.plane.ink.style.opacity=inkOp;R.plane.mk.style.opacity=mkOp;R.plane.crisp.style.opacity=crispOp;
+  var hpP=sm(.1,.6,t);
+  R.plane.hand.setAttribute("transform","translate("+f(lerp(0,P[0]+16-L.planeHand[0],hpP))+" "+f(lerp(0,P[1]+26-L.planeHand[1],hpP))+") rotate("+f(-5*k)+" "+L.planeHand[0]+" "+L.planeHand[1]+")");
+  R.plane.hand.style.opacity=handOp;
+  // edges
+  R.edges.forEach(function(o){
+    var E=o.E,Aa=anchor(cur[E.a],E.as),Bb=anchor(cur[E.b],E.bs);
+    var sh=quadShape(Aa,Bb,E.bend*k);
+    var d=wob(sh,amp*.75,phases(E.seed),0);
+    o.ink.setAttribute("d",d);o.mk1.setAttribute("d",d);
+    var e=sh.at(sh.L),q=sh.at(sh.L-10),ang=Math.atan2(e[1]-q[1],e[0]-q[0]);
+    var a1=ang+Math.PI+.5,a2=ang+Math.PI-.5;
+    o.mk2.setAttribute("d","M"+f(e[0])+","+f(e[1])+"L"+f(e[0]+Math.cos(a1)*14)+","+f(e[1]+Math.sin(a1)*14));
+    o.mk3.setAttribute("d","M"+f(e[0])+","+f(e[1])+"L"+f(e[0]+Math.cos(a2)*13)+","+f(e[1]+Math.sin(a2)*13));
+    o.inkG.style.opacity=inkOp;o.mkG.style.opacity=mkOp;
+    o.crisp.style.opacity=sm(.55,.9,t);
+    if(o.hand){o.hand.style.opacity=1-sm(.22,.55,t);o.hand.setAttribute("transform","rotate("+f(-6*k)+" "+E.hp[0]+" "+E.hp[1]+")");}
+  });
+  // notes
+  var eo=1-sm(.08,.36,t);R.erase.style.opacity=eo;R.erase.style.display=eo<=0?"none":"";
+  var co=1-sm(.03,.28,t);R.cache.style.opacity=co;R.cache.style.display=co<=0?"none":"";
+  [R.authNote,R.stripeNote].forEach(function(o){
+    var tg=cur[o.target],s=o.spec;var mv=sm(.12,.6,t);
+    var dx=tg.x+14,dy=tg.y+(o.target==="billing"?94:98);
+    var x=lerp(s.at[0],dx,mv),y=lerp(s.at[1],dy,mv),sc=lerp(1,.45,mv);
+    o.text.setAttribute("transform","translate("+f(x)+" "+f(y)+") rotate("+f(s.rot*(1-mv))+") scale("+f(sc*100)/100+")");
+    o.text.style.opacity=1-sm(.3,.62,t);
+    o.arrow.style.opacity=1-sm(.1,.34,t);
+  });
+  // ghosts
+  document.getElementById("ghosts").style.opacity=f(lerp(1,.35,t)*100)/100;
+  // code
+  var p=clamp((t-.14)/.8),chars=Math.round(p*TOTAL);
+  if(chars!==lastChars){lastChars=chars;renderCode(chars,p);}
+  sticky.style.opacity=1-sm(0,.22,t);
+  sticky.style.transform="translate(-50%,-50%) rotate("+f(-3+8*sm(0,.22,t))+"deg) translateY("+f(-30*sm(0,.22,t))+"px)";
+  var range=document.getElementById("range");if(document.activeElement!==range)range.value=Math.round(t*1000);
+  range.setAttribute("aria-valuetext",t<.02?"Sketch":t>.98?"Source":Math.round(t*100)+"% to source");
+  var sw=document.getElementById("switch");sw.setAttribute("aria-checked",t>.5?"true":"false");
+}
+var hlIds=[];
+function renderCode(chars,p){
+  var out="",left=chars;
+  for(var i=0;i<SRC.length;i++){
+    if(left<=0&&i>0)break;
+    var line="",tk=TOK[i];
+    for(var j=0;j<tk.length&&left>0;j++){var s=tk[j][0];var part=s.length<=left?s:s.slice(0,left);left-=part.length;line+=tk[j][1]?'<span class="'+tk[j][1]+'">'+esc(part)+"</span>":esc(part);}
+    var last=left<=0||i===SRC.length-1;
+    if(last&&p>0&&p<1)line+='<span class="caret"></span>';
+    left-=1;
+    var on=LINEMAP[i].some(function(x){return hlIds.indexOf(x)>=0;});
+    out+='<span class="ln'+(on?" hl":"")+'" data-i="'+i+'">'+(line||" ")+"</span>";
+    if(last&&left<0)break;
+  }
+  codeEl.innerHTML=chars>0?out:"";
+  if(p<=0){statusEl.className="src-status";statusEl.textContent="not written down";}
+  else if(p<1){statusEl.className="src-status";statusEl.textContent="writing…";}
+  else{statusEl.className="src-status ok";statusEl.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 12.5l5 5 10-11"></path></svg>valid<span class="st-more"> · 5 components · 4 connections</span>';}
+}
+function hl(ids){
+  hlIds=ids;
+  Object.keys(R.nodes).forEach(function(id){R.nodes[id].g.classList.toggle("hot",ids.indexOf(id)>=0);});
+  Array.prototype.forEach.call(codeEl.querySelectorAll(".ln"),function(ln){var i=+ln.getAttribute("data-i");ln.classList.toggle("hl",LINEMAP[i].some(function(x){return ids.indexOf(x)>=0;}));});
+}
+codeEl.addEventListener("mouseover",function(e){var ln=e.target.closest(".ln");if(ln)hl(LINEMAP[+ln.getAttribute("data-i")]);});
+codeEl.addEventListener("mouseleave",function(){hl([]);});
+codeEl.style.pointerEvents="auto";codeEl.removeAttribute("aria-hidden");codeEl.setAttribute("aria-hidden","true");
+
+/* ---------------- animation + controls ---------------- */
+var raf=null;
+function animateTo(target,dur){
+  cancelAnimationFrame(raf);
+  if(reduce){draw(target);return;}
+  var from=T,start=null,d=dur*Math.abs(target-from);
+  if(d<16){draw(target);return;}
+  function step(ts){if(start===null)start=ts;var u=clamp((ts-start)/d);draw(lerp(from,target,u));if(u<1)raf=requestAnimationFrame(step);}
+  raf=requestAnimationFrame(step);
+}
+var autoTimer=null;
+function stopAuto(){clearTimeout(autoTimer);}
+document.getElementById("switch").addEventListener("click",function(){stopAuto();animateTo(T>.5?0:1,2600);});
+document.getElementById("lblSketch").addEventListener("click",function(){stopAuto();animateTo(0,2600);});
+document.getElementById("lblSource").addEventListener("click",function(){stopAuto();animateTo(1,2600);});
+document.getElementById("replay").addEventListener("click",function(){stopAuto();cancelAnimationFrame(raf);draw(0);if(reduce){draw(1);return;}setTimeout(function(){animateTo(1,3400);},350);});
+document.getElementById("range").addEventListener("input",function(e){stopAuto();cancelAnimationFrame(raf);draw(+e.target.value/1000);});
+
+function pick(){return board.clientWidth<760?"port":"land";}
+build(pick());
+var rt=null;
+window.addEventListener("resize",function(){clearTimeout(rt);rt=setTimeout(function(){var k=pick();if(k!==layoutKey)build(k);},120);});
+if(document.fonts&&document.fonts.ready)document.fonts.ready.then(function(){build(layoutKey);});
+
+if(reduce){draw(1);}
+else{autoTimer=setTimeout(function(){animateTo(1,3400);},1200);}
+})();
+</script>
+</body>
+</html>

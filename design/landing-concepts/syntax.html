@@ -1,0 +1,1261 @@
+<!doctype html>
+<!--
+  Concept: Syntax. Typography is the diagram. A Swiss-poster page on a strict
+  12-column grid where words are components and drawn arrows connect them,
+  because Archer's language already reads like sentences (web -> api @http).
+  One field color, a deep cobalt, used as big blocks: the plane, the poster, the
+  install line.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Archer — Syntax</title>
+<meta name="description" content="Archer is an architecture canvas that compiles to and from an agent-readable language. Drag and drop your system, or let your agent write it.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,100..900;1,62..125,100..900&amp;family=IBM+Plex+Mono:wght@400;500;600&amp;display=swap">
+<script>
+  (function () {
+    try {
+      var t = localStorage.getItem("syntax-theme");
+      if (t === "light" || t === "dark") document.documentElement.setAttribute("data-theme", t);
+    } catch (e) {}
+  })();
+</script>
+<style>
+:root {
+  --paper: #f5f5f2;
+  --paper-2: #ebebe5;
+  --surface: #ffffff;
+  --ink: #0b0c14;
+  --ink-2: #3a3c4a;
+  --ink-3: #6a6d7e;
+  --hair: #cbccd4;
+  --field: #1c31d4;
+  --field-deep: #1426b0;
+  --on-field: #f5f5f2;
+  --on-field-2: #c2caff;
+  --accent: #1c31d4;
+  --code-hl: rgba(28, 49, 212, 0.09);
+  --display: "Archivo", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --gut: max(clamp(16px, 3.4vw, 48px), env(safe-area-inset-left, 0px));
+  --gut-r: max(clamp(16px, 3.4vw, 48px), env(safe-area-inset-right, 0px));
+  --col-gap: clamp(12px, 1.6vw, 24px);
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #070d3d;
+    --paper-2: #0b1450;
+    --surface: #0b1449;
+    --ink: #eef0ff;
+    --ink-2: #c3c9f0;
+    --ink-3: #8b94cd;
+    --hair: #26318a;
+    --field: #2a44ff;
+    --field-deep: #1f36e0;
+    --on-field: #ffffff;
+    --on-field-2: #d3d9ff;
+    --accent: #a3b0ff;
+    --code-hl: rgba(163, 176, 255, 0.13);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #070d3d;
+  --paper-2: #0b1450;
+  --surface: #0b1449;
+  --ink: #eef0ff;
+  --ink-2: #c3c9f0;
+  --ink-3: #8b94cd;
+  --hair: #26318a;
+  --field: #2a44ff;
+  --field-deep: #1f36e0;
+  --on-field: #ffffff;
+  --on-field-2: #d3d9ff;
+  --accent: #a3b0ff;
+  --code-hl: rgba(163, 176, 255, 0.13);
+  color-scheme: dark;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; overflow-x: clip; }
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--display);
+  font-size: 17px;
+  line-height: 1.5;
+  overflow-x: clip;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+a { color: inherit; }
+button, input { font: inherit; color: inherit; }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+.field :focus-visible, .on-field:focus-visible { outline-color: var(--on-field); }
+.mono { font-family: var(--mono); }
+.sr { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+p { margin: 0; }
+h1, h2, h3 { margin: 0; font-weight: 900; }
+
+.wrap {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding-left: var(--gut);
+  padding-right: var(--gut-r);
+}
+.grid12 {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  column-gap: var(--col-gap);
+}
+
+/* ---------- buttons ---------- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 48px;
+  padding: 0 20px;
+  border: 2px solid var(--ink);
+  background: transparent;
+  color: var(--ink);
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 16px;
+  font-stretch: 105%;
+  text-decoration: none;
+  cursor: pointer;
+  border-radius: 0;
+  transition: background-color .15s ease, color .15s ease, border-color .15s ease;
+}
+.btn:hover { background: var(--ink); color: var(--paper); }
+.btn-primary { background: var(--field); border-color: var(--field); color: var(--on-field); }
+.btn-primary:hover { background: var(--ink); border-color: var(--ink); color: var(--paper); }
+.btn-text { border-color: transparent; padding: 0 4px; text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 5px; }
+.btn-text:hover { background: transparent; color: var(--accent); }
+.btn .arr { font-family: var(--mono); font-weight: 500; }
+.field .btn { border-color: var(--on-field); color: var(--on-field); }
+.field .btn:hover { background: var(--on-field); color: var(--field); }
+.field .btn-solid { background: var(--on-field); color: var(--field); }
+.field .btn-solid:hover { background: var(--ink); border-color: var(--ink); color: var(--paper); }
+
+/* swap icon: copy -> check */
+.swap { position: relative; width: 18px; height: 18px; display: inline-block; flex: none; }
+.swap svg { position: absolute; inset: 0; width: 18px; height: 18px; transition: opacity .2s ease, transform .25s cubic-bezier(.3,1.4,.5,1); }
+.swap .i-check { opacity: 0; transform: scale(.4) rotate(-30deg); }
+.done .swap .i-copy { opacity: 0; transform: scale(.4) rotate(30deg); }
+.done .swap .i-check { opacity: 1; transform: none; }
+
+/* ---------- nav ---------- */
+.nav { border-bottom: 1px solid var(--hair); }
+.nav-in { display: flex; align-items: center; gap: 24px; min-height: 68px; }
+.mark { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; font-weight: 900; font-stretch: 125%; font-size: 22px; letter-spacing: -0.02em; }
+.mark svg { width: 30px; height: 18px; }
+.nav-links { display: flex; gap: 26px; margin-left: auto; font-family: var(--mono); font-size: 14px; }
+.nav-links a { text-decoration: none; }
+.nav-links a:hover { text-decoration: underline; text-underline-offset: 4px; }
+.nav-actions { display: flex; align-items: center; gap: 12px; }
+.theme-btn {
+  min-height: 40px; padding: 0 12px; border: 1px solid var(--hair); background: transparent; cursor: pointer;
+  font-family: var(--mono); font-size: 13px; display: inline-flex; align-items: center; gap: 8px;
+}
+.theme-btn:hover { border-color: var(--ink); }
+.theme-btn .dot { width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--ink); background: linear-gradient(90deg, var(--ink) 50%, transparent 50%); }
+.nav .btn { min-height: 40px; padding: 0 14px; font-size: 15px; gap: 0; }
+
+/* ---------- hero ---------- */
+.hero { overflow-x: clip; padding-top: clamp(20px, 3vw, 40px); }
+.hero-meta {
+  display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px 24px;
+  font-family: var(--mono); font-size: 13px; color: var(--ink-3);
+  padding-bottom: clamp(20px, 3vw, 40px);
+}
+.hero-meta code { color: var(--ink-2); font-family: var(--mono); }
+.hero-meta .op { color: var(--accent); font-weight: 600; }
+
+.wgraph { position: relative; }
+.wires { position: absolute; left: 0; top: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; z-index: 2; }
+.wire { fill: none; stroke: var(--accent); stroke-width: 2.5; transition: opacity .2s ease, stroke-width .2s ease; }
+.whead { fill: var(--accent); transition: opacity .2s ease; }
+.wlabel {
+  position: absolute; z-index: 3; pointer-events: none;
+  font-family: var(--mono); font-size: 13px; line-height: 1.35; white-space: nowrap;
+  transition: opacity .2s ease;
+}
+.wlabel b { display: block; color: var(--accent); font-weight: 600; }
+.wlabel i { display: block; font-style: normal; color: var(--ink-2); }
+.wgraph [data-node] { transition: opacity .2s ease; }
+.wgraph.is-focus [data-node]:not(.hot) { opacity: .2; }
+.wgraph.is-focus .wire:not(.hot), .wgraph.is-focus .whead:not(.hot), .wgraph.is-focus .wlabel:not(.hot) { opacity: .15; }
+.wgraph .wire.hot { stroke-width: 4; }
+.wires.drawing .wire { stroke-dasharray: var(--len); stroke-dashoffset: var(--len); animation: draw 1s cubic-bezier(.65,0,.25,1) forwards; animation-delay: var(--d, 0s); }
+.wires.drawing .whead { opacity: 0; animation: pop .25s ease forwards; animation-delay: calc(var(--d, 0s) + .9s); }
+@keyframes draw { to { stroke-dashoffset: 0; } }
+@keyframes pop { to { opacity: 1; } }
+
+.poster { row-gap: clamp(64px, 7vw, 104px); }
+.wn { position: relative; z-index: 1; }
+.wn .tag {
+  display: flex; align-items: center; gap: 8px;
+  font-family: var(--mono); font-size: 13px; color: var(--ink-3); margin-bottom: .2em;
+}
+.wn .tag::before { content: ""; width: 8px; height: 8px; background: var(--accent); flex: none; }
+.wn .w { display: block; line-height: .86; letter-spacing: -0.045em; }
+.n-software { grid-column: 1 / span 8; grid-row: 1; justify-self: start; }
+.n-software .w { font-size: clamp(54px, 15.5vw, 166px); font-weight: 900; font-stretch: 118%; }
+.n-arch {
+  grid-column: 2 / -1; grid-row: 2; position: relative;
+  background: var(--field); color: var(--on-field);
+  padding: clamp(14px, 1.6vw, 24px) 0 clamp(20px, 2.4vw, 34px) clamp(16px, 2vw, 30px);
+}
+.n-arch::after { content: ""; position: absolute; top: 0; bottom: 0; left: 100%; width: 50vw; background: var(--field); }
+.n-arch .tag { color: var(--on-field-2); }
+.n-arch .tag::before { background: var(--on-field); }
+.n-arch .w { font-size: clamp(38px, 12vw, 150px); font-weight: 900; font-stretch: 100%; }
+.n-agents { grid-column: 6 / -1; grid-row: 3; }
+.n-agents .w { font-size: clamp(54px, 7.6vw, 112px); font-weight: 800; font-stretch: 62%; letter-spacing: -0.02em; word-spacing: .1em; line-height: .9; }
+.hero-side { grid-column: 9 / -1; grid-row: 1; align-self: end; padding-bottom: 6px; z-index: 1; }
+.lede { font-size: clamp(18px, 1.45vw, 21px); line-height: 1.45; color: var(--ink-2); max-width: 30em; }
+.lede strong { color: var(--ink); font-weight: 700; }
+.ctas { display: flex; flex-wrap: wrap; gap: 12px 14px; margin-top: 22px; align-items: center; }
+.hero-agents-row { grid-column: 1 / span 5; grid-row: 3; align-self: end; font-family: var(--mono); font-size: 13px; color: var(--ink-3); line-height: 1.7; }
+.hero-agents-row span { color: var(--ink); }
+
+.facts { margin-top: clamp(56px, 6vw, 96px); border-top: 3px solid var(--ink); }
+.fact { grid-column: span 4; padding: 18px 0 clamp(36px, 4vw, 56px); border-right: 1px solid var(--hair); padding-right: var(--col-gap); }
+.fact:last-child { border-right: 0; }
+.fact .num { display: block; font-size: clamp(64px, 7.4vw, 116px); font-weight: 900; font-stretch: 125%; line-height: .9; letter-spacing: -0.05em; }
+.fact .num em { font-style: normal; color: var(--accent); }
+.fact p { margin-top: 12px; font-size: 16px; color: var(--ink-2); max-width: 22em; }
+.fact p b { color: var(--ink); }
+
+/* ---------- section heads ---------- */
+section { scroll-margin-top: 12px; }
+.sec { padding-top: clamp(80px, 9vw, 150px); }
+.sec-head { border-top: 3px solid var(--ink); padding-top: 16px; row-gap: 18px; }
+.sec-label { grid-column: 1 / span 3; font-family: var(--mono); font-size: 14px; color: var(--ink-3); padding-top: .55em; }
+.sec-label::before { content: "\25A0\00a0\00a0"; color: var(--accent); }
+.sec-title { grid-column: 4 / -1; font-size: clamp(44px, 6.6vw, 104px); line-height: .92; letter-spacing: -0.04em; font-stretch: 112%; }
+.sec-lede { grid-column: 4 / span 6; font-size: clamp(18px, 1.4vw, 20px); color: var(--ink-2); max-width: 34em; }
+
+/* ---------- translator ---------- */
+.tr { margin-top: clamp(40px, 5vw, 72px); row-gap: 28px; }
+.tr-code { grid-column: 1 / span 5; }
+.tr-stage { grid-column: 6 / -1; }
+.panel-k { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; font-family: var(--mono); font-size: 13px; color: var(--ink-3); border-top: 2px solid var(--ink); padding: 10px 0; }
+.code {
+  list-style: none; margin: 0; padding: 10px 0; background: var(--surface); border: 1px solid var(--hair);
+  font-family: var(--mono); font-size: clamp(11.5px, 1vw, 14px); line-height: 1.8; counter-reset: ln;
+}
+.ln { display: block; }
+.ln-btn {
+  display: grid; grid-template-columns: 3em 1fr; width: 100%; text-align: left; background: transparent;
+  border: 0; padding: 0 12px 0 0; cursor: pointer; white-space: pre-wrap; overflow-wrap: anywhere;
+  font-family: inherit; font-size: inherit; line-height: inherit; transition: background-color .2s ease, opacity .25s ease;
+}
+.ln-btn:hover { background: var(--code-hl); }
+.ln-btn .no { color: var(--ink-3); text-align: right; padding-right: 1.2em; user-select: none; }
+.ln-blank { display: grid; grid-template-columns: 3em 1fr; }
+.ln-blank .no { color: var(--ink-3); text-align: right; padding-right: 1.2em; }
+.ln.cur .ln-btn { background: var(--code-hl); box-shadow: inset 4px 0 0 var(--accent); }
+.ln.future { opacity: .38; }
+.k { font-weight: 600; color: var(--ink); }
+.s { color: var(--ink-2); }
+.t { color: var(--accent); font-weight: 500; }
+.op { color: var(--accent); font-weight: 600; }
+.p { color: var(--ink-3); }
+.tr-ctl { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; align-items: center; }
+.tr-ctl .btn { min-height: 44px; padding: 0 16px; font-size: 15px; }
+.tr-count { font-family: var(--mono); font-size: 13px; color: var(--ink-3); margin-left: auto; }
+
+.stage-box { border: 1px solid var(--hair); background: var(--paper); padding: clamp(12px, 2vw, 28px); }
+#stage { display: block; width: 100%; height: auto; margin: 0 auto; }
+#stage.tall { max-width: 440px; }
+.tr-cap { margin-top: 18px; font-size: clamp(19px, 1.6vw, 24px); line-height: 1.35; font-weight: 500; max-width: 32em; min-height: 3.6em; }
+.tr-cap code { font-family: var(--mono); font-size: .8em; color: var(--accent); font-weight: 500; }
+
+.s-box { fill: var(--surface); stroke: var(--ink); stroke-width: 1.5; transition: stroke .3s ease, stroke-width .3s ease; }
+.s-bar { stroke: var(--ink); stroke-width: 1; }
+.s-dot { fill: var(--ink-3); }
+.s-glyph { fill: none; stroke: var(--accent); stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.s-glyph .fill { fill: var(--accent); stroke: none; }
+.s-name { font-family: var(--display); font-weight: 850; font-size: 20px; fill: var(--ink); letter-spacing: -0.01em; }
+.s-id { font-family: var(--mono); font-size: 10.5px; fill: var(--ink-3); }
+.s-type { font-family: var(--mono); font-size: 10.5px; fill: var(--accent); }
+.s-plane { fill: var(--field); stroke: var(--field); stroke-width: 0; transition: stroke-width .3s ease; }
+.s-ptitle { font-family: var(--display); font-weight: 850; font-size: 18px; fill: var(--on-field); }
+.s-pid { font-family: var(--mono); font-size: 10.5px; fill: var(--on-field-2); }
+.s-title { font-family: var(--display); font-weight: 900; font-stretch: 118%; font-size: 30px; fill: var(--ink); letter-spacing: -0.03em; }
+.s-tmeta { font-family: var(--mono); font-size: 10.5px; fill: var(--ink-3); }
+.e-line { fill: none; stroke: var(--accent); stroke-width: 2; transition: stroke-width .3s ease; }
+.e-head { fill: var(--accent); }
+.e-line.on { stroke: var(--on-field); }
+.e-head.on { fill: var(--on-field); }
+.e-proto, .e-label { font-family: var(--mono); font-size: 11px; paint-order: stroke; stroke: var(--paper); stroke-width: 5px; stroke-linejoin: round; }
+.e-proto { fill: var(--accent); font-weight: 600; }
+.e-label { fill: var(--ink-2); }
+.e-proto.on { fill: var(--on-field); stroke: var(--field); }
+.el { transition: opacity .45s ease, transform .45s cubic-bezier(.2,.8,.2,1); }
+.el.future { opacity: 0; transform: translateY(8px); }
+.el.cur .s-box { stroke: var(--accent); stroke-width: 3.5; }
+.el.cur .e-line { stroke-width: 3.5; }
+.el.cur .s-plane { stroke: var(--ink); stroke-width: 3; }
+
+/* your line */
+.yl { margin-top: clamp(56px, 6vw, 96px); row-gap: 20px; }
+.yl-head { grid-column: 1 / span 4; }
+.yl-head h3 { font-size: clamp(34px, 3.6vw, 56px); line-height: .95; letter-spacing: -0.035em; font-stretch: 112%; }
+.yl-head p { margin-top: 14px; color: var(--ink-2); max-width: 24em; }
+.yl-body { grid-column: 5 / -1; }
+.yl-input {
+  display: flex; align-items: center; gap: 12px; border: 2px solid var(--ink); background: var(--surface); padding: 0 16px;
+}
+.yl-input:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--code-hl); }
+.yl-input .pr { font-family: var(--mono); color: var(--accent); font-weight: 600; font-size: 20px; }
+.yl-input input {
+  flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; padding: 16px 0;
+  font-family: var(--mono); font-size: clamp(15px, 1.6vw, 22px);
+}
+.yl-try { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; font-family: var(--mono); font-size: 13px; color: var(--ink-3); align-items: center; }
+.chip { border: 1px solid var(--hair); background: transparent; padding: 5px 10px; font-family: var(--mono); font-size: 13px; cursor: pointer; color: var(--ink-2); }
+.chip:hover { border-color: var(--ink); color: var(--ink); }
+.yl-out { margin-top: 22px; min-height: 180px; border-top: 1px solid var(--hair); padding-top: 22px; }
+.yl-fmt { font-family: var(--mono); font-size: 13px; color: var(--ink-3); margin-bottom: 18px; overflow-wrap: anywhere; }
+.yl-fmt code { color: var(--ink); font-family: var(--mono); }
+.yd { display: flex; align-items: center; flex-wrap: nowrap; gap: 0; }
+.yd-node { border: 2px solid var(--ink); background: var(--surface); padding: 10px 16px 12px; min-width: 0; }
+.yd-node .id { display: block; font-family: var(--mono); font-size: 12px; color: var(--ink-3); }
+.yd-node .nm { display: block; font-size: clamp(28px, 3.4vw, 52px); font-weight: 900; line-height: 1; letter-spacing: -0.03em; overflow-wrap: anywhere; }
+.yd-node .ty { display: block; margin-top: 6px; font-family: var(--mono); font-size: 13px; color: var(--accent); overflow-wrap: anywhere; }
+.yd-edge { flex: 0 1 300px; min-width: 120px; position: relative; display: flex; flex-direction: column; align-items: center; padding: 0 4px; }
+.yd-edge .txt { display: flex; flex-direction: column; align-items: center; }
+.yd-edge .pp { font-family: var(--mono); font-size: 14px; font-weight: 600; color: var(--accent); }
+.yd-edge .lb { font-family: var(--mono); font-size: 13px; color: var(--ink-2); }
+.yd-edge .ln2 { width: 100%; height: 2px; background: var(--accent); position: relative; margin: 6px 0; }
+.yd-edge .ln2::after { content: ""; position: absolute; right: -1px; top: 50%; transform: translateY(-50%); border-left: 12px solid var(--accent); border-top: 7px solid transparent; border-bottom: 7px solid transparent; }
+.yl-err { margin: 0; font-family: var(--mono); font-size: clamp(13px, 1.3vw, 16px); line-height: 1.6; white-space: pre; overflow-x: auto; color: var(--ink-2); }
+.yl-err .caret { color: var(--accent); font-weight: 600; }
+.yl-err .msg { color: var(--ink); font-weight: 600; white-space: pre-wrap; }
+.yl-err .msg b { color: var(--accent); }
+
+/* ---------- features ---------- */
+.fx { margin-top: clamp(40px, 5vw, 72px); display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 1px; background: var(--hair); border: 1px solid var(--hair); }
+.cell { background: var(--paper); padding: clamp(20px, 2.4vw, 36px); display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.cell.field { background: var(--field); color: var(--on-field); }
+.c-types { grid-column: span 7; }
+.c-hist { grid-column: span 5; }
+.c-planes, .c-share, .c-repo { grid-column: span 4; }
+.c-data { grid-column: span 5; }
+.c-teams { grid-column: span 3; }
+.c-safe { grid-column: span 4; }
+.fx-k { font-family: var(--mono); font-size: 13px; color: var(--ink-3); }
+.field .fx-k { color: var(--on-field-2); }
+.fx-h { font-size: clamp(26px, 2.3vw, 36px); line-height: 1.02; letter-spacing: -0.025em; font-weight: 850; }
+.fx-p { color: var(--ink-2); font-size: 16px; max-width: 30em; }
+.field .fx-p { color: var(--on-field-2); }
+.fx-d { margin-top: auto; padding-top: 10px; font-family: var(--mono); font-size: 13px; line-height: 1.6; }
+.big80 { font-size: clamp(110px, 15vw, 236px); font-weight: 900; font-stretch: 125%; letter-spacing: -0.06em; line-height: .82; color: var(--accent); margin-left: -0.04em; }
+.types-cloud { display: flex; flex-wrap: wrap; gap: 6px 14px; color: var(--ink-2); }
+.types-cloud span:nth-child(3n+1) { color: var(--accent); }
+.diff { font-size: 14.5px; line-height: 1.75; }
+.diff div { white-space: pre-wrap; overflow-wrap: anywhere; }
+.diff .a::before { content: "+ "; color: var(--accent); font-weight: 600; }
+.diff .r { color: var(--ink-3); text-decoration: line-through; text-decoration-thickness: 1px; }
+.diff .r::before { content: "\2212 "; }
+.diff .c::before { content: "~ "; color: var(--accent); font-weight: 600; }
+.diff .m { color: var(--ink-3); border-top: 1px solid var(--hair); margin-top: 8px; padding-top: 8px; }
+.crumbs { color: var(--ink-3); margin-bottom: 10px; }
+.crumbs b { color: var(--ink); font-weight: 600; }
+.nest { border: 1.5px solid var(--ink); padding: 8px 10px 10px; }
+.nest .nn { font-family: var(--display); font-weight: 850; font-size: 18px; display: flex; justify-content: space-between; align-items: baseline; }
+.nest .nn small { font-family: var(--mono); font-weight: 400; font-size: 12px; color: var(--ink-3); }
+.nest .parts { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+.nest .parts span { border: 1px solid var(--hair); padding: 2px 8px; }
+.md { border-left: 3px solid var(--accent); padding-left: 12px; overflow-wrap: anywhere; color: var(--ink-2); }
+.repo-row { display: grid; grid-template-columns: auto 1fr; gap: 2px 14px; }
+.repo-row dt { color: var(--ink-3); }
+.repo-row dd { margin: 0; overflow-wrap: anywhere; }
+.tbl { width: 100%; border-collapse: collapse; }
+.tbl th, .tbl td { text-align: left; padding: 5px 10px 5px 0; border-bottom: 1px solid var(--hair); font-weight: 400; }
+.tbl th { color: var(--ink-3); border-bottom: 1.5px solid var(--ink); }
+.tbl td:first-child { color: var(--accent); font-weight: 600; }
+.roles div { display: flex; justify-content: space-between; gap: 10px; border-bottom: 1px solid var(--hair); padding: 4px 0; }
+.roles div b { font-family: var(--display); font-weight: 850; font-size: 17px; }
+.roles div span { color: var(--ink-3); }
+.reject { border: 1.5px solid var(--on-field); padding: 10px 12px; }
+.reject .x { color: var(--on-field); font-weight: 600; }
+.reject .why { color: var(--on-field-2); }
+
+/* ---------- MCP ---------- */
+.mcp { margin-top: clamp(80px, 9vw, 150px); background: var(--field); color: var(--on-field); padding: clamp(28px, 4vw, 56px) 0 clamp(48px, 6vw, 96px); }
+.mcp .sec-head { border-top-color: var(--on-field); }
+.mcp .sec-label { color: var(--on-field-2); }
+.mcp .sec-label::before { color: var(--on-field); }
+.mcp .sec-lede { color: var(--on-field-2); }
+.cmd { margin-top: clamp(40px, 5vw, 72px); font-family: var(--mono); font-weight: 500; font-size: clamp(19px, 5.5vw, 82px); line-height: 1.08; letter-spacing: -0.02em; }
+.cmd span { display: block; }
+.cmd .dim { color: var(--on-field-2); }
+.cmd .url { text-decoration: underline; text-decoration-thickness: .06em; text-underline-offset: .14em; }
+.mcp-row { margin-top: clamp(32px, 4vw, 56px); row-gap: 36px; border-top: 1px solid var(--on-field-2); padding-top: 28px; }
+.mcp-act { grid-column: 1 / span 6; }
+.mcp-act .ctas { margin-top: 0; }
+.clients { margin-top: 22px; color: var(--on-field-2); font-size: 17px; max-width: 30em; }
+.clients b { color: var(--on-field); font-weight: 700; }
+.mcp-27 { grid-column: 8 / -1; display: grid; grid-template-columns: auto 1fr; gap: 0 20px; align-items: start; }
+.mcp-27 .num { font-size: clamp(88px, 9vw, 150px); font-weight: 900; font-stretch: 125%; line-height: .82; letter-spacing: -0.06em; }
+.mcp-27 p { color: var(--on-field-2); font-size: 16px; }
+.mcp-27 p b { display: block; color: var(--on-field); font-size: 22px; font-weight: 800; line-height: 1.1; margin-bottom: 6px; }
+.mcp-27 .flow { grid-column: 1 / -1; margin-top: 22px; font-family: var(--mono); font-size: 14px; color: var(--on-field); border-top: 1px solid var(--on-field-2); padding-top: 12px; overflow-wrap: anywhere; }
+.mcp-27 .flow em { font-style: normal; color: var(--on-field-2); }
+
+/* ---------- FAQ ---------- */
+.faq { margin-top: clamp(32px, 4vw, 56px); }
+.faq dl { margin: 0; grid-column: 4 / -1; display: grid; grid-template-columns: 1fr 1fr; gap: 0 var(--col-gap); }
+.faq dl > div { border-top: 1px solid var(--hair); padding: 20px 0 28px; }
+.faq dt { font-size: clamp(20px, 1.7vw, 25px); font-weight: 800; letter-spacing: -0.015em; line-height: 1.15; }
+.faq dd { margin: 8px 0 0; color: var(--ink-2); max-width: 30em; }
+
+/* ---------- closing ---------- */
+.close { padding-bottom: clamp(64px, 7vw, 120px); overflow-x: clip; }
+.close-title { font-size: clamp(48px, 8.6vw, 136px); line-height: .9; letter-spacing: -0.045em; font-stretch: 112%; margin-top: clamp(28px, 3vw, 44px); max-width: 11em; }
+.close-graph { display: flex; align-items: center; justify-content: space-between; gap: clamp(100px, 11vw, 180px); margin-top: clamp(48px, 6vw, 88px); }
+.close-graph .wn .w { font-size: clamp(56px, 5.4vw, 86px); font-weight: 900; letter-spacing: -0.035em; }
+.close-graph .n-c-archer { background: var(--field); color: var(--on-field); padding: 14px 22px 20px; }
+.close-graph .n-c-archer .tag { color: var(--on-field-2); }
+.close-graph .n-c-archer .tag::before { background: var(--on-field); }
+.close-graph .n-c-archer .w { font-stretch: 125%; }
+.close-graph .n-c-agent .w { font-stretch: 70%; font-weight: 800; word-spacing: .1em; }
+.close-cta { margin-top: clamp(48px, 5vw, 80px); display: flex; flex-wrap: wrap; align-items: center; gap: 14px; }
+.close-cta .note { font-family: var(--mono); font-size: 13px; color: var(--ink-3); margin-left: 8px; }
+
+/* ---------- footer ---------- */
+.foot { border-top: 3px solid var(--ink); padding: 28px 0 40px; }
+.foot-grid { row-gap: 32px; }
+.foot-brand { grid-column: 1 / span 5; }
+.foot-brand p { margin-top: 12px; color: var(--ink-2); max-width: 22em; }
+.foot-col { grid-column: span 2; }
+.foot-col:first-of-type { grid-column: 7 / span 2; }
+.foot-col h3 { font-family: var(--mono); font-weight: 500; font-size: 13px; color: var(--ink-3); margin-bottom: 12px; }
+.foot-col ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.foot-col a { text-decoration: none; }
+.foot-col a:hover { text-decoration: underline; text-underline-offset: 4px; color: var(--accent); }
+.foot-base { grid-column: 1 / -1; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px 24px; font-family: var(--mono); font-size: 12px; color: var(--ink-3); border-top: 1px solid var(--hair); padding-top: 16px; }
+
+/* ---------- responsive ---------- */
+@media (max-width: 1100px) {
+  .nav-links { display: none; }
+  .nav-actions { margin-left: auto; }
+  .hero-side { grid-column: 1 / span 9; grid-row: 4; padding-top: 8px; }
+  .n-software { grid-column: 1 / -1; }
+  .hero-agents-row { grid-column: 1 / span 4; }
+  .tr-code, .tr-stage { grid-column: 1 / -1; }
+  .yl-head, .yl-body { grid-column: 1 / -1; }
+  .c-types, .c-hist { grid-column: span 12; }
+  .c-planes, .c-share, .c-repo, .c-data, .c-teams, .c-safe { grid-column: span 6; }
+  .mcp-act, .mcp-27 { grid-column: 1 / -1; }
+  .faq dl { grid-column: 1 / -1; }
+  .foot-brand { grid-column: 1 / -1; }
+  .foot-col, .foot-col:first-of-type { grid-column: span 4; }
+}
+@media (max-width: 760px) {
+  .sec-label, .sec-title, .sec-lede { grid-column: 1 / -1; }
+  .sec-label { padding-top: 0; }
+  .n-arch { grid-column: 1 / -1; }
+  .n-agents { grid-column: 1 / -1; }
+  .hero-side { grid-column: 1 / -1; }
+  .hero-agents-row { grid-column: 1 / -1; grid-row: 5; }
+  .fact { grid-column: 1 / -1; border-right: 0; border-bottom: 1px solid var(--hair); padding-bottom: 24px; }
+  .fact:last-child { border-bottom: 0; }
+  .c-planes, .c-share, .c-repo, .c-data, .c-teams, .c-safe { grid-column: 1 / -1; }
+  .faq dl { grid-template-columns: 1fr; }
+  .close-graph { flex-direction: column; align-items: flex-start; gap: 84px; }
+  .yd { flex-direction: column; align-items: flex-start; }
+  .yd-edge { min-width: 0; min-height: 96px; flex-direction: row; align-items: stretch; padding: 4px 0 4px 22px; gap: 14px; }
+  .yd-edge .ln2 { width: 2px; height: auto; margin: 0; order: -1; }
+  .yd-edge .ln2::after { right: auto; top: auto; bottom: -1px; left: 50%; transform: translateX(-50%); border-left: 7px solid transparent; border-right: 7px solid transparent; border-top: 12px solid var(--accent); border-bottom: 0; }
+  .yd-edge .txt { display: flex; flex-direction: column; justify-content: center; }
+  .foot-col, .foot-col:first-of-type { grid-column: span 6; }
+  .theme-btn .lbl { display: none; }
+  .tr-count { margin-left: 0; width: 100%; }
+  .tr-ctl { gap: 8px; }
+  .tr-ctl .btn { padding: 0 12px; font-size: 14px; }
+  .hero-side { margin-top: -20px; }
+  .hero-agents-row { margin-top: -52px; }
+  .yd-edge .txt { align-items: flex-start; }
+}
+@media (max-width: 420px) {
+  .nav .btn .long { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+  .wires.drawing .wire { stroke-dasharray: none; stroke-dashoffset: 0; }
+  .wires.drawing .whead { opacity: 1; }
+}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-copy" viewBox="0 0 18 18"><rect x="5.5" y="5.5" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2"></rect><path d="M12.5 2.5h-10v10" fill="none" stroke="currentColor" stroke-width="2"></path></symbol>
+    <symbol id="i-check" viewBox="0 0 18 18"><path d="M3 9.5l4 4 8-9" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="square"></path></symbol>
+  </defs>
+</svg>
+
+<header class="nav">
+  <div class="wrap nav-in">
+    <a class="mark" href="#top" aria-label="Archer, home">
+      <svg viewBox="0 0 30 18" aria-hidden="true"><rect x="1" y="4" width="10" height="10" fill="var(--accent)"></rect><path d="M11 9h14" stroke="currentColor" stroke-width="2.5"></path><path d="M22 4.5l6 4.5-6 4.5z" fill="currentColor"></path></svg>
+      Archer
+    </a>
+    <nav class="nav-links" aria-label="Primary">
+      <a href="#translator">Translator</a>
+      <a href="#features">Features</a>
+      <a href="#mcp">MCP</a>
+      <a href="/language">Language</a>
+    </nav>
+    <div class="nav-actions">
+      <button class="theme-btn" id="theme" type="button" aria-label="Theme: system. Change theme"><span class="dot" aria-hidden="true"></span><span class="lbl">system</span></button>
+      <a class="btn" href="#">Sign in<span class="long">&nbsp;with GitHub</span></a>
+    </div>
+  </div>
+</header>
+
+<main id="top">
+  <!-- HERO -->
+  <section class="hero" aria-labelledby="h1">
+    <div class="wrap">
+      <div class="hero-meta">
+        <span>arch "Archer" v0.2</span>
+        <code>software <span class="op">-&gt;</span> architecture @canvas</code>
+        <code>architecture <span class="op">-&gt;</span> agents @mcp</code>
+      </div>
+      <h1 id="h1" class="sr">Software architecture for your agents.</h1>
+      <div class="wgraph grid12 poster" id="heroGraph"
+           data-edges='[{"from":"software","to":"architecture","p":"@canvas","l":"you drag it","fx":0.16},{"from":"architecture","to":"agents","p":"@mcp","l":"they write it","fx":0.06}]'>
+        <svg class="wires" aria-hidden="true"></svg>
+        <div class="wn n-software" data-node="software" aria-hidden="true"><span class="tag">software</span><span class="w">Software</span></div>
+        <div class="wn n-arch" data-node="architecture" aria-hidden="true"><span class="tag">architecture</span><span class="w">architecture</span></div>
+        <div class="wn n-agents" data-node="agents" aria-hidden="true"><span class="tag">agents</span><span class="w">for your agents.</span></div>
+        <div class="hero-side">
+          <p class="lede">Drag and drop your system onto a canvas, or let your agent write the Archer code. <strong>It is one document either way</strong>, and every box on it is a line you can read.</p>
+          <div class="ctas">
+            <a class="btn btn-primary" href="#">Sign in with GitHub</a>
+            <a class="btn" href="/language/examples">Try the sandbox</a>
+            <button class="btn btn-text js-copy" type="button" data-copy="prompt"><span class="swap" aria-hidden="true"><svg class="i-copy"><use href="#i-copy"></use></svg><svg class="i-check"><use href="#i-check"></use></svg></span>Copy agent prompt</button>
+          </div>
+        </div>
+        <p class="hero-agents-row">Works with <span>Claude Code</span>, <span>Codex</span>, <span>Cursor</span>, <span>Gemini CLI</span>, <span>VS Code</span> and any MCP client.</p>
+      </div>
+
+      <div class="grid12 facts">
+        <div class="fact"><span class="num">80<em>+</em></span><p><b>Component types</b>, from agents and LLMs to queues, clouds and SaaS. Add your own.</p></div>
+        <div class="fact"><span class="num">27</span><p><b>MCP tools</b> your agent uses to read, write, validate and render documents.</p></div>
+        <div class="fact"><span class="num">1</span><p><b>Document.</b> You drag, your agent writes, and both edit the same <code class="mono">.arch</code> file.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- TRANSLATOR -->
+  <section class="sec" id="translator" aria-labelledby="tr-title">
+    <div class="wrap">
+      <header class="grid12 sec-head">
+        <p class="sec-label">Translator</p>
+        <h2 class="sec-title" id="tr-title">Every line is a&nbsp;picture.</h2>
+        <p class="sec-lede">Here is a whole system in twenty lines. Step through it and watch each line become a box, a plane or an arrow. Click any line to jump to it.</p>
+      </header>
+
+      <div class="grid12 tr">
+        <div class="tr-code">
+          <div class="panel-k"><span>acme.arch</span><span>20 lines</span></div>
+          <ol class="code" id="code" aria-label="Acme source"></ol>
+          <div class="tr-ctl">
+            <button class="btn" type="button" id="trPrev" aria-label="Previous line"><span class="arr">&lt;-</span> Prev</button>
+            <button class="btn btn-primary" type="button" id="trPlay">Play from line 1</button>
+            <button class="btn" type="button" id="trNext" aria-label="Next line">Next <span class="arr">-&gt;</span></button>
+            <span class="tr-count" id="trCount"></span>
+          </div>
+        </div>
+        <div class="tr-stage">
+          <div class="panel-k"><span>canvas</span><span id="stageMeta">5 components, 1 plane, 4 connections</span></div>
+          <div class="stage-box"><svg id="stage" role="img" aria-label="The Acme architecture diagram"></svg></div>
+          <p class="tr-cap" id="trCap" aria-live="polite"></p>
+        </div>
+      </div>
+
+      <div class="grid12 yl">
+        <div class="yl-head">
+          <h3>Now write one.</h3>
+          <p>Type a connection or a component. It renders as you type, and tells you plainly when a line will not parse.</p>
+        </div>
+        <div class="yl-body">
+          <label class="sr" for="ylIn">An Archer line</label>
+          <div class="yl-input"><span class="pr" aria-hidden="true">&gt;</span><input id="ylIn" type="text" spellcheck="false" autocomplete="off" autocapitalize="off" value='cache -> db @redis : "warm"'></div>
+          <div class="yl-try"><span>try</span>
+            <button class="chip" type="button">api -&gt; billing @http : "checkout"</button>
+            <button class="chip" type="button">component queue "Jobs" @queue</button>
+            <button class="chip" type="button">api db @sql</button>
+          </div>
+          <div class="yl-out" id="ylOut" aria-live="polite"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FEATURES -->
+  <section class="sec" id="features" aria-labelledby="fx-title">
+    <div class="wrap">
+      <header class="grid12 sec-head">
+        <p class="sec-label">Features</p>
+        <h2 class="sec-title" id="fx-title">Drawn by hand, read by machine.</h2>
+      </header>
+      <div class="fx">
+        <article class="cell c-types">
+          <p class="fx-k">types</p>
+          <div class="big80" aria-hidden="true">80+</div>
+          <h3 class="fx-h">component types, each with its own glyph.</h3>
+          <p class="fx-p">Agents, LLMs, RAG, MCP servers, AWS, GCP, Azure, Vercel, databases, queues and SaaS. Missing one? Add a custom type.</p>
+          <div class="fx-d types-cloud" aria-label="Some type names">
+            <span>@agent</span><span>@llm</span><span>@rag</span><span>@mcp</span><span>@vector_db</span><span>@embeddings</span><span>@guardrails</span><span>@queue</span><span>@cache</span><span>@load_balancer</span><span>@api_gateway</span><span>@function</span><span>@object_storage</span><span>@aws.lambda</span><span>@vercel.functions</span><span>@supabase.postgres</span><span>@stripe</span><span>@clerk</span>
+          </div>
+        </article>
+        <article class="cell c-hist">
+          <p class="fx-k">history</p>
+          <h3 class="fx-h">Every revision, with a real diff.</h3>
+          <p class="fx-p">Human or agent, each save is kept. Diffs list what was added, removed or changed.</p>
+          <div class="fx-d diff">
+            <div class="a">component cache "Cache" @cache</div>
+            <div class="a">api -&gt; cache @reads</div>
+            <div class="c">billing: desc "Stripe checkout"</div>
+            <div class="r">web -&gt; db @sql</div>
+            <div class="m">moved 4 boxes: not a change</div>
+          </div>
+        </article>
+        <article class="cell c-planes">
+          <p class="fx-k">planes and nesting</p>
+          <h3 class="fx-h">Planes, and parts inside parts.</h3>
+          <p class="fx-p">Lay components out on planes like frontend, backend or VPC. Double-click any component to open its parts; breadcrumbs lead back out.</p>
+          <div class="fx-d">
+            <div class="crumbs">Acme / Backend / <b>api</b></div>
+            <div class="nest"><div class="nn">API <small>3 parts</small></div><div class="parts"><span>routes</span><span>jobs</span><span>webhooks</span></div></div>
+          </div>
+        </article>
+        <article class="cell c-share">
+          <p class="fx-k">share</p>
+          <h3 class="fx-h">A live link and an image that stays current.</h3>
+          <p class="fx-p">Send a read-only link to anyone. Put the SVG in your README and it updates when the document does.</p>
+          <div class="fx-d md">![Architecture](https://tryarcher.dev/share/k3v9x2/image.svg)</div>
+        </article>
+        <article class="cell c-repo">
+          <p class="fx-k">github</p>
+          <h3 class="fx-h">The file on the branch is the truth.</h3>
+          <p class="fx-p">Link a repo and branch. <code class="mono">src</code> paths open the code, and commits sit next to revisions.</p>
+          <dl class="fx-d repo-row">
+            <dt>branch</dt><dd>main</dd>
+            <dt>file</dt><dd>architecture.arch</dd>
+            <dt>src</dt><dd>services/billing</dd>
+          </dl>
+        </article>
+        <article class="cell c-data">
+          <p class="fx-k">payloads</p>
+          <h3 class="fx-h">Data inside components.</h3>
+          <p class="fx-p">Attach a schema, an API contract or notes as JSON, YAML or a table, validated as you type. Your agent reads all of it.</p>
+          <div class="fx-d">
+            <table class="tbl"><thead><tr><th>method</th><th>path</th><th>auth</th></tr></thead>
+              <tbody><tr><td>GET</td><td>/orders</td><td>session</td></tr><tr><td>POST</td><td>/checkout</td><td>session</td></tr><tr><td>POST</td><td>/webhooks/billing</td><td>signature</td></tr></tbody></table>
+          </div>
+        </article>
+        <article class="cell c-teams">
+          <p class="fx-k">workspaces</p>
+          <h3 class="fx-h">Teams and roles.</h3>
+          <p class="fx-p">Personal and team workspaces. Invite by email.</p>
+          <div class="fx-d roles">
+            <div><b>owner</b><span>members</span></div>
+            <div><b>editor</b><span>documents</span></div>
+            <div><b>viewer</b><span>reads</span></div>
+          </div>
+        </article>
+        <article class="cell c-safe field">
+          <p class="fx-k">agent safety</p>
+          <h3 class="fx-h">Broken documents are rejected, not saved.</h3>
+          <p class="fx-p">Agent writes pass the same validation as the canvas. Agent edits carry a badge until you review them.</p>
+          <div class="fx-d reject">
+            <div>api -&gt; dbb @sql</div>
+            <div class="x">rejected: unknown component "dbb"</div>
+            <div class="why">the saved document is unchanged</div>
+          </div>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- MCP -->
+  <section class="mcp field" id="mcp" aria-labelledby="mcp-title">
+    <div class="wrap">
+      <header class="grid12 sec-head">
+        <p class="sec-label">MCP server</p>
+        <h2 class="sec-title" id="mcp-title">One line connects your agent.</h2>
+        <p class="sec-lede">Archer runs a hosted MCP server. Add it, sign in when your agent asks, and it can read, write and render your documents.</p>
+      </header>
+      <p class="cmd" aria-label="claude mcp add --transport http archer https://tryarcher.dev/mcp">
+        <span>claude mcp add</span>
+        <span class="dim">--transport http</span>
+        <span>archer</span>
+        <span class="url">https://tryarcher.dev/mcp</span>
+      </p>
+      <div class="grid12 mcp-row">
+        <div class="mcp-act">
+          <div class="ctas">
+            <button class="btn btn-solid js-copy" type="button" data-copy="cmd"><span class="swap" aria-hidden="true"><svg class="i-copy"><use href="#i-copy"></use></svg><svg class="i-check"><use href="#i-check"></use></svg></span>Copy command</button>
+            <button class="btn js-copy" type="button" data-copy="prompt"><span class="swap" aria-hidden="true"><svg class="i-copy"><use href="#i-copy"></use></svg><svg class="i-check"><use href="#i-check"></use></svg></span>Copy agent prompt</button>
+          </div>
+          <p class="clients">Works with <b>Claude Code</b>, <b>Codex</b>, <b>Cursor</b>, <b>Gemini CLI</b>, <b>VS Code</b> and any other MCP client. Sign-in is OAuth, so there are no API keys to paste.</p>
+        </div>
+        <div class="mcp-27">
+          <span class="num">27</span>
+          <p><b>tools</b>Read and write documents, validate them, render SVGs and browse worked examples.</p>
+          <div class="flow">agent -&gt; archer @mcp : "write"<br>archer -&gt; canvas <em>: "same document"</em></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FAQ -->
+  <section class="sec" id="faq" aria-labelledby="faq-title">
+    <div class="wrap">
+      <header class="grid12 sec-head">
+        <p class="sec-label">Questions</p>
+        <h2 class="sec-title" id="faq-title">Short answers.</h2>
+      </header>
+      <div class="grid12 faq">
+        <dl>
+          <div><dt>Do I need an account to try it?</dt><dd>No. Every worked example opens in a sandbox, and nothing you change there is saved.</dd></div>
+          <div><dt>Which agents work?</dt><dd>Any MCP client: Claude Code, Codex, Cursor, Gemini CLI, VS Code and others.</dd></div>
+          <div><dt>Can I start from an existing codebase?</dt><dd>Yes. The agent prompt asks your agent to map the repository into a new document.</dd></div>
+          <div><dt>Can I use my own components?</dt><dd>Yes. Define custom types with their own name, color and glyph.</dd></div>
+        </dl>
+      </div>
+    </div>
+  </section>
+
+  <!-- CLOSING -->
+  <section class="sec close" aria-labelledby="close-title">
+    <div class="wrap">
+      <header class="grid12 sec-head">
+        <p class="sec-label">Start</p>
+      </header>
+      <h2 class="close-title" id="close-title">Same document, both&nbsp;hands.</h2>
+      <div class="wgraph close-graph" id="closeGraph"
+           data-edges='[{"from":"you","to":"archer","p":"@drag","l":"on the canvas"},{"from":"agent","to":"archer","p":"@mcp","l":"in code"}]'>
+        <svg class="wires" aria-hidden="true"></svg>
+        <div class="wn n-c-you" data-node="you" aria-hidden="true"><span class="tag">you</span><span class="w">You</span></div>
+        <div class="wn n-c-archer" data-node="archer" aria-hidden="true"><span class="tag">archer</span><span class="w">Archer</span></div>
+        <div class="wn n-c-agent" data-node="agent" aria-hidden="true"><span class="tag">agent</span><span class="w">your agent</span></div>
+      </div>
+      <div class="close-cta">
+        <a class="btn btn-primary" href="#">Sign in with GitHub</a>
+        <a class="btn" href="/language/examples">Try the sandbox</a>
+        <button class="btn btn-text js-copy" type="button" data-copy="prompt"><span class="swap" aria-hidden="true"><svg class="i-copy"><use href="#i-copy"></use></svg><svg class="i-check"><use href="#i-check"></use></svg></span>Copy agent prompt</button>
+        <span class="note">The sandbox needs no account.</span>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="foot">
+  <div class="wrap grid12 foot-grid">
+    <div class="foot-brand">
+      <a class="mark" href="#top" aria-label="Archer, back to top">
+        <svg viewBox="0 0 30 18" aria-hidden="true"><rect x="1" y="4" width="10" height="10" fill="var(--accent)"></rect><path d="M11 9h14" stroke="currentColor" stroke-width="2.5"></path><path d="M22 4.5l6 4.5-6 4.5z" fill="currentColor"></path></svg>
+        Archer
+      </a>
+      <p>An architecture canvas that compiles to and from a language your agent can read.</p>
+    </div>
+    <div class="foot-col">
+      <h3>Product</h3>
+      <ul><li><a href="/language/examples">Sandbox</a></li><li><a href="/language/examples">Examples</a></li><li><a href="#translator">Translator</a></li></ul>
+    </div>
+    <div class="foot-col">
+      <h3>Docs</h3>
+      <ul><li><a href="/language">Language reference</a></li><li><a href="/docs/mcp">MCP server</a></li><li><a href="/docs/cli">CLI</a></li></ul>
+    </div>
+    <div class="foot-col">
+      <h3>Account</h3>
+      <ul><li><a href="#">Sign in with GitHub</a></li><li><a href="#">Workspaces</a></li><li><a href="#">Send feedback</a></li></ul>
+    </div>
+    <div class="foot-base"><span>tryarcher.dev</span><span>arch "Archer" v0.2</span></div>
+  </div>
+</footer>
+
+<p class="sr" id="copyStatus" aria-live="polite"></p>
+
+<script>
+(function () {
+  "use strict";
+  var reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  /* ---------- theme ---------- */
+  var themeBtn = document.getElementById("theme");
+  var order = ["system", "light", "dark"];
+  function currentTheme() { return document.documentElement.getAttribute("data-theme") || "system"; }
+  function paintTheme() {
+    var t = currentTheme();
+    themeBtn.querySelector(".lbl").textContent = t;
+    themeBtn.setAttribute("aria-label", "Theme: " + t + ". Change theme");
+  }
+  themeBtn.addEventListener("click", function () {
+    var next = order[(order.indexOf(currentTheme()) + 1) % order.length];
+    if (next === "system") document.documentElement.removeAttribute("data-theme");
+    else document.documentElement.setAttribute("data-theme", next);
+    try { if (next === "system") localStorage.removeItem("syntax-theme"); else localStorage.setItem("syntax-theme", next); } catch (e) {}
+    paintTheme();
+  });
+  paintTheme();
+
+  /* ---------- copy ---------- */
+  var TEXTS = {
+    cmd: "claude mcp add --transport http archer https://tryarcher.dev/mcp",
+    prompt: "Set me up with Archer (https://tryarcher.dev). Add the Archer MCP server (for Claude Code: claude mcp add --transport http archer https://tryarcher.dev/mcp, or the equivalent for my client), sign in when asked, read the Archer language reference, then map this repository's architecture into a new Archer document and send me the link."
+  };
+  var status = document.getElementById("copyStatus");
+  Array.prototype.forEach.call(document.querySelectorAll(".js-copy"), function (btn) {
+    btn.addEventListener("click", function () {
+      var text = TEXTS[btn.getAttribute("data-copy")];
+      var ok = function () {
+        btn.classList.add("done");
+        status.textContent = "Copied to clipboard.";
+        clearTimeout(btn._t);
+        btn._t = setTimeout(function () { btn.classList.remove("done"); }, 1800);
+      };
+      var fail = function () { status.textContent = "Copy failed. The text is: " + text; };
+      try {
+        if (!navigator.clipboard || !navigator.clipboard.writeText) { fail(); return; }
+        navigator.clipboard.writeText(text).then(ok).catch(fail);
+      } catch (e) { fail(); }
+    });
+  });
+
+  /* ---------- word graphs (hero, closing) ---------- */
+  var NS = "http://www.w3.org/2000/svg";
+  function rel(el, box) {
+    var r = el.getBoundingClientRect();
+    var l = r.left - box.left, t = r.top - box.top;
+    return { l: l, t: t, r: l + r.width, b: t + r.height, w: r.width, h: r.height, cx: l + r.width / 2, cy: t + r.height / 2 };
+  }
+  function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+  function route(a, b, e) {
+    var gap = 10, pts, lab;
+    var ov = Math.min(a.b, b.b) - Math.max(a.t, b.t);
+    var ox = Math.min(a.r, b.r) - Math.max(a.l, b.l);
+    if (b.l >= a.r + 24 && ov > 10) {
+      var y = Math.max(a.t, b.t) + ov * 0.62;
+      pts = [[a.r + gap, y], [b.l - gap, y]];
+      lab = { x: (a.r + b.l) / 2, y: y, mode: "h" };
+    } else if (b.r <= a.l - 24 && ov > 10) {
+      var y2 = Math.max(a.t, b.t) + ov * 0.62;
+      pts = [[a.l - gap, y2], [b.r + gap, y2]];
+      lab = { x: (a.l + b.r) / 2, y: y2, mode: "h" };
+    } else {
+      var down = b.t >= a.b - 1;
+      var y1 = down ? a.b + gap : a.t - gap;
+      var yb = down ? b.t - gap : b.b + gap;
+      if (ox > 24) {
+        var x = Math.max(a.l, b.l) + Math.min(ox - 12, Math.max(12, ox * (e.fx == null ? 0.5 : e.fx)));
+        pts = [[x, y1], [x, yb]];
+        lab = { x: x, y: (y1 + yb) / 2, mode: "v" };
+      } else {
+        var ax = clamp(b.cx, a.l + 20, a.r - 20), bx = clamp(ax, b.l + 20, b.r - 20), my = (y1 + yb) / 2;
+        pts = [[ax, y1], [ax, my], [bx, my], [bx, yb]];
+        lab = { x: ax, y: (y1 + my) / 2, mode: "v" };
+      }
+    }
+    return { pts: pts, lab: lab };
+  }
+  function headPath(p, q, s) {
+    var dx = q[0] - p[0], dy = q[1] - p[1], L = Math.hypot(dx, dy) || 1, ux = dx / L, uy = dy / L;
+    var bx = q[0] - ux * s, by = q[1] - uy * s, px = -uy * s * 0.55, py = ux * s * 0.55;
+    return "M" + q[0] + " " + q[1] + "L" + (bx + px) + " " + (by + py) + "L" + (bx - px) + " " + (by - py) + "Z";
+  }
+  function setupGraph(g) {
+    var edges = JSON.parse(g.getAttribute("data-edges"));
+    var svg = g.querySelector(".wires");
+    var nodes = {};
+    Array.prototype.forEach.call(g.querySelectorAll("[data-node]"), function (n) { nodes[n.getAttribute("data-node")] = n; });
+    var parts = edges.map(function (e, i) {
+      var path = document.createElementNS(NS, "path"); path.setAttribute("class", "wire");
+      var head = document.createElementNS(NS, "path"); head.setAttribute("class", "whead");
+      svg.appendChild(path); svg.appendChild(head);
+      var lab = document.createElement("div"); lab.className = "wlabel"; lab.setAttribute("aria-hidden", "true");
+      lab.innerHTML = "<b></b><i></i>";
+      lab.firstChild.textContent = e.p; lab.lastChild.textContent = ': "' + e.l + '"';
+      g.appendChild(lab);
+      path.style.setProperty("--d", (0.25 + i * 0.75) + "s");
+      head.style.setProperty("--d", (0.25 + i * 0.75) + "s");
+      return { e: e, path: path, head: head, lab: lab };
+    });
+    var drawn = false;
+    function layout() {
+      var box = g.getBoundingClientRect();
+      parts.forEach(function (p) {
+        var a = rel(nodes[p.e.from], box), b = rel(nodes[p.e.to], box);
+        var r = route(a, b, p.e), pts = r.pts;
+        var d = "M" + pts.map(function (q) { return q[0].toFixed(1) + " " + q[1].toFixed(1); }).join("L");
+        p.path.setAttribute("d", d);
+        var len = 0; for (var i = 1; i < pts.length; i++) len += Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]);
+        p.path.style.setProperty("--len", len.toFixed(1));
+        p.head.setAttribute("d", headPath(pts[pts.length - 2], pts[pts.length - 1], 13));
+        var L = p.lab.style;
+        if (r.lab.mode === "v") { L.left = (r.lab.x + 14) + "px"; L.top = r.lab.y + "px"; L.transform = "translateY(-50%)"; L.textAlign = "left"; }
+        else { L.left = r.lab.x + "px"; L.top = (r.lab.y - 12) + "px"; L.transform = "translate(-50%,-100%)"; L.textAlign = "center"; }
+      });
+      if (!drawn) {
+        drawn = true;
+        if (!reduced) {
+          svg.classList.add("drawing");
+          setTimeout(function () { svg.classList.remove("drawing"); }, 3200);
+        }
+      }
+    }
+    function focus(id) {
+      g.classList.add("is-focus");
+      nodes[id].classList.add("hot");
+      parts.forEach(function (p) {
+        if (p.e.from === id || p.e.to === id) {
+          p.path.classList.add("hot"); p.head.classList.add("hot"); p.lab.classList.add("hot");
+          nodes[p.e.from].classList.add("hot"); nodes[p.e.to].classList.add("hot");
+        }
+      });
+    }
+    function blur() {
+      g.classList.remove("is-focus");
+      Array.prototype.forEach.call(g.querySelectorAll(".hot"), function (n) { n.classList.remove("hot"); });
+    }
+    Object.keys(nodes).forEach(function (id) {
+      nodes[id].addEventListener("pointerenter", function () { focus(id); });
+      nodes[id].addEventListener("pointerleave", blur);
+    });
+    layout();
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(layout);
+    if ("ResizeObserver" in window) new ResizeObserver(function () { layout(); }).observe(g);
+    else window.addEventListener("resize", layout);
+  }
+  Array.prototype.forEach.call(document.querySelectorAll(".wgraph"), setupGraph);
+
+  /* ---------- translator ---------- */
+  var SRC = [
+    'arch "Acme" v0.2', '',
+    'component web "Web app" @vercel.nextjs {', '  shape browser', '}',
+    'component auth "Auth" @clerk', '',
+    'plane backend "Backend" {',
+    '  component api "API" @vercel.functions',
+    '  component db "Postgres" @supabase.postgres {', '    shape cylinder', '  }',
+    '}', '',
+    'component billing "Billing" @stripe', '',
+    'web -> api @http',
+    'web -> auth @http : "sign in"',
+    'api -> db @sql',
+    'api -> billing @http : "checkout"'
+  ];
+  var LINE_STEP = { 1: 0, 3: 1, 4: 1, 5: 1, 6: 2, 8: 3, 13: 3, 9: 4, 10: 5, 11: 5, 12: 5, 15: 6, 17: 7, 18: 8, 19: 9, 20: 10 };
+  var STEP_LINE = [1, 3, 6, 8, 9, 10, 15, 17, 18, 19, 20];
+  var CAPS = [
+    'The header names the document, <code>"Acme"</code>, and the language version. One file is one canvas.',
+    'A component: <code>web</code> is its id, <code>"Web app"</code> is what people read, <code>@vercel.nextjs</code> is its type. <code>shape browser</code> draws it as a window.',
+    'No body needed. One line, one box.',
+    'A plane is a titled region, for readers only. It holds components but never takes part in connections.',
+    'Placed on the plane, but its path is still just <code>api</code>. Planes are transparent to paths.',
+    '<code>shape cylinder</code> makes the database look like one.',
+    'Back outside the plane. Five components so far, and nothing connects them yet.',
+    'A connection: from, arrow, to, protocol. <code>web -&gt; api @http</code> crosses into the plane.',
+    'Text after the colon rides the arrow as its label: <code>"sign in"</code>.',
+    '<code>@sql</code> between two components on the same plane.',
+    'Twenty lines, one diagram. Your agent writes this text, you drag the boxes, and both edit the same document.'
+  ];
+  var LAST = CAPS.length - 1;
+  var EDGES = {
+    e1: { step: 7, p: "@http" },
+    e2: { step: 8, p: "@http", l: '"sign in"' },
+    e3: { step: 9, p: "@sql", on: true },
+    e4: { step: 10, p: "@http", l: '"checkout"' }
+  };
+  var NODES = {
+    web: { step: 1, name: "Web app", type: "@vercel.nextjs", glyph: "globe", shape: "browser" },
+    auth: { step: 2, name: "Auth", type: "@clerk", glyph: "key" },
+    api: { step: 4, name: "API", type: "@vercel.functions", glyph: "bolt" },
+    db: { step: 5, name: "Postgres", type: "@supabase.postgres", glyph: "db", shape: "cylinder" },
+    billing: { step: 6, name: "Billing", type: "@stripe", glyph: "card" }
+  };
+  var LAYOUTS = {
+    wide: {
+      vb: "-10 -6 740 494",
+      plane: { x: 240, y: 40, w: 480, h: 240 },
+      nodes: { web: [0, 120, 160, 120], auth: [0, 360, 160, 120], api: [280, 120, 160, 120], db: [520, 120, 160, 120], billing: [280, 360, 160, 120] },
+      edges: {
+        e1: { pts: [[160, 180], [280, 180]], lx: 200, ly: 171, a: "middle" },
+        e2: { pts: [[80, 240], [80, 360]], lx: 92, ly: 296, a: "start" },
+        e3: { pts: [[440, 180], [520, 180]], lx: 480, ly: 171, a: "middle" },
+        e4: { pts: [[360, 240], [360, 360]], lx: 372, ly: 312, a: "start" }
+      }
+    },
+    tall: {
+      vb: "-6 -4 412 612",
+      plane: { x: 0, y: 240, w: 400, h: 200 },
+      nodes: { web: [0, 80, 144, 100], auth: [256, 80, 144, 100], api: [16, 288, 144, 100], db: [240, 288, 144, 100], billing: [16, 496, 144, 100] },
+      edges: {
+        e1: { pts: [[80, 180], [80, 288]], lx: 92, ly: 214, a: "start" },
+        e2: { pts: [[144, 130], [256, 130]], lx: 200, ly: 121, a: "middle", ly2: 147 },
+        e3: { pts: [[160, 338], [240, 338]], lx: 200, ly: 329, a: "middle" },
+        e4: { pts: [[88, 388], [88, 496]], lx: 100, ly: 462, a: "start" }
+      }
+    }
+  };
+  var GLYPHS = {
+    globe: '<circle cx="8" cy="8" r="7"></circle><ellipse cx="8" cy="8" rx="3" ry="7"></ellipse><path d="M1 8h14"></path>',
+    key: '<circle cx="5" cy="8" r="3.4"></circle><path d="M8.4 8H15M12.2 8v3M14.6 8v2.4"></path>',
+    bolt: '<path class="fill" d="M9.5 0.5L2.5 9.2h5L6.5 15.5l7-8.7h-5z"></path>',
+    db: '<ellipse cx="8" cy="3.5" rx="6" ry="2.5"></ellipse><path d="M2 3.5v9c0 1.4 2.7 2.5 6 2.5s6-1.1 6-2.5v-9M2 8c0 1.4 2.7 2.5 6 2.5s6-1.1 6-2.5"></path>',
+    card: '<rect x="1" y="3" width="14" height="10" rx="1"></rect><path d="M1 6.5h14M3.5 10.5h4"></path>'
+  };
+  function esc(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
+
+  function hl(line) {
+    var re = /("[^"]*")|(@[\w.]+)|(->)|\b(arch|component|plane|shape)\b|([{}:])/g, out = "", last = 0, m;
+    while ((m = re.exec(line))) {
+      out += esc(line.slice(last, m.index));
+      var cls = m[1] ? "s" : m[2] ? "t" : m[3] ? "op" : m[4] ? "k" : "p";
+      out += '<span class="' + cls + '">' + esc(m[0]) + "</span>";
+      last = re.lastIndex;
+    }
+    return out + esc(line.slice(last));
+  }
+
+  var codeEl = document.getElementById("code");
+  codeEl.innerHTML = SRC.map(function (line, i) {
+    var n = i + 1, st = LINE_STEP[n];
+    if (st == null) return '<li class="ln ln-blank" aria-hidden="true"><span class="no">' + n + "</span><span> </span></li>";
+    return '<li class="ln" data-step="' + st + '"><button class="ln-btn" type="button" data-step="' + st + '"><span class="no" aria-hidden="true">' + n + "</span><span>" + hl(line) + "</span></button></li>";
+  }).join("");
+
+  var stage = document.getElementById("stage");
+  var stageBox = stage.parentNode;
+  var cur = LAST, layoutName = null;
+
+  function box(id, r) {
+    var n = NODES[id], x = r[0], y = r[1], w = r[2], h = r[3], s = "";
+    var gy = y + 12;
+    if (n.shape === "cylinder") {
+      s += '<path class="s-box" d="M' + x + " " + (y + 10) + "a" + w / 2 + " 10 0 0 1 " + w + " 0v" + (h - 20) + "a" + w / 2 + " 10 0 0 1 " + -w + ' 0z"></path>';
+      s += '<path class="s-bar" fill="none" d="M' + x + " " + (y + 10) + "a" + w / 2 + " 10 0 0 0 " + w + ' 0"></path>';
+      gy = y + 26;
+    } else {
+      s += '<rect class="s-box" x="' + x + '" y="' + y + '" width="' + w + '" height="' + h + '"></rect>';
+      if (n.shape === "browser") {
+        s += '<path class="s-bar" d="M' + x + " " + (y + 18) + "h" + w + '"></path>';
+        for (var i = 0; i < 3; i++) s += '<circle class="s-dot" cx="' + (x + 10 + i * 8) + '" cy="' + (y + 9) + '" r="2.4"></circle>';
+        gy = y + 28;
+      }
+    }
+    s += '<g class="s-glyph" transform="translate(' + (x + 12) + " " + gy + ')">' + GLYPHS[n.glyph] + "</g>";
+    s += '<text class="s-id" x="' + (x + w - 10) + '" y="' + (gy + 12) + '" text-anchor="end">' + id + "</text>";
+    s += '<text class="s-name" x="' + (x + 12) + '" y="' + (y + h - 32) + '">' + esc(n.name) + "</text>";
+    s += '<text class="s-type" x="' + (x + 12) + '" y="' + (y + h - 13) + '">' + esc(n.type) + "</text>";
+    return '<g class="el node" data-step="' + n.step + '">' + s + "</g>";
+  }
+  function edge(id, L) {
+    var e = EDGES[id], g = L.edges[id], pts = g.pts;
+    var d = "M" + pts.map(function (p) { return p[0] + " " + (p[1]); }).join("L");
+    var last = pts[pts.length - 1], prev = pts[pts.length - 2];
+    var dx = Math.sign(last[0] - prev[0]), dy = Math.sign(last[1] - prev[1]);
+    var tip = [last[0] - dx * 1.5, last[1] - dy * 1.5];
+    var hd = headPath(prev, tip, 10);
+    var core = '<path class="e-line" d="' + d + '"></path><path class="e-head" d="' + hd + '"></path>';
+    var onp = '<g clip-path="url(#pclip)"><path class="e-line on" d="' + d + '"></path><path class="e-head on" d="' + hd + '"></path></g>';
+    var on = e.on ? " on" : "";
+    var t = '<text class="e-proto' + on + '" x="' + g.lx + '" y="' + g.ly + '" text-anchor="' + g.a + '">' + e.p + "</text>";
+    if (e.l) t += '<text class="e-label" x="' + g.lx + '" y="' + (g.ly2 || g.ly + 15) + '" text-anchor="' + g.a + '">' + esc(e.l) + "</text>";
+    return '<g class="el edge" data-step="' + e.step + '">' + core + onp + t + "</g>";
+  }
+  function buildStage(name) {
+    var L = LAYOUTS[name], P = L.plane, s = "";
+    s += '<defs><clipPath id="pclip"><rect x="' + P.x + '" y="' + P.y + '" width="' + P.w + '" height="' + P.h + '"></rect></clipPath></defs>';
+    s += '<g class="el" data-step="0"><text class="s-tmeta" x="0" y="10">arch v0.2</text><text class="s-title" x="0" y="44">Acme</text></g>';
+    s += '<g class="el plane" data-step="3"><rect class="s-plane" x="' + P.x + '" y="' + P.y + '" width="' + P.w + '" height="' + P.h + '"></rect>' +
+      '<text class="s-ptitle" x="' + (P.x + 14) + '" y="' + (P.y + 28) + '">Backend</text>' +
+      '<text class="s-pid" x="' + (P.x + P.w - 12) + '" y="' + (P.y + 26) + '" text-anchor="end">plane backend</text></g>';
+    Object.keys(EDGES).forEach(function (id) { s += edge(id, L); });
+    Object.keys(NODES).forEach(function (id) { s += box(id, L.nodes[id]); });
+    stage.setAttribute("viewBox", L.vb);
+    stage.classList.toggle("tall", name === "tall");
+    stage.innerHTML = s;
+    layoutName = name;
+    apply();
+  }
+  function apply() {
+    Array.prototype.forEach.call(stage.querySelectorAll(".el"), function (g) {
+      var st = +g.getAttribute("data-step");
+      g.classList.toggle("future", st > cur);
+      g.classList.toggle("cur", st === cur && cur !== LAST);
+    });
+    Array.prototype.forEach.call(codeEl.querySelectorAll(".ln[data-step]"), function (li) {
+      var st = +li.getAttribute("data-step");
+      li.classList.toggle("cur", st === cur);
+      li.classList.toggle("future", st > cur);
+    });
+    document.getElementById("trCap").innerHTML = CAPS[cur];
+    var comps = 0, conns = 0;
+    Object.keys(NODES).forEach(function (k) { if (NODES[k].step <= cur) comps++; });
+    Object.keys(EDGES).forEach(function (k) { if (EDGES[k].step <= cur) conns++; });
+    document.getElementById("stageMeta").textContent = comps + (comps === 1 ? " component, " : " components, ") + (cur >= 3 ? "1 plane, " : "") + conns + (conns === 1 ? " connection" : " connections");
+    document.getElementById("trCount").textContent = "line " + STEP_LINE[cur] + " of 20, step " + (cur + 1) + " of " + (LAST + 1);
+    document.getElementById("trPrev").disabled = cur === 0;
+    document.getElementById("trNext").disabled = cur === LAST;
+  }
+  function pickLayout() {
+    var name = stageBox.clientWidth < 560 ? "tall" : "wide";
+    if (name !== layoutName) buildStage(name);
+  }
+  pickLayout();
+  if ("ResizeObserver" in window) new ResizeObserver(pickLayout).observe(stageBox);
+  else window.addEventListener("resize", pickLayout);
+
+  var timer = null, touched = false, playBtn = document.getElementById("trPlay");
+  function stop() {
+    touched = true;
+    if (timer) { clearInterval(timer); timer = null; }
+    playBtn.textContent = cur === LAST ? "Play from line 1" : "Play";
+  }
+  function go(n) { cur = clamp(n, 0, LAST); apply(); }
+  function play() {
+    if (cur === LAST) go(0);
+    playBtn.textContent = "Pause";
+    timer = setInterval(function () {
+      if (cur >= LAST) { stop(); return; }
+      go(cur + 1);
+      if (cur >= LAST) stop();
+    }, reduced ? 2600 : 1700);
+  }
+  playBtn.addEventListener("click", function () { if (timer) stop(); else play(); });
+  document.getElementById("trPrev").addEventListener("click", function () { stop(); go(cur - 1); stop(); });
+  document.getElementById("trNext").addEventListener("click", function () { stop(); go(cur + 1); stop(); });
+  codeEl.addEventListener("click", function (ev) {
+    var b = ev.target.closest(".ln-btn");
+    if (!b) return;
+    stop(); go(+b.getAttribute("data-step")); stop();
+  });
+  if (!reduced && "IntersectionObserver" in window) {
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (en) {
+        if (en.isIntersecting && en.intersectionRatio > 0.45) { io.disconnect(); if (!timer && !touched) play(); }
+      });
+    }, { threshold: [0, 0.45, 0.7] });
+    io.observe(document.querySelector(".tr"));
+  }
+
+  /* ---------- your line ---------- */
+  function E(col, msg) { var e = new Error(msg); e.col = col; return e; }
+  function lex(s) {
+    var toks = [], i = 0, m;
+    while (i < s.length) {
+      var c = s[i], rest = s.slice(i);
+      if (/\s/.test(c)) { i++; continue; }
+      if (rest.indexOf("->") === 0) { toks.push({ k: "arrow", v: "->", c: i }); i += 2; continue; }
+      if (c === "@") {
+        m = /^@[A-Za-z_]\w*(\.[A-Za-z_]\w*)*/.exec(rest);
+        if (!m) throw E(i, 'expected a protocol name after "@", e.g. @http');
+        toks.push({ k: "proto", v: m[0], c: i }); i += m[0].length; continue;
+      }
+      if (c === '"') {
+        var j = s.indexOf('"', i + 1);
+        if (j < 0) throw E(i, 'unterminated string; close it with "');
+        toks.push({ k: "str", v: s.slice(i, j + 1), c: i }); i = j + 1; continue;
+      }
+      if (c === ":") { toks.push({ k: "colon", v: ":", c: i }); i++; continue; }
+      if (/[A-Za-z_]/.test(c)) {
+        m = /^[A-Za-z_]\w*(\.[A-Za-z_]\w*)*/.exec(rest);
+        toks.push({ k: "id", v: m[0], c: i }); i += m[0].length; continue;
+      }
+      if (/[0-9]/.test(c)) { m = /^\w+/.exec(rest); throw E(i, '"' + m[0] + '" is not an id; ids start with a letter or _'); }
+      m = /^[^\s\w"@:]+/.exec(rest);
+      toks.push({ k: "punct", v: m[0], c: i }); i += m[0].length;
+    }
+    return toks;
+  }
+  function parse(s) {
+    var t = lex(s), i = 0, end = s.replace(/\s+$/, "").length;
+    function peek() { return t[i]; }
+    function at() { return t[i] ? t[i].c : end; }
+    if (!t.length) throw E(0, 'empty line. Try: cache -> db @redis');
+    var a = t[i++];
+    if (a.k === "id" && a.v === "component") {
+      var id = t[i++];
+      if (!id) throw E(end, 'expected an id after "component"');
+      if (id.k !== "id") throw E(id.c, 'expected an id after "component", found ' + id.v);
+      var out = { kind: "component", id: id.v };
+      if (peek() && peek().k === "str") out.name = t[i++].v.slice(1, -1);
+      if (peek() && peek().k === "proto") out.type = t[i++].v;
+      if (peek() && peek().k === "id" && !out.type) throw E(at(), 'types start with "@": try "@' + peek().v + '"');
+      if (peek() && peek().v === "{") throw E(at(), "a body in braces needs more lines; this box takes one line");
+      if (peek()) throw E(at(), 'unexpected "' + peek().v + '" at end of line');
+      return out;
+    }
+    if (a.k !== "id") throw E(a.c, 'a line starts with an id or "component", found ' + a.v);
+    var arrow = t[i++];
+    if (!arrow) throw E(end, 'expected "->" after "' + a.v + '"');
+    if (arrow.k !== "arrow") throw E(arrow.c, 'expected "->" after "' + a.v + '", found "' + arrow.v + '"');
+    var b = t[i++];
+    if (!b) throw E(end, 'expected an id after "->"');
+    if (b.k !== "id") throw E(b.c, 'expected an id after "->", found ' + b.v);
+    var r = { kind: "edge", from: a.v, to: b.v };
+    if (peek() && peek().k === "id") throw E(at(), 'protocols start with "@": try "@' + peek().v + '"');
+    if (peek() && peek().k === "proto") r.proto = t[i++].v;
+    if (peek() && peek().k === "str") throw E(at(), 'expected ":" before the label ' + peek().v);
+    if (peek() && peek().k === "colon") {
+      i++;
+      var l = t[i++];
+      if (!l) throw E(end, 'expected a quoted label after ":", e.g. : "checkout"');
+      if (l.k !== "str") throw E(l.c, 'labels need double quotes: : "' + l.v + '"');
+      r.label = l.v;
+    }
+    if (peek()) throw E(at(), 'unexpected "' + peek().v + '" at end of line');
+    return r;
+  }
+  var ylIn = document.getElementById("ylIn"), ylOut = document.getElementById("ylOut");
+  function node(id, name, type) {
+    return '<div class="yd-node"><span class="id">' + esc(id) + '</span><span class="nm">' + esc(name || id) + "</span>" + (type ? '<span class="ty">' + esc(type) + "</span>" : "") + "</div>";
+  }
+  function renderLine() {
+    var s = ylIn.value;
+    try {
+      var r = parse(s), html;
+      if (r.kind === "edge") {
+        var fmt = r.from + " -> " + r.to + (r.proto ? " " + r.proto : "") + (r.label ? " : " + r.label : "");
+        html = '<p class="yl-fmt">formatted <code>' + esc(fmt) + "</code></p>" +
+          '<div class="yd">' + node(r.from) +
+          '<div class="yd-edge"><div class="txt"><span class="pp">' + esc(r.proto || "no protocol") + "</span>" + (r.label ? '<span class="lb">' + esc(r.label) + "</span>" : "") + '</div><span class="ln2"></span></div>' +
+          node(r.to) + "</div>";
+      } else {
+        var f2 = "component " + r.id + (r.name ? ' "' + r.name + '"' : "") + (r.type ? " " + r.type : "");
+        html = '<p class="yl-fmt">formatted <code>' + esc(f2) + "</code></p>" + '<div class="yd">' + node(r.id, r.name, r.type) + "</div>";
+      }
+      ylOut.innerHTML = html;
+    } catch (err) {
+      if (err.col == null) throw err;
+      var shown = s.length ? s : " ";
+      ylOut.innerHTML = '<pre class="yl-err">' + esc(shown) + "\n" + '<span class="caret">' + " ".repeat(err.col) + "^</span>\n" +
+        '<span class="msg">1:' + (err.col + 1) + " <b>E:</b> " + esc(err.message) + "</span></pre>";
+    }
+  }
+  ylIn.addEventListener("input", renderLine);
+  Array.prototype.forEach.call(document.querySelectorAll(".chip"), function (c) {
+    c.addEventListener("click", function () { ylIn.value = c.textContent; renderLine(); ylIn.focus(); });
+  });
+  renderLine();
+})();
+</script>
+</body>
+</html>

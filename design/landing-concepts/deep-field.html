@@ -1,0 +1,1628 @@
+<!doctype html>
+<!--
+  Deep Field: "Powers of Ten" for software architecture. The page is one continuous, scroll-driven
+  zoom from a whole company's systems (a drifting star field of services) into one system, into one
+  component's parts, down to the single line of .arch code that defines it. Single dark theme by choice.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Archer — Deep Field</title>
+<meta name="description" content="Archer is an architecture canvas that compiles to and from an agent-readable language. Open any component to see its parts, down to the line that defines it.">
+<meta name="color-scheme" content="dark">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,300..700&amp;family=IBM+Plex+Mono:wght@400;500&amp;family=Instrument+Serif:ital@0;1&amp;display=swap">
+<style>
+  /* Single theme by choice: a cinematic dark field. Every color is set explicitly. */
+  :root {
+    color-scheme: dark;
+    --bg: #05070d;
+    --bg-1: #080b15;
+    --bg-2: #0c1121;
+    --panel: rgba(10, 14, 27, 0.86);
+    --ink: #eceff6;
+    --ink-2: #b0b8ca;
+    --ink-3: #7a849b;
+    --ink-4: #4f586d;
+    --line: rgba(168, 184, 222, 0.13);
+    --line-2: rgba(168, 184, 222, 0.24);
+    --line-3: rgba(168, 184, 222, 0.38);
+    --star: #f2ddb2;
+    --star-2: #d9b97c;
+    --cool: #a8beff;
+    --kw: #a3b8ff;
+    --str: #efd49c;
+    --type: #93d3c6;
+    --btn: #eee6d4;
+    --btn-ink: #0a0d16;
+    --serif: "Instrument Serif", "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+    --sans: "Archivo", "Helvetica Neue", Helvetica, Arial, sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+    --gutter-l: max(16px, env(safe-area-inset-left, 0px));
+    --gutter-r: max(16px, env(safe-area-inset-right, 0px));
+    --maxw: 1240px;
+    --ease: cubic-bezier(.22, .61, .21, 1);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; }
+  html { background: var(--bg); -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 16px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: clip;
+  }
+  a { color: inherit; }
+  button { font: inherit; color: inherit; }
+  ::selection { background: rgba(242, 221, 178, 0.28); color: var(--ink); }
+  :focus-visible { outline: 2px solid var(--star); outline-offset: 3px; border-radius: 3px; }
+  .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+
+  .wrap {
+    padding-left: var(--gutter-l);
+    padding-right: var(--gutter-r);
+  }
+  .inner { max-width: var(--maxw); margin: 0 auto; }
+
+  .kicker {
+    font-family: var(--mono);
+    font-size: 11.5px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    margin: 0;
+  }
+  .kicker::before { content: ""; width: 28px; height: 1px; background: var(--line-3); }
+  .kicker.warm { color: var(--star-2); }
+  .kicker.warm::before { background: var(--star-2); opacity: .6; }
+
+  /* ---------- buttons ---------- */
+  .btn {
+    --h: 46px;
+    display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+    height: var(--h); padding: 0 20px;
+    border-radius: 3px;
+    border: 1px solid var(--line-2);
+    background: transparent;
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 14.5px; font-weight: 500;
+    font-variation-settings: "wdth" 104;
+    letter-spacing: 0.01em;
+    text-decoration: none;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background-color .3s var(--ease), border-color .3s var(--ease), color .3s var(--ease);
+  }
+  .btn:hover { border-color: var(--line-3); background: rgba(168, 184, 222, 0.06); }
+  .btn.primary { background: var(--btn); color: var(--btn-ink); border-color: var(--btn); }
+  .btn.primary:hover { background: #fff7e6; border-color: #fff7e6; }
+  .btn.ghost { border-color: transparent; padding: 0 12px; color: var(--ink-2); }
+  .btn.ghost:hover { color: var(--ink); background: rgba(168, 184, 222, 0.06); }
+  .btn svg { width: 17px; height: 17px; flex: none; }
+  .btn.small { --h: 36px; padding: 0 14px; font-size: 13.5px; }
+
+  .swap { position: relative; width: 17px; height: 17px; display: inline-block; flex: none; }
+  .swap svg { position: absolute; inset: 0; transition: opacity .25s var(--ease), transform .35s var(--ease); }
+  .swap .i-done { opacity: 0; transform: scale(.4) rotate(-30deg); }
+  .is-done .swap .i-copy { opacity: 0; transform: scale(.4) rotate(30deg); }
+  .is-done .swap .i-done { opacity: 1; transform: none; }
+
+  /* ---------- nav ---------- */
+  .nav {
+    position: fixed; z-index: 30; top: 0; left: 0; right: 0;
+    background: linear-gradient(180deg, rgba(5, 7, 13, 0.96) 0%, rgba(5, 7, 13, 0.82) 55%, rgba(5, 7, 13, 0) 100%);
+  }
+  .nav .inner { height: 68px; display: flex; align-items: center; gap: 28px; }
+  .brand { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; color: var(--ink); }
+  .brand svg { width: 22px; height: 22px; }
+  .brand span { font-family: var(--sans); font-weight: 600; font-size: 15px; letter-spacing: 0.14em; text-transform: uppercase; font-variation-settings: "wdth" 125; }
+  .nav-links { display: flex; gap: 22px; margin-left: auto; }
+  .nav-links a { font-size: 13.5px; color: var(--ink-2); text-decoration: none; font-variation-settings: "wdth" 104; }
+  .nav-links a:hover { color: var(--ink); }
+  .nav .btn { --h: 36px; padding: 0 14px; font-size: 13.5px; }
+  .nav .short { display: none; }
+
+  /* ---------- zoom section ---------- */
+  .zoom { position: relative; }
+  .stage {
+    position: sticky; top: 0; height: 100vh; height: 100lvh; z-index: 0; overflow: hidden;
+    background:
+      radial-gradient(70% 60% at 68% 30%, rgba(46, 66, 140, 0.20), rgba(46, 66, 140, 0) 70%),
+      radial-gradient(50% 45% at 20% 80%, rgba(120, 82, 52, 0.10), rgba(120, 82, 52, 0) 70%),
+      radial-gradient(120% 90% at 50% 50%, #0a0e1b 0%, #05070d 75%);
+  }
+  .stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  .stage::after {
+    content: ""; position: absolute; inset: 0; pointer-events: none;
+    background:
+      linear-gradient(90deg, rgba(5, 7, 13, 0.86) 0%, rgba(5, 7, 13, 0.55) 26%, rgba(5, 7, 13, 0) 46%),
+      linear-gradient(0deg, rgba(5, 7, 13, 0.7) 0%, rgba(5, 7, 13, 0) 30%);
+  }
+  .hud { position: absolute; z-index: 2; font-family: var(--mono); color: var(--ink-3); pointer-events: none; }
+  .crumbs {
+    top: 84px; left: var(--gx, max(var(--gutter-l), calc((100vw - var(--maxw)) / 2)));
+    font-size: 12px; letter-spacing: 0.04em; display: flex; align-items: center; gap: 0; white-space: nowrap;
+  }
+  .crumbs span { display: inline-flex; align-items: center; transition: opacity .6s var(--ease), color .6s var(--ease); }
+  .crumbs span + span::before { content: "/"; color: var(--ink-4); margin: 0 10px; }
+  .crumbs span.off { opacity: 0; }
+  .crumbs span.cur { color: var(--star); }
+  .readout {
+    right: max(var(--gutter-r), calc((100vw - var(--maxw)) / 2)); bottom: 40px;
+    font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; text-align: right; line-height: 1.9;
+    padding: 12px 16px; min-width: 220px;
+    background:
+      linear-gradient(var(--line-3), var(--line-3)) top left / 10px 1px no-repeat,
+      linear-gradient(var(--line-3), var(--line-3)) top left / 1px 10px no-repeat,
+      linear-gradient(var(--line-3), var(--line-3)) bottom right / 10px 1px no-repeat,
+      linear-gradient(var(--line-3), var(--line-3)) bottom right / 1px 10px no-repeat;
+  }
+  .readout b { color: var(--star); font-weight: 500; }
+  .readout .ro-level { color: var(--ink-2); }
+  .gauge { right: max(20px, var(--gutter-r)); top: 32%; height: 36%; width: 30px; }
+  .gauge::before { content: ""; position: absolute; right: 0; top: 0; bottom: 0; width: 1px; background: var(--line-2); }
+  .gauge i { position: absolute; right: 0; width: 7px; height: 1px; background: var(--line-3); font-style: normal; }
+  .gauge i::after { content: attr(data-n); position: absolute; right: 13px; top: -7px; font-size: 10px; color: var(--ink-4); }
+  .gauge .mark { position: absolute; right: -3px; width: 7px; height: 7px; border-radius: 50%; background: var(--star); box-shadow: 0 0 12px rgba(242, 221, 178, 0.7); transform: translateY(-50%); }
+
+  .codeview {
+    font-family: var(--mono); font-size: 13.5px; line-height: 1.75; color: var(--ink-2);
+    background: rgba(8, 11, 21, 0.96);
+    border: 1px solid var(--line-2);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .stage .codeview {
+    position: absolute; z-index: 1; top: 50%; transform: translateY(-50%);
+    left: var(--rx, 50%); width: var(--rw, 40%);
+    opacity: 0; box-shadow: 0 40px 120px rgba(0, 0, 0, 0.55);
+  }
+  .cv-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 16px; border-bottom: 1px solid var(--line); font-size: 11.5px; letter-spacing: 0.06em; color: var(--ink-3); }
+  .cv-head .file { color: var(--ink); }
+  .cv-head .ok { color: var(--type); }
+  .cv-body { padding: 12px 0 14px; overflow-x: auto; }
+  .cl { display: flex; white-space: pre; position: relative; padding-right: 16px; }
+  .cl .ln { flex: none; width: 46px; padding-right: 14px; text-align: right; color: var(--ink-4); user-select: none; }
+  .cl code { font: inherit; display: block; position: relative; clip-path: inset(0 calc(100% - var(--r, 999) * 1ch) 0 0); }
+  .cl.def { background: linear-gradient(90deg, rgba(242, 221, 178, 0.14), rgba(242, 221, 178, 0.02)); }
+  .cl.def::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 2px; background: var(--star); box-shadow: 0 0 10px rgba(242, 221, 178, .8); }
+  .cl.def .ln { color: var(--star); }
+  .cl.gap .ln, .cl.gap code { color: var(--ink-4); }
+  .caret { position: absolute; top: 3px; bottom: 3px; width: 1px; background: var(--star); opacity: 0; }
+  .cl.typing .caret { opacity: 1; animation: blink 1s steps(1) infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+  .tk-k { color: var(--kw); }
+  .tk-s { color: var(--str); }
+  .tk-t { color: var(--type); }
+  .tk-a { color: var(--ink); }
+  .tk-v { color: var(--ink-3); }
+  .tk-p { color: var(--ink-3); }
+
+  .track { position: relative; z-index: 2; margin-top: -100vh; margin-top: -100lvh; }
+  .hero { min-height: 100vh; min-height: 100svh; display: flex; align-items: flex-end; padding-bottom: clamp(56px, 11vh, 120px); padding-top: 120px; }
+  .hero .inner { width: 100%; }
+  .hero-copy { max-width: 780px; }
+  .hero h1 {
+    font-family: var(--serif); font-weight: 400;
+    font-size: clamp(54px, 8.4vw, 128px);
+    line-height: 0.94; letter-spacing: -0.012em;
+    margin: 22px 0 26px;
+    text-wrap: balance;
+  }
+  .hero h1 em { font-style: italic; color: var(--star); text-shadow: 0 0 40px rgba(242, 221, 178, 0.25); }
+  .lede { font-size: clamp(17px, 1.45vw, 19.5px); color: var(--ink-2); max-width: 560px; margin: 0 0 34px; line-height: 1.6; }
+  .ctas { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+  .descend { margin-top: 44px; display: inline-flex; align-items: center; gap: 14px; font-family: var(--mono); font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-3); }
+  .descend i { display: block; width: 1px; height: 34px; background: linear-gradient(var(--star), rgba(242, 221, 178, 0)); transform-origin: top; animation: fall 3.2s var(--ease) infinite; }
+  @keyframes fall { 0% { transform: scaleY(1); opacity: 1; } 60% { transform: scaleY(.35); opacity: .5; } 100% { transform: scaleY(1); opacity: 1; } }
+
+  .panel { min-height: 112vh; display: flex; align-items: center; padding-top: 120px; padding-bottom: 120px; }
+  .panel .inner { width: 100%; }
+  .panel-copy { width: min(400px, 36vw); }
+  .panel h2 { font-family: var(--serif); font-weight: 400; font-size: clamp(36px, 3.6vw, 52px); line-height: 1.02; margin: 18px 0 18px; letter-spacing: -0.005em; text-wrap: balance; }
+  .panel p { color: var(--ink-2); font-size: 16.5px; margin: 0 0 14px; }
+  .panel p code, .log code, .mcp p code, .faq code { font-family: var(--mono); font-size: 0.88em; color: var(--ink); background: rgba(168, 184, 222, 0.08); padding: 1px 5px; border-radius: 3px; }
+  .meta { list-style: none; margin: 24px 0 0; padding: 0; font-family: var(--mono); font-size: 11.5px; letter-spacing: 0.06em; color: var(--ink-3); border-top: 1px solid var(--line); }
+  .meta li { display: flex; justify-content: space-between; gap: 16px; padding: 9px 0; border-bottom: 1px solid var(--line); }
+  .meta li span:last-child { color: var(--ink-2); text-align: right; }
+  .frame { display: none; }
+
+  /* ---------- stacked frames: phones and reduced motion ---------- */
+  @media (max-width: 760px), (prefers-reduced-motion: reduce) {
+    .stage { position: absolute; top: 0; left: 0; right: 0; height: 100vh; height: 100svh; }
+    .stage .codeview, .gauge { display: none; }
+    .track { margin-top: 0; }
+    .panel { min-height: 0; padding-top: 72px; padding-bottom: 24px; }
+    .panel .inner { display: grid; grid-template-columns: minmax(0, 380px) minmax(0, 1fr); gap: 56px; align-items: center; }
+    .panel-copy { width: auto; }
+    .frame {
+      display: block; position: relative; margin: 0; aspect-ratio: 16 / 10.5;
+      border: 1px solid var(--line); border-radius: 4px; overflow: hidden;
+      background:
+        radial-gradient(70% 60% at 65% 35%, rgba(46, 66, 140, 0.22), rgba(46, 66, 140, 0) 70%),
+        radial-gradient(120% 100% at 50% 50%, #0a0e1b 0%, #05070d 80%);
+    }
+    .frame canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+    .frame figcaption { position: absolute; left: 14px; bottom: 10px; font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-3); }
+    .frame .codeview { position: absolute; inset: 8% 6% auto 6%; font-size: 12.5px; }
+    .frame.code { aspect-ratio: auto; min-height: 0; }
+    .frame.code canvas { opacity: .6; }
+    .frame.code .codeview { position: relative; inset: auto; margin: 22px; }
+    .frame.code figcaption { position: static; padding: 0 22px 16px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    .descend i { animation: none; }
+    *, *::before, *::after { transition-duration: 0s !important; animation-duration: 0s !important; }
+  }
+
+  /* ---------- explorer ---------- */
+  section.block { position: relative; z-index: 3; background: var(--bg); padding-top: clamp(88px, 12vw, 160px); padding-bottom: clamp(88px, 12vw, 160px); }
+  .block-head { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 48px; align-items: end; margin-bottom: 48px; }
+  .block-head h2 { font-family: var(--serif); font-weight: 400; font-size: clamp(40px, 5vw, 72px); line-height: 1; margin: 18px 0 0; letter-spacing: -0.01em; text-wrap: balance; }
+  .block-head p { color: var(--ink-2); margin: 0; max-width: 520px; font-size: 16.5px; }
+  .explorer {
+    border: 1px solid var(--line-2); border-radius: 6px; overflow: hidden;
+    background: var(--bg-1);
+  }
+  .ex-bar { display: flex; align-items: center; gap: 14px; padding: 12px 16px; border-bottom: 1px solid var(--line); font-family: var(--mono); font-size: 12px; color: var(--ink-3); flex-wrap: wrap; }
+  .ex-bar .path span + span::before { content: "/"; margin: 0 9px; color: var(--ink-4); }
+  .ex-bar .path span:last-child { color: var(--ink); }
+  .ex-bar .rev { margin-left: auto; }
+  .ex-grid { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); }
+  .ex-canvas {
+    position: relative; border-right: 1px solid var(--line);
+    background-color: #070a13;
+    background-image: radial-gradient(rgba(168, 184, 222, 0.14) 1px, transparent 1.2px);
+    background-size: 20px 20px;
+    touch-action: none;
+  }
+  .ex-canvas svg { display: block; width: 100%; height: auto; }
+  .ex-code { background: var(--bg-1); }
+  .ex-code .cv-body { padding: 14px 0; }
+  .ex-code .cl { cursor: default; transition: background-color .25s var(--ease); }
+  .ex-code .cl.hot { background: rgba(242, 221, 178, 0.10); }
+  .ex-code .cl.hot .ln { color: var(--star); }
+  .ex-code .cl.soft { background: rgba(168, 190, 255, 0.06); }
+  .ex-code .cl.new .ln { color: var(--type); }
+  .ex-code .cl.new::before { content: "+"; position: absolute; left: 6px; color: var(--type); }
+  .ex-code .cl.flash { animation: flash 1.2s var(--ease); }
+  @keyframes flash { 0% { background: rgba(147, 211, 198, 0.22); } 100% { background: transparent; } }
+  .ex-foot { display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-top: 1px solid var(--line); flex-wrap: wrap; }
+  .ex-status { margin-left: auto; font-family: var(--mono); font-size: 12px; color: var(--ink-3); min-height: 1.5em; }
+  .ex-status b { color: var(--type); font-weight: 500; }
+
+  .xn { cursor: grab; outline: none; }
+  .xn.dragging { cursor: grabbing; }
+  .xn-body { fill: #0b1020; stroke: rgba(166, 189, 255, 0.34); stroke-width: 1.2; transition: stroke .25s var(--ease); }
+  .xn-bar { stroke: rgba(166, 189, 255, 0.26); stroke-width: 1; }
+  .xn-dot { fill: rgba(166, 189, 255, 0.35); }
+  .xn-glyph rect { fill: rgba(166, 189, 255, 0.07); stroke: rgba(166, 189, 255, 0.24); }
+  .xn-glyph path { fill: none; stroke: #d3dcf1; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+  .xn-label { fill: var(--ink); font-family: var(--sans); font-size: 15px; font-weight: 600; }
+  .xn-type { fill: var(--ink-3); font-family: var(--mono); font-size: 10.5px; }
+  .xn.hot .xn-body, .xn:focus-visible .xn-body { stroke: var(--star); stroke-width: 1.8; }
+  .xn:focus-visible .xn-body { stroke-dasharray: 5 3; }
+  .xn-badge rect { fill: var(--star); }
+  .xn-badge text { fill: var(--btn-ink); font-family: var(--mono); font-size: 9px; font-weight: 500; letter-spacing: .08em; }
+  .xp-body { fill: url(#neb); stroke: rgba(166, 189, 255, 0.3); stroke-dasharray: 4 4; stroke-width: 1; }
+  .xp-title { fill: var(--ink-3); font-family: var(--mono); font-size: 10.5px; letter-spacing: .16em; }
+  .xp.hot .xp-body { stroke: var(--star); }
+  .xe { fill: none; stroke: rgba(170, 190, 235, 0.5); stroke-width: 1.3; transition: stroke .25s var(--ease); }
+  .xe.hot { stroke: var(--star); stroke-width: 1.8; }
+  .xe-l rect { fill: #0a0e1a; stroke: rgba(170, 190, 235, 0.22); }
+  .xe-l text { fill: var(--ink-2); font-family: var(--mono); font-size: 10px; }
+  .xe-l.hot rect { stroke: var(--star); }
+  #arrow path { fill: rgba(170, 190, 235, 0.75); }
+
+  /* ---------- observatory log ---------- */
+  .log { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 64px; border-top: 1px solid var(--line-2); }
+  .entry { display: grid; grid-template-columns: 76px minmax(0, 1fr); gap: 4px 22px; padding: 30px 0 32px; border-bottom: 1px solid var(--line); }
+  .entry { align-content: start; }
+  .entry > :not(svg) { grid-column: 2; }
+  .entry svg { grid-column: 1; grid-row: 1 / span 4; width: 76px; height: 76px; }
+  .entry .desig { font-family: var(--mono); font-size: 11.5px; letter-spacing: 0.1em; color: var(--star-2); display: flex; justify-content: space-between; gap: 12px; }
+  .entry .desig span:last-child { color: var(--ink-4); letter-spacing: .04em; text-align: right; }
+  .entry h3 { margin: 6px 0 6px; font-family: var(--sans); font-weight: 500; font-size: 19px; font-variation-settings: "wdth" 112; letter-spacing: 0.005em; }
+  .entry p { margin: 0; color: var(--ink-2); font-size: 15px; }
+  .entry pre { margin: 12px 0 0; font-family: var(--mono); font-size: 11.5px; color: var(--ink-2); white-space: pre-wrap; word-break: break-all; background: rgba(168, 184, 222, 0.06); padding: 8px 10px; border-radius: 3px; }
+
+  /* ---------- MCP ---------- */
+  .mcp-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr); gap: 64px; align-items: start; }
+  .mcp h2 { font-family: var(--serif); font-weight: 400; font-size: clamp(40px, 5vw, 72px); line-height: 1; margin: 18px 0 24px; letter-spacing: -0.01em; }
+  .mcp p { color: var(--ink-2); font-size: 16.5px; margin: 0 0 16px; max-width: 520px; }
+  .install { margin: 28px 0 22px; display: flex; align-items: stretch; border: 1px solid var(--line-2); border-radius: 4px; background: var(--bg-1); max-width: 560px; }
+  .install code { flex: 1; min-width: 0; padding: 14px 16px; font-family: var(--mono); font-size: 13px; color: var(--ink); overflow-x: auto; white-space: nowrap; }
+  .install code::before { content: "$ "; color: var(--ink-4); }
+  .install .btn { height: auto; border: 0; border-left: 1px solid var(--line-2); border-radius: 0 4px 4px 0; }
+  .clients { font-family: var(--mono); font-size: 12.5px; color: var(--ink-3); letter-spacing: 0.02em; line-height: 2; }
+  .clients span { color: var(--ink-2); }
+  .clients span + span::before { content: "·"; color: var(--ink-4); margin: 0 10px; }
+  .steps { list-style: none; padding: 0; margin: 34px 0 0; display: grid; gap: 0; border-top: 1px solid var(--line); max-width: 560px; }
+  .steps li { display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: 16px; padding: 14px 0; border-bottom: 1px solid var(--line); font-size: 15px; color: var(--ink-2); }
+  .steps li b { font-family: var(--mono); font-weight: 400; font-size: 11.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-3); padding-top: 3px; }
+  .transcript { border: 1px solid var(--line-2); border-radius: 6px; background: var(--bg-1); font-family: var(--mono); font-size: 13px; overflow: hidden; }
+  .transcript header { display: flex; justify-content: space-between; gap: 12px; padding: 11px 16px; border-bottom: 1px solid var(--line); font-size: 11.5px; letter-spacing: .06em; color: var(--ink-3); }
+  .transcript ol { list-style: none; margin: 0; padding: 18px 0; }
+  .transcript li { padding: 5px 18px; display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 8px; color: var(--ink-2); }
+  .transcript li .d { color: var(--ink-4); }
+  .transcript li.call { color: var(--ink); }
+  .transcript li.call .d { color: var(--cool); }
+  .transcript li.ok .d, .transcript li.ok em { color: var(--type); font-style: normal; }
+  .transcript li.say { grid-template-columns: 52px minmax(0, 1fr); color: var(--ink-2); font-family: var(--sans); font-size: 15px; padding-top: 10px; padding-bottom: 10px; }
+  .transcript li.say .d { font-family: var(--mono); color: var(--star-2); }
+  .transcript .sep { border-top: 1px solid var(--line); margin: 10px 18px; padding: 0; display: block; }
+
+  /* ---------- FAQ ---------- */
+  .faq { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 64px; margin: 0; border-top: 1px solid var(--line-2); }
+  .faq div { padding: 24px 0; border-bottom: 1px solid var(--line); }
+  .faq dt { font-family: var(--serif); font-size: 26px; line-height: 1.15; margin-bottom: 8px; }
+  .faq dd { margin: 0; color: var(--ink-2); font-size: 15.5px; }
+
+  /* ---------- closing ---------- */
+  .closing { position: relative; z-index: 3; overflow: hidden; padding-top: clamp(120px, 16vw, 220px); padding-bottom: clamp(120px, 16vw, 220px); background: radial-gradient(60% 70% at 70% 40%, rgba(46, 66, 140, 0.20), rgba(46, 66, 140, 0) 70%), var(--bg); border-top: 1px solid var(--line); }
+  .closing canvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+  .closing .inner { position: relative; }
+  .closing h2 { font-family: var(--serif); font-weight: 400; font-size: clamp(56px, 9vw, 140px); line-height: .92; margin: 22px 0 26px; letter-spacing: -0.012em; }
+  .closing h2 em { color: var(--star); font-style: italic; }
+  .closing p { color: var(--ink-2); font-size: 18px; max-width: 520px; margin: 0 0 34px; }
+
+  /* ---------- footer ---------- */
+  footer { position: relative; z-index: 3; background: var(--bg); border-top: 1px solid var(--line); padding-top: 56px; padding-bottom: calc(40px + env(safe-area-inset-bottom, 0px)); }
+  .foot-grid { display: grid; grid-template-columns: minmax(0, 1.4fr) repeat(3, minmax(0, 1fr)); gap: 40px; }
+  .foot-grid h4 { margin: 0 0 14px; font-family: var(--mono); font-weight: 400; font-size: 11px; letter-spacing: .16em; text-transform: uppercase; color: var(--ink-3); }
+  .foot-grid ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 9px; }
+  .foot-grid a { color: var(--ink-2); text-decoration: none; font-size: 14.5px; }
+  .foot-grid a:hover { color: var(--ink); }
+  .foot-grid .tag { color: var(--ink-3); font-size: 14px; max-width: 280px; margin: 14px 0 0; }
+  .foot-base { margin-top: 48px; padding-top: 20px; border-top: 1px solid var(--line); display: flex; justify-content: space-between; gap: 16px; font-family: var(--mono); font-size: 11.5px; color: var(--ink-4); letter-spacing: .06em; flex-wrap: wrap; }
+
+  /* ---------- responsive ---------- */
+  @media (max-width: 1080px) {
+    .nav-links { display: none; }
+    .nav .btn { margin-left: auto; }
+    .ex-grid { grid-template-columns: minmax(0, 1fr); }
+    .ex-canvas { border-right: 0; border-bottom: 1px solid var(--line); }
+    .mcp-grid { grid-template-columns: minmax(0, 1fr); gap: 48px; }
+  }
+  @media (max-width: 860px) {
+    .block-head { grid-template-columns: minmax(0, 1fr); gap: 20px; }
+    .log, .faq { grid-template-columns: minmax(0, 1fr); }
+    .foot-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .foot-grid > div:first-child { grid-column: 1 / -1; }
+  }
+  @media (max-width: 760px) {
+    .panel .inner { grid-template-columns: minmax(0, 1fr); gap: 28px; }
+    .frame { aspect-ratio: 4 / 3.5; }
+    .readout { left: var(--gutter-l); right: auto; top: 76px; bottom: auto; text-align: left; padding: 8px 12px; min-width: 0; font-size: 10px; }
+    .crumbs { display: none; }
+    .hero h1 { font-size: clamp(48px, 13.5vw, 72px); }
+    .nav .long { display: none; }
+    .nav .short { display: inline; }
+    .hero { padding-bottom: 40px; }
+    .hero .kicker::before { display: none; }
+    .stage::after { background: linear-gradient(0deg, rgba(5, 7, 13, 0.92) 0%, rgba(5, 7, 13, 0.55) 45%, rgba(5, 7, 13, 0.1) 75%); }
+    .ctas .btn { flex: 1 1 auto; }
+    .entry { grid-template-columns: 52px minmax(0, 1fr); gap: 4px 16px; }
+    .entry svg { width: 52px; height: 52px; }
+    .steps li { grid-template-columns: minmax(0, 1fr); gap: 2px; }
+    .ex-foot .ex-status { margin-left: 0; width: 100%; }
+    .codeview { font-size: 12px; }
+    .cl .ln { width: 34px; padding-right: 10px; }
+  }
+  @media (max-width: 480px) {
+    .foot-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .closing h2 { font-size: 54px; }
+  }
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <symbol id="i-gh" viewBox="0 0 24 24"><path fill="currentColor" d="M12 2a10 10 0 0 0-3.16 19.49c.5.09.68-.22.68-.48v-1.7c-2.78.6-3.37-1.34-3.37-1.34-.45-1.16-1.11-1.47-1.11-1.47-.9-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.9 1.52 2.34 1.08 2.91.83.09-.65.35-1.08.63-1.33-2.22-.25-4.56-1.11-4.56-4.94 0-1.09.39-1.98 1.03-2.68-.1-.25-.45-1.27.1-2.64 0 0 .84-.27 2.75 1.02a9.5 9.5 0 0 1 5 0c1.91-1.29 2.75-1.02 2.75-1.02.55 1.37.2 2.39.1 2.64.64.7 1.03 1.59 1.03 2.68 0 3.84-2.34 4.69-4.57 4.93.36.31.68.92.68 1.86v2.75c0 .27.18.58.69.48A10 10 0 0 0 12 2z"/></symbol>
+    <symbol id="i-copy" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5.5A1.5 1.5 0 0 0 14.5 4h-9A1.5 1.5 0 0 0 4 5.5v9A1.5 1.5 0 0 0 5.5 16H8"/></g></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
+    <symbol id="i-play" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" d="M7 4.5v15l12-7.5z"/></symbol>
+    <symbol id="i-mark" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20.5L12 4l8 16.5"/><path d="M7.6 13.5h8.8"/></g><circle cx="12" cy="4" r="1.9" fill="#f2ddb2"/></symbol>
+  </defs>
+</svg>
+
+<header class="nav wrap">
+  <div class="inner">
+    <a class="brand" href="#top" aria-label="Archer home"><svg aria-hidden="true"><use href="#i-mark"/></svg><span>Archer</span></a>
+    <nav class="nav-links" aria-label="Primary">
+      <a href="#explore">Canvas and code</a>
+      <a href="#log">Features</a>
+      <a href="#agents">Agents</a>
+      <a href="#">Language</a>
+      <a href="#">Sandbox</a>
+    </nav>
+    <a class="btn primary" href="#"><svg aria-hidden="true"><use href="#i-gh"/></svg><span class="long">Sign in with GitHub</span><span class="short">Sign in</span></a>
+  </div>
+</header>
+
+<main id="top">
+  <section class="zoom" aria-label="Zoom from a workspace down to one line of code">
+    <div class="stage" id="stage" aria-hidden="true">
+      <canvas id="field"></canvas>
+      <div class="hud crumbs" id="crumbs"><span class="cur">acme</span><span class="off">Acme</span><span class="off">API</span><span class="off">Acme.arch : 9</span></div>
+      <div class="hud gauge" id="gauge"><i data-n="0" style="top:0%"></i><i data-n="1" style="top:33.33%"></i><i data-n="2" style="top:66.66%"></i><i data-n="3" style="top:100%"></i><span class="mark" id="gmark" style="top:0%"></span></div>
+      <div class="hud readout" id="readout"><div>Depth <b id="ro-d">0</b></div><div class="ro-level" id="ro-l">Workspace / acme</div><div>Scale <span id="ro-s">×1</span></div></div>
+      <div class="codeview" id="stagecode"></div>
+    </div>
+
+    <div class="track">
+      <div class="hero wrap" id="hero">
+        <div class="inner">
+          <div class="hero-copy">
+            <p class="kicker warm">Architecture canvas · agent-readable language</p>
+            <h1>Software architecture, <em>at every depth.</em></h1>
+            <p class="lede">Drag and drop your system onto a canvas, or let your agent write the Archer code for you. Open any component to see its parts, all the way down to the line that defines it.</p>
+            <div class="ctas">
+              <a class="btn primary" href="#"><svg aria-hidden="true"><use href="#i-gh"/></svg>Sign in with GitHub</a>
+              <a class="btn" href="#">Try the sandbox</a>
+              <button class="btn ghost" type="button" data-copy="prompt"><span class="swap" aria-hidden="true"><svg class="i-copy"><use href="#i-copy"/></svg><svg class="i-done"><use href="#i-check"/></svg></span>Copy agent prompt</button>
+            </div>
+            <div class="descend" aria-hidden="true"><i></i>Scroll to descend</div>
+          </div>
+        </div>
+      </div>
+
+      <article class="panel wrap" id="d0">
+        <div class="inner">
+          <div class="panel-copy">
+            <p class="kicker warm">Depth 0 · Workspace</p>
+            <h2>Every system your company runs, in one field.</h2>
+            <p>A workspace holds your documents, one per system. Each point here is a component somebody drew or an agent wrote. Personal or team, with owners, editors and viewers.</p>
+            <ul class="meta"><li><span>workspace</span><span>acme</span></li><li><span>documents</span><span>14</span></li><li><span>members</span><span>owner · 4 editors · 9 viewers</span></li></ul>
+          </div>
+          <figure class="frame" data-depth="0"><canvas></canvas><figcaption>Depth 0 · acme</figcaption></figure>
+        </div>
+      </article>
+
+      <article class="panel wrap" id="d1">
+        <div class="inner">
+          <div class="panel-copy">
+            <p class="kicker warm">Depth 1 · System</p>
+            <h2>Open a system and the points become a diagram.</h2>
+            <p>Acme is one document: a web app, auth, an API and its database, and billing. The API and the database sit on a Backend plane, a titled region for readers. Planes group what belongs together without changing a single path.</p>
+            <ul class="meta"><li><span>document</span><span>Acme</span></li><li><span>contents</span><span>5 components · 1 plane · 4 connections</span></li></ul>
+          </div>
+          <figure class="frame" data-depth="1"><canvas></canvas><figcaption>Depth 1 · acme / Acme</figcaption></figure>
+        </div>
+      </article>
+
+      <article class="panel wrap" id="d2">
+        <div class="inner">
+          <div class="panel-copy">
+            <p class="kicker warm">Depth 2 · Component</p>
+            <h2>Any component can hold its own parts.</h2>
+            <p>Double-click the API and it opens onto a canvas of its own: routes, auth middleware, a billing client, a job queue and its worker. The outside components it talks to wait along the edge, and breadcrumbs lead back out.</p>
+            <ul class="meta"><li><span>component</span><span>api</span></li><li><span>parts</span><span>5 · paths like api.worker</span></li><li><span>outside</span><span>auth · billing · db</span></li></ul>
+          </div>
+          <figure class="frame" data-depth="2"><canvas></canvas><figcaption>Depth 2 · acme / Acme / API</figcaption></figure>
+        </div>
+      </article>
+
+      <article class="panel wrap" id="d3">
+        <div class="inner">
+          <div class="panel-copy">
+            <p class="kicker warm">Depth 3 · Source</p>
+            <h2>At the bottom, it is one line of text.</h2>
+            <p>Every box is a line of Archer code, and one <code>.arch</code> file holds the whole tree. Your agent reads and writes that same file through the MCP server, and every edit is validated before it saves.</p>
+            <ul class="meta"><li><span>file</span><span>Acme.arch</span></li><li><span>defined at</span><span>line 9</span></li><li><span>validation</span><span>0 errors · 0 warnings</span></li></ul>
+          </div>
+          <figure class="frame code" data-depth="3"><canvas></canvas><div class="codeview" data-code="api"></div><figcaption>Depth 3 · acme / Acme / API / Acme.arch</figcaption></figure>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <section class="block wrap" id="explore" aria-labelledby="ex-h">
+    <div class="inner">
+      <div class="block-head">
+        <div>
+          <p class="kicker">Canvas and code</p>
+          <h2 id="ex-h">One document, both hands.</h2>
+        </div>
+        <p>Drag a box: the code stays put, because layout lives outside the language and history ignores it. Hover a box or a line to find its other half. Then let the agent make an edit and watch it land in both.</p>
+      </div>
+
+      <div class="explorer">
+        <div class="ex-bar"><span class="path"><span>acme</span><span>Acme</span></span><span class="rev" id="ex-rev">revision 13 · you</span></div>
+        <div class="ex-grid">
+          <div class="ex-canvas" id="ex-canvas">
+            <svg id="ex-svg" viewBox="-20 10 740 500" role="group" aria-label="Acme canvas. Components can be dragged, or moved with the arrow keys."></svg>
+          </div>
+          <div class="ex-code codeview" id="ex-code" aria-label="Acme.arch source"></div>
+        </div>
+        <div class="ex-foot">
+          <button class="btn small primary" type="button" id="ex-agent"><svg aria-hidden="true"><use href="#i-play"/></svg>Run agent edit</button>
+          <button class="btn small" type="button" id="ex-reset">Reset</button>
+          <p class="ex-status" id="ex-status" aria-live="polite">Drag any box. The file on the right will not change.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="block wrap" id="log" aria-labelledby="log-h">
+    <div class="inner">
+      <div class="block-head">
+        <div>
+          <p class="kicker">Observatory log</p>
+          <h2 id="log-h">Catalogued so far.</h2>
+        </div>
+        <p>Everything else you will find in the field. Each entry is shipped and working today, in the canvas, the language and the MCP tools alike.</p>
+      </div>
+      <div class="log">
+        <div class="entry"><svg data-seed="3" aria-hidden="true"></svg><div class="desig"><span>ARC-80</span><span>catalog · 12 groups</span></div><h3>Over 80 component types</h3><p>Agents, LLMs, RAG, MCP servers, AWS, GCP, Azure, Vercel, databases, queues and SaaS, each with its own glyph. Save your own as custom types.</p></div>
+        <div class="entry"><svg data-seed="11" aria-hidden="true"></svg><div class="desig"><span>PLN-02</span><span>planes · nesting</span></div><h3>Planes and nesting</h3><p>Lay components out on planes like frontend, backend or VPC. Any component can hold its own parts: double-click to open it, breadcrumbs lead back out.</p></div>
+        <div class="entry"><svg data-seed="7" aria-hidden="true"></svg><div class="desig"><span>REV-ALL</span><span>every revision kept</span></div><h3>History with real diffs</h3><p>Every revision is kept, human or agent. Diffs list what was added, removed or changed. Moving boxes never counts.</p></div>
+        <div class="entry"><svg data-seed="19" aria-hidden="true"></svg><div class="desig"><span>LNK-SVG</span><span>read-only · live</span></div><h3>Share a live link</h3><p>A read-only link for anyone, and an SVG that stays current, for your README.</p><pre>![Architecture](https://tryarcher.dev/share/k3v9x2/image.svg)</pre></div>
+        <div class="entry"><svg data-seed="23" aria-hidden="true"></svg><div class="desig"><span>GIT-BR</span><span>repo + branch</span></div><h3>Linked to your repo</h3><p>Link a GitHub repo and branch. The <code>.arch</code> file on the branch is the truth, <code>src</code> paths open the code, and commits sit next to revisions.</p></div>
+        <div class="entry"><svg data-seed="5" aria-hidden="true"></svg><div class="desig"><span>TMS-03</span><span>owner · editor · viewer</span></div><h3>Teams and roles</h3><p>Personal and team workspaces with owners, editors and viewers. Invite people by email.</p></div>
+        <div class="entry"><svg data-seed="29" aria-hidden="true"></svg><div class="desig"><span>DAT-04</span><span>json · yaml · table · md</span></div><h3>Data inside components</h3><p>Attach a schema, an API contract or notes. JSON, YAML and tables are validated as you type, and your agent gets all of it.</p></div>
+        <div class="entry"><svg data-seed="13" aria-hidden="true"></svg><div class="desig"><span>VAL-00</span><span>zero broken saves</span></div><h3>Agent edits are checked</h3><p>Agent writes go through the same validation as the canvas: a broken document is rejected, not saved. Agent edits stay badged until you review them.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="block wrap mcp" id="agents" aria-labelledby="mcp-h">
+    <div class="inner mcp-grid">
+      <div>
+        <p class="kicker">MCP server</p>
+        <h2 id="mcp-h">Connect your agent to the same file.</h2>
+        <p>Archer runs a hosted MCP server. Add it once, sign in with GitHub in the browser, and your agent can list your projects, read a document, validate a change and write it back.</p>
+        <div class="install">
+          <code id="install-cmd">claude mcp add --transport http archer https://tryarcher.dev/mcp</code>
+          <button class="btn small" type="button" data-copy="install" aria-label="Copy install command"><span class="swap" aria-hidden="true"><svg class="i-copy"><use href="#i-copy"/></svg><svg class="i-done"><use href="#i-check"/></svg></span>Copy</button>
+        </div>
+        <p class="clients">Works with <span>Claude Code</span><span>Codex</span><span>Cursor</span><span>Gemini CLI</span><span>VS Code</span><span>any MCP client</span></p>
+        <ol class="steps">
+          <li><b>Add the server</b><span>One command, or the server URL in your client's settings.</span></li>
+          <li><b>Sign in</b><span>Your browser opens GitHub sign-in. No API keys to paste or rotate.</span></li>
+          <li><b>Ask</b><span>"Map this repo into Archer." The agent reads your code and writes the document.</span></li>
+        </ol>
+        <div class="ctas" style="margin-top:32px">
+          <button class="btn" type="button" data-copy="prompt"><span class="swap" aria-hidden="true"><svg class="i-copy"><use href="#i-copy"/></svg><svg class="i-done"><use href="#i-check"/></svg></span>Copy agent prompt</button>
+          <a class="btn ghost" href="#">Read the MCP docs</a>
+        </div>
+      </div>
+      <div class="transcript" role="img" aria-label="Example agent session: the agent reads the Acme project, validates an edit adding a worker inside the API, and saves it as a revision badged for review.">
+        <header><span>agent session · acme / Acme</span><span>mcp · tryarcher.dev</span></header>
+        <ol>
+          <li class="say"><span class="d">you</span><span>Add the queue worker from services/api/jobs to the API.</span></li>
+          <li class="sep"></li>
+          <li class="call"><span class="d">→</span><span>get_project  acme/Acme</span></li>
+          <li><span class="d">←</span><span>5 components · 1 plane · 4 connections</span></li>
+          <li class="call"><span class="d">→</span><span>validate_source  + api.jobs  + api.worker</span></li>
+          <li class="ok"><span class="d">←</span><span><em>valid</em> · 0 errors · 0 warnings</span></li>
+          <li class="call"><span class="d">→</span><span>update_project  acme/Acme</span></li>
+          <li class="ok"><span class="d">←</span><span>saved as <em>revision 14</em> · badged for review</span></li>
+          <li class="call"><span class="d">→</span><span>get_history  acme/Acme</span></li>
+          <li><span class="d">←</span><span>+ api.jobs  + api.worker  + api.jobs -&gt; api.worker</span></li>
+          <li class="sep"></li>
+          <li class="say"><span class="d">agent</span><span>Done. The API now holds Jobs and Queue worker. Open it to review.</span></li>
+        </ol>
+      </div>
+    </div>
+  </section>
+
+  <section class="block wrap" aria-labelledby="faq-h" style="padding-top:0">
+    <div class="inner">
+      <div class="block-head">
+        <div>
+          <p class="kicker">Field notes</p>
+          <h2 id="faq-h">Questions people ask.</h2>
+        </div>
+      </div>
+      <dl class="faq">
+        <div><dt>Do I need an account to try it?</dt><dd>No. Every example opens in a sandbox: the full editor, kept in memory, gone when you leave.</dd></div>
+        <div><dt>Which agents work?</dt><dd>Any MCP client: Claude Code, Codex, Cursor, Gemini CLI, VS Code and the rest.</dd></div>
+        <div><dt>Can I start from an existing codebase?</dt><dd>Yes. The agent prompt has your agent map the repository and write the first document, with <code>src</code> paths back to the code.</dd></div>
+        <div><dt>Can I use my own components?</dt><dd>Yes. Save custom types with your own name, color and glyph, and use them anywhere in the workspace.</dd></div>
+      </dl>
+    </div>
+  </section>
+
+  <section class="closing wrap" aria-labelledby="cta-h">
+    <canvas id="closing-field" aria-hidden="true"></canvas>
+    <div class="inner">
+      <p class="kicker warm">Depth 0</p>
+      <h2 id="cta-h">Start with the <em>whole field.</em></h2>
+      <p>Sign in with GitHub and draw your first system, or open an example in the sandbox. No account needed to look around.</p>
+      <div class="ctas">
+        <a class="btn primary" href="#"><svg aria-hidden="true"><use href="#i-gh"/></svg>Sign in with GitHub</a>
+        <a class="btn" href="#">Try the sandbox</a>
+        <button class="btn ghost" type="button" data-copy="prompt"><span class="swap" aria-hidden="true"><svg class="i-copy"><use href="#i-copy"/></svg><svg class="i-done"><use href="#i-check"/></svg></span>Copy agent prompt</button>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="wrap">
+  <div class="inner">
+    <div class="foot-grid">
+      <div>
+        <a class="brand" href="#top"><svg aria-hidden="true"><use href="#i-mark"/></svg><span>Archer</span></a>
+        <p class="tag">An architecture canvas that compiles to and from an agent-readable language.</p>
+      </div>
+      <div><h4>Product</h4><ul><li><a href="#">Sandbox</a></li><li><a href="#">Examples</a></li><li><a href="#explore">Canvas and code</a></li><li><a href="#log">Features</a></li></ul></div>
+      <div><h4>Docs</h4><ul><li><a href="#">Language reference</a></li><li><a href="#">MCP server</a></li><li><a href="#">CLI</a></li></ul></div>
+      <div><h4>Account</h4><ul><li><a href="#">Sign in with GitHub</a></li><li><a href="#">Workspaces</a></li><li><a href="#">Send feedback</a></li></ul></div>
+    </div>
+    <div class="foot-base"><span>tryarcher.dev</span><span>Depth 0 · Scale ×1</span></div>
+  </div>
+</footer>
+
+<script>
+(() => {
+  "use strict";
+
+  /* ---------------- shared helpers ---------------- */
+  const $ = (s, r = document) => r.querySelector(s);
+  const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
+  const clamp01 = (x) => (x < 0 ? 0 : x > 1 ? 1 : x);
+  const ramp = (t, a, b) => clamp01((t - a) / (b - a));
+  const lerp = (a, b, u) => a + (b - a) * u;
+  const smooth = (x) => x * x * (3 - 2 * x);
+  const RM = matchMedia("(prefers-reduced-motion: reduce)");
+  const NARROW = matchMedia("(max-width: 760px)");
+  const isStatic = () => RM.matches || NARROW.matches;
+  const DPR = () => Math.min(window.devicePixelRatio || 1, 2);
+  function rng(seed) { let s = seed >>> 0; return () => { s = (Math.imul(s, 1664525) + 1013904223) >>> 0; return s / 4294967296; }; }
+  const esc = (x) => x.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+  /* ---------------- copy buttons ---------------- */
+  const PROMPT = "Set me up with Archer (https://tryarcher.dev). Add its MCP server with `claude mcp add --transport http archer https://tryarcher.dev/mcp` (or the equivalent for this client), sign me in, then map this repository's architecture into a new Archer project: components with src paths, planes for frontend and backend, and the connections between them.";
+  const INSTALL = "claude mcp add --transport http archer https://tryarcher.dev/mcp";
+  $$("[data-copy]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const text = btn.dataset.copy === "install" ? INSTALL : PROMPT;
+      const done = () => { btn.classList.add("is-done"); clearTimeout(btn._t); btn._t = setTimeout(() => btn.classList.remove("is-done"), 1800); };
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).then(done).catch(() => fallbackCopy(text) && done());
+        } else if (fallbackCopy(text)) done();
+      } catch (e) { /* clipboard unavailable */ }
+    });
+  });
+  function fallbackCopy(text) {
+    try {
+      const ta = document.createElement("textarea");
+      ta.value = text; ta.setAttribute("readonly", ""); ta.style.position = "fixed"; ta.style.opacity = "0";
+      document.body.appendChild(ta); ta.select();
+      const ok = document.execCommand("copy"); ta.remove(); return ok;
+    } catch (e) { return false; }
+  }
+
+  /* ---------------- glyphs (drawn for this page, 24-unit box) ---------------- */
+  const GLYPHS = {
+    window: "M3 5h18v14H3z M3 9h18 M6 7h.01 M8.5 7h.01",
+    key: "M11 12a3.5 3.5 0 1 1-7 0a3.5 3.5 0 1 1 7 0z M11 12h10 M17.5 12v3 M20.5 12v2.2",
+    bolt: "M13.5 2.5 5 13.5h6.5l-1 8 8.5-11h-6.5z",
+    database: "M4.5 6.5c0-1.7 3.4-3 7.5-3s7.5 1.3 7.5 3-3.4 3-7.5 3-7.5-1.3-7.5-3z M4.5 6.5v11c0 1.7 3.4 3 7.5 3s7.5-1.3 7.5-3v-11 M4.5 12c0 1.7 3.4 3 7.5 3s7.5-1.3 7.5-3",
+    card: "M2.5 6h19v12h-19z M2.5 10h19 M6 14.5h4",
+    routes: "M3 12h5 M8 12c3.5 0 3-6 7-6h5 M8 12h12 M8 12c3.5 0 3 6 7 6h5 M17.5 3.5 20 6l-2.5 2.5 M17.5 15.5 20 18l-2.5 2.5",
+    shield: "M12 3l7.5 3v5.5c0 4.6-3.2 8.2-7.5 9.5-4.3-1.3-7.5-4.9-7.5-9.5V6z M9 12l2.2 2.2L15.5 10",
+    queue: "M4 6.5h16 M4 10.5h16 M4 14.5h16 M4 18.5h9",
+    gear: "M15.5 12a3.5 3.5 0 1 1-7 0a3.5 3.5 0 1 1 7 0z M12 3v3 M12 18v3 M3 12h3 M18 12h3 M5.6 5.6l2.1 2.1 M16.3 16.3l2.1 2.1 M5.6 18.4l2.1-2.1 M16.3 7.7l2.1-2.1",
+  };
+  const GPATH = {};
+  for (const k in GLYPHS) GPATH[k] = new Path2D(GLYPHS[k]);
+
+  /* ---------------- the documents ---------------- */
+  const DOC = {
+    nodes: [
+      { id: "web", label: "Web app", type: "vercel.nextjs", glyph: "window", shape: "browser", x: 0, y: 120, w: 160, h: 120 },
+      { id: "auth", label: "Auth", type: "clerk", glyph: "key", x: 0, y: 360, w: 160, h: 120 },
+      { id: "api", label: "API", type: "vercel.functions", glyph: "bolt", x: 280, y: 120, w: 160, h: 120, parts: 5 },
+      { id: "db", label: "Postgres", type: "supabase.postgres", glyph: "database", shape: "cylinder", x: 520, y: 120, w: 160, h: 120 },
+      { id: "billing", label: "Billing", type: "stripe", glyph: "card", x: 280, y: 360, w: 160, h: 120 },
+    ],
+    plane: { id: "backend", label: "Backend", x: 240, y: 40, w: 480, h: 240 },
+    edges: [
+      { from: "web", to: "api", type: "http" },
+      { from: "web", to: "auth", type: "http", label: "sign in" },
+      { from: "api", to: "db", type: "sql" },
+      { from: "api", to: "billing", type: "http", label: "checkout" },
+    ],
+  };
+  const IW = 150, IH = 92;
+  const INNER = {
+    nodes: [
+      { id: "routes", label: "Routes", type: "api_gateway", glyph: "routes", x: 20, y: 254 },
+      { id: "session", label: "Auth middleware", type: "auth", glyph: "shield", x: 230, y: 84 },
+      { id: "billing_client", label: "Billing client", type: "service", glyph: "card", x: 230, y: 254 },
+      { id: "jobs", label: "Jobs", type: "queue", glyph: "queue", x: 230, y: 424 },
+      { id: "worker", label: "Queue worker", type: "worker", glyph: "gear", x: 440, y: 424 },
+      { id: "c_auth", label: "Auth", type: "clerk", glyph: "key", x: 640, y: 84, ctx: true },
+      { id: "c_billing", label: "Billing", type: "stripe", glyph: "card", x: 640, y: 254, ctx: true },
+      { id: "c_db", label: "Postgres", type: "supabase.postgres", glyph: "database", x: 640, y: 424, ctx: true },
+    ].map((n) => Object.assign(n, { w: IW, h: IH })),
+    edges: [
+      { from: "routes", to: "session" },
+      { from: "routes", to: "billing_client" },
+      { from: "routes", to: "jobs", type: "queue", label: "enqueue" },
+      { from: "jobs", to: "worker", type: "queue" },
+      { from: "session", to: "c_auth", type: "http", label: "verify" },
+      { from: "billing_client", to: "c_billing", type: "http", label: "checkout" },
+      { from: "worker", to: "c_db", type: "sql" },
+    ],
+  };
+
+  const KD = 0.07, KI = 0.195;
+  const ACME_W = { x: 330, y: -150 };
+  const docToWorld = (x, y) => [ACME_W.x + (x - 360) * KD, ACME_W.y + (y - 260) * KD];
+  const innerToWorld = (x, y) => docToWorld(360 + (x - 405) * KI, 180 + (y - 300) * KI);
+  const byId = (list) => Object.fromEntries(list.map((n) => [n.id, n]));
+  const DOCN = byId(DOC.nodes), INN = byId(INNER.nodes);
+
+  /* polyline route between two boxes, Archer-style elbows */
+  function route(a, b) {
+    const ac = [a.x + a.w / 2, a.y + a.h / 2], bc = [b.x + b.w / 2, b.y + b.h / 2];
+    const dx = bc[0] - ac[0], dy = bc[1] - ac[1];
+    if (Math.abs(dx) >= Math.abs(dy)) {
+      const sx = dx > 0 ? a.x + a.w : a.x, tx = dx > 0 ? b.x : b.x + b.w;
+      if (Math.abs(ac[1] - bc[1]) < 1) return [[sx, ac[1]], [tx, bc[1]]];
+      const mx = (sx + tx) / 2;
+      return [[sx, ac[1]], [mx, ac[1]], [mx, bc[1]], [tx, bc[1]]];
+    }
+    const sy = dy > 0 ? a.y + a.h : a.y, ty = dy > 0 ? b.y : b.y + b.h;
+    if (Math.abs(ac[0] - bc[0]) < 1) return [[ac[0], sy], [bc[0], ty]];
+    const my = (sy + ty) / 2;
+    return [[ac[0], sy], [ac[0], my], [bc[0], my], [bc[0], ty]];
+  }
+  const midOf = (pts) => {
+    if (pts.length === 2) return [(pts[0][0] + pts[1][0]) / 2, (pts[0][1] + pts[1][1]) / 2];
+    return [(pts[1][0] + pts[2][0]) / 2, (pts[1][1] + pts[2][1]) / 2];
+  };
+  const edgeText = (e) => (e.type && e.label ? e.type + " · " + e.label : e.label || e.type || "");
+
+  /* ---------------- the org field ---------------- */
+  const FIELD = { w: 1700, h: 1050 };
+  const CLUSTERS = [
+    { name: "payments", n: 14, x: -430, y: -250, r: 92 },
+    { name: "search", n: 9, x: 30, y: -330, r: 66 },
+    { name: "identity", n: 6, x: -60, y: 10, r: 52 },
+    { name: "data platform", n: 22, x: 560, y: 230, r: 128 },
+    { name: "notifications", n: 8, x: -660, y: 110, r: 70 },
+    { name: "ml ranking", n: 11, x: 230, y: 290, r: 84 },
+    { name: "internal tools", n: 12, x: -330, y: 330, r: 92 },
+    { name: "mobile", n: 7, x: -740, y: -340, r: 58 },
+    { name: "ledger", n: 10, x: 720, y: -320, r: 74 },
+    { name: "edge", n: 5, x: -170, y: -420, r: 44 },
+    { name: "analytics", n: 13, x: 820, y: 40, r: 88 },
+    { name: "support", n: 6, x: -520, y: -40, r: 50 },
+    { name: "catalog", n: 9, x: 380, y: -420, r: 62 },
+  ];
+  const R = rng(20261015);
+  const gauss = () => (R() + R() + R() - 1.5) / 1.5;
+  const STARS = [];   // cluster points
+  const FILS = [];    // filament index pairs into STARS
+  CLUSTERS.forEach((c) => {
+    const start = STARS.length;
+    for (let i = 0; i < c.n; i++) {
+      const a = R() * Math.PI * 2, d = Math.abs(gauss()) * c.r;
+      STARS.push({ x: c.x + Math.cos(a) * d, y: c.y + Math.sin(a) * d * 0.8, s: 1.5 + R() * 1.6, b: 0.65 + R() * 0.35, z: 0.55 + R() * 0.45, f: 0.25 + R() * 0.4, ph: R() * 6.28, warm: R() < 0.28 });
+      if (i > 0) {
+        let best = start, bd = 1e9;
+        for (let j = start; j < start + i; j++) { const dd = (STARS[j].x - STARS[start + i].x) ** 2 + (STARS[j].y - STARS[start + i].y) ** 2; if (dd < bd) { bd = dd; best = j; } }
+        FILS.push([best, start + i]);
+      }
+    }
+    c.first = start;
+  });
+  const DUST = [];
+  for (let i = 0; i < 560; i++) DUST.push({ x: (R() - 0.5) * FIELD.w * 1.5, y: (R() - 0.5) * FIELD.h * 1.5, s: 0.5 + R() * 1.0, b: 0.25 + R() * 0.5, z: 0.1 + R() * 0.4, f: 0.2 + R() * 0.3, ph: R() * 6.28, warm: R() < 0.2 });
+  const LINKS = [["payments", "acme"], ["identity", "acme"], ["data platform", "acme"], ["payments", "ledger"], ["search", "ml ranking"], ["identity", "mobile"], ["notifications", "internal tools"]];
+  const clusterPos = (name) => (name === "acme" ? ACME_W : CLUSTERS.find((c) => c.name === name));
+  const ACME_PTS = DOC.nodes.map((n) => docToWorld(n.x + n.w / 2, n.y + n.h / 2));
+  const DOC_BOX = (() => { const a = docToWorld(-30, 10), b = docToWorld(750, 510); return { x0: a[0], y0: a[1], x1: b[0], y1: b[1] }; })();
+  const API_BOX = (() => { const a = docToWorld(276, 116), b = docToWorld(444, 244); return { x0: a[0], y0: a[1], x1: b[0], y1: b[1] }; })();
+  const DEEP_BOX = (() => { const a = innerToWorld(0, 60), b = innerToWorld(560, 540); return { x0: a[0], y0: a[1], x1: b[0], y1: b[1] }; })();
+
+  /* glow sprites */
+  function sprite(rgb) {
+    const c = document.createElement("canvas"); c.width = c.height = 64;
+    const g = c.getContext("2d"), gr = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+    gr.addColorStop(0, "rgba(255,255,255,1)");
+    gr.addColorStop(0.12, `rgba(${rgb},0.95)`);
+    gr.addColorStop(0.35, `rgba(${rgb},0.22)`);
+    gr.addColorStop(1, `rgba(${rgb},0)`);
+    g.fillStyle = gr; g.fillRect(0, 0, 64, 64); return c;
+  }
+  const SPR_COOL = sprite("180,200,255"), SPR_WARM = sprite("245,218,170");
+
+  /* ---------------- cameras ---------------- */
+  function fit(b, r, cover) {
+    const sx = (r.x1 - r.x0) / (b.x1 - b.x0), sy = (r.y1 - r.y0) / (b.y1 - b.y0);
+    const s = cover ? Math.max(sx, sy) : Math.min(sx, sy);
+    return { s, ox: (r.x0 + r.x1) / 2 - ((b.x0 + b.x1) / 2) * s, oy: (r.y0 + r.y1) / 2 - ((b.y0 + b.y1) / 2) * s };
+  }
+  function lerpCam(A, B, u) {
+    if (Math.abs(A.s - B.s) < 1e-9) return { s: A.s, ox: lerp(A.ox, B.ox, u), oy: lerp(A.oy, B.oy, u) };
+    const px = (B.ox - A.ox) / (A.s - B.s), py = (B.oy - A.oy) / (A.s - B.s);
+    const qx = px * A.s + A.ox, qy = py * A.s + A.oy;
+    const s = A.s * Math.pow(B.s / A.s, u);
+    return { s, ox: qx - px * s, oy: qy - py * s };
+  }
+  function camAt(C, t) {
+    const i = Math.min(2, Math.floor(t));
+    return lerpCam(C[i], C[i + 1], clamp01(t - i));
+  }
+  /* region = where the diagram lives on screen at depth >= 1 */
+  function buildCams(W, H, mode) {
+    const fieldBox = { x0: -FIELD.w / 2, y0: -FIELD.h / 2, x1: FIELD.w / 2, y1: FIELD.h / 2 };
+    let reg, c0;
+    if (mode === "stage") {
+      const left = Math.max(16, (W - 1240) / 2 + 16) + Math.min(400, W * 0.36) + 48;
+      reg = { x0: left, y0: 104, x1: W - 76, y1: H - 64 };
+      c0 = fit(fieldBox, { x0: 0, y0: 0, x1: W, y1: H }, true);
+    } else if (mode === "hero" && W > 760) {
+      reg = { x0: 0, y0: 0, x1: W, y1: H };
+      c0 = fit(fieldBox, { x0: 0, y0: 0, x1: W, y1: H }, true);
+    } else if (mode === "hero") {
+      reg = { x0: 0, y0: 0, x1: W, y1: H };
+      c0 = fit(fieldBox, { x0: -W * 0.35, y0: 0, x1: W * 1.35, y1: H }, true);
+      /* on phones, centre on the Acme cluster's side of the field */
+      c0.ox -= ACME_W.x * c0.s * 0.75;
+    } else {
+      const p = Math.min(W, H) * 0.05;
+      reg = { x0: p, y0: p, x1: W - p, y1: H - p };
+      c0 = fit(fieldBox, { x0: 0, y0: 0, x1: W, y1: H }, false);
+    }
+    const c1 = fit(DOC_BOX, reg, false);
+    const c2 = fit(API_BOX, reg, false);
+    const c3 = fit(DEEP_BOX, reg, false);
+    return { C: [c0, c1, c2, c3], reg };
+  }
+
+  /* ---------------- canvas drawing ---------------- */
+  function rr(ctx, x, y, w, h, r) {
+    r = Math.min(r, w / 2, h / 2);
+    ctx.beginPath();
+    ctx.moveTo(x + r, y); ctx.lineTo(x + w - r, y); ctx.arcTo(x + w, y, x + w, y + r, r);
+    ctx.lineTo(x + w, y + h - r); ctx.arcTo(x + w, y + h, x + w - r, y + h, r);
+    ctx.lineTo(x + r, y + h); ctx.arcTo(x, y + h, x, y + h - r, r);
+    ctx.lineTo(x, y + r); ctx.arcTo(x, y, x + r, y, r); ctx.closePath();
+  }
+  function setSpacing(ctx, v) { if ("letterSpacing" in ctx) ctx.letterSpacing = v; }
+
+  function drawGlyph(ctx, name, x, y, size, alpha) {
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.translate(x, y); ctx.scale(size / 24, size / 24);
+    ctx.lineWidth = 1.7; ctx.lineCap = "round"; ctx.lineJoin = "round";
+    ctx.strokeStyle = "#d3dcf1"; ctx.stroke(GPATH[name]);
+    ctx.restore();
+  }
+
+  /* a component card, in screen space; k = screen px per unit */
+  function drawCard(ctx, n, X, Y, k, alpha, o) {
+    if (alpha <= 0.002) return;
+    const w = n.w * k, h = n.h * k, fs = o.fs;
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    const lw = Math.max(1, Math.min(1.6, k));
+    if (n.shape === "cylinder") {
+      const ry = 12 * k;
+      ctx.beginPath();
+      ctx.moveTo(X, Y + ry); ctx.ellipse(X + w / 2, Y + ry, w / 2, ry, 0, Math.PI, 0); ctx.lineTo(X + w, Y + h - ry);
+      ctx.ellipse(X + w / 2, Y + h - ry, w / 2, ry, 0, 0, Math.PI); ctx.closePath();
+      ctx.fillStyle = o.fill; ctx.fill();
+      ctx.strokeStyle = o.stroke; ctx.lineWidth = lw; ctx.stroke();
+      ctx.beginPath(); ctx.ellipse(X + w / 2, Y + ry, w / 2, ry, 0, 0, Math.PI); ctx.stroke();
+    } else {
+      rr(ctx, X, Y, w, h, (o.radius || 10) * k);
+      ctx.fillStyle = o.fill; ctx.fill();
+      ctx.strokeStyle = o.stroke; ctx.lineWidth = lw;
+      if (n.ctx) ctx.setLineDash([5 * Math.min(k, 1.5), 4 * Math.min(k, 1.5)]);
+      ctx.stroke(); ctx.setLineDash([]);
+      if (n.shape === "browser") {
+        ctx.beginPath(); ctx.moveTo(X, Y + 20 * k); ctx.lineTo(X + w, Y + 20 * k); ctx.strokeStyle = "rgba(166,189,255,0.24)"; ctx.stroke();
+        ctx.fillStyle = "rgba(166,189,255,0.4)";
+        for (let i = 0; i < 3; i++) { ctx.beginPath(); ctx.arc(X + (12 + i * 9) * k, Y + 10 * k, 2.2 * k, 0, 6.283); ctx.fill(); }
+      }
+    }
+    const ca = alpha * (o.content == null ? 1 : o.content);
+    if (ca > 0.01) {
+      const top = n.shape === "browser" ? 30 : n.shape === "cylinder" ? 30 : o.pad;
+      const gs = o.gbox;
+      ctx.globalAlpha = ca;
+      rr(ctx, X + o.pad * k, Y + top * k, gs * k, gs * k, 6 * k);
+      ctx.fillStyle = "rgba(166,189,255,0.07)"; ctx.fill();
+      ctx.strokeStyle = "rgba(166,189,255,0.24)"; ctx.lineWidth = Math.max(0.7, Math.min(1.2, k)); ctx.stroke();
+      drawGlyph(ctx, n.glyph, X + (o.pad + gs * 0.15) * k, Y + (top + gs * 0.15) * k, gs * 0.7 * k, ca * (n.ctx ? 0.7 : 1));
+      if (fs * k >= 4) {
+        ctx.globalAlpha = ca * (n.ctx ? 0.75 : 1);
+        ctx.fillStyle = "#eceff6";
+        ctx.font = `600 ${fs * k}px Archivo, "Helvetica Neue", Arial, sans-serif`;
+        ctx.textBaseline = "alphabetic";
+        ctx.fillText(n.label, X + o.pad * k, Y + (n.h - o.labelUp) * k);
+        ctx.fillStyle = "#7a849b";
+        ctx.font = `${fs * 0.68 * k}px "IBM Plex Mono", ui-monospace, monospace`;
+        ctx.fillText(n.ctx ? "outside" : "@" + n.type, X + o.pad * k, Y + (n.h - o.typeUp) * k);
+      }
+    }
+    if (n.parts && o.badge > 0.01) {
+      ctx.globalAlpha = alpha * o.badge;
+      const bx = X + w - 18 * k, by = Y + 18 * k;
+      ctx.beginPath(); ctx.arc(bx, by, 10 * k, 0, 6.283); ctx.fillStyle = "rgba(242,221,178,0.14)"; ctx.fill();
+      ctx.strokeStyle = "rgba(242,221,178,0.6)"; ctx.lineWidth = 1; ctx.stroke();
+      if (k * 11 > 4) {
+        ctx.fillStyle = "#f2ddb2"; ctx.font = `500 ${11 * k}px "IBM Plex Mono", monospace`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+        ctx.fillText(String(n.parts), bx, by + 0.5 * k); ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
+      }
+    }
+    ctx.restore();
+  }
+
+  function drawEdge(ctx, pts, map, k, alpha, text, fs) {
+    if (alpha <= 0.002) return;
+    const sp = pts.map((p) => map(p[0], p[1]));
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.strokeStyle = "rgba(170,190,235,0.55)";
+    ctx.lineWidth = Math.max(1, Math.min(1.7, k * 1.1));
+    ctx.beginPath(); ctx.moveTo(sp[0][0], sp[0][1]);
+    const rad = 9 * k;
+    for (let i = 1; i < sp.length - 1; i++) ctx.arcTo(sp[i][0], sp[i][1], sp[i + 1][0], sp[i + 1][1], rad);
+    const last = sp[sp.length - 1], prev = sp[sp.length - 2];
+    ctx.lineTo(last[0], last[1]); ctx.stroke();
+    const ang = Math.atan2(last[1] - prev[1], last[0] - prev[0]), ah = Math.max(4, Math.min(9, 7 * k));
+    ctx.beginPath(); ctx.moveTo(last[0], last[1]);
+    ctx.lineTo(last[0] - ah * Math.cos(ang - 0.42), last[1] - ah * Math.sin(ang - 0.42));
+    ctx.lineTo(last[0] - ah * Math.cos(ang + 0.42), last[1] - ah * Math.sin(ang + 0.42));
+    ctx.closePath(); ctx.fillStyle = "rgba(190,206,245,0.85)"; ctx.fill();
+    if (text && fs * k >= 5) {
+      const m = map(...midOf(pts));
+      ctx.font = `${fs * k}px "IBM Plex Mono", ui-monospace, monospace`;
+      const tw = ctx.measureText(text).width, ph = fs * k * 1.9, pw = tw + fs * k * 1.4;
+      rr(ctx, m[0] - pw / 2, m[1] - ph / 2, pw, ph, ph / 2);
+      ctx.fillStyle = "rgba(9,13,25,0.96)"; ctx.fill();
+      ctx.strokeStyle = "rgba(170,190,235,0.22)"; ctx.lineWidth = 1; ctx.stroke();
+      ctx.fillStyle = "#b0b8ca"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.fillText(text, m[0], m[1] + 0.5); ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
+    }
+    ctx.restore();
+  }
+
+  function drawScene(ctx, W, H, C, t, now, par) {
+    ctx.clearRect(0, 0, W, H);
+    const cam = camAt(C, t), s = cam.s;
+    const sx = (x) => x * s + cam.ox, sy = (y) => y * s + cam.oy;
+    const pd = 1 - clamp01(t / 0.85);
+    const time = now * 0.001;
+    const zoomGrow = Math.min(1.7, Math.max(1, Math.pow(s / C[0].s, 0.18)));
+
+    /* dust */
+    const aDust = 1 - ramp(t, 0.3, 0.95);
+    if (aDust > 0) {
+      for (const p of DUST) {
+        const x = sx(p.x) + (par.x * p.z * 16 + Math.sin(time * p.f + p.ph) * 2) * pd;
+        const y = sy(p.y) + (par.y * p.z * 12 + Math.cos(time * p.f * 0.8 + p.ph) * 2) * pd;
+        if (x < -20 || y < -20 || x > W + 20 || y > H + 20) continue;
+        const r = p.s * 3.4 * zoomGrow;
+        ctx.globalAlpha = p.b * aDust * (0.75 + 0.25 * Math.sin(time * 0.7 + p.ph * 3));
+        ctx.drawImage(p.warm ? SPR_WARM : SPR_COOL, x - r, y - r, r * 2, r * 2);
+      }
+    }
+
+    /* clusters */
+    const aCl = 1 - ramp(t, 0.5, 1.0);
+    const scr = [];
+    if (aCl > 0) {
+      for (const p of STARS) {
+        scr.push([sx(p.x) + (par.x * p.z * 22 + Math.sin(time * p.f + p.ph) * 2.6) * pd, sy(p.y) + (par.y * p.z * 16 + Math.cos(time * p.f * 0.9 + p.ph) * 2.6) * pd]);
+      }
+      /* faint long links between systems */
+      ctx.save();
+      ctx.setLineDash([2, 6]); ctx.lineWidth = 1;
+      ctx.strokeStyle = "rgba(168,190,255,0.10)";
+      ctx.globalAlpha = aCl;
+      for (const [a, b] of LINKS) {
+        const A = clusterPos(a), B = clusterPos(b);
+        ctx.beginPath(); ctx.moveTo(sx(A.x), sy(A.y)); ctx.lineTo(sx(B.x), sy(B.y)); ctx.stroke();
+      }
+      ctx.setLineDash([]);
+      ctx.strokeStyle = "rgba(180,200,255,0.20)"; ctx.lineWidth = 0.8;
+      ctx.beginPath();
+      for (const [a, b] of FILS) { ctx.moveTo(scr[a][0], scr[a][1]); ctx.lineTo(scr[b][0], scr[b][1]); }
+      ctx.stroke();
+      ctx.restore();
+      STARS.forEach((p, i) => {
+        const [x, y] = scr[i];
+        if (x < -30 || y < -30 || x > W + 30 || y > H + 30) return;
+        const r = p.s * 4.2 * zoomGrow;
+        ctx.globalAlpha = p.b * aCl * (0.82 + 0.18 * Math.sin(time * 0.9 + p.ph * 2));
+        ctx.drawImage(p.warm ? SPR_WARM : SPR_COOL, x - r, y - r, r * 2, r * 2);
+      });
+    }
+
+    /* star-chart captions */
+    const aLab = 1 - ramp(t, 0.12, 0.42);
+    if (aLab > 0) {
+      ctx.save();
+      ctx.font = `11px "IBM Plex Mono", ui-monospace, monospace`; setSpacing(ctx, "0.4px");
+      const placed = [];
+      for (const c of CLUSTERS) {
+        const cx = sx(c.x) + par.x * 16 * pd, cy = sy(c.y) + par.y * 12 * pd, rr0 = c.r * s * 1.05;
+        if (cx < -200 || cx > W + 50 || cy < -50 || cy > H + 50) continue;
+        ctx.globalAlpha = aLab * 0.5;
+        ctx.strokeStyle = "rgba(168,190,255,0.22)"; ctx.setLineDash([1.5, 5]); ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.arc(cx, cy, rr0, 0, 6.283); ctx.stroke(); ctx.setLineDash([]);
+        const txt = `${c.name} · ${c.n} components`, tw = ctx.measureText(txt).width;
+        const flip = cx + rr0 * 0.72 + 27 + tw > W - 64;
+        const dir = flip ? -1 : 1, lx = cx + dir * rr0 * 0.72, ly = cy - rr0 * 0.72;
+        const bx = flip ? lx - 27 - tw : lx + 27, box = [bx - 6, ly - 24, bx + tw + 6, ly];
+        if (placed.some((q) => box[0] < q[2] && box[2] > q[0] && box[1] < q[3] && box[3] > q[1])) continue;
+        placed.push(box);
+        const quiet = par.quiet && ((mode === "hero" && W <= 760) || cx < W * 0.52) ? 0.3 : 1;
+        ctx.globalAlpha = aLab * 0.8 * quiet;
+        ctx.beginPath(); ctx.moveTo(lx, ly); ctx.lineTo(lx + dir * 14, ly - 14); ctx.lineTo(lx + dir * 22, ly - 14); ctx.stroke();
+        ctx.fillStyle = "#8a94ab";
+        ctx.fillText(txt, flip ? lx - 27 - tw : lx + 27, ly - 10);
+      }
+      ctx.restore();
+    }
+
+    /* the target: Acme */
+    const aRet = (0.6 + 0.4 * ramp(t, 0, 0.3)) * (1 - ramp(t, 0.5, 0.8));
+    const acx = sx(ACME_W.x) + par.x * 20 * pd, acy = sy(ACME_W.y) + par.y * 15 * pd;
+    if (aRet > 0) {
+      const half = Math.max(34, (DOC_BOX.x1 - DOC_BOX.x0) * s * 0.62), hv = half * 0.78, L = Math.min(12, half * 0.3);
+      ctx.save();
+      ctx.globalAlpha = aRet; ctx.strokeStyle = "rgba(242,221,178,0.75)"; ctx.lineWidth = 1;
+      ctx.beginPath();
+      for (const [dx, dy] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) {
+        const x = acx + dx * half, y = acy + dy * hv;
+        ctx.moveTo(x, y); ctx.lineTo(x - dx * L, y); ctx.moveTo(x, y); ctx.lineTo(x, y - dy * L);
+      }
+      ctx.stroke();
+      ctx.font = `11px "IBM Plex Mono", ui-monospace, monospace`; setSpacing(ctx, "0.4px");
+      ctx.fillStyle = "#f2ddb2";
+      const atw = ctx.measureText("Acme · 5 components").width;
+      ctx.fillText("Acme · 5 components", Math.max(8, Math.min(acx - half, W - atw - 12)), acy - hv - 10);
+      ctx.restore();
+    }
+    const aDots = 1 - ramp(t, 0.55, 0.85);
+    if (aDots > 0) {
+      const pts = ACME_PTS.map((p) => [sx(p[0]) + par.x * 20 * pd, sy(p[1]) + par.y * 15 * pd]);
+      ctx.save(); ctx.globalAlpha = aDots * 0.5; ctx.strokeStyle = "rgba(242,221,178,0.6)"; ctx.lineWidth = 0.9;
+      ctx.beginPath();
+      for (const e of DOC.edges) { const a = pts[DOC.nodes.indexOf(DOCN[e.from])], b = pts[DOC.nodes.indexOf(DOCN[e.to])]; ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); }
+      ctx.stroke(); ctx.restore();
+      for (const [x, y] of pts) {
+        const r = 11 * zoomGrow * (1 + 0.6 * ramp(t, 0.2, 0.6));
+        ctx.globalAlpha = aDots * (0.9 + 0.1 * Math.sin(time * 1.3));
+        ctx.drawImage(SPR_WARM, x - r, y - r, r * 2, r * 2);
+      }
+    }
+
+    /* depth 1: the Acme document */
+    const aDoc = ramp(t, 0.5, 0.88);
+    const k1 = s * KD;
+    const mapD = (x, y) => { const w = docToWorld(x, y); return [sx(w[0]), sy(w[1])]; };
+    if (aDoc > 0) {
+      const aOther = aDoc * (1 - ramp(t, 1.3, 1.85));
+      if (aOther > 0) {
+        const p = DOC.plane, a = mapD(p.x, p.y), b = mapD(p.x + p.w, p.y + p.h);
+        const pw = b[0] - a[0], ph = b[1] - a[1];
+        ctx.save(); ctx.globalAlpha = aOther;
+        const gx = a[0] + pw * 0.55, gy = a[1] + ph * 0.5, gr = Math.max(pw, ph) * 0.75;
+        const g = ctx.createRadialGradient(gx, gy, 0, gx, gy, gr);
+        g.addColorStop(0, "rgba(96,124,226,0.22)"); g.addColorStop(0.6, "rgba(96,124,226,0.07)"); g.addColorStop(1, "rgba(96,124,226,0)");
+        ctx.fillStyle = g; ctx.fillRect(gx - gr, gy - gr, gr * 2, gr * 2);
+        const hx = a[0] + pw * 0.2, hy = a[1] + ph * 0.8, hr = pw * 0.45;
+        const g2 = ctx.createRadialGradient(hx, hy, 0, hx, hy, hr);
+        g2.addColorStop(0, "rgba(240,200,150,0.07)"); g2.addColorStop(1, "rgba(240,200,150,0)");
+        ctx.fillStyle = g2; ctx.fillRect(hx - hr, hy - hr, hr * 2, hr * 2);
+        rr(ctx, a[0], a[1], pw, ph, 14 * k1);
+        ctx.setLineDash([4, 5]); ctx.strokeStyle = "rgba(166,189,255,0.3)"; ctx.lineWidth = 1; ctx.stroke(); ctx.setLineDash([]);
+        if (k1 * 10.5 > 4) {
+          ctx.font = `${10.5 * k1}px "IBM Plex Mono", ui-monospace, monospace`; setSpacing(ctx, `${1.6 * k1}px`);
+          ctx.fillStyle = "#8a94ab"; ctx.fillText("BACKEND", a[0] + 14 * k1, a[1] + 22 * k1);
+        }
+        ctx.restore();
+      }
+      for (const e of DOC.edges) {
+        const alpha = e.from === "api" || e.to === "api" ? aOther : aOther;
+        drawEdge(ctx, route(DOCN[e.from], DOCN[e.to]), mapD, k1, alpha, edgeText(e), 10);
+      }
+      for (const n of DOC.nodes) {
+        const p = mapD(n.x, n.y);
+        if (n.id === "api") {
+          drawCard(ctx, n, p[0], p[1], k1, aDoc * (1 - ramp(t, 2.1, 2.5)), {
+            fs: 15, pad: 14, gbox: 30, labelUp: 30, typeUp: 13,
+            fill: `rgba(11,16,31,${lerp(0.94, 0.5, ramp(t, 1.05, 1.6))})`,
+            stroke: `rgba(166,189,255,${lerp(0.36, 0.3, ramp(t, 1.2, 1.9))})`,
+            content: 1 - ramp(t, 1.0, 1.35), badge: 1 - ramp(t, 1.0, 1.3), radius: lerp(10, 3, ramp(t, 1.2, 1.9)),
+          });
+        } else {
+          drawCard(ctx, n, p[0], p[1], k1, aOther, { fs: 15, pad: 14, gbox: 30, labelUp: 30, typeUp: 13, fill: "rgba(11,16,31,0.94)", stroke: "rgba(166,189,255,0.36)", badge: 0 });
+        }
+      }
+    }
+
+    /* the API's parts, first as points, then as cards */
+    const kI = s * KD * KI;
+    const mapI = (x, y) => { const w = innerToWorld(x, y); return [sx(w[0]), sy(w[1])]; };
+    const aIdot = 0.7 * ramp(t, 0.9, 1.15) * (1 - ramp(t, 1.45, 1.75));
+    if (aIdot > 0) {
+      for (const n of INNER.nodes) {
+        if (n.ctx) continue;
+        const [x, y] = mapI(n.x + n.w / 2, n.y + n.h / 2), r = 7 + 5 * ramp(t, 1.1, 1.6);
+        ctx.globalAlpha = aIdot * 0.9;
+        ctx.drawImage(SPR_COOL, x - r, y - r, r * 2, r * 2);
+      }
+    }
+    const aIn = ramp(t, 1.4, 1.85) * (1 - 0.8 * ramp(t, 2.12, 2.55));
+    if (aIn > 0) {
+      for (const e of INNER.edges) drawEdge(ctx, route(INN[e.from], INN[e.to]), mapI, kI, aIn * (INN[e.to].ctx ? 0.75 : 1), edgeText(e), 11.5);
+      for (const n of INNER.nodes) {
+        const p = mapI(n.x, n.y);
+        drawCard(ctx, n, p[0], p[1], kI, aIn * (n.ctx ? 0.8 : 1), {
+          fs: 17, pad: 12, gbox: 28, labelUp: 26, typeUp: 11, radius: 9,
+          fill: n.ctx ? "rgba(9,12,22,0.7)" : "rgba(12,18,34,0.95)",
+          stroke: n.ctx ? "rgba(166,189,255,0.3)" : "rgba(166,189,255,0.38)", badge: 0,
+        });
+      }
+      /* caption on the open component's canvas */
+      const a = mapD(280, 120);
+      if (kI * 12 > 6) {
+        ctx.save(); ctx.globalAlpha = aIn * (1 - ramp(t, 2.1, 2.4));
+        ctx.font = `${12 * kI}px "IBM Plex Mono", ui-monospace, monospace`; setSpacing(ctx, `${1.5 * kI}px`);
+        ctx.fillStyle = "#f2ddb2"; ctx.fillText("API · 5 PARTS", a[0] + 18 * kI, a[1] + 30 * kI);
+        ctx.restore();
+      }
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  /* ---------------- source view ---------------- */
+  function hl(src) {
+    const re = /("[^"]*")|(@[a-z_][\w.]*)|\b(arch|component|plane|shape|desc|src|icon|color)\b|(<->|->|--)|(\bv\d+\.\d+\b)|(\s:\s)/g;
+    let out = "", last = 0, m;
+    while ((m = re.exec(src))) {
+      out += esc(src.slice(last, m.index));
+      const c = m[1] ? "s" : m[2] ? "t" : m[3] ? "k" : m[4] ? "a" : m[5] ? "v" : "p";
+      out += `<span class="tk-${c}">${esc(m[0])}</span>`;
+      last = re.lastIndex;
+    }
+    return out + esc(src.slice(last));
+  }
+  const API_SRC = [
+    [9, '  component api "API" @vercel.functions {', "def"],
+    [10, '    desc "Public HTTP API for the web app."'],
+    [11, '    src "services/api"'],
+    [12, ""],
+    [13, '    component routes "Routes" @api_gateway'],
+    [14, '    component session "Auth middleware" @auth'],
+    [15, '    component billing_client "Billing client" @service {'],
+    [16, "      icon credit_card"],
+    [17, "    }"],
+    [18, '    component jobs "Jobs" @queue'],
+    [19, '    component worker "Queue worker" @worker'],
+    [20, "  }"],
+    ["", "  ⋮", "gap"],
+    [28, 'api.billing_client -> billing @http : "checkout"'],
+    [29, "api.jobs -> api.worker @queue"],
+    [30, "api.routes -> api.billing_client"],
+    [31, 'api.routes -> api.jobs @queue : "enqueue"'],
+    [32, "api.routes -> api.session"],
+    [33, 'api.session -> auth @http : "verify"'],
+    [34, "api.worker -> db @sql"],
+  ];
+  function buildCode(el) {
+    el.innerHTML =
+      `<div class="cv-head"><span class="file">Acme.arch</span><span>api · line 9</span><span class="ok">valid</span></div>` +
+      `<div class="cv-body">` +
+      API_SRC.map(([n, s, c]) => `<div class="cl${c ? " " + c : ""}"><span class="ln">${n}</span><code>${hl(s) || " "}<span class="caret"></span></code></div>`).join("") +
+      `</div>`;
+  }
+  const stageCode = $("#stagecode");
+  buildCode(stageCode);
+  $$("[data-code]").forEach(buildCode);
+  const codeLines = $$(".cl", stageCode).map((el, i) => {
+    const s = API_SRC[i][1], lead = s.length - s.trimStart().length;
+    return { el, len: s.length, lead, code: el.querySelector("code") };
+  });
+  const totalChars = codeLines.reduce((a, l) => a + Math.max(1, l.len - l.lead), 0);
+  let lastTyped = -1;
+  function typeCode(p) {
+    const n = Math.round(p * totalChars);
+    if (n === lastTyped) return; lastTyped = n;
+    let acc = 0;
+    for (const l of codeLines) {
+      const w = Math.max(1, l.len - l.lead);
+      const shown = n - acc;
+      if (shown <= 0) { l.code.style.setProperty("--r", "0"); l.el.classList.remove("typing"); }
+      else if (shown >= w) { l.code.style.setProperty("--r", "999"); l.el.classList.remove("typing"); }
+      else {
+        const r = l.lead + shown;
+        l.code.style.setProperty("--r", String(r)); l.el.classList.add("typing");
+        l.code.querySelector(".caret").style.left = r + "ch";
+      }
+      acc += w;
+    }
+  }
+
+  /* ---------------- stage: sticky zoom ---------------- */
+  const stage = $("#stage"), canvas = $("#field"), ctx = canvas.getContext("2d");
+  const crumbs = $$("#crumbs span"), roD = $("#ro-d"), roL = $("#ro-l"), roS = $("#ro-s"), gmark = $("#gmark");
+  const LEVELS = ["Workspace / acme", "System / Acme", "Component / api", "Source / Acme.arch"];
+  let W = 0, H = 0, cams = null, anchors = [], mode = "stage";
+  let tTarget = 0, tCur = 0, raf = 0, visible = true, lastNow = 0;
+  const par = { x: 0, y: 0, tx: 0, ty: 0, quiet: true };
+
+  function sizeCanvas(cv, w, h) {
+    const d = DPR();
+    cv.width = Math.round(w * d); cv.height = Math.round(h * d);
+    const c = cv.getContext("2d"); c.setTransform(d, 0, 0, d, 0, 0); return c;
+  }
+  function measureAnchors() {
+    const y = (el) => { const r = el.getBoundingClientRect(); return r.top + window.scrollY + r.height / 2; };
+    anchors = [
+      { y: y($("#hero")), t: 0 },
+      { y: y($("#d0")), t: 0.12 },
+      { y: y($("#d1")), t: 1 },
+      { y: y($("#d2")), t: 2 },
+      { y: y($("#d3")), t: 3 },
+    ];
+  }
+  function tFromScroll() {
+    const y = window.scrollY + window.innerHeight / 2;
+    if (y <= anchors[0].y) return 0;
+    for (let i = 0; i < anchors.length - 1; i++) {
+      const a = anchors[i], b = anchors[i + 1];
+      if (y <= b.y) {
+        const u = (y - a.y) / (b.y - a.y);
+        if (i === 0) return lerp(a.t, b.t, u);
+        return lerp(a.t, b.t, smooth(clamp01((u - 0.16) / 0.68)));
+      }
+    }
+    return 3;
+  }
+  function layoutStage() {
+    W = stage.clientWidth; H = stage.clientHeight;
+    sizeCanvas(canvas, W, H);
+    mode = isStatic() ? "hero" : "stage";
+    const b = buildCams(W, H, mode);
+    cams = b.C;
+    const rw = Math.min(660, b.reg.x1 - b.reg.x0);
+    stage.style.setProperty("--rx", (b.reg.x0 + (b.reg.x1 - b.reg.x0 - rw) / 2) + "px");
+    stage.style.setProperty("--rw", rw + "px");
+    if (mode === "stage") stage.style.setProperty("--gx", b.reg.x0 + "px"); else stage.style.removeProperty("--gx");
+    if (mode === "stage") measureAnchors();
+  }
+  let hudKey = "";
+  function updateHud(t, cam) {
+    const lvl = Math.min(3, Math.round(t));
+    const key = t.toFixed(2) + "|" + lvl;
+    if (key === hudKey) return; hudKey = key;
+    roD.textContent = t.toFixed(2);
+    roL.textContent = LEVELS[lvl];
+    roS.textContent = "×" + Math.max(1, Math.round(cam.s / cams[0].s)).toLocaleString("en-US");
+    gmark.style.top = (t / 3 * 100) + "%";
+    const show = [true, t >= 0.6, t >= 1.55, t >= 2.45];
+    let cur = 0; show.forEach((v, i) => { if (v) cur = i; });
+    crumbs.forEach((el, i) => { el.classList.toggle("off", !show[i]); el.classList.toggle("cur", i === cur); });
+  }
+  function frame(now) {
+    raf = 0;
+    const dt = lastNow ? Math.min(64, now - lastNow) : 16; lastNow = now;
+    if (mode === "stage") {
+      tTarget = tFromScroll();
+      tCur += (tTarget - tCur) * (1 - Math.exp(-dt / 160));
+      if (Math.abs(tTarget - tCur) < 0.0005) tCur = tTarget;
+    } else tCur = 0;
+    par.x += (par.tx - par.x) * (1 - Math.exp(-dt / 600));
+    par.y += (par.ty - par.y) * (1 - Math.exp(-dt / 600));
+    const cam = camAt(cams, tCur);
+    drawScene(ctx, W, H, cams, tCur, now, par);
+    if (mode === "stage") {
+      updateHud(tCur, cam);
+      const ac = ramp(tCur, 2.42, 2.75);
+      stageCode.style.opacity = ac.toFixed(3);
+      stageCode.style.transform = `translateY(calc(-50% + ${((1 - ac) * 24).toFixed(1)}px))`;
+      typeCode(ramp(tCur, 2.5, 2.95));
+    }
+    if (visible && !RM.matches) raf = requestAnimationFrame(frame);
+  }
+  function kick() { if (!raf) raf = requestAnimationFrame(frame); }
+
+  window.addEventListener("pointermove", (e) => {
+    if (e.pointerType !== "mouse") return;
+    par.tx = (e.clientX / window.innerWidth - 0.5) * 2;
+    par.ty = (e.clientY / window.innerHeight - 0.5) * 2;
+  }, { passive: true });
+  window.addEventListener("scroll", () => { if (mode === "stage") kick(); }, { passive: true });
+
+  new IntersectionObserver((ents) => {
+    visible = ents[0].isIntersecting;
+    if (visible) kick();
+  }).observe($(".zoom"));
+
+  /* ---------------- static frames ---------------- */
+  function drawFrames() {
+    $$(".frame").forEach((fig) => {
+      const cv = fig.querySelector("canvas");
+      const w = fig.clientWidth, h = fig.clientHeight;
+      if (!w || !h) return;
+      const c = sizeCanvas(cv, w, h);
+      const d = Number(fig.dataset.depth);
+      const C = buildCams(w, h, "frame").C;
+      drawScene(c, w, h, C, d, 0, { x: 0, y: 0 });
+    });
+  }
+
+  function setup() {
+    layoutStage();
+    if (isStatic()) {
+      stageCode.style.opacity = "0";
+      drawFrames();
+      typeCode(1);
+    }
+    lastNow = 0;
+    if (RM.matches) { frame(performance.now()); }
+    else kick();
+  }
+  let rt = 0;
+  window.addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(setup, 120); });
+  RM.addEventListener && RM.addEventListener("change", setup);
+  NARROW.addEventListener && NARROW.addEventListener("change", setup);
+
+  /* ---------------- explorer: canvas <-> code ---------------- */
+  const SVGNS = "http://www.w3.org/2000/svg";
+  const exSvg = $("#ex-svg"), exCode = $("#ex-code"), exStatus = $("#ex-status"), exRev = $("#ex-rev"), exAgent = $("#ex-agent");
+  const BASE_LINES = [
+    ['arch "Acme" v0.2', ""],
+    ["", ""],
+    ['component web "Web app" @vercel.nextjs {', "n:web"],
+    ["  shape browser", "n:web"],
+    ["}", "n:web"],
+    ['component auth "Auth" @clerk', "n:auth"],
+    ["", ""],
+    ['plane backend "Backend" {', "p:backend"],
+    ['  component api "API" @vercel.functions', "n:api"],
+    ['  component db "Postgres" @supabase.postgres {', "n:db"],
+    ["    shape cylinder", "n:db"],
+    ["  }", "n:db"],
+    ["}", "p:backend"],
+    ["", ""],
+    ['component billing "Billing" @stripe', "n:billing"],
+    ["", ""],
+    ["web -> api @http", "e:web>api"],
+    ['web -> auth @http : "sign in"', "e:web>auth"],
+    ["api -> db @sql", "e:api>db"],
+    ['api -> billing @http : "checkout"', "e:api>billing"],
+  ];
+  let ex;
+  function exInit() {
+    ex = {
+      nodes: DOC.nodes.map((n) => Object.assign({}, n)),
+      edges: DOC.edges.map((e) => Object.assign({}, e)),
+      lines: BASE_LINES.map(([s, ref]) => ({ s, ref })),
+      agent: 0, rev: 13,
+    };
+  }
+  const svgEl = (tag, attrs, parent) => { const el = document.createElementNS(SVGNS, tag); for (const k in attrs) el.setAttribute(k, attrs[k]); if (parent) parent.appendChild(el); return el; };
+  function polyPath(pts, r) {
+    let d = `M${pts[0][0]} ${pts[0][1]}`;
+    for (let i = 1; i < pts.length - 1; i++) {
+      const [px, py] = pts[i - 1], [cx, cy] = pts[i], [nx, ny] = pts[i + 1];
+      const l1 = Math.hypot(cx - px, cy - py), l2 = Math.hypot(nx - cx, ny - cy), rr2 = Math.min(r, l1 / 2, l2 / 2);
+      const ax = cx - ((cx - px) / l1) * rr2, ay = cy - ((cy - py) / l1) * rr2;
+      const bx = cx + ((nx - cx) / l2) * rr2, by = cy + ((ny - cy) / l2) * rr2;
+      d += ` L${ax} ${ay} Q${cx} ${cy} ${bx} ${by}`;
+    }
+    const L = pts[pts.length - 1];
+    return d + ` L${L[0]} ${L[1]}`;
+  }
+  let gEdges, gNodes;
+  function exRenderSvg() {
+    exSvg.innerHTML = "";
+    const defs = svgEl("defs", {}, exSvg);
+    defs.innerHTML = `<radialGradient id="neb" cx="55%" cy="50%" r="75%"><stop offset="0" stop-color="rgb(96,124,226)" stop-opacity="0.2"/><stop offset="0.65" stop-color="rgb(96,124,226)" stop-opacity="0.06"/><stop offset="1" stop-color="rgb(96,124,226)" stop-opacity="0"/></radialGradient><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 1 L10 5 L0 9 z"/></marker>`;
+    const p = DOC.plane;
+    const gp = svgEl("g", { class: "xp", "data-ref": "p:backend" }, exSvg);
+    svgEl("rect", { class: "xp-body", x: p.x, y: p.y, width: p.w, height: p.h, rx: 14 }, gp);
+    svgEl("text", { class: "xp-title", x: p.x + 14, y: p.y + 22 }, gp).textContent = "BACKEND";
+    gEdges = svgEl("g", {}, exSvg);
+    gNodes = svgEl("g", {}, exSvg);
+    for (const n of ex.nodes) exNode(n);
+    exRenderEdges();
+  }
+  function exNode(n) {
+    const g = svgEl("g", { class: "xn", "data-id": n.id, "data-ref": "n:" + n.id, tabindex: "0", role: "button", "aria-label": `${n.label}, @${n.type}. Arrow keys move it.`, transform: `translate(${n.x} ${n.y})` }, gNodes);
+    let top = 14;
+    if (n.shape === "cylinder") {
+      svgEl("path", { class: "xn-body", d: `M0 12 A80 12 0 0 1 160 12 V108 A80 12 0 0 1 0 108 Z` }, g);
+      svgEl("path", { class: "xn-bar", fill: "none", d: `M0 12 A80 12 0 0 0 160 12` }, g);
+      top = 30;
+    } else {
+      svgEl("rect", { class: "xn-body", width: n.w, height: n.h, rx: 10 }, g);
+      if (n.shape === "browser") {
+        svgEl("line", { class: "xn-bar", x1: 0, y1: 20, x2: n.w, y2: 20 }, g);
+        for (let i = 0; i < 3; i++) svgEl("circle", { class: "xn-dot", cx: 12 + i * 9, cy: 10, r: 2.2 }, g);
+        top = 30;
+      }
+    }
+    const gg = svgEl("g", { class: "xn-glyph", transform: `translate(14 ${top})` }, g);
+    svgEl("rect", { width: 30, height: 30, rx: 6 }, gg);
+    svgEl("path", { d: GLYPHS[n.glyph], transform: "translate(4.5 4.5) scale(0.875)" }, gg);
+    svgEl("text", { class: "xn-label", x: 14, y: n.h - 30 }, g).textContent = n.label;
+    svgEl("text", { class: "xn-type", x: 14, y: n.h - 13 }, g).textContent = "@" + n.type;
+    if (n.agent) {
+      const b = svgEl("g", { class: "xn-badge", transform: `translate(${n.w - 56} -9)` }, g);
+      svgEl("rect", { width: 50, height: 18, rx: 9 }, b);
+      svgEl("text", { x: 25, y: 12.5, "text-anchor": "middle" }, b).textContent = "AGENT";
+    }
+    return g;
+  }
+  function exRenderEdges() {
+    gEdges.innerHTML = "";
+    const N = byId(ex.nodes);
+    for (const e of ex.edges) {
+      const pts = route(N[e.from], N[e.to]);
+      const ref = `e:${e.from}>${e.to}`;
+      svgEl("path", { class: "xe", "data-ref": ref, d: polyPath(pts, 9), "marker-end": "url(#arrow)" }, gEdges);
+      const txt = edgeText(e);
+      if (txt) {
+        const m = midOf(pts), w = txt.length * 6.1 + 16;
+        const gl = svgEl("g", { class: "xe-l", "data-ref": ref, transform: `translate(${m[0]} ${m[1]})` }, gEdges);
+        svgEl("rect", { x: -w / 2, y: -10, width: w, height: 20, rx: 10 }, gl);
+        svgEl("text", { x: 0, y: 3.5, "text-anchor": "middle" }, gl).textContent = txt;
+      }
+    }
+  }
+  function exRenderCode(flashRefs) {
+    exCode.innerHTML =
+      `<div class="cv-head"><span class="file">Acme.arch</span><span>${ex.lines.length} lines</span><span class="ok">valid</span></div><div class="cv-body">` +
+      ex.lines.map((l, i) => `<div class="cl${l.isNew ? " new" : ""}" data-ref="${l.ref}"><span class="ln">${i + 1}</span><code>${hl(l.s) || " "}</code></div>`).join("") +
+      `</div>`;
+    if (flashRefs) $$(".cl", exCode).forEach((el) => { if (flashRefs.includes(el.dataset.ref)) el.classList.add("flash"); });
+  }
+  function exHot(ref) {
+    $$(".hot, .soft", exSvg.parentNode.parentNode).forEach((el) => el.classList.remove("hot", "soft"));
+    if (!ref) return;
+    const id = ref.startsWith("n:") ? ref.slice(2) : null;
+    $$(`[data-ref="${ref}"]`, exSvg).forEach((el) => el.classList.add("hot"));
+    $$(".cl", exCode).forEach((el) => {
+      const r = el.dataset.ref;
+      if (r === ref) el.classList.add("hot");
+      else if (id && r.startsWith("e:") && r.slice(2).split(">").includes(id)) el.classList.add("soft");
+    });
+    if (ref.startsWith("e:")) {
+      const [a, b] = ref.slice(2).split(">");
+      $$(`[data-ref="n:${a}"], [data-ref="n:${b}"]`, exSvg).forEach((el) => el.classList.add("hot"));
+    }
+  }
+  function exStatusSet(html) { exStatus.innerHTML = html; }
+  function exAll() { exRenderSvg(); exRenderCode(); }
+
+  exInit(); exAll();
+
+  /* hover + focus linking */
+  exSvg.addEventListener("pointerover", (e) => { const g = e.target.closest("[data-ref]"); exHot(g ? g.dataset.ref : null); });
+  exSvg.addEventListener("pointerleave", () => exHot(null));
+  exSvg.addEventListener("focusin", (e) => { const g = e.target.closest(".xn"); if (g) exHot(g.dataset.ref); });
+  exSvg.addEventListener("focusout", () => exHot(null));
+  exCode.addEventListener("pointerover", (e) => { const l = e.target.closest(".cl"); exHot(l && l.dataset.ref ? l.dataset.ref : null); });
+  exCode.addEventListener("pointerleave", () => exHot(null));
+
+  /* drag (layout only) */
+  let drag = null;
+  function svgPoint(e) { const pt = exSvg.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY; return pt.matrixTransform(exSvg.getScreenCTM().inverse()); }
+  function moved(n) {
+    exStatusSet(`Moved ${esc(n.label)}. Layout only: <b>no change to the file</b>, and history ignores it.`);
+  }
+  exSvg.addEventListener("pointerdown", (e) => {
+    const g = e.target.closest(".xn"); if (!g) return;
+    const n = ex.nodes.find((x) => x.id === g.dataset.id), p = svgPoint(e);
+    drag = { n, g, dx: p.x - n.x, dy: p.y - n.y, moved: false };
+    g.classList.add("dragging"); exSvg.setPointerCapture(e.pointerId); e.preventDefault();
+  });
+  exSvg.addEventListener("pointermove", (e) => {
+    if (!drag) return;
+    const p = svgPoint(e);
+    const nx = Math.max(-20, Math.min(560, Math.round((p.x - drag.dx) / 20) * 20));
+    const ny = Math.max(20, Math.min(390, Math.round((p.y - drag.dy) / 20) * 20));
+    if (nx !== drag.n.x || ny !== drag.n.y) {
+      drag.n.x = nx; drag.n.y = ny; drag.moved = true;
+      drag.g.setAttribute("transform", `translate(${nx} ${ny})`); exRenderEdges();
+    }
+  });
+  const endDrag = () => { if (!drag) return; drag.g.classList.remove("dragging"); if (drag.moved) moved(drag.n); drag = null; };
+  exSvg.addEventListener("pointerup", endDrag);
+  exSvg.addEventListener("pointercancel", endDrag);
+  exSvg.addEventListener("keydown", (e) => {
+    const g = e.target.closest(".xn"); if (!g) return;
+    const d = { ArrowLeft: [-20, 0], ArrowRight: [20, 0], ArrowUp: [0, -20], ArrowDown: [0, 20] }[e.key];
+    if (!d) return;
+    e.preventDefault();
+    const n = ex.nodes.find((x) => x.id === g.dataset.id);
+    n.x = Math.max(-20, Math.min(560, n.x + d[0])); n.y = Math.max(20, Math.min(390, n.y + d[1]));
+    g.setAttribute("transform", `translate(${n.x} ${n.y})`); exRenderEdges(); moved(n);
+  });
+
+  /* agent edit */
+  exAgent.addEventListener("click", () => {
+    if (ex.agent === 0) {
+      ex.agent = 1; ex.rev = 14;
+      const jobs = { id: "jobs", label: "Jobs", type: "queue", glyph: "queue", x: 520, y: 360, w: 160, h: 120, agent: true };
+      ex.nodes.push(jobs);
+      ex.edges.push({ from: "api", to: "jobs", type: "queue", label: "enqueue" });
+      const bi = ex.lines.findIndex((l) => l.ref === "n:billing");
+      ex.lines.splice(bi + 1, 0, { s: 'component jobs "Jobs" @queue', ref: "n:jobs", isNew: true });
+      ex.lines.push({ s: 'api -> jobs @queue : "enqueue"', ref: "e:api>jobs", isNew: true });
+      exRenderSvg(); exRenderCode(["n:jobs", "e:api>jobs"]);
+      exRev.textContent = "revision 14 · agent";
+      exAgent.lastChild.textContent = "Review agent edit";
+      exStatusSet(`Agent edit <b>validated and saved</b>: + component jobs, + connection api -&gt; jobs. Badged for review.`);
+    } else if (ex.agent === 1) {
+      ex.agent = 2;
+      ex.nodes.forEach((n) => { n.agent = false; });
+      ex.lines.forEach((l) => { l.isNew = false; });
+      exRenderSvg(); exRenderCode();
+      exRev.textContent = "revision 14 · agent, reviewed";
+      exAgent.disabled = true; exAgent.lastChild.textContent = "Reviewed";
+      exStatusSet(`Reviewed. Revision 14 keeps the diff: <b>+1 component, +1 connection</b>.`);
+    }
+  });
+  $("#ex-reset").addEventListener("click", () => {
+    exInit(); exAll();
+    exRev.textContent = "revision 13 · you";
+    exAgent.disabled = false; exAgent.lastChild.textContent = "Run agent edit";
+    exStatusSet("Drag any box. The file on the right will not change.");
+  });
+
+  /* ---------------- mini constellations for the log ---------------- */
+  $$(".entry svg").forEach((svg) => {
+    const r = rng(Number(svg.dataset.seed) * 7919);
+    svg.setAttribute("viewBox", "0 0 76 76");
+    const pts = [];
+    const n = 4 + Math.floor(r() * 4);
+    for (let i = 0; i < n; i++) pts.push([10 + r() * 56, 10 + r() * 56]);
+    let d = "";
+    for (let i = 1; i < n; i++) { let b = 0, bd = 1e9; for (let j = 0; j < i; j++) { const dd = (pts[i][0] - pts[j][0]) ** 2 + (pts[i][1] - pts[j][1]) ** 2; if (dd < bd) { bd = dd; b = j; } } d += `M${pts[b][0].toFixed(1)} ${pts[b][1].toFixed(1)}L${pts[i][0].toFixed(1)} ${pts[i][1].toFixed(1)}`; }
+    let html = `<circle cx="38" cy="38" r="36" fill="none" stroke="rgba(168,190,255,0.16)" stroke-dasharray="1.5 4"/><path d="${d}" stroke="rgba(180,200,255,0.35)" stroke-width="0.8" fill="none"/>`;
+    pts.forEach((p, i) => {
+      const big = i === 0;
+      html += `<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="${big ? 5 : 3}" fill="${big ? "rgba(242,221,178,0.18)" : "rgba(180,200,255,0.12)"}"/><circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="${big ? 1.9 : 1.2}" fill="${big ? "#f2ddb2" : "#cfdaf5"}"/>`;
+    });
+    svg.innerHTML = html;
+  });
+
+  /* ---------------- closing field (static) ---------------- */
+  function drawClosing() {
+    const cv = $("#closing-field"), w = cv.clientWidth, h = cv.clientHeight;
+    if (!w || !h) return;
+    const c = sizeCanvas(cv, w, h), r = rng(77);
+    for (let i = 0; i < 220; i++) {
+      const x = r() * w, y = r() * h, s = (0.6 + r() * 1.6) * 3.4;
+      c.globalAlpha = (0.15 + r() * 0.55) * Math.min(1, (x / w) * 1.6);
+      c.drawImage(r() < 0.25 ? SPR_WARM : SPR_COOL, x - s, y - s, s * 2, s * 2);
+    }
+  }
+
+  setup();
+  drawClosing();
+  window.addEventListener("resize", () => { clearTimeout(drawClosing._t); drawClosing._t = setTimeout(drawClosing, 150); });
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { setup(); }).catch(() => {});
+})();
+</script>
+</body>
+</html>

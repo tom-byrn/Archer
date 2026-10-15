@@ -1,0 +1,1851 @@
+<!doctype html>
+<!--
+  Concept: Maquette. Archer's landing page as an architect's physical model: the Acme system
+  stands on a base board as matte, softly lit card-stock blocks with threads and travelling packets.
+  "Plan view" swings the camera overhead until the model flattens into the 2D canvas diagram,
+  and "Code" slides the .arch source in beside it, because the model is the diagram.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Archer — Maquette</title>
+<meta name="description" content="Archer is an architecture canvas that compiles to and from an agent-readable language. Draw your system, or let your coding agent write it through the MCP server.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Alegreya+Sans+SC:wght@400;500&amp;family=Alegreya+Sans:ital,wght@0,300;0,400;0,500;1,300;1,400&amp;family=DM+Mono:wght@300;400;500&amp;family=Schibsted+Grotesk:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<script>
+  (function () {
+    try {
+      var t = localStorage.getItem("maquette-theme");
+      if (t === "light" || t === "dark") document.documentElement.setAttribute("data-theme", t);
+    } catch (e) {}
+  })();
+</script>
+<style>
+:root {
+  --bg: #e2e6e1;
+  --bg-2: #d8ddd7;
+  --spot: #eff2ed;
+  --paper: #f2f4ef;
+  --ink: #1b211e;
+  --ink-2: #414944;
+  --ink-3: #5a625d;
+  --line: #c4cac3;
+  --line-2: #a9b1a9;
+  --accent: #2c45c4;
+  --accent-wash: rgba(44, 69, 196, 0.1);
+  --on-ink: #f3f5f1;
+
+  --m-top: #fcfcfa;
+  --m-w: #eceee9;
+  --m-s: #d3d8d1;
+  --m-s1: #e6e9e3;
+  --m-outline: rgba(28, 36, 32, 0.17);
+  --f-line: rgba(28, 36, 32, 0.08);
+  --sheen-a: 0.85;
+  --sheen-b: 0;
+  --b-top: #e8ebe5;
+  --b-w: #d2d7cf;
+  --b-s: #bcc3ba;
+  --dot: rgba(34, 44, 38, 0.24);
+  --p-top: #f3f5f0;
+  --p-w: #e0e4dd;
+  --p-s: #c9cfc6;
+  --c-top: #f1f3ee;
+  --print: #232a26;
+  --print-2: #6a726d;
+  --tile: #eef0eb;
+  --chrome: #e9ece6;
+  --groove: rgba(30, 42, 36, 0.09);
+  --thread: #2c45c4;
+  --pk: #2c45c4;
+  --pk-halo: 0.16;
+  --plate: #f7f8f4;
+  --plate-line: rgba(30, 40, 35, 0.2);
+  --sh: rgba(42, 54, 48, 0.34);
+  --ao: rgba(24, 30, 27, 0.4);
+  --floor-sh: rgba(40, 52, 46, 0.32);
+  --win: rgba(36, 46, 40, 0.12);
+  --win-on: rgba(36, 46, 40, 0.12);
+  --win-filter: none;
+  --add-top: #e7ebfb;
+  --add-w: #d5dbf5;
+  --add-s: #bfc8ee;
+  --del: #7a817c;
+  --ghost: rgba(255, 255, 255, 0.28);
+  --fig: #fbfbf9;
+  --fig-2: #c4cac2;
+  --tray: rgba(30, 40, 35, 0.035);
+  --code-bg: #f3f5f0;
+  --tok-kw: #1b211e;
+  --tok-str: #4d5550;
+  --tok-type: #2c45c4;
+  --tok-punc: #8a918c;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #131a27;
+    --bg-2: #0f1520;
+    --spot: #1d2739;
+    --paper: #182031;
+    --ink: #e7ecf4;
+    --ink-2: #b7c1d1;
+    --ink-3: #8f9bb0;
+    --line: #273145;
+    --line-2: #3a465d;
+    --accent: #97acff;
+    --accent-wash: rgba(151, 172, 255, 0.12);
+    --on-ink: #10151f;
+    --m-top: #2a3346;
+    --m-w: #212a3b;
+    --m-s: #182030;
+    --m-s1: #1d2536;
+    --m-outline: rgba(150, 178, 255, 0.45);
+    --f-line: rgba(150, 178, 255, 0.16);
+    --sheen-a: 0.07;
+    --sheen-b: 0;
+    --b-top: #1b2333;
+    --b-w: #151c2a;
+    --b-s: #0f151f;
+    --dot: rgba(170, 190, 235, 0.17);
+    --p-top: #212a3c;
+    --p-w: #1a2232;
+    --p-s: #131a27;
+    --c-top: #1f2738;
+    --print: #e2e8f3;
+    --print-2: #93a0b7;
+    --tile: #333d53;
+    --chrome: #313b50;
+    --groove: rgba(0, 0, 0, 0.32);
+    --thread: #8ea5ff;
+    --pk: #c3cfff;
+    --pk-halo: 0.38;
+    --plate: #242d40;
+    --plate-line: rgba(150, 178, 255, 0.28);
+    --sh: rgba(2, 6, 14, 0.62);
+    --ao: rgba(0, 0, 0, 0.62);
+    --floor-sh: rgba(0, 0, 0, 0.6);
+    --win: rgba(6, 10, 18, 0.55);
+    --win-on: #ffd18c;
+    --win-filter: url(#glowW);
+    --add-top: #2c3868;
+    --add-w: #232d56;
+    --add-s: #1b2446;
+    --del: #7f8a9e;
+    --ghost: rgba(255, 255, 255, 0.03);
+    --fig: #cdd6e6;
+    --fig-2: #6f7a90;
+    --tray: rgba(0, 0, 0, 0.18);
+    --code-bg: #161e2d;
+    --tok-kw: #e7ecf4;
+    --tok-str: #b7c1d1;
+    --tok-type: #9fb3ff;
+    --tok-punc: #6f7b91;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #131a27;
+  --bg-2: #0f1520;
+  --spot: #1d2739;
+  --paper: #182031;
+  --ink: #e7ecf4;
+  --ink-2: #b7c1d1;
+  --ink-3: #8f9bb0;
+  --line: #273145;
+  --line-2: #3a465d;
+  --accent: #97acff;
+  --accent-wash: rgba(151, 172, 255, 0.12);
+  --on-ink: #10151f;
+  --m-top: #2a3346;
+  --m-w: #212a3b;
+  --m-s: #182030;
+  --m-s1: #1d2536;
+  --m-outline: rgba(150, 178, 255, 0.45);
+  --f-line: rgba(150, 178, 255, 0.16);
+  --sheen-a: 0.07;
+  --sheen-b: 0;
+  --b-top: #1b2333;
+  --b-w: #151c2a;
+  --b-s: #0f151f;
+  --dot: rgba(170, 190, 235, 0.17);
+  --p-top: #212a3c;
+  --p-w: #1a2232;
+  --p-s: #131a27;
+  --c-top: #1f2738;
+  --print: #e2e8f3;
+  --print-2: #93a0b7;
+  --tile: #333d53;
+  --chrome: #313b50;
+  --groove: rgba(0, 0, 0, 0.32);
+  --thread: #8ea5ff;
+  --pk: #c3cfff;
+  --pk-halo: 0.38;
+  --plate: #242d40;
+  --plate-line: rgba(150, 178, 255, 0.28);
+  --sh: rgba(2, 6, 14, 0.62);
+  --ao: rgba(0, 0, 0, 0.62);
+  --floor-sh: rgba(0, 0, 0, 0.6);
+  --win: rgba(6, 10, 18, 0.55);
+  --win-on: #ffd18c;
+  --win-filter: url(#glowW);
+  --add-top: #2c3868;
+  --add-w: #232d56;
+  --add-s: #1b2446;
+  --del: #7f8a9e;
+  --ghost: rgba(255, 255, 255, 0.03);
+  --fig: #cdd6e6;
+  --fig-2: #6f7a90;
+  --tray: rgba(0, 0, 0, 0.18);
+  --code-bg: #161e2d;
+  --tok-kw: #e7ecf4;
+  --tok-str: #b7c1d1;
+  --tok-type: #9fb3ff;
+  --tok-punc: #6f7b91;
+  color-scheme: dark;
+}
+
+/* ---------- base ---------- */
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: "Alegreya Sans", "Gill Sans", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  font-weight: 400;
+  font-size: 18px;
+  line-height: 1.55;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+a { color: inherit; }
+img, svg { display: block; }
+button { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 3px; }
+.skip { position: absolute; left: 12px; top: -60px; background: var(--ink); color: var(--on-ink); padding: 8px 12px; z-index: 50; text-decoration: none; }
+.skip:focus { top: 12px; }
+.wrap {
+  max-width: 1328px;
+  margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+@media (min-width: 900px) {
+  .wrap { padding-left: max(40px, env(safe-area-inset-left, 0px)); padding-right: max(40px, env(safe-area-inset-right, 0px)); }
+}
+.sc { font-family: "Alegreya Sans SC", "Alegreya Sans", "Gill Sans", sans-serif; letter-spacing: 0.08em; }
+.mono, code, pre { font-family: "DM Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace; }
+.eyebrow {
+  font-family: "Alegreya Sans SC", "Alegreya Sans", sans-serif;
+  font-size: 15px; letter-spacing: 0.14em; color: var(--ink-3);
+  margin: 0 0 14px; font-weight: 500;
+}
+h1, h2, h3 { font-family: "Schibsted Grotesk", "Helvetica Neue", Arial, sans-serif; color: var(--ink); margin: 0; }
+h1 { font-weight: 600; font-size: clamp(42px, 6.1vw, 88px); line-height: 0.97; letter-spacing: -0.04em; }
+h2 { font-weight: 600; font-size: clamp(32px, 3.7vw, 54px); line-height: 1.02; letter-spacing: -0.032em; }
+h3 { font-weight: 600; font-size: 22px; line-height: 1.15; letter-spacing: -0.015em; }
+p { margin: 0; }
+
+/* buttons */
+.btn {
+  display: inline-flex; align-items: center; gap: 10px;
+  height: 46px; padding: 0 20px; border-radius: 4px;
+  font-family: "Schibsted Grotesk", "Helvetica Neue", Arial, sans-serif; font-weight: 500; font-size: 15.5px; letter-spacing: -0.005em;
+  text-decoration: none; cursor: pointer; border: 1px solid transparent; white-space: nowrap;
+  transition: transform .5s cubic-bezier(.3, 1.6, .5, 1), background-color .3s, border-color .3s;
+}
+.btn:hover { transform: translateY(-2px); }
+.btn:active { transform: translateY(0); }
+.btn-ink { background: var(--ink); color: var(--on-ink); }
+.btn-line { border-color: var(--line-2); background: transparent; color: var(--ink); }
+.btn-line:hover { border-color: var(--ink-2); }
+.btn-text { padding: 0 6px; height: 46px; background: none; border: 0; color: var(--ink); text-decoration: underline; text-decoration-color: var(--line-2); text-underline-offset: 5px; }
+.btn-text:hover { text-decoration-color: var(--ink); transform: none; }
+.btn.sm { height: 38px; padding: 0 14px; font-size: 14.5px; }
+.ico { width: 16px; height: 16px; flex: none; }
+.swap { position: relative; width: 16px; height: 16px; display: inline-block; flex: none; }
+.swap svg { position: absolute; inset: 0; width: 16px; height: 16px; transition: opacity .35s, transform .5s cubic-bezier(.3, 1.6, .5, 1); }
+.swap .s-ok { opacity: 0; transform: scale(.4) rotate(-30deg); }
+.copied .swap .s-copy { opacity: 0; transform: scale(.4) rotate(30deg); }
+.copied .swap .s-ok { opacity: 1; transform: none; }
+
+/* ---------- nav ---------- */
+.nav { display: flex; align-items: center; justify-content: space-between; height: 76px; gap: 16px; }
+.brand { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; font-family: "Schibsted Grotesk", sans-serif; font-weight: 700; font-size: 21px; letter-spacing: -0.03em; }
+.brand svg { width: 26px; height: 26px; }
+.nav nav { display: flex; gap: 30px; font-size: 16.5px; }
+.nav nav a { text-decoration: none; color: var(--ink-2); }
+.nav nav a:hover { color: var(--ink); }
+.nav-r { display: flex; align-items: center; gap: 10px; }
+.theme {
+  width: 38px; height: 38px; display: inline-grid; place-items: center; border-radius: 50%;
+  border: 1px solid var(--line); background: transparent; cursor: pointer; color: var(--ink-2);
+}
+.theme:hover { color: var(--ink); border-color: var(--line-2); }
+.theme svg { width: 17px; height: 17px; display: none; }
+.theme[data-mode="system"] .t-sys, .theme[data-mode="light"] .t-sun, .theme[data-mode="dark"] .t-moon { display: block; }
+@media (max-width: 760px) { .nav nav { display: none; } }
+@media (max-width: 420px) { .nav-r .btn { padding: 0 12px; font-size: 14px; } }
+
+/* ---------- hero ---------- */
+.hero-head { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 56px; align-items: end; padding-top: 34px; padding-bottom: 6px; }
+.hero-head h1 { max-width: 11.5ch; }
+.lede { font-size: 21px; line-height: 1.5; color: var(--ink-2); font-weight: 300; max-width: 34em; }
+.lede strong { font-weight: 500; color: var(--ink); }
+.ctas { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 12px; margin-top: 24px; }
+.install { margin-top: 18px; display: flex; align-items: center; gap: 0; max-width: 100%; border: 1px solid var(--line); border-radius: 4px; background: color-mix(in srgb, var(--paper) 70%, transparent); }
+.install code { flex: 1; min-width: 0; overflow-x: auto; white-space: nowrap; font-size: 12.5px; padding: 11px 12px; color: var(--ink-2); scrollbar-width: none; }
+.install code::-webkit-scrollbar { display: none; }
+.install .dollar { color: var(--ink-3); user-select: none; }
+.icon-btn { width: 40px; height: 40px; flex: none; display: grid; place-items: center; background: none; border: 0; border-left: 1px solid var(--line); cursor: pointer; color: var(--ink-2); }
+.icon-btn:hover { color: var(--ink); }
+@media (max-width: 900px) {
+  .hero-head { grid-template-columns: 1fr; gap: 22px; padding-top: 18px; }
+  .lede { font-size: 19px; }
+}
+
+.stage {
+  position: relative; margin-top: 18px;
+  background:
+    radial-gradient(ellipse 60% 70% at 50% 42%, var(--spot) 0%, transparent 70%),
+    linear-gradient(to bottom, transparent 0%, var(--bg-2) 100%);
+  border-bottom: 1px solid var(--line);
+}
+.stage-in { display: flex; max-width: 1440px; margin: 0 auto; }
+.model-wrap { position: relative; flex: 1; min-width: 0; height: clamp(250px, 46vw, 630px); }
+.model-wrap svg { width: 100%; height: 100%; overflow: visible; }
+.code { width: 0; overflow: hidden; transition: width .9s cubic-bezier(.22, 1.18, .36, 1); }
+.code-in { width: min(430px, 40vw); height: 100%; padding: 26px 26px 26px 0; }
+.sheet {
+  height: 100%; background: var(--code-bg); border: 1px solid var(--line);
+  border-radius: 3px; display: flex; flex-direction: column;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, .5) inset, 0 24px 50px -30px var(--floor-sh);
+}
+.sheet-head { display: flex; justify-content: space-between; align-items: baseline; padding: 14px 18px 10px; border-bottom: 1px solid var(--line); font-size: 15px; color: var(--ink-3); }
+.sheet-head b { font-family: "DM Mono", monospace; font-weight: 500; font-size: 13px; color: var(--ink); }
+#src { margin: 0; padding: 14px 0 18px; font-size: 12.5px; line-height: 1.72; overflow: auto; flex: 1; counter-reset: ln; color: var(--ink); }
+#src .ln { display: block; padding: 0 18px 0 0; white-space: pre; border-left: 2px solid transparent; transition: background-color .3s, border-color .3s; cursor: default; }
+#src .ln::before { counter-increment: ln; content: counter(ln); display: inline-block; width: 38px; padding-right: 14px; text-align: right; color: var(--tok-punc); user-select: none; }
+#src .ln.hot { background: var(--accent-wash); border-left-color: var(--accent); }
+.k { color: var(--tok-kw); font-weight: 500; }
+.s { color: var(--tok-str); }
+.t { color: var(--tok-type); }
+.p { color: var(--tok-punc); }
+.stage.code-on .code { width: min(430px, 40vw); }
+
+.stage-bar { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px 28px; flex-wrap: wrap; padding-top: 6px; padding-bottom: 22px; }
+.placard { font-size: 16px; color: var(--ink-2); display: flex; flex-direction: column; gap: 2px; padding-left: 14px; border-left: 1px solid var(--line-2); }
+.placard .cap { font-family: "Alegreya Sans SC", sans-serif; letter-spacing: 0.08em; color: var(--ink); font-size: 16px; }
+.placard .hint { font-style: italic; font-weight: 300; color: var(--ink-3); font-size: 15.5px; }
+.controls { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.seg { display: inline-flex; border: 1px solid var(--line-2); border-radius: 4px; padding: 3px; gap: 3px; background: color-mix(in srgb, var(--paper) 60%, transparent); }
+.seg button, .tog {
+  height: 36px; padding: 0 14px; border: 0; border-radius: 2px; background: transparent; cursor: pointer;
+  font-family: "Schibsted Grotesk", sans-serif; font-weight: 500; font-size: 14.5px; color: var(--ink-2);
+  display: inline-flex; align-items: center; gap: 8px; transition: background-color .35s, color .35s;
+}
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--on-ink); }
+.tog { border: 1px solid var(--line-2); height: 44px; border-radius: 4px; padding: 0 16px; background: color-mix(in srgb, var(--paper) 60%, transparent); }
+.tog[aria-pressed="true"] { background: var(--ink); color: var(--on-ink); border-color: var(--ink); }
+.tog .knob { width: 22px; height: 12px; border-radius: 6px; border: 1px solid currentColor; position: relative; opacity: .8; }
+.tog .knob::after { content: ""; position: absolute; top: 2px; left: 2px; width: 6px; height: 6px; border-radius: 50%; background: currentColor; transition: transform .55s cubic-bezier(.3, 1.6, .5, 1); }
+.tog[aria-pressed="true"] .knob::after { transform: translateX(10px); }
+@media (max-width: 820px) {
+  .stage-in { flex-direction: column; }
+  .model-wrap { height: clamp(240px, 64vw, 520px); }
+  .code { width: auto; display: grid; grid-template-rows: 0fr; transition: grid-template-rows .8s cubic-bezier(.22, 1.1, .36, 1); }
+  .stage.code-on .code { width: auto; grid-template-rows: 1fr; }
+  .code-in { width: auto; min-height: 0; overflow: hidden; padding: 0 max(16px, env(safe-area-inset-right, 0px)) 0 max(16px, env(safe-area-inset-left, 0px)); }
+  .stage.code-on .code-in { padding-bottom: 16px; }
+  #src { font-size: 11.5px; }
+  #src .ln::before { width: 30px; padding-right: 10px; }
+}
+
+/* ---------- model svg ---------- */
+.f-top { fill: var(--m-top); }
+.f-w { fill: var(--m-w); }
+.f-s { fill: var(--m-s); }
+.f-under { fill: var(--m-s1); }
+.f-line { fill: none; stroke: var(--f-line); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.outline { fill: none; stroke: var(--m-outline); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.sheen { fill: url(#sheen); pointer-events: none; }
+.sh0 { stop-color: #fff; stop-opacity: var(--sheen-a); }
+.sh1 { stop-color: #fff; stop-opacity: 0; }
+.cs0 { stop-color: var(--m-w); }
+.cs1 { stop-color: var(--m-s1); }
+.cs2 { stop-color: var(--m-s); }
+.cyl-side { stroke: none; }
+.cyl-band { fill: none; stroke: var(--f-line); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.mat-board .f-top { fill: var(--b-top); }
+.mat-board .f-w { fill: var(--b-w); }
+.mat-board .f-s { fill: var(--b-s); }
+.mat-board .outline { stroke: var(--f-line); }
+.mat-board .sheen { display: none; }
+.grid { fill: url(#dots); }
+.grid2 { fill: url(#dots2); }
+#dots circle, #dots2 circle { fill: var(--dot); }
+.mat-plinth .f-top { fill: var(--p-top); }
+.mat-plinth .f-w { fill: var(--p-w); }
+.mat-plinth .f-s { fill: var(--p-s); }
+.mat-ctx .f-top { fill: var(--c-top); }
+.mat-ctx .outline { stroke-dasharray: 4 3; stroke: var(--line-2); }
+.mat-added .f-top { fill: var(--add-top); }
+.mat-added .f-w { fill: var(--add-w); }
+.mat-added .f-s { fill: var(--add-s); }
+.mat-added .cs0 { stop-color: var(--add-w); }
+.mat-ghost .f-top, .mat-ghost .f-w, .mat-ghost .f-s { fill: var(--ghost); }
+.mat-ghost .outline, .mat-ghost .f-line { stroke: var(--del); stroke-dasharray: 3 3; }
+.mat-ghost .sheen { display: none; }
+.mat-ghost .lbl, .mat-ghost .typ, .mat-ghost .gl { opacity: .55; }
+.mat-ghost .tile { fill: none; }
+.lbl { font-family: "Schibsted Grotesk", "Helvetica Neue", Arial, sans-serif; font-weight: 600; font-size: 17px; fill: var(--print); letter-spacing: -0.01em; }
+.lbl.s { font-size: 12.5px; }
+.typ { font-family: "DM Mono", ui-monospace, monospace; font-size: 10.5px; fill: var(--print-2); }
+.typ.s { font-size: 8.5px; }
+.plane-t { font-family: "Alegreya Sans SC", "Alegreya Sans", sans-serif; font-weight: 500; font-size: 15px; letter-spacing: 0.14em; fill: var(--print-2); }
+.tile { fill: var(--tile); }
+.gl { fill: none; stroke: var(--print); stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.chrome { fill: var(--chrome); }
+.cdot { fill: var(--print-2); opacity: .55; }
+.url { fill: var(--m-top); opacity: .9; }
+.groove { fill: none; stroke: var(--groove); stroke-width: 6; stroke-linecap: round; stroke-linejoin: round; }
+.th { fill: none; stroke: var(--thread); stroke-width: 1.4; vector-effect: non-scaling-stroke; stroke-linecap: round; stroke-linejoin: round; transition: stroke-width .3s; }
+.th.hot { stroke-width: 2.6; }
+.th.added { stroke: var(--thread); }
+.th.gone { stroke: var(--del); stroke-dasharray: 3 3; }
+.arrow { fill: var(--thread); }
+.arrow.gone { fill: var(--del); }
+.plate rect { fill: var(--plate); stroke: var(--plate-line); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.plate text { font-family: "DM Mono", ui-monospace, monospace; font-size: 9.5px; fill: var(--print-2); letter-spacing: .02em; }
+.eng { font-family: "DM Mono", ui-monospace, monospace; font-size: 10px; fill: var(--print-2); }
+.eng-sc { font-family: "Alegreya Sans SC", sans-serif; font-size: 12px; letter-spacing: .1em; fill: var(--print-2); }
+.sh-long path, .sh-long ellipse { fill: var(--sh); }
+.sh-long .fig-cast { fill: none; stroke: var(--sh); stroke-width: 7; stroke-linecap: round; }
+.sh-ao path, .sh-ao ellipse { fill: var(--ao); }
+.floor-sh { fill: var(--floor-sh); }
+.pk { pointer-events: none; }
+.pk-core { fill: var(--pk); }
+.pk-halo { fill: var(--pk); opacity: var(--pk-halo); }
+.pk.hot .pk-halo { opacity: calc(var(--pk-halo) * 2); }
+.wins { filter: var(--win-filter); }
+.win { fill: var(--win); }
+.win.on { fill: var(--win-on); }
+.tray-floor { fill: var(--tray); }
+.foot-dash { fill: none; stroke: var(--line-2); stroke-width: 1.2; stroke-dasharray: 5 4; vector-effect: non-scaling-stroke; }
+.print-ink { fill: none; stroke: var(--print); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.print-fill { fill: var(--print); }
+.print-acc { fill: none; stroke: var(--thread); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.fig-b { fill: url(#figGrad); }
+.fig-h { fill: var(--fig); }
+.fg0 { stop-color: var(--fig); }
+.fg1 { stop-color: var(--fig-2); }
+.fig-l text { font-family: "Alegreya Sans SC", sans-serif; font-size: 15px; letter-spacing: .1em; fill: var(--ink); font-weight: 500; }
+.fig-l .d { font-family: "DM Mono", monospace; font-size: 10px; letter-spacing: 0; fill: var(--ink-3); font-weight: 400; }
+.fig-l line { stroke: var(--ink-3); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.unit { outline: none; }
+.unit.lift-able { cursor: pointer; }
+.unit:focus-visible .outline { stroke: var(--accent); stroke-width: 2.5; stroke-dasharray: none; }
+.tag { opacity: 0; transition: opacity .35s ease; pointer-events: none; }
+.tag.on { opacity: 1; }
+.tag rect { fill: var(--ink); }
+.tag text { font-family: "DM Mono", monospace; font-size: 12px; fill: var(--on-ink); }
+.tag line { stroke: var(--ink); stroke-width: 1; }
+
+/* ---------- section scaffolding ---------- */
+section { position: relative; }
+.rule { border-top: 1px solid var(--line); }
+.band { display: grid; grid-template-columns: 1.1fr 1fr 1fr 1fr; gap: 40px; padding-top: 64px; padding-bottom: 72px; }
+.band h2 { font-size: clamp(28px, 2.6vw, 38px); }
+.band .col h3 { font-size: 19px; margin-bottom: 8px; display: flex; align-items: baseline; gap: 10px; }
+.band .col h3 .sc { font-family: "DM Mono", monospace; letter-spacing: 0; font-size: 12px; color: var(--accent); font-weight: 400; }
+.band .col p { color: var(--ink-2); font-weight: 300; font-size: 17.5px; }
+@media (max-width: 1000px) { .band { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 600px) { .band { grid-template-columns: 1fr; gap: 28px; padding-top: 48px; padding-bottom: 52px; } }
+
+.sec-head { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 40px; align-items: end; padding-top: 96px; padding-bottom: 40px; }
+.sec-head p.sub { color: var(--ink-2); font-weight: 300; font-size: 19px; max-width: 32em; }
+@media (max-width: 860px) { .sec-head { grid-template-columns: 1fr; gap: 16px; padding-top: 64px; padding-bottom: 28px; } }
+
+.vgrid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); column-gap: 40px; }
+.vig { margin: 0; padding: 30px 0 46px; border-top: 1px solid var(--line); display: flex; flex-direction: column; min-width: 0; }
+.vig.c7 { grid-column: span 7; }
+.vig.c5 { grid-column: span 5; }
+.vig.c12 { grid-column: span 12; }
+.vig-model { position: relative; flex: 1; display: flex; align-items: center; justify-content: center; min-height: 0; }
+.vig-model svg { width: 100%; height: auto; max-height: 420px; overflow: visible; }
+.crumb { position: absolute; left: 0; top: 0; font-family: "DM Mono", monospace; font-size: 12.5px; color: var(--ink-3); display: flex; gap: 6px; align-items: center; }
+.crumb b { color: var(--ink); font-weight: 500; }
+.vig figcaption { margin-top: 18px; display: grid; grid-template-columns: 92px minmax(0, 1fr); gap: 4px 18px; }
+.vig figcaption .fig { font-family: "Alegreya Sans SC", sans-serif; letter-spacing: .1em; font-size: 15px; color: var(--ink-3); padding-top: 3px; }
+.vig figcaption h3 { grid-column: 2; }
+.vig figcaption p { grid-column: 2; color: var(--ink-2); font-weight: 300; font-size: 17.5px; max-width: 34em; margin-top: 6px; }
+.vig figcaption .snip { grid-column: 2; margin-top: 12px; }
+.snip { display: flex; align-items: center; border: 1px solid var(--line); border-radius: 4px; background: color-mix(in srgb, var(--paper) 70%, transparent); max-width: 100%; }
+.snip code { flex: 1; min-width: 0; overflow-x: auto; white-space: nowrap; font-size: 12px; padding: 10px 12px; color: var(--ink-2); scrollbar-width: none; }
+.snip code::-webkit-scrollbar { display: none; }
+.revs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 28px; }
+.rev { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.rev svg { width: 100%; height: auto; overflow: visible; }
+.rev-cap { border-left: 1px solid var(--line-2); padding-left: 12px; font-size: 16px; }
+.rev-cap .who { font-family: "Alegreya Sans SC", sans-serif; letter-spacing: .08em; color: var(--ink); }
+.rev-cap .who .badge { font-family: "DM Mono", monospace; letter-spacing: 0; font-size: 11px; color: var(--accent); border: 1px solid currentColor; border-radius: 3px; padding: 1px 5px; margin-left: 6px; vertical-align: 2px; }
+.rev-cap ul { list-style: none; padding: 0; margin: 4px 0 0; font-family: "DM Mono", monospace; font-size: 12.5px; color: var(--ink-2); line-height: 1.7; }
+.rev-cap .add { color: var(--accent); }
+.rev-cap .del { color: var(--ink-3); text-decoration: line-through; text-decoration-color: var(--line-2); }
+.rev-cap .mv { color: var(--ink-3); font-style: italic; font-family: "Alegreya Sans", sans-serif; font-size: 15px; }
+@media (max-width: 1000px) {
+  .vig.c7, .vig.c5 { grid-column: span 12; }
+}
+@media (max-width: 760px) {
+  .revs { grid-template-columns: 1fr; gap: 22px; }
+  .vig figcaption { grid-template-columns: 1fr; }
+  .vig figcaption h3, .vig figcaption p, .vig figcaption .snip { grid-column: 1; }
+  .vig figcaption .fig { padding: 0; }
+}
+
+/* notes */
+.notes { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: 56px; padding-top: 80px; padding-bottom: 88px; }
+.notes dl { margin: 0; display: grid; gap: 0; }
+.notes dl div { display: grid; grid-template-columns: 190px minmax(0, 1fr); gap: 20px; padding: 18px 0; border-top: 1px solid var(--line); }
+.notes dt { font-family: "Schibsted Grotesk", sans-serif; font-weight: 600; font-size: 17px; letter-spacing: -0.01em; }
+.notes dd { margin: 0; color: var(--ink-2); font-weight: 300; font-size: 17.5px; }
+.specimen { background: var(--code-bg); border: 1px solid var(--line); border-radius: 3px; padding: 0; align-self: start; }
+.specimen .sheet-head { font-size: 15px; }
+.specimen pre { margin: 0; padding: 16px 20px 20px; font-size: 13px; line-height: 1.75; overflow-x: auto; }
+@media (max-width: 900px) {
+  .notes { grid-template-columns: 1fr; gap: 36px; padding-top: 56px; padding-bottom: 60px; }
+  .notes dl div { grid-template-columns: 1fr; gap: 4px; }
+}
+
+/* agents */
+.agents { display: grid; grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr); gap: 56px; padding-top: 96px; padding-bottom: 96px; align-items: start; }
+.agents .sub { color: var(--ink-2); font-weight: 300; font-size: 19px; margin-top: 18px; max-width: 32em; }
+.clients { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 22px 0 0; padding: 0; list-style: none; font-family: "Schibsted Grotesk", sans-serif; font-weight: 500; font-size: 16px; color: var(--ink); }
+.clients li::after { content: "·"; margin-left: 18px; color: var(--ink-3); }
+.clients li:last-child::after { content: ""; margin: 0; }
+.steps { margin: 30px 0 0; padding: 0; list-style: none; display: grid; gap: 0; }
+.steps li { display: grid; grid-template-columns: 92px minmax(0, 1fr); gap: 16px; padding: 16px 0; border-top: 1px solid var(--line); align-items: baseline; }
+.steps .k2 { font-family: "Alegreya Sans SC", sans-serif; letter-spacing: .1em; color: var(--ink-3); font-size: 15px; }
+.steps p { color: var(--ink-2); font-weight: 300; font-size: 17.5px; }
+.steps .snip { margin-top: 10px; }
+.tools { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+.tools code { font-size: 11.5px; padding: 3px 7px; border: 1px solid var(--line); border-radius: 3px; color: var(--ink-2); }
+.transcript { margin-top: 18px; background: var(--code-bg); border: 1px solid var(--line); border-radius: 3px; }
+.transcript pre { margin: 0; padding: 14px 18px 18px; font-size: 12.5px; line-height: 1.8; white-space: pre-wrap; color: var(--ink-2); }
+.transcript .who { color: var(--ink-3); }
+.transcript .ok { color: var(--accent); }
+@media (max-width: 960px) { .agents { grid-template-columns: 1fr; gap: 36px; padding-top: 64px; padding-bottom: 64px; } }
+@media (max-width: 520px) { .steps li { grid-template-columns: 1fr; gap: 4px; } }
+
+/* faq */
+.faq { padding-top: 72px; padding-bottom: 80px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); gap: 48px; }
+.faq dl { margin: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 0 40px; }
+.faq dl div { padding: 18px 0 22px; border-top: 1px solid var(--line); }
+.faq dt { font-family: "Schibsted Grotesk", sans-serif; font-weight: 600; font-size: 17.5px; letter-spacing: -0.01em; }
+.faq dd { margin: 6px 0 0; color: var(--ink-2); font-weight: 300; font-size: 17.5px; }
+@media (max-width: 860px) { .faq { grid-template-columns: 1fr; gap: 20px; padding-top: 56px; padding-bottom: 56px; } .faq dl { grid-template-columns: 1fr; } }
+
+/* closing */
+.closing { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 40px; align-items: center; padding-top: 72px; padding-bottom: 88px; }
+.closing h2 { font-size: clamp(38px, 4.6vw, 68px); }
+.closing p { color: var(--ink-2); font-weight: 300; font-size: 19px; margin-top: 16px; max-width: 30em; }
+.closing svg { width: 100%; height: auto; overflow: visible; max-height: 380px; }
+@media (max-width: 860px) { .closing { grid-template-columns: 1fr; padding-top: 48px; padding-bottom: 60px; } .closing .cl-model { order: -1; } }
+
+/* footer */
+footer { border-top: 1px solid var(--line); background: var(--bg-2); }
+.foot { display: grid; grid-template-columns: minmax(0, 1.4fr) repeat(3, minmax(0, 1fr)); gap: 32px; padding-top: 48px; padding-bottom: 36px; }
+.foot h4 { margin: 0 0 12px; font-family: "Alegreya Sans SC", sans-serif; font-weight: 500; letter-spacing: .12em; font-size: 14.5px; color: var(--ink-3); }
+.foot ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; font-size: 16.5px; }
+.foot ul a { text-decoration: none; color: var(--ink-2); }
+.foot ul a:hover { color: var(--ink); text-decoration: underline; text-underline-offset: 4px; }
+.foot .about { color: var(--ink-3); font-size: 15.5px; font-weight: 300; max-width: 22em; margin-top: 12px; }
+.colophon { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding-top: 18px; padding-bottom: 28px; border-top: 1px solid var(--line); font-size: 14.5px; color: var(--ink-3); }
+@media (max-width: 760px) { .foot { grid-template-columns: 1fr 1fr; } .foot .f-brand { grid-column: 1 / -1; } }
+
+.toast { position: fixed; left: 50%; bottom: 22px; transform: translate(-50%, 20px); background: var(--ink); color: var(--on-ink); padding: 10px 16px; border-radius: 4px; font-size: 15px; opacity: 0; transition: opacity .3s, transform .5s cubic-bezier(.3, 1.5, .5, 1); pointer-events: none; z-index: 40; max-width: calc(100vw - 32px); }
+.toast.on { opacity: 1; transform: translate(-50%, 0); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
+  .btn:hover { transform: none; }
+}
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<svg width="0" height="0" aria-hidden="true" focusable="false" style="position:absolute;width:0;height:0;overflow:hidden">
+  <defs id="defs">
+    <linearGradient id="sheen" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" class="sh0"></stop>
+      <stop offset="0.7" class="sh1"></stop>
+    </linearGradient>
+    <pattern id="dots" width="40" height="40" patternUnits="userSpaceOnUse">
+      <circle cx="0" cy="0" r="1.3"></circle><circle cx="40" cy="0" r="1.3"></circle>
+      <circle cx="0" cy="40" r="1.3"></circle><circle cx="40" cy="40" r="1.3"></circle>
+    </pattern>
+    <pattern id="dots2" width="20" height="20" patternUnits="userSpaceOnUse">
+      <circle cx="0" cy="0" r="0.9"></circle><circle cx="20" cy="0" r="0.9"></circle>
+      <circle cx="0" cy="20" r="0.9"></circle><circle cx="20" cy="20" r="0.9"></circle>
+    </pattern>
+    <filter id="blurL" filterUnits="userSpaceOnUse" x="-3000" y="-3000" width="6000" height="6000"><feGaussianBlur stdDeviation="7"></feGaussianBlur></filter>
+    <filter id="blurA" filterUnits="userSpaceOnUse" x="-3000" y="-3000" width="6000" height="6000"><feGaussianBlur stdDeviation="2.2"></feGaussianBlur></filter>
+    <filter id="blurF" filterUnits="userSpaceOnUse" x="-3000" y="-3000" width="6000" height="6000"><feGaussianBlur stdDeviation="18"></feGaussianBlur></filter>
+    <filter id="glowW" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="2.2" result="b"></feGaussianBlur><feMerge><feMergeNode in="b"></feMergeNode><feMergeNode in="SourceGraphic"></feMergeNode></feMerge></filter>
+    <linearGradient id="figGrad" x1="0" y1="0" x2="1" y2="0"><stop offset="0.25" class="fg0"></stop><stop offset="1" class="fg1"></stop></linearGradient>
+  </defs>
+</svg>
+
+<header class="wrap nav">
+  <a class="brand" href="#" aria-label="Archer home">
+    <svg viewBox="0 0 26 26" aria-hidden="true"><path d="M13 2.5 23 8.2v9.6L13 23.5 3 17.8V8.2Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"></path><path d="M3 8.2 13 14l10-5.8M13 14v9.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"></path><circle cx="13" cy="14" r="2.2" fill="var(--accent)"></circle></svg>
+    Archer
+  </a>
+  <nav aria-label="Primary">
+    <a href="#studies">Features</a>
+    <a href="#agents">MCP server</a>
+    <a href="#">Language</a>
+    <a href="#">Examples</a>
+  </nav>
+  <div class="nav-r">
+    <button class="theme" id="theme" type="button" data-mode="system" aria-label="Theme: system. Switch theme">
+      <svg class="t-sys" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="1.8"></circle><path d="M12 4a8 8 0 0 1 0 16Z" fill="currentColor"></path></svg>
+      <svg class="t-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="1.8"></circle><path d="M12 2.5v2.5M12 19v2.5M2.5 12H5M19 12h2.5M5.3 5.3l1.8 1.8M16.9 16.9l1.8 1.8M5.3 18.7l1.8-1.8M16.9 7.1l1.8-1.8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path></svg>
+      <svg class="t-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M19.5 14.5A8 8 0 0 1 9.5 4.5a8 8 0 1 0 10 10Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"></path></svg>
+    </button>
+    <a class="btn btn-ink sm" href="#">Sign in with GitHub</a>
+  </div>
+</header>
+
+<main id="main">
+  <section class="hero" aria-labelledby="h-hero">
+    <div class="wrap hero-head">
+      <div>
+        <p class="eyebrow">Architecture canvas &middot; .arch language &middot; MCP server</p>
+        <h1 id="h-hero">One model of your system, for you and your agents.</h1>
+      </div>
+      <div class="hero-side">
+        <p class="lede">Drag and drop your architecture onto a canvas, or let your coding agent write it in Archer code through the MCP server. <strong>Same document, both hands.</strong></p>
+        <div class="ctas">
+          <a class="btn btn-ink" href="#">Sign in with GitHub</a>
+          <a class="btn btn-line" href="#">Try the sandbox</a>
+          <button class="btn btn-text" type="button" data-copy="prompt">
+            <span class="swap" aria-hidden="true">
+              <svg class="s-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"></rect><path d="M16 8V5.5A1.5 1.5 0 0 0 14.5 4h-9A1.5 1.5 0 0 0 4 5.5v9A1.5 1.5 0 0 0 5.5 16H8" fill="none" stroke="currentColor" stroke-width="1.8"></path></svg>
+              <svg class="s-ok" viewBox="0 0 24 24"><path d="M5 12.5 10 17.5 19.5 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+            </span>
+            Copy agent prompt
+          </button>
+        </div>
+        <div class="install">
+          <code><span class="dollar">$ </span>claude mcp add --transport http archer https://tryarcher.dev/mcp</code>
+          <button class="icon-btn" type="button" data-copy="install" aria-label="Copy install command">
+            <span class="swap" aria-hidden="true">
+              <svg class="s-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"></rect><path d="M16 8V5.5A1.5 1.5 0 0 0 14.5 4h-9A1.5 1.5 0 0 0 4 5.5v9A1.5 1.5 0 0 0 5.5 16H8" fill="none" stroke="currentColor" stroke-width="1.8"></path></svg>
+              <svg class="s-ok" viewBox="0 0 24 24"><path d="M5 12.5 10 17.5 19.5 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+            </span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="stage" id="stage">
+      <div class="stage-in">
+        <div class="model-wrap">
+          <svg id="hero-svg" role="group" aria-label="Model of the Acme system: a Web app, Auth and Billing on the base board, and an API and a Postgres database on a raised Backend plane, joined by threads."></svg>
+        </div>
+        <aside class="code" id="code" aria-label="Archer source for the model">
+          <div class="code-in">
+            <div class="sheet">
+              <div class="sheet-head"><b>acme.arch</b><span class="sc">the same document</span></div>
+              <pre id="src" tabindex="0"></pre>
+            </div>
+          </div>
+        </aside>
+      </div>
+      <div class="wrap stage-bar">
+        <p class="placard" aria-live="polite">
+          <span class="cap" id="figcap">Fig. 1 — Acme, scale 1:40, v0.2</span>
+          <span class="hint" id="fighint">Hover a piece to lift it and read its type.</span>
+        </p>
+        <div class="controls">
+          <div class="seg" role="group" aria-label="Camera">
+            <button type="button" data-view="model" aria-pressed="true">Model</button>
+            <button type="button" data-view="plan" aria-pressed="false">Plan view</button>
+          </div>
+          <button class="tog" type="button" id="codeBtn" aria-pressed="false" aria-controls="code"><span class="knob" aria-hidden="true"></span>Code</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="wrap band" aria-labelledby="h-band">
+    <div>
+      <p class="eyebrow">How it reads</p>
+      <h2 id="h-band">The model is the diagram. The diagram is the code.</h2>
+    </div>
+    <div class="col">
+      <h3>On the canvas <span class="sc">drag</span></h3>
+      <p>Pick from 80+ component types, draw connections, gather parts onto planes. Every move writes valid Archer code.</p>
+    </div>
+    <div class="col">
+      <h3>In the file <span class="sc">.arch</span></h3>
+      <p>Plain text you can diff, review and keep in your repo. Edit it and the canvas redraws. Positions stay out of the way.</p>
+    </div>
+    <div class="col">
+      <h3>From your agent <span class="sc">mcp</span></h3>
+      <p>Any MCP client reads and writes the same document, checked by the same validator the canvas uses.</p>
+    </div>
+  </section>
+
+  <section id="studies" class="wrap" aria-labelledby="h-studies">
+    <header class="sec-head">
+      <div>
+        <p class="eyebrow">Studies</p>
+        <h2 id="h-studies">Small models of what Archer does.</h2>
+      </div>
+      <p class="sub">Each study is drawn by the same engine as the model above. Hover the pieces; they lift.</p>
+    </header>
+
+    <div class="vgrid">
+      <figure class="vig c7">
+        <div class="vig-model">
+          <span class="crumb" aria-hidden="true">Acme <span>/</span> <b>Billing</b></span>
+          <svg id="v-nest" role="img" aria-label="Billing drawn as an open box with its lid lifted. Inside: Checkout, Webhooks and a Ledger. The API outside connects in."></svg>
+        </div>
+        <figcaption>
+          <span class="fig">Fig. 2</span>
+          <h3>Any component can hold its own parts.</h3>
+          <p>Billing opens into Checkout, Webhooks and a Ledger. Double-click to go inside; breadcrumbs lead back out. Parts outside that connect in come along as context.</p>
+        </figcaption>
+      </figure>
+
+      <figure class="vig c5">
+        <div class="vig-model">
+          <svg id="v-team" role="img" aria-label="Three scale figures stand around a small model, labelled Owner, Editor and Viewer."></svg>
+        </div>
+        <figcaption>
+          <span class="fig">Fig. 3</span>
+          <h3>Teams stand around one model.</h3>
+          <p>Personal and team workspaces. Owners manage members, editors change the model, viewers read it. Invite by email.</p>
+        </figcaption>
+      </figure>
+
+      <figure class="vig c12">
+        <div class="revs">
+          <div class="rev">
+            <svg id="v-r12" role="img" aria-label="Revision 12: Web app, Auth, API and Postgres."></svg>
+            <div class="rev-cap"><span class="who">rev 12 &middot; you</span>
+              <ul><li>initial model</li><li>4 components, 3 connections</li></ul>
+            </div>
+          </div>
+          <div class="rev">
+            <svg id="v-r13" role="img" aria-label="Revision 13: Billing added by an agent, with a connection from the API."></svg>
+            <div class="rev-cap"><span class="who">rev 13 &middot; Claude Code<span class="badge">review</span></span>
+              <ul><li class="add">+ billing @stripe</li><li class="add">+ api -&gt; billing @http</li></ul>
+            </div>
+          </div>
+          <div class="rev">
+            <svg id="v-r14" role="img" aria-label="Revision 14: Auth removed, shown as a dashed outline. The Web app was moved, which does not count as a change."></svg>
+            <div class="rev-cap"><span class="who">rev 14 &middot; you</span>
+              <ul><li class="del">auth @clerk</li><li class="del">web -&gt; auth @http</li><li class="mv">web moved: not a change</li></ul>
+            </div>
+          </div>
+        </div>
+        <figcaption>
+          <span class="fig">Fig. 4</span>
+          <h3>Every revision kept, human or agent.</h3>
+          <p>Diffs list what was added, removed or changed. Moving boxes never counts. Agent edits stay badged until you review them.</p>
+        </figcaption>
+      </figure>
+
+      <figure class="vig c5">
+        <div class="vig-model">
+          <svg id="v-share" role="img" aria-label="A small model connected by a live thread to a printed card carrying its diagram and share link, and an image card for a README."></svg>
+        </div>
+        <figcaption>
+          <span class="fig">Fig. 5</span>
+          <h3>A live link, and an image that keeps up.</h3>
+          <p>A read-only link for anyone. The SVG follows the model, so the diagram in your README is never stale.</p>
+          <div class="snip">
+            <code>![Architecture](https://tryarcher.dev/share/k3v9x2/image.svg)</code>
+            <button class="icon-btn" type="button" data-copy="readme" aria-label="Copy README snippet">
+              <span class="swap" aria-hidden="true">
+                <svg class="s-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"></rect><path d="M16 8V5.5A1.5 1.5 0 0 0 14.5 4h-9A1.5 1.5 0 0 0 4 5.5v9A1.5 1.5 0 0 0 5.5 16H8" fill="none" stroke="currentColor" stroke-width="1.8"></path></svg>
+                <svg class="s-ok" viewBox="0 0 24 24"><path d="M5 12.5 10 17.5 19.5 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+              </span>
+            </button>
+          </div>
+        </figcaption>
+      </figure>
+
+      <figure class="vig c7">
+        <div class="vig-model">
+          <svg id="v-parts" role="img" aria-label="A tray of model pieces, each labelled with a component type such as @agent, @llm, @rag, @vector_db, @queue and @kafka."></svg>
+        </div>
+        <figcaption>
+          <span class="fig">Fig. 6</span>
+          <h3>A drawer of 80+ parts.</h3>
+          <p>Agents, LLMs, RAG, MCP servers, AWS, GCP, Azure, Vercel, databases, queues and SaaS, each with its own glyph. When the catalog runs out, make your own types.</p>
+        </figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section class="rule" aria-labelledby="h-notes">
+    <div class="wrap notes">
+      <div>
+        <p class="eyebrow">Notes on the model</p>
+        <h2 id="h-notes">What sits inside each piece.</h2>
+        <dl style="margin-top:28px">
+          <div><dt>Linked to your repo</dt><dd>Link a GitHub repo and branch. The .arch file on the branch is the truth; src paths open the code, and commits sit next to revisions.</dd></div>
+          <div><dt>Data inside components</dt><dd>Attach a schema, an API contract or notes as JSON, YAML or tables, validated as you type. Your agent reads all of it.</dd></div>
+          <div><dt>Agent safety</dt><dd>Agent writes pass the same validation as the canvas. A broken document is rejected, not saved, and agent edits are badged until you review them.</dd></div>
+        </dl>
+      </div>
+      <div class="specimen" aria-label="Example component with details">
+        <div class="sheet-head"><b>billing, opened</b><span class="sc">specimen</span></div>
+<pre><span class="k">component</span> billing <span class="s">"Billing"</span> <span class="t">@stripe</span> <span class="p">{</span>
+  <span class="k">desc</span> <span class="s">"Checkout sessions, invoices and webhooks"</span>
+  <span class="k">src</span> <span class="s">"services/billing"</span>
+  <span class="k">color</span> orange
+  <span class="k">icon</span> shopping_cart
+
+  <span class="k">component</span> checkout <span class="s">"Checkout"</span> <span class="t">@function</span>
+  <span class="k">component</span> hooks <span class="s">"Webhooks"</span> <span class="t">@function</span>
+  <span class="k">component</span> ledger <span class="s">"Ledger"</span> <span class="t">@postgres.table</span> <span class="p">{</span>
+    <span class="k">shape</span> cylinder
+  <span class="p">}</span>
+<span class="p">}</span>
+
+checkout <span class="p">-&gt;</span> ledger <span class="t">@sql</span> <span class="p">:</span> <span class="s">"record"</span>
+hooks <span class="p">-&gt;</span> ledger <span class="t">@sql</span> <span class="p">:</span> <span class="s">"resolve"</span></pre>
+      </div>
+    </div>
+  </section>
+
+  <section id="agents" class="rule" aria-labelledby="h-agents">
+    <div class="wrap agents">
+      <div>
+        <p class="eyebrow">Connect an agent</p>
+        <h2 id="h-agents">Your agent works on the same model.</h2>
+        <p class="sub">Archer serves an MCP server at tryarcher.dev/mcp. Add it to your client, sign in with the same GitHub account, and your agent can read the model, write Archer code, render it and check its history.</p>
+        <ul class="clients" aria-label="Works with">
+          <li>Claude Code</li><li>Codex</li><li>Cursor</li><li>Gemini CLI</li><li>VS Code</li><li>any MCP client</li>
+        </ul>
+        <ol class="steps">
+          <li><span class="k2">Add</span>
+            <div>
+              <p>One line in Claude Code, or the URL in any client's MCP settings.</p>
+              <div class="snip">
+                <code>claude mcp add --transport http archer https://tryarcher.dev/mcp</code>
+                <button class="icon-btn" type="button" data-copy="install" aria-label="Copy install command">
+                  <span class="swap" aria-hidden="true">
+                    <svg class="s-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"></rect><path d="M16 8V5.5A1.5 1.5 0 0 0 14.5 4h-9A1.5 1.5 0 0 0 4 5.5v9A1.5 1.5 0 0 0 5.5 16H8" fill="none" stroke="currentColor" stroke-width="1.8"></path></svg>
+                    <svg class="s-ok" viewBox="0 0 24 24"><path d="M5 12.5 10 17.5 19.5 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+                  </span>
+                </button>
+              </div>
+            </div>
+          </li>
+          <li><span class="k2">Sign in</span><p>Your client opens the browser once. Standard MCP OAuth, no API keys to paste.</p></li>
+          <li><span class="k2">Ask</span>
+            <div>
+              <p>Starting from a codebase? The agent prompt maps the repo into a first model.</p>
+              <div class="tools" aria-label="Some of the 27 tools">
+                <code>get_project</code><code>update_project</code><code>validate_source</code><code>render_project</code><code>diff_project</code><code>get_history</code><code>list_types</code>
+              </div>
+            </div>
+          </li>
+        </ol>
+      </div>
+      <div>
+        <div class="vig-model">
+          <svg id="v-mcp" role="img" aria-label="A slab labelled Your agent connects by a thread through the MCP server to a small model of the Acme system."></svg>
+        </div>
+        <div class="transcript">
+          <div class="sheet-head"><b>claude code</b><span class="sc">session</span></div>
+<pre><span class="who">you   ›</span> Put a Redis cache in front of the API.
+<span class="who">agent ·</span> get_project("Acme")
+<span class="who">agent ·</span> update_project(…)  <span class="ok">validated, saved as rev 15</span>
+<span class="who">agent ·</span> Added cache @redis and api -&gt; cache @reads.
+        The edit is badged in Archer until you review it.</pre>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="rule" aria-labelledby="h-faq">
+    <div class="wrap faq">
+      <div>
+        <p class="eyebrow">Questions</p>
+        <h2 id="h-faq">Before you start.</h2>
+      </div>
+      <dl>
+        <div><dt>Do I need an account to try it?</dt><dd>No. Every example opens in a sandbox in your browser. Sign in when you want to keep a model.</dd></div>
+        <div><dt>Which agents work?</dt><dd>Any MCP client: Claude Code, Codex, Cursor, Gemini CLI, VS Code and the rest.</dd></div>
+        <div><dt>Can I start from an existing codebase?</dt><dd>Yes. Copy the agent prompt into your agent and it maps the repo into a model.</dd></div>
+        <div><dt>Can I use my own components?</dt><dd>Yes. Make custom types with their own name, glyph and color, from the canvas or from your agent.</dd></div>
+      </dl>
+    </div>
+  </section>
+
+  <section class="rule" aria-labelledby="h-close">
+    <div class="wrap closing">
+      <div>
+        <p class="eyebrow">Fig. 7 — An empty board</p>
+        <h2 id="h-close">Set the first piece down.</h2>
+        <p>Open a sandbox from any example, no account needed. Sign in with GitHub to keep your models, share them and hand them to your agent.</p>
+        <div class="ctas">
+          <a class="btn btn-ink" href="#">Sign in with GitHub</a>
+          <a class="btn btn-line" href="#">Try the sandbox</a>
+          <button class="btn btn-text" type="button" data-copy="prompt">
+            <span class="swap" aria-hidden="true">
+              <svg class="s-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"></rect><path d="M16 8V5.5A1.5 1.5 0 0 0 14.5 4h-9A1.5 1.5 0 0 0 4 5.5v9A1.5 1.5 0 0 0 5.5 16H8" fill="none" stroke="currentColor" stroke-width="1.8"></path></svg>
+              <svg class="s-ok" viewBox="0 0 24 24"><path d="M5 12.5 10 17.5 19.5 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+            </span>
+            Copy agent prompt
+          </button>
+        </div>
+      </div>
+      <div class="cl-model">
+        <svg id="v-cta" role="img" aria-label="An empty dotted board with a single block, Your system, set down on a dashed footprint."></svg>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap foot">
+    <div class="f-brand">
+      <a class="brand" href="#" aria-label="Archer home">
+        <svg viewBox="0 0 26 26" aria-hidden="true"><path d="M13 2.5 23 8.2v9.6L13 23.5 3 17.8V8.2Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"></path><path d="M3 8.2 13 14l10-5.8M13 14v9.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"></path><circle cx="13" cy="14" r="2.2" fill="var(--accent)"></circle></svg>
+        Archer
+      </a>
+      <p class="about">An architecture canvas that compiles to and from the .arch language, for you and your agents.</p>
+    </div>
+    <div>
+      <h4>Product</h4>
+      <ul><li><a href="#">Sandbox</a></li><li><a href="#">Examples</a></li><li><a href="#studies">Features</a></li></ul>
+    </div>
+    <div>
+      <h4>Docs</h4>
+      <ul><li><a href="#">Language reference</a></li><li><a href="#">MCP server</a></li><li><a href="#">CLI</a></li></ul>
+    </div>
+    <div>
+      <h4>Account</h4>
+      <ul><li><a href="#">Sign in with GitHub</a></li><li><a href="#">Workspaces</a></li><li><a href="#">Send feedback</a></li></ul>
+    </div>
+  </div>
+  <div class="wrap">
+    <div class="colophon"><span>tryarcher.dev</span><span>Models drawn live in SVG. Scale 1:40.</span></div>
+  </div>
+</footer>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function () {
+  "use strict";
+  var NS = "http://www.w3.org/2000/svg";
+  var DEG = Math.PI / 180;
+  var mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+  var RM = mq.matches;
+  var DEFS = document.getElementById("defs");
+  var LX = 0.8, LY = 0.6, SK = 0.95;
+  var uid = 0;
+
+  function r2(n) { return Math.round(n * 100) / 100; }
+  function el(tag, a, p) {
+    var e = document.createElementNS(NS, tag);
+    if (a) for (var k in a) e.setAttribute(k, a[k]);
+    if (p) p.appendChild(e);
+    return e;
+  }
+  function txt(p, a, s) { var t = el("text", a, p); t.textContent = s; return t; }
+
+  /* glyphs drawn for this page (24 unit grid, stroked) */
+  var GLYPHS = {
+    globe: "M12 3a9 9 0 1 0 0 18a9 9 0 1 0 0-18Z M3.5 12h17 M12 3c-3.2 3.4-3.2 14.6 0 18 M12 3c3.2 3.4 3.2 14.6 0 18",
+    key: "M11.5 14a4 4 0 1 1-8 0a4 4 0 1 1 8 0Z M10.4 11.1 19 2.5 M15.5 6l2.6 2.6 M13.4 8.1l2 2",
+    bolt: "M13.5 3 6 13.2h5.6L10.2 21l7.8-10.4h-5.6L13.5 3Z",
+    db: "M5 6c0-1.7 3.1-3 7-3s7 1.3 7 3-3.1 3-7 3-7-1.3-7-3Z M5 6v12c0 1.7 3.1 3 7 3s7-1.3 7-3V6 M5 12c0 1.7 3.1 3 7 3s7-1.3 7-3",
+    card: "M3 6.5h18v11H3Z M3 10.2h18 M6.5 14.4h4.5",
+    terminal: "M3 5h18v14H3Z M7 10l3 2.2L7 14.4 M12.5 15h4.5",
+    sparkle: "M12 3c.8 4.7 2.3 6.2 7 7-4.7.8-6.2 2.3-7 7-.8-4.7-2.3-6.2-7-7 4.7-.8 6.2-2.3 7-7Z",
+    agent: "M5.5 8.5h13v10h-13Z M12 4.5v4 M9.5 13h.01 M14.5 13h.01 M9.5 16h5",
+    doc: "M6 3h8l4 4v14H6Z M14 3v4h4 M9 12h6 M9 15.5h4",
+    vec: "M6 6.5h.01 M12 9h.01 M18 6h.01 M8 15h.01 M16 16.5h.01 M12 20h.01 M6 6.5 12 9 18 6 M12 9 8 15 M12 9l4 7.5",
+    queue: "M4 7h11 M4 12h14 M4 17h11 M17 5l3 2-3 2 M17 15l3 2-3 2",
+    fn: "M14.5 4H13a2 2 0 0 0-2 2v12a2 2 0 0 1-2 2H7.5 M7.5 11h7",
+    box: "M12 3l8 4.5v9L12 21l-8-4.5v-9Z M4 7.5 12 12l8-4.5 M12 12v9",
+    stream: "M3 8c3-2 6 2 9 0s6-2 9 0 M3 12c3-2 6 2 9 0s6-2 9 0 M3 16c3-2 6 2 9 0s6-2 9 0",
+    plug: "M8 3v5 M16 3v5 M6 8h12v3a6 6 0 0 1-12 0Z M12 17v4",
+    cart: "M3 4h2.5l2.2 10.5h10.6L20.5 7H7 M9.5 19.5h.01 M17 19.5h.01",
+    hook: "M8 5.5a3 3 0 1 1 3 3 M11 8.5 8 14 M15 18.5a3 3 0 1 1 0-6 M15 12.5h-6 M6.5 16.5a3 3 0 1 1 3 3l2.5-4.5",
+    stack: "M12 3 21 8l-9 5-9-5Z M3 12.5l9 5 9-5 M3 16.5l9 5 9-5",
+    cube: "M12 3l8 4.5v9L12 21l-8-4.5v-9Z M4 7.5 12 12l8-4.5 M12 12v9"
+  };
+  function glyph(p, name, x, y, size) {
+    var g = el("g", { transform: "translate(" + x + " " + y + ") scale(" + (size / 24) + ")" }, p);
+    el("path", { d: GLYPHS[name] || GLYPHS.box, "class": "gl" }, g);
+    return g;
+  }
+
+  /* ---------------- camera ---------------- */
+  function Cam(o) {
+    this.az = -38; this.el = 34; this.zoom = 1; this.cx = 0; this.cy = 0;
+    for (var k in o) this[k] = o[k];
+    this.setup();
+  }
+  Cam.prototype.setup = function () {
+    var a = this.az * DEG, e = this.el * DEG;
+    this.c = Math.cos(a); this.s = Math.sin(a); this.se = Math.sin(e); this.ce = Math.cos(e);
+  };
+  Cam.prototype.P = function (x, y, z) {
+    var dx = x - this.cx, dy = y - this.cy;
+    return [(dx * this.c - dy * this.s) * this.zoom, ((dx * this.s + dy * this.c) * this.se - z * this.ce) * this.zoom];
+  };
+  Cam.prototype.V = function (x, y, z) {
+    return [(x * this.c - y * this.s) * this.zoom, ((x * this.s + y * this.c) * this.se - z * this.ce) * this.zoom];
+  };
+  Cam.prototype.M = function (o, u, v) {
+    var p = this.P(o[0], o[1], o[2]), a = this.V(u[0], u[1], u[2]), b = this.V(v[0], v[1], v[2]);
+    return "matrix(" + r2(a[0] * 1000) / 1000 + " " + r2(a[1] * 1000) / 1000 + " " + r2(b[0] * 1000) / 1000 + " " + r2(b[1] * 1000) / 1000 + " " + r2(p[0]) + " " + r2(p[1]) + ")";
+  };
+
+  function hexPath(x, y, w, d, a, b) {
+    return "M" + r2(x + a[0]) + " " + r2(y + a[1]) + "L" + r2(x + w + a[0]) + " " + r2(y + a[1]) +
+      "L" + r2(x + w + b[0]) + " " + r2(y + b[1]) + "L" + r2(x + w + b[0]) + " " + r2(y + d + b[1]) +
+      "L" + r2(x + b[0]) + " " + r2(y + d + b[1]) + "L" + r2(x + a[0]) + " " + r2(y + d + a[1]) + "Z";
+  }
+  function cylShadow(o, a, b) {
+    var d = "";
+    for (var i = 0; i < 48; i++) {
+      var t = i / 48 * 2 * Math.PI, ct = Math.cos(t), st = Math.sin(t);
+      var dot = ct / o.rx * LX + st / o.ry * LY;
+      var off = dot >= 0 ? b : a;
+      d += (i ? "L" : "M") + r2(o.cx + o.rx * ct + off[0]) + " " + r2(o.cy + o.ry * st + off[1]);
+    }
+    return d + "Z";
+  }
+  function arcIdx(a, b, dir, N) {
+    var out = [], i = a, guard = 0;
+    while (guard++ <= N) { out.push(i); if (i === b) break; i = (i + dir + N) % N; }
+    return out;
+  }
+  function baseZ(it) {
+    var o = it.o;
+    return (o.parent ? baseZ(o.parent) + o.parent.o.h : (o.z || 0)) + it.lift;
+  }
+  function stepSpring(it, dt) {
+    if (it.lift === it.target && it.v === 0) return false;
+    if (RM) { it.lift = it.target; it.v = 0; return true; }
+    var k = it.k || 150, c = 2 * (it.zeta || 0.62) * Math.sqrt(k), t = dt;
+    while (t > 0) {
+      var h = Math.min(t, 1 / 120);
+      var acc = k * (it.target - it.lift) - c * it.v;
+      it.v += acc * h; it.lift += it.v * h; t -= h;
+    }
+    if (Math.abs(it.target - it.lift) < 0.02 && Math.abs(it.v) < 0.05) { it.lift = it.target; it.v = 0; }
+    return true;
+  }
+
+  /* ---------------- scene ---------------- */
+  function Scene(svg, cam) {
+    this.svg = svg; this.cam = new Cam(cam); this.items = []; this.packets = [];
+    this.dirty = true; this.visible = true; this.byId = {};
+    this.overlay = el("g", { "class": "overlay" });
+  }
+  Scene.prototype.push = function (it) { this.items.push(it); if (it.id) this.byId[it.id] = it; return it; };
+  Scene.prototype.layer = function () { return el("g", { "class": "layer" }, this.svg); };
+
+  Scene.prototype.floorShadow = function (x, y, w, d, z) {
+    var p = el("path", { "class": "floor-sh", filter: "url(#blurF)" }, this.svg);
+    return this.push({
+      update: function (c) {
+        var q = [[x + 14, y + 18], [x + w + 26, y + 18], [x + w + 26, y + d + 26], [x + 14, y + d + 26]].map(function (v) { return c.P(v[0], v[1], z); });
+        p.setAttribute("d", "M" + q.map(function (v) { return r2(v[0]) + " " + r2(v[1] + 10); }).join("L") + "Z");
+      }
+    });
+  };
+
+  Scene.prototype.box = function (o) {
+    var self = this;
+    o.z = o.z || 0;
+    var rx = o.rx == null ? 2.5 : o.rx;
+    var root = el("g", { "class": "unit mat-" + (o.mat || "white") + (o.cls ? " " + o.cls : "") }, this.svg);
+    var gw = el("g", null, root), gs = el("g", null, root), gt = el("g", null, root);
+    el("rect", { "class": "f-w", width: o.d, height: o.h }, gw);
+    el("rect", { "class": "f-s", width: o.w, height: o.h }, gs);
+    if (o.side) { o.side(gw, "w", o.d, o.h); o.side(gs, "s", o.w, o.h); }
+    el("rect", { "class": "f-line", width: o.d, height: o.h }, gw);
+    el("rect", { "class": "f-line", width: o.w, height: o.h }, gs);
+    el("rect", { "class": "f-top", x: o.x, y: o.y, width: o.w, height: o.d, rx: rx }, gt);
+    if (o.grid) el("rect", { "class": o.grid === 2 ? "grid2" : "grid", x: o.x, y: o.y, width: o.w, height: o.d }, gt);
+    el("rect", { "class": "sheen", x: o.x, y: o.y, width: o.w, height: o.d, rx: rx }, gt);
+    var it = { id: o.id, o: o, root: root, gt: gt, lift: o.lift0 || 0, v: 0, target: 0 };
+    if (o.plane) {
+      it.sh = el("g", { "class": "sh-long", filter: "url(#blurL)" }, gt);
+      it.ao = el("g", { "class": "sh-ao", filter: "url(#blurA)" }, gt);
+      it.c = el("g", null, gt);
+    }
+    if (o.top) { var cg = el("g", { transform: "translate(" + o.x + " " + o.y + ")" }, gt); o.top(cg, o.w, o.d, it); }
+    el("rect", { "class": "outline", x: o.x, y: o.y, width: o.w, height: o.d, rx: rx }, gt);
+    if (o.on) { it.sl = el("path", null, o.on.sh); it.sa = el("path", null, o.on.ao); }
+    it.update = function (c) {
+      var z = baseZ(it), h = o.h, x = o.x, y = o.y, w = o.w, d = o.d;
+      gt.setAttribute("transform", c.M([0, 0, z + h], [1, 0, 0], [0, 1, 0]));
+      gw.setAttribute("transform", c.M([x, y, z + h], [0, 1, 0], [0, 0, -1]));
+      gs.setAttribute("transform", c.M([x, y + d, z + h], [1, 0, 0], [0, 0, -1]));
+      if (it.sl) {
+        var l = it.lift, a = [LX * SK * l, LY * SK * l], b = [LX * SK * (h + l), LY * SK * (h + l)];
+        it.sl.setAttribute("d", hexPath(x, y, w, d, a, b));
+        var s = 1.2 + l * 0.3;
+        it.sa.setAttribute("d", "M" + r2(x - s + a[0] * 0.5) + " " + r2(y - s + a[1] * 0.5) + "h" + r2(w + 2 * s) + "v" + r2(d + 2 * s) + "h" + r2(-(w + 2 * s)) + "Z");
+        it.sa.style.opacity = Math.max(0, 1 - l / 16);
+        it.sl.style.opacity = Math.max(0.4, 1 - l / 70);
+      }
+    };
+    it.corners = function () {
+      var z0 = o.parent ? baseZ(o.parent) + o.parent.o.h : o.z, zt = z0 + o.h + (o.maxLift || 0);
+      return [[o.x, o.y, z0], [o.x + o.w, o.y, z0], [o.x, o.y + o.d, z0], [o.x + o.w, o.y + o.d, z0],
+        [o.x, o.y, zt], [o.x + o.w, o.y, zt], [o.x, o.y + o.d, zt], [o.x + o.w, o.y + o.d, zt]];
+    };
+    it.topCenter = function () { return [o.x + o.w / 2, o.y + o.d / 2, baseZ(it) + o.h]; };
+    if (o.hover) this.hoverable(it, o.hover);
+    return this.push(it);
+  };
+
+  Scene.prototype.cyl = function (o) {
+    o.z = o.z || 0;
+    var N = 72;
+    var root = el("g", { "class": "unit mat-" + (o.mat || "white") }, this.svg);
+    var gid = "cg" + (++uid);
+    var grad = el("linearGradient", { id: gid, gradientUnits: "userSpaceOnUse", x1: 0, y1: 0, x2: 1, y2: 0 }, DEFS);
+    el("stop", { offset: "0", "class": "cs0" }, grad);
+    el("stop", { offset: "0.4", "class": "cs1" }, grad);
+    el("stop", { offset: "1", "class": "cs2" }, grad);
+    if (o.mat === "added") grad.setAttribute("class", "mat-added");
+    var side = el("path", { "class": "cyl-side", fill: "url(#" + gid + ")" }, root);
+    var bands = [el("path", { "class": "cyl-band" }, root), el("path", { "class": "cyl-band" }, root)];
+    var sideLine = el("path", { "class": "f-line" }, root);
+    var gt = el("g", null, root);
+    el("ellipse", { "class": "f-top", cx: o.cx, cy: o.cy, rx: o.rx, ry: o.ry }, gt);
+    el("ellipse", { "class": "sheen", cx: o.cx, cy: o.cy, rx: o.rx, ry: o.ry }, gt);
+    if (o.top) { var cg = el("g", { transform: "translate(" + o.cx + " " + o.cy + ")" }, gt); o.top(cg, o.rx, o.ry); }
+    el("ellipse", { "class": "outline", cx: o.cx, cy: o.cy, rx: o.rx, ry: o.ry }, gt);
+    var it = { id: o.id, o: o, root: root, gt: gt, lift: o.lift0 || 0, v: 0, target: 0 };
+    if (o.on) { it.sl = el("path", null, o.on.sh); it.sa = el("ellipse", null, o.on.ao); }
+    var cs = [], sn = [];
+    for (var i = 0; i < N; i++) { var t = i / N * 2 * Math.PI; cs.push(Math.cos(t)); sn.push(Math.sin(t)); }
+    it.update = function (c) {
+      var z = baseZ(it), h = o.h;
+      gt.setAttribute("transform", c.M([0, 0, z + h], [1, 0, 0], [0, 1, 0]));
+      var P = [], iL = 0, iR = 0, iB = 0;
+      for (var i = 0; i < N; i++) {
+        var p = c.P(o.cx + o.rx * cs[i], o.cy + o.ry * sn[i], z);
+        P.push(p);
+        if (p[0] < P[iL][0]) iL = i;
+        if (p[0] > P[iR][0]) iR = i;
+        if (p[1] > P[iB][1]) iB = i;
+      }
+      var fw = arcIdx(iL, iR, 1, N);
+      if (fw.indexOf(iB) < 0) fw = arcIdx(iL, iR, -1, N);
+      var dz = h * c.ce * c.zoom;
+      function seg(off) { return fw.map(function (k) { return r2(P[k][0]) + " " + r2(P[k][1] - off); }); }
+      var d = "M" + seg(0).join("L") + "L" + seg(dz).reverse().join("L") + "Z";
+      side.setAttribute("d", d);
+      sideLine.setAttribute("d", d);
+      bands[0].setAttribute("d", "M" + seg(dz * 0.34).join("L"));
+      bands[1].setAttribute("d", "M" + seg(dz * 0.67).join("L"));
+      grad.setAttribute("x1", r2(P[iL][0])); grad.setAttribute("x2", r2(P[iR][0]));
+      if (it.sl) {
+        var l = it.lift;
+        it.sl.setAttribute("d", cylShadow(o, [LX * SK * l, LY * SK * l], [LX * SK * (h + l), LY * SK * (h + l)]));
+        it.sa.setAttribute("cx", r2(o.cx + LX * l * 0.5)); it.sa.setAttribute("cy", r2(o.cy + LY * l * 0.5));
+        it.sa.setAttribute("rx", r2(o.rx + 1.5 + l * 0.3)); it.sa.setAttribute("ry", r2(o.ry + 1.5 + l * 0.3));
+        it.sa.style.opacity = Math.max(0, 1 - l / 16);
+        it.sl.style.opacity = Math.max(0.4, 1 - l / 70);
+      }
+    };
+    it.corners = function () {
+      var z0 = o.parent ? baseZ(o.parent) + o.parent.o.h : o.z, zt = z0 + o.h + (o.maxLift || 0);
+      var x0 = o.cx - o.rx, x1 = o.cx + o.rx, y0 = o.cy - o.ry, y1 = o.cy + o.ry;
+      return [[x0, y0, z0], [x1, y0, z0], [x0, y1, z0], [x1, y1, z0], [x0, y0, zt], [x1, y0, zt], [x0, y1, zt], [x1, y1, zt]];
+    };
+    it.topCenter = function () { return [o.cx, o.cy, baseZ(it) + o.h]; };
+    if (o.hover) this.hoverable(it, o.hover);
+    return this.push(it);
+  };
+
+  /* a flat panel hinged along x (a lid) */
+  Scene.prototype.lid = function (o) {
+    var root = el("g", { "class": "unit mat-" + (o.mat || "white") }, this.svg);
+    var g = el("g", null, root);
+    el("rect", { "class": "f-under", width: o.w, height: o.l, rx: 2 }, g);
+    el("rect", { "class": "sheen", width: o.w, height: o.l, rx: 2 }, g);
+    if (o.content) o.content(g, o.w, o.l);
+    el("rect", { "class": "outline", width: o.w, height: o.l, rx: 2 }, g);
+    var it = { o: o, ang: o.ang, root: root };
+    it.vec = function () { var a = it.ang * DEG; return [0, Math.cos(a), Math.sin(a)]; };
+    it.update = function (c) {
+      var v = it.vec(), H = o.hinge;
+      g.setAttribute("transform", c.M([H[0], H[1] + v[1] * o.l, H[2] + v[2] * o.l], [1, 0, 0], [0, -v[1], -v[2]]));
+    };
+    it.corners = function () {
+      var a = (o.maxAng || o.ang) * DEG, v = [0, Math.cos(a), Math.sin(a)], H = o.hinge;
+      return [[H[0], H[1], H[2]], [H[0] + o.w, H[1], H[2]], [H[0], H[1] + v[1] * o.l, H[2] + v[2] * o.l], [H[0] + o.w, H[1] + v[1] * o.l, H[2] + v[2] * o.l]];
+    };
+    return this.push(it);
+  };
+
+  /* minimal scale figure */
+  Scene.prototype.figure = function (o) {
+    var g = el("g", { "class": "fig" }, this.svg);
+    var body = el("rect", { "class": "fig-b" }, g);
+    var head = el("circle", { "class": "fig-h" }, g);
+    var h = o.h || 34;
+    if (o.on) {
+      el("ellipse", { cx: o.x + 2, cy: o.y + 2, rx: 6, ry: 5 }, o.on.ao);
+      el("path", { "class": "fig-cast", d: "M" + o.x + " " + o.y + "L" + r2(o.x + LX * SK * h) + " " + r2(o.y + LY * SK * h) }, o.on.sh);
+    }
+    var lg = el("g", { "class": "fig-l" }, this.overlay);
+    var ln = el("line", null, lg);
+    var t1 = txt(lg, { "text-anchor": o.anchor || "start" }, o.label);
+    var t2 = o.desc ? txt(lg, { "class": "d", "text-anchor": o.anchor || "start" }, o.desc) : null;
+    var it = {
+      corners: function () { return [[o.x, o.y, 0], [o.x, o.y, h + 50]]; },
+      update: function (c) {
+        var b = c.P(o.x, o.y, 0), t = c.P(o.x, o.y, h * 0.7), hd = c.P(o.x, o.y, h * 0.9);
+        var w = 9 * c.zoom;
+        body.setAttribute("x", r2(b[0] - w / 2)); body.setAttribute("y", r2(t[1]));
+        body.setAttribute("width", r2(w)); body.setAttribute("height", r2(Math.max(0.1, b[1] - t[1] + 1)));
+        body.setAttribute("rx", r2(w / 2));
+        head.setAttribute("cx", r2(hd[0])); head.setAttribute("cy", r2(hd[1] - 5 * c.zoom)); head.setAttribute("r", r2(4.6 * c.zoom));
+        var lx = hd[0] + (o.lx || 0), ly = hd[1] + (o.ly || -40);
+        ln.setAttribute("x1", r2(hd[0])); ln.setAttribute("y1", r2(hd[1] - 14));
+        ln.setAttribute("x2", r2(lx)); ln.setAttribute("y2", r2(ly + 6));
+        t1.setAttribute("x", r2(lx + (o.anchor === "end" ? -4 : 4))); t1.setAttribute("y", r2(ly - 10));
+        if (t2) { t2.setAttribute("x", r2(lx + (o.anchor === "end" ? -4 : 4))); t2.setAttribute("y", r2(ly + 4)); }
+      }
+    };
+    return this.push(it);
+  };
+
+  Scene.prototype.packets = function (pts, layers, opt) {
+    opt = opt || {};
+    var segs = [], total = 0;
+    for (var i = 0; i < pts.length - 1; i++) {
+      var a = pts[i], b = pts[i + 1];
+      var L = Math.hypot(b[0] - a[0], b[1] - a[1], b[2] - a[2]);
+      segs.push({ a: a, b: b, L: L, s: total, layer: layers[Math.min(i, layers.length - 1)] });
+      total += L;
+    }
+    var n = opt.n || 2, speed = opt.speed || 44, phase = opt.phase || 0, els = [];
+    for (var j = 0; j < n; j++) {
+      var g = el("g", { "class": "pk " + (opt.cls || "") });
+      el("circle", { "class": "pk-halo", r: opt.big ? 7 : 5.5 }, g);
+      el("circle", { "class": "pk-core", r: opt.big ? 2.5 : 2 }, g);
+      els.push(g);
+    }
+    function zAt(p) { return p[2] + (p[3] ? p[3].lift : 0); }
+    var pk = {
+      els: els,
+      update: function (c, t) {
+        els.forEach(function (g, i) {
+          var d = RM ? total * (i + 0.5) / n : ((t * speed + phase + i * total / n) % total);
+          var sg = segs[segs.length - 1];
+          for (var k = 0; k < segs.length; k++) { if (d <= segs[k].s + segs[k].L) { sg = segs[k]; break; } }
+          var u = sg.L ? (d - sg.s) / sg.L : 0;
+          var za = zAt(sg.a), zb = zAt(sg.b);
+          var p = c.P(sg.a[0] + (sg.b[0] - sg.a[0]) * u, sg.a[1] + (sg.b[1] - sg.a[1]) * u, za + (zb - za) * u);
+          if (g.parentNode !== sg.layer) sg.layer.appendChild(g);
+          g.setAttribute("transform", "translate(" + r2(p[0]) + " " + r2(p[1]) + ")");
+          g.style.opacity = Math.max(0, Math.min(1, d / 12, (total - d) / 12));
+        });
+      }
+    };
+    this.packets.push(pk);
+    return pk;
+  };
+
+  Scene.prototype.hoverable = function (it, amount) {
+    var self = this;
+    it.root.classList.add("lift-able");
+    it.root.addEventListener("pointerenter", function () { it.target = amount; });
+    it.root.addEventListener("pointerleave", function () { if (!it.pinned) it.target = 0; });
+  };
+
+  Scene.prototype.finish = function (cams, pad) {
+    this.svg.appendChild(this.overlay);
+    pad = pad || [20, 20, 20, 20];
+    var x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+    var save = { az: this.cam.az, el: this.cam.el, zoom: this.cam.zoom };
+    var self = this;
+    cams.forEach(function (cc) {
+      self.cam.az = cc.az; self.cam.el = cc.el; self.cam.zoom = cc.zoom; self.cam.setup();
+      self.items.forEach(function (it) {
+        if (!it.corners) return;
+        it.corners().forEach(function (q) {
+          var p = self.cam.P(q[0], q[1], q[2]);
+          x0 = Math.min(x0, p[0]); y0 = Math.min(y0, p[1]); x1 = Math.max(x1, p[0]); y1 = Math.max(y1, p[1]);
+        });
+      });
+    });
+    this.cam.az = save.az; this.cam.el = save.el; this.cam.zoom = save.zoom; this.cam.setup();
+    this.svg.setAttribute("viewBox", r2(x0 - pad[3]) + " " + r2(y0 - pad[0]) + " " + r2(x1 - x0 + pad[1] + pad[3]) + " " + r2(y1 - y0 + pad[0] + pad[2]));
+    this.svg.setAttribute("preserveAspectRatio", "xMidYMid meet");
+    SCENES.push(this);
+    this.tick(0, 0);
+    return this;
+  };
+
+  Scene.prototype.tick = function (dt, t) {
+    var moving = false;
+    if (this.onTick && this.onTick(dt, t)) moving = true;
+    for (var i = 0; i < this.items.length; i++) {
+      var it = this.items[i];
+      if (it.target !== undefined && stepSpring(it, dt)) moving = true;
+    }
+    if (moving || this.dirty) {
+      this.cam.setup();
+      for (var j = 0; j < this.items.length; j++) if (this.items[j].update) this.items[j].update(this.cam);
+      this.dirty = false;
+      for (var k = 0; k < this.packets.length; k++) this.packets[k].update(this.cam, t);
+    } else if (!RM) {
+      for (var m = 0; m < this.packets.length; m++) this.packets[m].update(this.cam, t);
+    }
+  };
+
+  /* ---------------- printed parts ---------------- */
+  function card(o) {
+    return function (g, w, d) {
+      var small = o.sz === "s";
+      if (o.chrome) {
+        var ch = small ? 10 : 16;
+        el("path", { "class": "chrome", d: "M0 2.5a2.5 2.5 0 0 1 2.5-2.5h" + (w - 5) + "a2.5 2.5 0 0 1 2.5 2.5v" + (ch - 2.5) + "H0Z" }, g);
+        var r = small ? 1.6 : 2.3, dy = ch / 2;
+        [1, 2, 3].forEach(function (k) { el("circle", { "class": "cdot", cx: (small ? 4 : 5) + k * (small ? 5 : 7.5), cy: dy, r: r }, g); });
+        el("rect", { "class": "url", x: small ? 22 : 34, y: dy - (small ? 2 : 3), width: w - (small ? 30 : 46), height: small ? 4 : 6, rx: small ? 2 : 3 }, g);
+      }
+      if (small) {
+        var gy = o.chrome ? 15 : 8;
+        el("rect", { "class": "tile", x: 8, y: gy, width: 20, height: 20, rx: 5 }, g);
+        glyph(g, o.glyph, 11, gy + 3, 14);
+        txt(g, { "class": "lbl s", x: 8, y: d - (o.type ? 17 : 9) }, o.label);
+        if (o.type) txt(g, { "class": "typ s", x: 8, y: d - 7 }, o.type);
+      } else {
+        var gy2 = o.chrome ? 26 : 14;
+        el("rect", { "class": "tile", x: 14, y: gy2, width: 28, height: 28, rx: 7 }, g);
+        glyph(g, o.glyph, 18, gy2 + 4, 20);
+        txt(g, { "class": "lbl", x: 14, y: d - 30 }, o.label);
+        if (o.type) txt(g, { "class": "typ", x: 14, y: d - 14 }, o.type);
+      }
+    };
+  }
+  function cylTop(o) {
+    return function (g, rx, ry) {
+      var small = o.sz === "s";
+      if (small) {
+        glyph(g, o.glyph, -7, -ry + 6, 14);
+        txt(g, { "class": "lbl s", x: 0, y: 6, "text-anchor": "middle" }, o.label);
+      } else {
+        el("rect", { "class": "tile", x: -14, y: -44, width: 28, height: 28, rx: 7 }, g);
+        glyph(g, o.glyph, -10, -40, 20);
+        txt(g, { "class": "lbl", x: 0, y: 8, "text-anchor": "middle" }, o.label);
+        if (o.type) txt(g, { "class": "typ", x: 0, y: 24, "text-anchor": "middle" }, o.type);
+      }
+    };
+  }
+  function glyphTop(name) {
+    return function (g, w, d) {
+      var s = Math.min(w, d) * 0.46;
+      glyph(g, name, w / 2 - s / 2, d / 2 - s / 2, s);
+    };
+  }
+  function windows(seed) {
+    return function (g, face, len, h) {
+      var wg = el("g", { "class": "wins" }, g);
+      var n = Math.floor((len - 14) / 15);
+      var rows = h > 36 ? [h * 0.32, h * 0.64] : [h * 0.5];
+      var start = (len - (n * 15 - 6)) / 2;
+      rows.forEach(function (ty, ri) {
+        for (var i = 0; i < n; i++) {
+          var lit = ((i * 7 + ri * 5 + seed + (face === "w" ? 3 : 0)) % 5) > 1;
+          el("rect", { "class": "win" + (lit ? " on" : ""), x: r2(start + i * 15), y: r2(ty - 2.5), width: 9, height: 5, rx: 1 }, wg);
+        }
+      });
+    };
+  }
+  function plate(g, x, y, s) {
+    var pg = el("g", { "class": "plate" }, g);
+    var w = s.length * 5.9 + 12;
+    el("rect", { x: r2(x - w / 2), y: y - 7.5, width: r2(w), height: 15, rx: 2 }, pg);
+    txt(pg, { x: x, y: y + 3.3, "text-anchor": "middle" }, s);
+    return pg;
+  }
+  function arrowHead(g, x, y, dir, cls) {
+    var v = { e: [1, 0], w: [-1, 0], s: [0, 1], n: [0, -1] }[dir], L = 9, W = 4.2;
+    var bx = x - v[0] * L, by = y - v[1] * L;
+    el("path", { "class": "arrow " + (cls || ""), d: "M" + x + " " + y + "L" + r2(bx - v[1] * W) + " " + r2(by + v[0] * W) + "L" + r2(bx + v[1] * W) + " " + r2(by - v[0] * W) + "Z" }, g);
+  }
+  function thread(g, pts, cls, arrowDir, noGroove) {
+    var d = "M" + pts.map(function (p) { return p[0] + " " + p[1]; }).join("L");
+    if (!noGroove) el("path", { "class": "groove " + (cls || ""), d: d }, g);
+    el("path", { "class": "th " + (cls || ""), d: d }, g);
+    if (arrowDir) { var e = pts[pts.length - 1]; arrowHead(g, e[0], e[1], arrowDir, cls); }
+  }
+
+  var SCENES = [];
+
+  /* ================= HERO ================= */
+  var heroSvg = document.getElementById("hero-svg");
+  var H = new Scene(heroSvg, { az: -38, el: 34, zoom: 1, cx: 360, cy: 262 });
+  H.floorShadow(-40, 0, 800, 520, -16);
+  var board = H.box({ x: -40, y: 0, w: 800, d: 520, z: -16, h: 16, mat: "board", plane: true, grid: 1, rx: 3 });
+  (function (c) {
+    thread(c, [[160, 180], [240, 180]], "c1");
+    plate(c, 200, 160, "http");
+    thread(c, [[80, 240], [80, 360]], "c2", "s");
+    plate(c, 125, 290, "http");
+    txt(c, { "class": "eng", x: 92, y: 318 }, "“sign in”");
+    thread(c, [[360, 280], [360, 360]], "c4", "s");
+    plate(c, 405, 312, "http");
+    txt(c, { "class": "eng", x: 372, y: 340 }, "“checkout”");
+  })(board.c);
+  var gpk = H.layer();
+  var plinth = H.box({
+    id: "backend", x: 240, y: 40, w: 480, d: 240, h: 16, mat: "plinth", plane: true, on: board, rx: 2, maxLift: 10,
+    side: function (g, face) {
+      if (face === "w") { el("path", { "class": "groove c1", d: "M140 0V16" }, g); el("path", { "class": "th c1", d: "M140 0V16" }, g); }
+      if (face === "s") { el("path", { "class": "groove c4", d: "M120 0V16" }, g); el("path", { "class": "th c4", d: "M120 0V16" }, g); }
+    },
+    top: function (g) {
+      txt(g, { "class": "plane-t", x: 16, y: 26 }, "BACKEND");
+      txt(g, { "class": "typ", x: 16, y: 226 }, "plane backend");
+    }
+  });
+  (function (c) {
+    thread(c, [[240, 180], [280, 180]], "c1", "e");
+    thread(c, [[440, 180], [524, 180]], "c3", "e");
+    plate(c, 482, 160, "sql");
+    thread(c, [[360, 240], [360, 280]], "c4");
+  })(plinth.c);
+  var ppk = H.layer();
+  var hdb = H.cyl({ id: "db", cx: 600, cy: 180, rx: 76, ry: 58, h: 50, parent: plinth, on: plinth, maxLift: 16,
+    top: cylTop({ glyph: "db", label: "Postgres", type: "@supabase.postgres" }) });
+  var hapi = H.box({ id: "api", x: 280, y: 120, w: 160, d: 120, h: 42, parent: plinth, on: plinth, maxLift: 16, side: windows(1),
+    top: card({ glyph: "bolt", label: "API", type: "@vercel.functions" }) });
+  var hweb = H.box({ id: "web", x: 0, y: 120, w: 160, d: 120, h: 10, on: board, maxLift: 16,
+    top: card({ glyph: "globe", label: "Web app", type: "@vercel.nextjs", chrome: true }) });
+  var hbill = H.box({ id: "billing", x: 280, y: 360, w: 160, d: 120, h: 30, on: board, maxLift: 16, side: windows(2),
+    top: card({ glyph: "card", label: "Billing", type: "@stripe" }) });
+  var hauth = H.box({ id: "auth", x: 0, y: 360, w: 160, d: 120, h: 30, on: board, maxLift: 16, side: windows(4),
+    top: card({ glyph: "key", label: "Auth", type: "@clerk" }) });
+
+  H.packets([[160, 180, 0], [240, 180, 0], [240, 180, 16, plinth], [280, 180, 16, plinth]], [gpk, ppk, ppk], { n: 2, speed: 40, cls: "c1", big: true });
+  H.packets([[80, 240, 0], [80, 360, 0]], [gpk], { n: 2, speed: 34, phase: 30, cls: "c2", big: true });
+  H.packets([[440, 180, 16, plinth], [524, 180, 16, plinth]], [ppk], { n: 2, speed: 36, phase: 10, cls: "c3", big: true });
+  H.packets([[360, 240, 16, plinth], [360, 280, 16, plinth], [360, 280, 0], [360, 360, 0]], [ppk, ppk, gpk], { n: 2, speed: 38, phase: 50, cls: "c4", big: true });
+
+  var TYPES = { web: "@vercel.nextjs", auth: "@clerk", api: "@vercel.functions", db: "@supabase.postgres", billing: "@stripe", backend: "plane backend" };
+  var NAMES = { web: "Web app", auth: "Auth", api: "API", db: "Postgres", billing: "Billing", backend: "Backend plane" };
+  var tags = {};
+  Object.keys(TYPES).forEach(function (id) {
+    var it = H.byId[id];
+    var g = el("g", { "class": "tag" }, H.overlay);
+    var s = TYPES[id], w = s.length * 7.25 + 18;
+    el("line", { x1: 0, y1: -4, x2: 0, y2: -22 }, g);
+    el("rect", { x: r2(-w / 2), y: -44, width: r2(w), height: 22, rx: 3 }, g);
+    txt(g, { x: 0, y: -29, "text-anchor": "middle" }, s);
+    tags[id] = g;
+    var root = it.root;
+    root.setAttribute("tabindex", "0");
+    root.setAttribute("role", "button");
+    root.setAttribute("aria-label", NAMES[id] + ", type " + s + ". Press to lift.");
+    root.classList.add("lift-able");
+    root.addEventListener("pointerenter", function () { hot(id, true); });
+    root.addEventListener("pointerleave", function () { hot(id, false); });
+    root.addEventListener("focus", function () { hot(id, true); });
+    root.addEventListener("blur", function () { it.pinned = false; hot(id, false); });
+    root.addEventListener("click", function () { it.pinned = !it.pinned; hot(id, it.pinned || root.matches(":hover")); });
+    root.addEventListener("keydown", function (e) {
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); it.pinned = !it.pinned; hot(id, it.pinned); }
+    });
+  });
+  var tagUpdate = {
+    update: function (c) {
+      Object.keys(tags).forEach(function (id) {
+        var tc = H.byId[id].topCenter();
+        var p = c.P(tc[0], tc[1], tc[2]);
+        tags[id].setAttribute("transform", "translate(" + r2(p[0]) + " " + r2(p[1] - 6) + ")");
+      });
+    }
+  };
+  H.push(tagUpdate);
+
+  var CONN = { c1: ["web", "api"], c2: ["web", "auth"], c3: ["api", "db"], c4: ["api", "billing"] };
+  function codeLines(ref, on) {
+    var lines = document.querySelectorAll('#src .ln[data-ref~="' + ref + '"]');
+    for (var i = 0; i < lines.length; i++) lines[i].classList.toggle("hot", on);
+  }
+  function hot(id, on) {
+    if (CONN[id]) {
+      CONN[id].forEach(function (b) { var it = H.byId[b]; if (!it.pinned) it.target = on ? 7 : 0; });
+      var ths = heroSvg.querySelectorAll("." + id);
+      for (var i = 0; i < ths.length; i++) ths[i].classList.toggle("hot", on);
+      codeLines(id, on);
+      return;
+    }
+    var it = H.byId[id];
+    if (!on && it.pinned) return;
+    it.target = on ? (id === "backend" ? 10 : 16) : 0;
+    tags[id].classList.toggle("on", on);
+    codeLines(id, on);
+  }
+
+  /* camera: model <-> plan */
+  H.camP = 0; H.camV = 0; H.camT = 0;
+  H.onTick = function (dt) {
+    if (H.camP === H.camT && H.camV === 0) return false;
+    if (RM) { H.camP = H.camT; H.camV = 0; }
+    else {
+      var k = 22, cdamp = 2 * 0.74 * Math.sqrt(k), t = dt;
+      while (t > 0) {
+        var h = Math.min(t, 1 / 120);
+        H.camV += (k * (H.camT - H.camP) - cdamp * H.camV) * h;
+        H.camP += H.camV * h; t -= h;
+      }
+      if (Math.abs(H.camT - H.camP) < 0.0008 && Math.abs(H.camV) < 0.002) { H.camP = H.camT; H.camV = 0; }
+    }
+    var p = H.camP, pc = Math.max(0, Math.min(1, p));
+    H.cam.el = 34 + 56 * pc;
+    H.cam.az = -38 * (1 - p);
+    H.cam.zoom = 1 + 0.12 * pc;
+    return true;
+  };
+  H.finish([{ az: -38, el: 34, zoom: 1 }, { az: 0, el: 90, zoom: 1.12 }], [52, 26, 24, 26]);
+
+  /* source panel */
+  var SRC = [
+    ['arch "Acme" v0.2', ""],
+    ["", ""],
+    ['component web "Web app" @vercel.nextjs {', "web"],
+    ["  shape browser", "web"],
+    ["}", "web"],
+    ['component auth "Auth" @clerk', "auth"],
+    ["", ""],
+    ['plane backend "Backend" {', "backend"],
+    ['  component api "API" @vercel.functions', "api"],
+    ['  component db "Postgres" @supabase.postgres {', "db"],
+    ["    shape cylinder", "db"],
+    ["  }", "db"],
+    ["}", "backend"],
+    ["", ""],
+    ['component billing "Billing" @stripe', "billing"],
+    ["", ""],
+    ["web -> api @http", "c1"],
+    ['web -> auth @http : "sign in"', "c2"],
+    ["api -> db @sql", "c3"],
+    ['api -> billing @http : "checkout"', "c4"]
+  ];
+  function esc(s) { return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+  function hl(line) {
+    var out = "", re = /("[^"]*")|(@[a-z_.]+)|\b(arch|component|plane|shape)\b|(->|[{}:])|([^"@{}:\-]+|-)/g, m;
+    while ((m = re.exec(line))) {
+      if (m[1]) out += '<span class="s">' + esc(m[1]) + "</span>";
+      else if (m[2]) out += '<span class="t">' + esc(m[2]) + "</span>";
+      else if (m[3]) out += '<span class="k">' + m[3] + "</span>";
+      else if (m[4]) out += '<span class="p">' + esc(m[4]) + "</span>";
+      else out += esc(m[0]);
+    }
+    return out;
+  }
+  var srcEl = document.getElementById("src");
+  srcEl.innerHTML = SRC.map(function (l) {
+    return '<span class="ln"' + (l[1] ? ' data-ref="' + l[1] + '"' : "") + ">" + (hl(l[0]) || " ") + "</span>";
+  }).join("");
+  srcEl.addEventListener("pointerover", function (e) {
+    var ln = e.target.closest && e.target.closest(".ln");
+    var ref = ln && ln.getAttribute("data-ref");
+    if (srcEl._ref === ref) return;
+    if (srcEl._ref) hot(srcEl._ref, false);
+    srcEl._ref = ref;
+    if (ref) hot(ref, true);
+  });
+  srcEl.addEventListener("pointerleave", function () { if (srcEl._ref) hot(srcEl._ref, false); srcEl._ref = null; });
+
+  /* controls */
+  var stage = document.getElementById("stage");
+  var viewBtns = document.querySelectorAll("[data-view]");
+  var figcap = document.getElementById("figcap"), fighint = document.getElementById("fighint");
+  function setView(v) {
+    H.camT = v === "plan" ? 1 : 0;
+    for (var i = 0; i < viewBtns.length; i++) viewBtns[i].setAttribute("aria-pressed", String(viewBtns[i].getAttribute("data-view") === v));
+    figcap.textContent = v === "plan" ? "Fig. 1a — Acme, plan view, v0.2" : "Fig. 1 — Acme, scale 1:40, v0.2";
+    fighint.textContent = v === "plan" ? "Seen from above, the model is the canvas diagram." : "Hover a piece to lift it and read its type.";
+  }
+  for (var vb = 0; vb < viewBtns.length; vb++) viewBtns[vb].addEventListener("click", function () { setView(this.getAttribute("data-view")); });
+  var codeBtn = document.getElementById("codeBtn");
+  codeBtn.addEventListener("click", function () {
+    var on = !stage.classList.contains("code-on");
+    stage.classList.toggle("code-on", on);
+    codeBtn.setAttribute("aria-pressed", String(on));
+  });
+
+  /* ================= VIGNETTES ================= */
+  function mini(id, cam, b, build, pad) {
+    var svg = document.getElementById(id);
+    if (!svg) return null;
+    var S = new Scene(svg, { az: cam.az, el: cam.el, zoom: 1, cx: b.x + b.w / 2, cy: b.y + b.d / 2 });
+    S.floorShadow(b.x, b.y, b.w, b.d, -b.t);
+    var B = S.box({ x: b.x, y: b.y, w: b.w, d: b.d, z: -b.t, h: b.t, mat: "board", plane: true, grid: 2, rx: 3 });
+    build(S, B);
+    S.finish([{ az: cam.az, el: cam.el, zoom: 1 }], pad || [16, 16, 16, 16]);
+    return S;
+  }
+
+  /* Fig 2: nesting */
+  mini("v-nest", { az: -36, el: 44 }, { x: 0, y: 0, w: 420, d: 320, t: 12 }, function (S, B) {
+    var c = B.c;
+    el("rect", { "class": "tray-floor", x: 158, y: 58, width: 214, height: 204 }, c);
+    thread(c, [[100, 120], [180, 120]], "", "e");
+    thread(c, [[264, 107], [322, 107], [322, 132]], "", "s");
+    thread(c, [[264, 209], [322, 209], [322, 188]], "", "n");
+    plate(c, 126, 104, "http");
+    var L = S.layer();
+    S.box({ x: 20, y: 92, w: 80, d: 60, h: 22, mat: "ctx", on: B, hover: 8, top: card({ glyph: "bolt", label: "API", sz: "s", type: "context" }) });
+    var lid = S.lid({ hinge: [150, 50, 26], w: 230, l: 210, ang: 104, maxAng: 112,
+      content: function (g, w, l) {
+        el("rect", { "class": "tile", x: 18, y: 18, width: 30, height: 30, rx: 7 }, g);
+        glyph(g, "card", 22, 22, 22);
+        txt(g, { "class": "lbl", x: 18, y: 76, style: "font-size:24px" }, "Billing");
+        txt(g, { "class": "typ", x: 18, y: 94 }, "@stripe");
+        txt(g, { "class": "eng-sc", x: 18, y: l - 18 }, "lid lifted");
+      } });
+    S.box({ x: 150, y: 50, w: 230, d: 8, h: 26, on: B });
+    S.box({ x: 372, y: 58, w: 8, d: 204, h: 26, on: B });
+    S.cyl({ cx: 322, cy: 160, rx: 30, ry: 24, h: 26, on: B, hover: 10, top: cylTop({ glyph: "db", label: "Ledger", sz: "s" }) });
+    S.box({ x: 180, y: 78, w: 84, d: 58, h: 20, on: B, hover: 10, side: windows(3), top: card({ glyph: "cart", label: "Checkout", sz: "s" }) });
+    S.box({ x: 180, y: 180, w: 84, d: 58, h: 16, on: B, hover: 10, top: card({ glyph: "hook", label: "Webhooks", sz: "s" }) });
+    S.box({ x: 150, y: 58, w: 8, d: 204, h: 26, on: B });
+    S.box({ x: 150, y: 262, w: 230, d: 8, h: 26, on: B });
+    S.packets([[100, 120, 0], [180, 120, 0]], [L], { n: 1, speed: 26 });
+    S.packets([[264, 107, 0], [322, 107, 0], [322, 132, 0]], [L], { n: 1, speed: 24, phase: 20 });
+    S.packets([[264, 209, 0], [322, 209, 0], [322, 188, 0]], [L], { n: 1, speed: 24, phase: 50 });
+    S.onTick = function (dt, t) {
+      if (RM) return false;
+      lid.ang = 104 + Math.sin(t * 0.7) * 3;
+      return true;
+    };
+  }, [30, 16, 16, 16]);
+
+  /* Fig 3: roles */
+  mini("v-team", { az: -38, el: 34 }, { x: 0, y: 0, w: 400, d: 300, t: 12 }, function (S, B) {
+    var c = B.c;
+    thread(c, [[110, 145], [150, 145]], "", "e");
+    thread(c, [[240, 145], [262, 145]], "", "e");
+    var L = S.layer();
+    S.figure({ x: 352, y: 50, on: B, label: "Viewer", desc: "reads", lx: 26, ly: -30 });
+    S.cyl({ cx: 300, cy: 145, rx: 38, ry: 29, h: 38, on: B, hover: 10, top: cylTop({ glyph: "db", label: "Postgres", sz: "s" }) });
+    S.box({ x: 150, y: 110, w: 90, d: 70, h: 34, on: B, hover: 10, side: windows(5), top: card({ glyph: "bolt", label: "API", sz: "s" }) });
+    S.figure({ x: 262, y: 252, on: B, label: "Editor", desc: "changes the model", lx: 30, ly: -14 });
+    S.box({ x: 36, y: 118, w: 74, d: 54, h: 8, on: B, hover: 10, top: card({ glyph: "globe", label: "Web app", sz: "s", chrome: true }) });
+    S.figure({ x: 84, y: 250, on: B, label: "Owner", desc: "invites, manages", lx: -34, ly: -8, anchor: "end" });
+    S.packets([[110, 145, 0], [150, 145, 0]], [L], { n: 1, speed: 20 });
+    S.packets([[240, 145, 0], [262, 145, 0]], [L], { n: 1, speed: 16, phase: 8 });
+  }, [70, 120, 16, 110]);
+
+  /* Fig 4: history */
+  function rev(id, n) {
+    mini(id, { az: -38, el: 36 }, { x: 0, y: 0, w: 400, d: 280, t: 10 }, function (S, B) {
+      var c = B.c;
+      var webY = n === 14 ? 46 : 60;
+      if (n === 14) {
+        el("rect", { "class": "foot-dash", x: 20, y: 60, width: 90, height: 64, rx: 2 }, c);
+      }
+      thread(c, [[110, webY + 32], [160, webY + 32]], "", "e");
+      if (n < 14) thread(c, [[65, 124], [65, 180]], "", "s");
+      else thread(c, [[65, webY + 64], [65, 180]], "gone", "s", true);
+      thread(c, [[250, 92], [288, 92]], "", "e");
+      if (n === 13) thread(c, [[205, 124], [205, 180]], "added", "s");
+      if (n === 14) thread(c, [[205, 124], [205, 180]], "", "s");
+      S.cyl({ cx: 330, cy: 92, rx: 42, ry: 32, h: 34, on: B, hover: 8, top: cylTop({ glyph: "db", label: "Postgres", sz: "s" }) });
+      S.box({ x: 160, y: 60, w: 90, d: 64, h: 30, on: B, hover: 8, side: windows(n), top: card({ glyph: "bolt", label: "API", sz: "s" }) });
+      S.box({ x: 20, y: webY, w: 90, d: 64, h: 8, on: B, hover: 8, top: card({ glyph: "globe", label: "Web app", sz: "s", chrome: true }) });
+      if (n >= 13) S.box({ x: 160, y: 180, w: 90, d: 64, h: 22, on: B, hover: 8, mat: n === 13 ? "added" : "white", side: windows(n + 2), top: card({ glyph: "card", label: "Billing", sz: "s" }) });
+      if (n < 14) S.box({ x: 20, y: 180, w: 90, d: 64, h: 22, on: B, hover: 8, side: windows(n + 4), top: card({ glyph: "key", label: "Auth", sz: "s" }) });
+      else S.box({ x: 20, y: 180, w: 90, d: 64, h: 22, mat: "ghost", top: card({ glyph: "key", label: "Auth", sz: "s" }) });
+    }, [12, 12, 12, 12]);
+  }
+  rev("v-r12", 12); rev("v-r13", 13); rev("v-r14", 14);
+
+  /* Fig 5: share */
+  mini("v-share", { az: -38, el: 36 }, { x: 0, y: 0, w: 440, d: 300, t: 12 }, function (S, B) {
+    var c = B.c;
+    thread(c, [[98, 158], [200, 158]], "", "e");
+    plate(c, 150, 140, "live");
+    thread(c, [[330, 110], [330, 98]], "", "n");
+    var L = S.layer();
+    S.box({ x: 290, y: 24, w: 124, d: 74, h: 2, rx: 1.5, on: B, hover: 8, top: function (g, w, d) {
+      el("rect", { "class": "print-ink", x: 10, y: 12, width: 26, height: 16, rx: 2 }, g);
+      el("rect", { "class": "print-ink", x: 50, y: 12, width: 26, height: 18, rx: 2 }, g);
+      el("ellipse", { "class": "print-ink", cx: 99, cy: 21, rx: 13, ry: 9 }, g);
+      el("path", { "class": "print-acc", d: "M36 20H50M76 21H86" }, g);
+      txt(g, { "class": "typ s", x: 10, y: d - 10 }, "image.svg");
+    } });
+    S.box({ x: 200, y: 110, w: 200, d: 150, h: 3, rx: 1.5, on: B, hover: 10, top: function (g, w, d) {
+      txt(g, { "class": "lbl s", x: 14, y: 22 }, "Acme");
+      txt(g, { "class": "typ s", x: w - 14, y: 22, "text-anchor": "end" }, "read-only");
+      el("rect", { "class": "print-ink", x: 14, y: 36, width: 44, height: 26, rx: 2 }, g);
+      el("rect", { "class": "print-ink", x: 14, y: 78, width: 44, height: 26, rx: 2 }, g);
+      el("rect", { "class": "print-ink", x: 84, y: 40, width: 50, height: 30, rx: 2, "stroke-dasharray": "3 2" }, g);
+      el("rect", { "class": "print-ink", x: 92, y: 48, width: 18, height: 14, rx: 1.5 }, g);
+      el("ellipse", { "class": "print-ink", cx: 165, cy: 55, rx: 18, ry: 11 }, g);
+      el("rect", { "class": "print-ink", x: 92, y: 82, width: 40, height: 22, rx: 2 }, g);
+      el("path", { "class": "print-acc", d: "M58 49H92M36 62V78M110 55H147M101 62V82" }, g);
+      el("rect", { "class": "chrome", x: 0, y: d - 26, width: w, height: 26 }, g);
+      txt(g, { "class": "typ", x: 14, y: d - 9.5 }, "tryarcher.dev/share/k3v9x2");
+    } });
+    S.box({ x: 24, y: 48, w: 74, d: 50, h: 6, on: B, hover: 10, top: card({ glyph: "globe", label: "Web", sz: "s", chrome: true }) });
+    S.box({ x: 24, y: 130, w: 74, d: 56, h: 28, on: B, hover: 10, side: windows(7), top: card({ glyph: "bolt", label: "API", sz: "s" }) });
+    S.cyl({ cx: 61, cy: 246, rx: 32, ry: 24, h: 30, on: B, hover: 10, top: cylTop({ glyph: "db", label: "DB", sz: "s" }) });
+    S.packets([[98, 158, 0], [200, 158, 0]], [L], { n: 2, speed: 28 });
+  }, [16, 16, 16, 16]);
+
+  /* Fig 6: parts drawer */
+  mini("v-parts", { az: -38, el: 38 }, { x: 0, y: 0, w: 480, d: 330, t: 14 }, function (S, B) {
+    var c = B.c;
+    var P = [
+      ["@agent", "agent", "box", 30], ["@llm", "sparkle", "box", 26], ["@rag", "doc", "box", 22], ["@vector_db", "vec", "cyl", 28],
+      ["@queue", "queue", "slab", 12], ["@cache", "bolt", "box", 18], ["@aws.lambda", "fn", "box", 24], ["@gcp.cloud_run", "cube", "box", 24],
+      ["@azure.functions", "fn", "box", 20], ["@kafka", "stream", "slab", 14], ["@redis", "db", "cyl", 22], ["@stripe", "card", "slab", 8]
+    ];
+    var cells = [];
+    P.forEach(function (p, i) {
+      var col = i % 4, row = Math.floor(i / 4);
+      var x = col * 120, y = row * 110;
+      el("line", { x1: x, y1: y, x2: x, y2: y + 110, stroke: "var(--f-line)", "stroke-width": 1, "vector-effect": "non-scaling-stroke" }, c);
+      el("line", { x1: x, y1: y, x2: x + 120, y2: y, stroke: "var(--f-line)", "stroke-width": 1, "vector-effect": "non-scaling-stroke" }, c);
+      txt(c, { "class": "eng", x: x + 60, y: y + 97, "text-anchor": "middle" }, p[0]);
+      cells.push({ p: p, x: x, y: y, depth: -0.62 * (x + 60) + 0.79 * (y + 55) });
+    });
+    cells.sort(function (a, b) { return a.depth - b.depth; });
+    cells.forEach(function (cl) {
+      var p = cl.p, x = cl.x, y = cl.y;
+      if (p[2] === "cyl") S.cyl({ cx: x + 60, cy: y + 44, rx: 28, ry: 22, h: p[3], on: B, hover: 12, top: function (g) { glyph(g, p[1], -9, -9, 18); } });
+      else if (p[2] === "slab") S.box({ x: x + 24, y: y + 24, w: 72, d: 42, h: p[3], on: B, hover: 12, top: glyphTop(p[1]) });
+      else S.box({ x: x + 32, y: y + 20, w: 56, d: 50, h: p[3], on: B, hover: 12, side: p[3] > 20 ? windows(cl.x / 40 + cl.y / 30) : null, top: glyphTop(p[1]) });
+    });
+  }, [16, 16, 16, 16]);
+
+  /* MCP vignette */
+  mini("v-mcp", { az: -36, el: 36 }, { x: 0, y: 0, w: 480, d: 250, t: 12 }, function (S, B) {
+    var c = B.c;
+    thread(c, [[130, 110], [184, 110]], "", "e");
+    plate(c, 157, 92, "MCP");
+    thread(c, [[240, 110], [290, 110]], "", "e");
+    plate(c, 265, 136, "update_project");
+    thread(c, [[360, 98], [388, 98]], "", "e");
+    thread(c, [[325, 126], [325, 160]], "", "s");
+    var L = S.layer();
+    S.cyl({ cx: 422, cy: 98, rx: 34, ry: 26, h: 32, on: B, hover: 10, top: cylTop({ glyph: "db", label: "Postgres", sz: "s" }) });
+    S.box({ x: 290, y: 70, w: 70, d: 56, h: 28, on: B, hover: 10, side: windows(9), top: card({ glyph: "bolt", label: "API", sz: "s" }) });
+    S.box({ x: 184, y: 86, w: 56, d: 48, h: 40, on: B, hover: 10, side: windows(6), top: card({ glyph: "plug", label: "/mcp", sz: "s" }) });
+    S.box({ x: 290, y: 160, w: 70, d: 52, h: 6, on: B, hover: 10, top: card({ glyph: "globe", label: "Web", sz: "s", chrome: true }) });
+    S.box({ x: 20, y: 70, w: 110, d: 80, h: 10, on: B, hover: 10, top: card({ glyph: "terminal", label: "Your agent", sz: "s", type: "any MCP client" }) });
+    S.packets([[130, 110, 0], [184, 110, 0]], [L], { n: 2, speed: 26 });
+    S.packets([[240, 110, 0], [290, 110, 0]], [L], { n: 2, speed: 26, phase: 12 });
+    S.packets([[360, 98, 0], [388, 98, 0]], [L], { n: 1, speed: 18 });
+  }, [16, 16, 16, 16]);
+
+  /* Fig 7: empty board, one piece set down */
+  var cta = mini("v-cta", { az: -38, el: 36 }, { x: 0, y: 0, w: 360, d: 240, t: 12 }, function (S, B) {
+    el("rect", { "class": "foot-dash", x: 130, y: 80, width: 100, height: 80, rx: 2 }, B.c);
+    txt(B.c, { "class": "eng-sc", x: 130, y: 182 }, "your first component");
+    var blk = S.box({ x: 130, y: 80, w: 100, d: 80, h: 30, on: B, maxLift: 70, side: windows(11), top: card({ glyph: "cube", label: "Your system", sz: "s" }) });
+    blk.lift = RM ? 0 : 70; blk.target = 0; blk.k = 70; blk.zeta = 0.42;
+    S.drop = function () { if (RM) return; blk.target = 64; setTimeout(function () { blk.target = 0; }, 650); };
+    blk.root.classList.add("lift-able");
+    blk.root.addEventListener("pointerenter", function () { if (blk.lift < 2) S.drop(); });
+  }, [16, 16, 16, 16]);
+  if (cta) {
+    var ctaBlk = cta.items[cta.items.length - 1];
+    if (!RM) { ctaBlk.target = 70; ctaBlk.lift = 70; }
+    cta.armed = true;
+  }
+
+  /* ---------------- loop + visibility ---------------- */
+  if ("IntersectionObserver" in window) {
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (en) {
+        SCENES.forEach(function (s) {
+          if (s.svg === en.target) {
+            s.visible = en.isIntersecting;
+            if (s === cta && en.isIntersecting && s.armed) {
+              s.armed = false;
+              var b = s.items[s.items.length - 1];
+              setTimeout(function () { b.target = 0; }, 250);
+            }
+          }
+        });
+      });
+    }, { rootMargin: "80px" });
+    SCENES.forEach(function (s) { io.observe(s.svg); });
+  } else if (cta) { cta.items[cta.items.length - 1].target = 0; }
+
+  var last = performance.now();
+  function loop(now) {
+    var dt = Math.min(0.05, (now - last) / 1000); last = now;
+    var t = now / 1000;
+    for (var i = 0; i < SCENES.length; i++) if (SCENES[i].visible) SCENES[i].tick(dt, t);
+    requestAnimationFrame(loop);
+  }
+  requestAnimationFrame(loop);
+  mq.addEventListener && mq.addEventListener("change", function (e) { RM = e.matches; SCENES.forEach(function (s) { s.dirty = true; }); });
+
+  /* ---------------- copy + theme ---------------- */
+  var COPY = {
+    prompt: "Set me up with Archer (https://tryarcher.dev). Add the Archer MCP server (claude mcp add --transport http archer https://tryarcher.dev/mcp, or the same URL in your client's MCP settings), sign me in, then read this repository and map its architecture into a new Archer project: components with their types, planes for the main areas, connections with protocols, and src paths pointing at the code.",
+    install: "claude mcp add --transport http archer https://tryarcher.dev/mcp",
+    readme: "![Architecture](https://tryarcher.dev/share/k3v9x2/image.svg)"
+  };
+  var toast = document.getElementById("toast"), toastT;
+  function say(s) { toast.textContent = s; toast.classList.add("on"); clearTimeout(toastT); toastT = setTimeout(function () { toast.classList.remove("on"); }, 2200); }
+  document.querySelectorAll("[data-copy]").forEach(function (b) {
+    b.addEventListener("click", function () {
+      var key = b.getAttribute("data-copy"), text = COPY[key];
+      var done = function () {
+        b.classList.add("copied");
+        say(key === "prompt" ? "Agent prompt copied. Paste it into your agent." : "Copied.");
+        setTimeout(function () { b.classList.remove("copied"); }, 1800);
+      };
+      try {
+        navigator.clipboard.writeText(text).then(done).catch(function () { say("Copy failed. Select the text and copy it by hand."); });
+      } catch (e) { say("Copy failed. Select the text and copy it by hand."); }
+    });
+  });
+
+  var themeBtn = document.getElementById("theme");
+  var root = document.documentElement;
+  function pref() { try { return localStorage.getItem("maquette-theme") || "system"; } catch (e) { return "system"; } }
+  function applyTheme(p) {
+    if (p === "system") root.removeAttribute("data-theme"); else root.setAttribute("data-theme", p);
+    themeBtn.setAttribute("data-mode", p);
+    themeBtn.setAttribute("aria-label", "Theme: " + p + ". Switch theme");
+  }
+  applyTheme(pref());
+  themeBtn.addEventListener("click", function () {
+    var order = ["system", "light", "dark"], next = order[(order.indexOf(themeBtn.getAttribute("data-mode")) + 1) % 3];
+    applyTheme(next);
+    try { localStorage.setItem("maquette-theme", next); } catch (e) {}
+  });
+})();
+</script>
+</body>
+</html>
