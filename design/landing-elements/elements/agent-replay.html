@@ -17,14 +17,14 @@
           <div class="ar-line ar-user" data-at="300" data-type="1300"><span class="ar-m ar-prompt"></span><span class="ar-c ar-typed">Add a cache in front of the database</span></div>
 
           <div class="ar-gap" data-at="1700"></div>
-          <div class="ar-line ar-call" data-at="1700" data-done="2500" data-result="ok"><span class="ar-m"><i class="ar-dot"></i></span><span class="ar-c"><b class="ar-tool">get_project</b><span class="ar-args">(project_id: <span class="tok-str">"acme"</span>)</span></span></div>
+          <div class="ar-line ar-call is-ok" data-at="1700" data-done="2500" data-result="ok"><span class="ar-m"><i class="ar-dot"></i></span><span class="ar-c"><b class="ar-tool">get_project</b><span class="ar-args">(project_id: <span class="tok-str">"acme"</span>)</span></span></div>
           <div class="ar-line" data-at="1700"><span class="ar-m ar-elbow">└</span><span class="ar-c"><span class="chip ar-chip" data-done="2500">Acme · 5 components</span></span></div>
 
           <div class="ar-gap" data-at="3000"></div>
           <div class="ar-line ar-note" data-at="3000"><span class="ar-m"></span><span class="ar-c">Adding a Redis cache on the Backend plane, between the API and Postgres.</span></div>
 
           <div class="ar-gap" data-at="3700"></div>
-          <div class="ar-line ar-call" data-at="3700" data-done="5300" data-result="err"><span class="ar-m"><i class="ar-dot"></i></span><span class="ar-c"><b class="ar-tool">update_project</b><span class="ar-args">(summary: <span class="tok-str">"Add a Redis cache"</span>)</span></span></div>
+          <div class="ar-line ar-call is-err" data-at="3700" data-done="5300" data-result="err"><span class="ar-m"><i class="ar-dot"></i></span><span class="ar-c"><b class="ar-tool">update_project</b><span class="ar-args">(summary: <span class="tok-str">"Add a Redis cache"</span>)</span></span></div>
           <div class="ar-line ar-add" data-at="4000"><span class="ar-m">+</span><span class="ar-c" data-arch='component cache "Cache" @redis'>component cache "Cache" @redis</span></div>
           <div class="ar-line ar-add" data-at="4250"><span class="ar-m">+</span><span class="ar-c" data-arch="api -> cache @reads">api -> cache @reads</span></div>
           <div class="ar-line ar-add" data-at="4500"><span class="ar-m">+</span><span class="ar-c" data-arch='cache -> backend @reads : "on miss"'>cache -> backend @reads : "on miss"</span></div>
@@ -35,7 +35,7 @@
           <div class="ar-line ar-note" data-at="6600"><span class="ar-m"></span><span class="ar-c">backend is a plane. Pointing it at db instead.</span></div>
 
           <div class="ar-gap" data-at="7300"></div>
-          <div class="ar-line ar-call" data-at="7300" data-done="8700" data-result="ok"><span class="ar-m"><i class="ar-dot"></i></span><span class="ar-c"><b class="ar-tool">update_project</b><span class="ar-args">(summary: <span class="tok-str">"Add a Redis cache in front of Postgres"</span>)</span></span></div>
+          <div class="ar-line ar-call is-ok" data-at="7300" data-done="8700" data-result="ok"><span class="ar-m"><i class="ar-dot"></i></span><span class="ar-c"><b class="ar-tool">update_project</b><span class="ar-args">(summary: <span class="tok-str">"Add a Redis cache in front of Postgres"</span>)</span></span></div>
           <div class="ar-line ar-del" data-at="7600"><span class="ar-m">-</span><span class="ar-c">cache -> backend @reads : "on miss"</span></div>
           <div class="ar-line ar-add" data-at="7850"><span class="ar-m">+</span><span class="ar-c" data-arch='cache -> db @reads : "on miss"'>cache -> db @reads : "on miss"</span></div>
           <div class="ar-line" data-at="7850"><span class="ar-m ar-elbow">└</span><span class="ar-c"><span class="chip chip-accent ar-chip" data-done="8700">saved · revision 14 · badged for review</span></span></div>
@@ -92,9 +92,9 @@
 #agent-replay .ar-chip.is-running { background: var(--surface-2); color: var(--ink-3); }
 #agent-replay .ar-note .ar-c { font-family: var(--font-sans); font-size: var(--t-base); color: var(--ink-2); }
 #agent-replay .ar-add .ar-m { color: var(--accent); }
-#agent-replay .ar-add { background: var(--accent-soft); margin-left: -4px; padding-left: 4px; border-radius: var(--r-xs); }
+#agent-replay .ar-add { background: color-mix(in srgb, var(--accent) 7%, transparent); margin-left: -4px; padding-left: 4px; border-radius: var(--r-xs); }
 #agent-replay .ar-del .ar-m { color: var(--danger); }
-#agent-replay .ar-del .ar-c { color: var(--ink-3); text-decoration: line-through; }
+#agent-replay .ar-del .ar-c, #agent-replay .ar-del .ar-c span { color: var(--ink-3); text-decoration: line-through; }
 #agent-replay .ar-err .ar-c { color: var(--danger); }
 #agent-replay .is-hidden { visibility: hidden; opacity: 0; }
 

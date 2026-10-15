@@ -69,12 +69,12 @@ var CLIENTS = [
     note: "Then run <code>/mcp</code> in Claude Code, choose <code>archer</code> and pick Authenticate. Your browser opens to sign in." },
   { name: "Codex", icon: "terminal-window", shell: "codex mcp add archer --url " + URL_,
     note: "Codex opens your browser to sign in. To sign in again later, run <code>codex mcp login archer</code>." },
-  { name: "Cursor", icon: "code", file: "~/.cursor/mcp.json", json: '{ "mcpServers": { "archer": { "url": "' + URL_ + '" } } }',
-    note: "Or put it in <code>.cursor/mcp.json</code> for one project. Then connect <code>archer</code> in Cursor's MCP settings and sign in." },
+  { name: "Cursor", icon: "code", file: "~/.cursor/mcp.json", json: '"archer": { "url": "' + URL_ + '" }',
+    note: "Add it under <code>mcpServers</code>, or in <code>.cursor/mcp.json</code> for one project. Then connect <code>archer</code> in Cursor's MCP settings and sign in." },
   { name: "Gemini CLI", icon: "terminal-window", shell: "gemini mcp add --transport http archer " + URL_,
     note: "Then run <code>/mcp auth archer</code> in Gemini CLI to sign in." },
-  { name: "VS Code", icon: "code", file: ".vscode/mcp.json", json: '{ "servers": { "archer": { "type": "http", "url": "' + URL_ + '" } } }',
-    note: "VS Code opens your browser to sign in the first time the server starts." }
+  { name: "VS Code", icon: "code", file: ".vscode/mcp.json", json: '"archer": { "type": "http", "url": "' + URL_ + '" }',
+    note: "Add it under <code>servers</code>. VS Code opens your browser to sign in the first time the server starts." }
 ];
 
 var list = root.querySelector(".cs-tabs"), panel = root.querySelector(".cs-setup");
