@@ -44,6 +44,7 @@ import type { UserLibrary } from "@/lib/userLibrary";
 import { githubTreeUrl } from "@/lib/githubApi";
 import type { RepoLink } from "@/lib/github";
 import { displayColor, useIsDark } from "@/lib/useIsDark";
+import { connectionsOf, type ComponentLink, type LinkDirection } from "@/lib/connectionsOf";
 import { CodeEditor } from "./CodeMirror";
 import { Markdown, MarkdownTable, parseTable } from "./Markdown";
 import { Glyph, GlyphSwatch } from "./nodes";
@@ -432,6 +433,7 @@ export function ComponentDetails({
   library,
   repo,
   onOpen,
+  connections,
 }: {
   node: ComponentNode;
   /** Custom types, for their names and glyphs. */
@@ -440,6 +442,8 @@ export function ComponentDetails({
   repo: RepoLink | null;
   /** Open it, to show what's nested in it. */
   onOpen?: () => void;
+  /** List its connections, from this document at this path. */
+  connections?: ConnectionsProps;
 }) {
   const custom = library?.items.find((t) => t.tag === node.type);
   const typeName = custom?.name ?? lookupType(node.type)?.name;
@@ -526,8 +530,139 @@ export function ComponentDetails({
           )}
         </dl>
       </Section>
+      {connections && <ConnectionsReadout {...connections} library={library} />}
       <PayloadReadouts payloads={node.payloads} />
     </>
+  );
+}
+
+interface ConnectionsProps {
+  doc: ArchDoc;
+  path: string;
+  /** Show a connection (the editor); unset, a row shows the component at its far end. */
+  onSelectConnection?: (key: string) => void;
+  onSelectComponent?: (path: string) => void;
+}
+
+const DIRECTION: Record<LinkDirection, { label: string; icon: (p: { className?: string }) => ReactNode }> = {
+  out: { label: "Outgoing", icon: Icon.ArrowRight },
+  in: { label: "Incoming", icon: Icon.ArrowLeft },
+  both: { label: "Both ways", icon: Icon.Swap },
+  none: { label: "Undirected", icon: Icon.Minus },
+};
+
+/** One connection, from the inspected component's side: which way, to what, and over what. */
+function ConnectionRow({
+  doc,
+  path,
+  link,
+  library,
+  onClick,
+}: {
+  doc: ArchDoc;
+  path: string;
+  link: ComponentLink;
+  library?: UserLibrary;
+  onClick?: () => void;
+}) {
+  const { conn, direction, near, far } = link;
+  const farNode = findComponent(doc, far);
+  const custom = library?.items.find((t) => t.tag === farNode?.type);
+  const farKey = pathToString(far);
+  const nearKey = pathToString(near);
+  const part = nearKey === path ? null : findComponent(doc, near);
+  const { label, icon: Arrow } = DIRECTION[direction];
+  const detail = [
+    part && `${direction === "in" ? "to" : "from"} ${part.name ?? part.id}`,
+    conn.label && `“${conn.label}”`,
+  ].filter(Boolean);
+  const body = (
+    <>
+      <span title={label} className="flex h-5 w-4 shrink-0 items-center justify-center text-ink-3">
+        <Arrow className="h-3.5 w-3.5" />
+        <span className="sr-only">{label}</span>
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="flex min-w-0 items-center gap-1.5 leading-5">
+          {farNode ? (
+            <>
+              <Glyph
+                tag={farNode.type}
+                color={resolveColor(farNode.color) ?? custom?.color}
+                glyph={custom?.glyph}
+                icon={farNode.icon}
+                size={14}
+                className="shrink-0"
+              />
+              <span className="truncate">{farNode.name ?? farNode.id}</span>
+            </>
+          ) : (
+            <span className="mono truncate text-sm">{farKey}</span>
+          )}
+          {conn.type && <span className="mono ml-auto shrink-0 pl-2 text-xs text-ink-3">@{conn.type}</span>}
+        </span>
+        {detail.length > 0 && (
+          <span className="block truncate text-xs leading-4 text-ink-3">{detail.join(" · ")}</span>
+        )}
+      </span>
+      {conn.payloads.length > 0 && (
+        <Chip>
+          {conn.payloads.length} payload{conn.payloads.length === 1 ? "" : "s"}
+        </Chip>
+      )}
+    </>
+  );
+  const row = "flex w-full items-start gap-2 rounded-md px-1.5 py-1 text-left text-base text-ink";
+  return onClick ? (
+    <li>
+      <button
+        type="button"
+        title={`${label}: ${pathToString(conn.source)} ${conn.arrow} ${pathToString(conn.target)}`}
+        onClick={onClick}
+        className={cx(row, "hover:bg-surface-2")}
+      >
+        {body}
+      </button>
+    </li>
+  ) : (
+    <li className={row}>{body}</li>
+  );
+}
+
+/** Every connection that reaches a component (and its parts), each a click away. */
+function ConnectionsReadout({
+  doc,
+  path,
+  library,
+  onSelectConnection,
+  onSelectComponent,
+}: ConnectionsProps & { library?: UserLibrary }) {
+  const links = useMemo(() => connectionsOf(doc, path.split(".")), [doc, path]);
+  return (
+    <Section title="Connections" action={links.length > 0 ? <Chip>{links.length}</Chip> : undefined}>
+      {links.length === 0 ? (
+        <p className="py-1 text-base text-ink-3">No connections</p>
+      ) : (
+        <ul className="-mx-1.5 flex flex-col">
+          {links.map((link) => (
+            <ConnectionRow
+              key={link.index}
+              doc={doc}
+              path={path}
+              link={link}
+              library={library}
+              onClick={
+                onSelectConnection
+                  ? () => onSelectConnection(connectionKey(link.conn))
+                  : onSelectComponent && findComponent(doc, link.far)
+                    ? () => onSelectComponent(pathToString(link.far))
+                    : undefined
+              }
+            />
+          ))}
+        </ul>
+      )}
+    </Section>
   );
 }
 
@@ -862,7 +997,17 @@ function ComponentInspector({
             onPickerOpened={onPickerOpened}
           />
         ) : (
-          <ComponentDetails node={node} library={library} repo={repo} onOpen={openInside} />
+          <ComponentDetails
+            node={node}
+            library={library}
+            repo={repo}
+            onOpen={openInside}
+            connections={{
+              doc,
+              path,
+              onSelectConnection: (key) => onSelect({ kind: "connection", key }),
+            }}
+          />
         )}
       </div>
     </div>
