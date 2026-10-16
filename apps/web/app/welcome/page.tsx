@@ -3,8 +3,8 @@ import { Landing } from "@/components/landing/Landing";
 import { LEDE } from "@/lib/landingCopy";
 import { SITE_URL } from "@/lib/site";
 
-// The link preview's title; the description is the landing's lede.
-const title = "Ship code faster than you can read it, let your agents map it out.";
+// The landing's headline and lede, so the link preview reads like the page.
+const title = "Archer: software architecture for your agents";
 const description = LEDE;
 
 // Served at "/" for signed-out visitors (see middleware.ts).
