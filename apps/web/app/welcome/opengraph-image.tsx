@@ -4,7 +4,7 @@ import type { CSSProperties } from "react";
 import { ImageResponse } from "next/og";
 import { autoLayout, canvasAt, layoutMap, parse, pathToString, shapeOf } from "@archer/lang";
 import { GLYPHS, GLYPH_VIEWBOX, lookupType } from "@archer/catalog";
-import { HEADLINE, LEDE } from "@/lib/landingCopy";
+import { HEADLINE, PREVIEW_LEDE } from "@/lib/landingCopy";
 import { LANDING_SAMPLE } from "@/lib/landingSample";
 import { labelLayout, shapeGeometry, type LabelLayout, type ShapeGeometry } from "@/lib/shapes";
 import { displayColor, mix } from "@/lib/svg";
@@ -585,7 +585,7 @@ export default async function OpengraphImage() {
             {HEADLINE}
           </div>
           <div style={{ paddingTop: 26, width: 430, fontSize: 21, lineHeight: 1.5, color: INK_2 }}>
-            {LEDE}
+            {PREVIEW_LEDE}
           </div>
         </div>
 
