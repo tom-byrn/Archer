@@ -39,6 +39,31 @@ deployment; nothing changes there.
 4. **Domains** → add the Vercel domain (and your custom domain, if any).
 5. **API keys** → copy the publishable and secret keys for step 3.
 
+Production must run on a **production** instance (`pk_live_…`). A development
+instance (`pk_test_…`, `*.clerk.accounts.dev`) works on a real domain but shows
+a development badge, caps users and uses Clerk's shared GitHub app. Moving an
+existing dev instance to production:
+
+- Clerk lists DNS records for the domain (`clerk.<domain>` and the email
+  records); add them at your DNS provider and wait for them to verify.
+- GitHub needs your own OAuth app in production (GitHub → Settings →
+  Developer settings → OAuth Apps; the callback URL is on Clerk's GitHub
+  connection page). Add the `repo` scope there too.
+- The `convex` JWT template and **Dynamic client registration** (step 4
+  below) are per instance: set them up again.
+- The new instance's Frontend API URL (`https://clerk.<domain>`) is the new
+  `CLERK_JWT_ISSUER_DOMAIN` on Convex prod, and its keys replace the Vercel
+  ones. Redeploy after changing them.
+- **Users are not carried over.** Everyone signs up again and gets a new
+  Clerk user id, and a personal workspace's id *is* its owner's user id, so
+  existing data looks gone until it is moved: for each person, after they
+  sign in once, run
+  `pnpm convex run --prod admin:transferWorkspace '{"from":"<dev user id>","to":"<new user id>"}'`
+  (from `apps/web`). That moves a personal workspace's documents, types,
+  history and drift only: team workspaces keep their data, but their
+  `ownerId` and `members.userId` still name the dev ids, so those rows need
+  the new ids too. Agents and the CLI sign in again (`archer login`).
+
 ## 3. Vercel
 
 Create the project from the GitHub repo with **Root Directory** `apps/web`
