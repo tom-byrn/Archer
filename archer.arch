@@ -2,22 +2,24 @@ arch "Archer-Codebase" v0.2
 
 component dev "Developer" @user {
   shape person
+  color sky
   desc "Designs architecture on the canvas; hands compiled specs to coding agents. Reviews what agents and commits changed, and publishes drafts back to the repository."
 }
 
 component agent "Coding Agent" @anthropic {
   shape robot
-  desc "Claude Code or any MCP client. Signs in to the hosted MCP server with OAuth (no API keys) and reads and writes projects with the same powers a human has in the app; receives compiled specs as implementation prompts. For a document stored in a repository, it edits the .arch file alongside the code instead."
+  desc "Claude Code or any MCP client. Signs in to the hosted MCP server with OAuth (no API keys) and reads, writes and renders projects with the same powers a human has in the app; receives compiled specs as implementation prompts. For a document stored in a repository, it edits the .arch file alongside the code instead."
 }
 
 component web "Web App" @vercel.nextjs {
   shape browser
-  desc "Next.js (App Router) + React Flow editor, signed in with Clerk. The canvas is a live render of the .arch source: every canvas gesture becomes an AST transform, formats back to canonical text, and autosaves. One mutation path, so canvas and code can never drift. Also serves the dashboard (workspaces, samples), share links with README image embeds, the docs with example sandboxes, and the MCP server at /mcp."
+  desc "Next.js (App Router) + React Flow, signed in with Clerk, hosted on Vercel (with Vercel Analytics) at tryarcher.dev. The canvas is a live render of the .arch source: every canvas gesture becomes an AST transform, formats back to canonical text, and autosaves. One mutation path, so canvas and code can never drift. Also serves the dashboard, the public site and docs, the admin dashboard, and the MCP server at /mcp."
   src "apps/web"
   component editor "Editor" {
     shape phone
     icon sliders
-    desc "Orchestrator: holds the source + undo/redo history, derives doc/diagnostics/flow-graph per keystroke, routes every mutation through transform -> format -> save. Multi-select, clipboard as .arch text, ⌘K commands and ⌘F find, history and drift, and the GitHub storage button (Synced, or Publish with the number of changes)."
+    color sky
+    desc "Orchestrator: holds the source + undo/redo history, derives doc/diagnostics/flow-graph per keystroke, routes every mutation through transform -> format -> save. Multi-select, clipboard as .arch text, ⌘K commands and ⌘F find, history and drift, and the GitHub storage button (Synced, or Publish with the number of changes). A stored document gets autosave, share, export and repo sync; a sandbox keeps everything in memory."
     src "apps/web/components/Editor.tsx"
     src "apps/web/lib/useArchDoc.ts"
     src "apps/web/components/CommandPalette.tsx"
@@ -27,7 +29,8 @@ component web "Web App" @vercel.nextjs {
   component canvas "Canvas" {
     shape document
     icon flow
-    desc "React Flow: components drawn as their shape with the icon they picked, else their product logo or glyph (an untyped component without an icon shows none), planes as titled regions that stay open, drag/connect/nest, opening any component to its own canvas with breadcrumbs, snap-back for dangling arrows (E101 is unrepresentable from the UI), connection labels on hover or selection, PNG export."
+    color sky
+    desc "React Flow: components drawn as their shape with the icon they picked, else their product logo or glyph (an untyped component without an icon shows none), tinted in their color; planes as titled regions that stay open, drag/connect/nest, opening any component to its own canvas with breadcrumbs, snap-back for dangling arrows (E101 is unrepresentable from the UI), connection labels on hover or selection, PNG export."
     src "apps/web/components/ArchCanvas.tsx"
     src "apps/web/components/nodes.tsx"
     src "apps/web/lib/toFlow.ts"
@@ -37,56 +40,103 @@ component web "Web App" @vercel.nextjs {
   component palette "Palette" {
     shape document
     icon grid
+    color sky
     desc "Searchable shapes, curated catalog and this workspace's custom types (whose icon can be any of the picker's); drag or click to place. Collapsible, and closed when a document opens."
     src "apps/web/components/Palette.tsx"
   }
   component detail "Detail Panel" {
     shape phone
     icon sidebar
-    desc "Opens read-only on the selection: a component's type, shape, icon, description, sources (each a link: files, folders or URLs) and payloads (markdown and tables rendered), or a connection's ends, direction, type and label. Edit switches to the form: per-component name/id/type/shape/icon (a searchable picker of ~500 Phosphor icons)/description, a list of sources to add to or remove from, and payload editors with live format validation; per-connection direction/type/label."
+    color sky
+    desc "Opens read-only on the selection: a component's type, shape, description, sources (each a link: files, folders or URLs), payloads (markdown and tables rendered) and connections (every one reaching it or a part nested in it, outgoing first; a click opens it), or a connection's ends, direction, type and label. Icon and color are left to the canvas. Edit switches to the form: per-component name/id/type/shape/icon (a searchable picker of ~500 Phosphor icons)/color (18 named colors or any hex)/description, a list of sources to add to or remove from, and payload editors with live format validation; per-connection direction/type/label."
     src "apps/web/components/DetailPanel.tsx"
+    src "apps/web/lib/connectionsOf.ts"
     src "apps/web/components/Markdown.tsx"
     src "apps/web/components/ShapePicker.tsx"
     src "apps/web/components/IconPicker.tsx"
+    src "apps/web/components/ColorPicker.tsx"
     src "apps/web/components/TypeCombobox.tsx"
   }
   component code_view "Code Pane" {
     shape browser
     icon code
+    color sky
     desc "The raw .arch text with syntax highlighting, collapsible, editable in both directions, with diagnostics (code + line number)."
     src "apps/web/components/CodePane.tsx"
     src "apps/web/components/CodeMirror.tsx"
     src "apps/web/lib/archLanguage.ts"
   }
+  component dashboard "Dashboard" {
+    shape browser
+    icon house
+    color sky
+    desc "The signed-in home at /: the workspace's documents, personal and team workspaces with members and email invites, new documents from scratch or from the sample gallery, connecting an agent, and Send feedback."
+    src "apps/web/app/page.tsx"
+    src "apps/web/components/MembersDialog.tsx"
+    src "apps/web/components/SampleDialog.tsx"
+    src "apps/web/lib/samples"
+    src "apps/web/components/ConnectAgentDialog.tsx"
+    src "apps/web/components/FeedbackDialog.tsx"
+  }
+  component site "Site & Docs" {
+    shape browser
+    icon globe
+    color sky
+    desc "The public pages: the landing page (a one-line agent prompt typed out like a terminal, and a live sandbox), the language spec and worked examples, the MCP and CLI docs built from docs/*.md, /sandbox/<slug> (the real editor, in memory), and share links with their server-rendered SVG image, the same drawing agents get from render_project."
+    src "apps/web/app/welcome"
+    src "apps/web/components/landing"
+    src "apps/web/app/language"
+    src "apps/web/app/docs"
+    src "apps/web/app/sandbox"
+    src "apps/web/app/share"
+    src "apps/web/lib/svg.ts"
+  }
+  component admin "Admin Dashboard" {
+    shape browser
+    icon chart_bar
+    color rose
+    desc "/admin-dashboard, for one person (isAdmin; everyone else gets a 404): users, documents, agents and their tool calls, activity over time and feedback, with read-only canvases at any revision. Usage comes from each signed-in tab's heartbeat (UsageBeacon) and the tool calls the /mcp route records."
+    src "apps/web/app/admin-dashboard"
+    src "apps/web/components/admin"
+    src "apps/web/lib/adminMetrics.ts"
+    src "apps/web/lib/server/admin.ts"
+    src "apps/web/components/UsageBeacon.tsx"
+  }
 }
 
 component lang "Language Core" {
   icon brackets_angle
+  color blue
   desc "@archer/lang — the Archer language itself. Pure TypeScript with zero app dependencies, shared verbatim by the web app, the MCP server and the CLI."
   src "packages/lang"
   component parser "Parser" {
     shape hexagon
     icon tree_structure
-    desc "Lexer + recursive descent to a typed AST; positioned E001 diagnostics with statement-level error recovery."
+    color blue
+    desc "Lexer + recursive descent to a typed AST; positioned E001 diagnostics with statement-level error recovery, E004 for a second shape, icon or color in one component."
     src "packages/lang/src/lexer.ts"
     src "packages/lang/src/parser.ts"
   }
   component validator "Validator" {
     shape hexagon
     icon shield_check
-    desc "Spec rules: E002/E003 identity, E004 one shape and one icon per component, E101 connection resolution (nothing is ever auto-created), E201 payload syntax for json/yaml/table, W301-W305 warnings (W304: an unknown shape draws as a box; W305: an unknown icon isn't drawn)."
+    color blue
+    desc "Spec rules: E002/E003 identity, E101 connection resolution (nothing is ever auto-created), E201 payload syntax for json/yaml/table, W301-W306 warnings (W304: an unknown shape draws as a box; W305: an unknown icon isn't drawn; W306: a color that is neither a palette name nor #rrggbb)."
     src "packages/lang/src/validate.ts"
     src "packages/lang/src/shapes.ts"
+    src "packages/lang/src/colors.ts"
   }
   component formatter "Formatter" {
     shape hexagon
     icon list
+    color blue
     desc "Canonical form: fixed section order, sorted connections/layout, smart fences. Idempotent; round-trips with zero diagnostics."
     src "packages/lang/src/format.ts"
   }
   component layouter "Auto-layout" {
     shape hexagon
     icon grid
+    color blue
     desc "Layered engine (network simplex): connections flow left to right with few crossings, long edges get lanes of their own, planes wrap what sits on them, and each component's inside is a canvas of its own. Existing positions are kept and new components land next to what they connect to; Re-layout starts over."
     src "packages/lang/src/layout.ts"
     src "packages/lang/src/layered.ts"
@@ -95,18 +145,21 @@ component lang "Language Core" {
   component exporter "Agent Export" {
     shape document
     icon export
+    color blue
     desc "compileForAgent: canonical text with a complete layout block and a reading-guide preamble prepended."
     src "packages/lang/src/agentExport.ts"
   }
   component transforms "Transforms" {
     shape hexagon
     icon magic_wand
-    desc "Pure AST edits behind every canvas gesture: add/move/resize/nest/rename components and planes, connections, payloads, shapes, icons, copy/paste fragments, grouping on planes."
+    color blue
+    desc "Pure AST edits behind every canvas gesture: add/move/resize/nest/rename components and planes, connections, payloads, shapes, icons, colors, copy/paste fragments, grouping on planes."
     src "packages/lang/src/transform.ts"
   }
   component merge "Diff & Merge" {
     shape hexagon
     icon merge
+    color blue
     desc "Semantic diff (layout never counts) for history and review, and the three-way merge repo sync uses to combine edits in Archer with commits to the file."
     src "packages/lang/src/diff.ts"
     src "packages/lang/src/merge.ts"
@@ -115,13 +168,14 @@ component lang "Language Core" {
 
 component catalog "Catalog" {
   icon books
+  color teal
   desc "@archer/catalog — ~350 component types (vendor-neutral building blocks like load balancers, queues, LLMs and agents, plus real technologies), the connection-type vocabulary, Phosphor glyphs and the ~500 icons a component can pick (grouped and searchable), and product logos (AWS's official icons among them) for about 140 vendor types."
   src "packages/catalog"
 }
 
 component mcp "MCP Server" @mcp {
   shape hexagon
-  desc "@archer/mcp — human-parity agent access, served by the web app at /mcp (Streamable HTTP, OAuth sign-in, no API keys): 25 tools plus the archer://guide and worked-example resources. Writes are validation-gated (errors reject, diagnostics returned) and layout-preserving (surviving components keep their canvas positions); every save is a revision attributed to the agent."
+  desc "@archer/mcp — human-parity agent access, served by the web app at /mcp (Streamable HTTP, OAuth sign-in, no API keys): 27 tools plus the archer://guide and worked-example resources. Writes are validation-gated (errors reject, diagnostics returned) and layout-preserving (surviving components keep their canvas positions); every save is a revision attributed to the agent. Results carry hints when a canvas is over the 5–9 component budget or the diagram is mostly grey."
   src "packages/mcp"
   src "apps/web/app/mcp/route.ts"
   tools table ```
@@ -131,16 +185,17 @@ component mcp "MCP Server" @mcp {
   | language   | validate_source, format_source, compile_for_agent, auto_layout_source       |
   | catalog    | list_types, create_custom_type, delete_custom_type                          |
   | projects   | list_projects, get_project, create_project, update_project, delete_project  |
-  | canvas     | auto_layout_project                                                         |
+  | canvas     | render_project, auto_layout_project                                         |
   | history    | get_history, get_revision, diff_project                                     |
   | drift      | link_repository, report_drift, get_drift                                    |
   | workspace  | get_workspace_info, list_workspaces, use_workspace                          |
+  | feedback   | send_feedback                                                               |
   ```
 }
 
 component convex "Convex Backend" @convex {
   shape cylinder
-  desc "Documents, revisions, drift reports, workspaces and custom types. Live queries push agent saves and repo syncs onto open canvases instantly. Browsers call it with their Clerk JWT, the MCP server and repo sync with a server-held credential for the user; every function checks the caller's role in the workspace (owner, editor or viewer)."
+  desc "Documents, revisions, drift reports, workspaces and custom types, plus the usage and feedback the admin dashboard reads. Live queries push agent saves and repo syncs onto open canvases instantly. Browsers call it with their Clerk JWT, the MCP server and repo sync with a server-held credential for the user; every function checks the caller's role in the workspace (owner, editor or viewer), and the admin queries take the bare server credential."
   src "apps/web/convex"
   schema table ```
   | table        | fields                                                   |
@@ -152,10 +207,14 @@ component convex "Convex Backend" @convex {
   | members      | workspaceId, userId, email, role                         |
   | agentPrefs   | userId, workspaceId                                      |
   | libraryTypes | workspaceId, tag, name, color, glyph                     |
+  | sessions     | userId, key, startedAt, lastSeenAt, activeMs, paths      |
+  | toolCalls    | userId, tool, agent, ok, ms, at                          |
+  | feedback     | userId, message, path, device                            |
   ```
 }
 
 component cli "Archer CLI" @cli {
+  color sky
   desc "archerctl on npm. archer check and fmt validate and format .arch files with no account (CI, pre-commit hooks); login, push, pull and workspace go through the hosted MCP tools with the same OAuth sign-in agents use; archer mcp relays clients that only run local servers."
   src "packages/cli"
 }
@@ -170,7 +229,7 @@ component github "GitHub" @github {
 
 component clerk "Clerk" @clerk {
   shape cloud
-  desc "Auth: GitHub sign-in for the app, the JWTs Convex trusts, and the OAuth server agents and the CLI sign in with."
+  desc "Auth: GitHub sign-in for the app, the JWTs Convex trusts, the OAuth server agents and the CLI sign in with, and the user list the admin dashboard reads."
   src "apps/web/middleware.ts"
   src "apps/web/components/Providers.tsx"
   src "apps/web/convex/auth.config.ts"
@@ -189,4 +248,12 @@ web -> clerk @auth : "GitHub sign-in"
 web <-> convex @ws : "live queries + debounced autosave"
 web <-> github @http : "repo sync: import, publish, webhooks"
 web -> lang @depends : "parse, validate, format on every edit"
-web -> mcp : "serves it at /mcp"
+web -> mcp : "serves it at /mcp, with the SVG renderer"
+web.admin -> clerk @http : "user list"
+web.admin -> convex @http : "usage, feedback, documents"
+web.dashboard -> web.editor : "opens a document"
+web.editor -> web.canvas : "renders the doc"
+web.editor -> web.code_view : "source + diagnostics"
+web.editor -> web.detail : "selection"
+web.palette -> web.canvas : "drag or click to place"
+web.site -> web.editor : "sandbox runs it in memory"
