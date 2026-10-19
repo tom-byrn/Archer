@@ -1,6 +1,34 @@
-# Archer
+<p align="center">
+  <a href="https://tryarcher.dev">
+    <img src="apps/web/app/icon.svg" width="96" height="96" alt="Archer logo">
+  </a>
+</p>
 
-**An architecture canvas that compiles to an agent-readable language — and back.**
+<h1 align="center">Archer</h1>
+
+<p align="center">
+  <strong>An architecture canvas that compiles to an agent-readable language — and back.</strong>
+</p>
+
+<p align="center">
+  <a href="https://tryarcher.dev"><img src="https://img.shields.io/badge/tryarcher.dev-live-0f1117?style=flat-square" alt="Live at tryarcher.dev"></a>
+  <a href="https://www.npmjs.com/package/archerctl"><img src="https://img.shields.io/npm/v/archerctl?style=flat-square&label=archerctl&logo=npm" alt="archerctl on npm"></a>
+  <a href="docs/mcp.md"><img src="https://img.shields.io/badge/MCP-27_tools-0f1117?style=flat-square&logo=modelcontextprotocol&logoColor=white" alt="MCP: 27 tools"></a>
+  <a href="docs/language-spec.md"><img src="https://img.shields.io/badge/.arch-v0.2-0f1117?style=flat-square" alt="Language v0.2"></a>
+  <img src="https://img.shields.io/badge/Next.js-15-0f1117?style=flat-square&logo=nextdotjs&logoColor=white" alt="Next.js 15">
+  <img src="https://img.shields.io/badge/React-19-0f1117?style=flat-square&logo=react&logoColor=61dafb" alt="React 19">
+  <img src="https://img.shields.io/badge/TypeScript-5-3178c6?style=flat-square&logo=typescript&logoColor=white" alt="TypeScript">
+  <img src="https://img.shields.io/badge/Convex-backend-ee342f?style=flat-square" alt="Convex">
+  <a href="https://github.com/tom-byrn/archer/commits/main"><img src="https://img.shields.io/github/last-commit/tom-byrn/archer?style=flat-square" alt="Last commit"></a>
+</p>
+
+<p align="center">
+  <a href="https://tryarcher.dev"><strong>Try it</strong></a> ·
+  <a href="https://tryarcher.dev/language"><strong>Language</strong></a> ·
+  <a href="docs/mcp.md"><strong>MCP server</strong></a> ·
+  <a href="docs/cli.md"><strong>CLI</strong></a> ·
+  <a href="#run-it"><strong>Run it</strong></a>
+</p>
 
 Design your software architecture on an Excalidraw-style canvas with real
 technology components (AWS, Vercel, Postgres, …), strict connection rules, and
