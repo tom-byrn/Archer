@@ -7,7 +7,7 @@
 <h1 align="center">Archer</h1>
 
 <p align="center">
-  <strong>An architecture canvas that compiles to an agent-readable language — and back.</strong>
+  <strong>A software architecture tool for you and your agents.</strong>
 </p>
 
 <p align="center">
@@ -30,18 +30,17 @@
   <a href="#run-it"><strong>Run it</strong></a>
 </p>
 
-Design your software architecture on an Excalidraw-style canvas with real
-technology components (AWS, Vercel, Postgres, …), strict connection rules, and
-structured detail inside every node. The whole canvas *is* one `.arch` text
-file: dragging a box edits the file, editing the file re-renders the canvas,
-and one click compiles it into a precise spec you paste to a coding agent.
+Design your software architecture on a whiteboard-style canvas with real
+technology components (Web app, AWS, Postgres, …), strict connection rules, and
+structured detail inside every node. The whole canvas is one `.arch` diagram-as-code
+file.
 
 ![Architecture](https://www.tryarcher.dev/share/1uC4PhN_kTVQmFom/image.svg?theme=dark)
 
 ## Why
 
 Coding agents are only as good as the spec you hand them. Diagrams describe
-systems well but export as pixels; diagram-as-code tools describe *pictures*,
+systems well but export as pixels; diagram/ whiteboard tools describe *pictures*,
 not systems. An Archer document is a semantic model:
 
 - **Strict** — arrows can't point at nothing (the UI snaps them back; the
