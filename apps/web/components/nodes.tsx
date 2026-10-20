@@ -531,32 +531,34 @@ export function ArchEdgeComponent({
   const hasLabel = data?.protocol !== undefined || data?.label !== undefined || payloads > 0;
   // The chip stays hidden (and out of the pointer's way) until the edge, or a
   // component it connects, is hovered or selected.
-  const showLabel = selected || data?.endSelected === true || data?.lit === true;
+  const highlighted = data?.highlighted === true;
+  const showLabel = selected || highlighted || data?.endSelected === true || data?.lit === true;
   // Chips of connections sharing this path stack, one row each.
   const [slot, of] = data?.stack ?? [0, 1];
   const chipY = labelY + (slot - (of - 1) / 2) * 22;
   const diff = data?.diff;
   const diffCls = diff ? `arch-edge-diff-${diff}` : "";
+  const litCls = highlighted && "arch-edge-highlighted";
   return (
     <>
       <BaseEdge
         id={id}
         path={path}
-        className={cx("arch-edge-path", diffCls)}
+        className={cx("arch-edge-path", litCls, diffCls)}
         interactionWidth={16}
       />
       {/* fill attr: fallback so heads are never SVG-default black if canvas.css is late. */}
       {arrow !== "--" && (
         <polygon
           fill="var(--edge)"
-          className={cx("arch-edge-arrow", diffCls)}
+          className={cx("arch-edge-arrow", litCls, diffCls)}
           points={arrowhead(targetX, targetY, targetPosition)}
         />
       )}
       {arrow === "<->" && (
         <polygon
           fill="var(--edge)"
-          className={cx("arch-edge-arrow", diffCls)}
+          className={cx("arch-edge-arrow", litCls, diffCls)}
           points={arrowhead(sourceX, sourceY, sourcePosition)}
         />
       )}
@@ -574,7 +576,7 @@ export function ArchEdgeComponent({
               "arch-edge-chip nodrag nopan absolute flex h-[18px] items-center gap-1 rounded-sm border bg-surface px-1.5 text-xs leading-none",
               showLabel && "arch-edge-chip-shown",
               data?.lit === false && "dim",
-              diff === "added" ? "border-accent" : selected ? "border-accent" : "border-line",
+              diff === "added" || selected || highlighted ? "border-accent" : "border-line",
               diffCls,
             )}
           >

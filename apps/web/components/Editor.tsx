@@ -340,6 +340,12 @@ function EditorView({ initialSource, library, session }: EditorProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
   /** "Change shape…" / "Change icon…" / "Change color…": the component whose list the form opens on. */
   const [pickerFor, setPickerFor] = useState<{ path: string; picker: Picker } | null>(null);
+  /**
+   * A connection picked out (one click) in the inspector's list for the
+   * component at `path`: lit there and on the canvas, without leaving the
+   * component. A double-click opens the connection instead.
+   */
+  const [spotlight, setSpotlight] = useState<{ path: string; key: string } | null>(null);
   const [focus, setFocus] = useState<string[]>([]);
   const [codeOpen, setCodeOpen] = useState(false);
   // The component palette (left sidebar) starts closed every time the editor
@@ -634,7 +640,8 @@ function EditorView({ initialSource, library, session }: EditorProps) {
   useEffect(() => {
     if (editingId !== null && editingId !== selectedId) setEditingId(null);
     if (pickerFor !== null && pickerFor.path !== selectedId) setPickerFor(null);
-  }, [editingId, pickerFor, selectedId]);
+    if (spotlight !== null && spotlight.path !== selectedId) setSpotlight(null);
+  }, [editingId, pickerFor, spotlight, selectedId]);
   const pickerOpened = useCallback(() => setPickerFor(null), []);
 
   /** Select a component that was just made, its form open to name it. */
@@ -855,6 +862,8 @@ function EditorView({ initialSource, library, session }: EditorProps) {
   // Diff mode shows a past or merged doc read-only; nothing edits it.
   const editable = diff === null;
   const editing = editable && selectedId !== null && editingId === selectedId;
+  // Lit only while the list it was picked from shows (the form doesn't list connections).
+  const spotlit = spotlight !== null && spotlight.path === selectedPath && !editing ? spotlight.key : null;
   const selCount = liveSel.nodes.length;
   const selPaths = () => liveSel.nodes.map((p) => p.split("."));
   /** The selection's planes, if any: they can't be nested in a component. */
@@ -1069,6 +1078,7 @@ function EditorView({ initialSource, library, session }: EditorProps) {
     if (menu) setMenu(null);
     else if (diffView) setDiffView(null);
     else if (editing) setEditingId(null);
+    else if (spotlit) setSpotlight(null);
     else if (liveSel.nodes.length > 0 || liveSel.edges.length > 0) setSel(NONE);
     else setFocus((f) => f.slice(0, -1));
   };
@@ -1757,6 +1767,7 @@ function EditorView({ initialSource, library, session }: EditorProps) {
               callbacks={callbacks}
               isDark={isDark}
               selection={liveSel}
+              highlightedEdge={spotlit}
               reveal={reveal}
               onRevealed={clearReveal}
               exportRef={exportRef}
@@ -1796,6 +1807,10 @@ function EditorView({ initialSource, library, session }: EditorProps) {
               if (editing && s) setEditingId(s.kind === "connection" ? s.key : s.path);
               setSelection(s);
             }}
+            spotlight={spotlit}
+            onSpotlight={(key) =>
+              setSpotlight(key === null || selectedPath === null ? null : { path: selectedPath, key })
+            }
             onDrillIn={callbacks.onDrillIn}
             library={library}
             repo={repo}
