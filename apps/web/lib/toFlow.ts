@@ -140,6 +140,8 @@ export interface ArchEdgeData extends Record<string, unknown> {
   stack?: [number, number];
   /** Set by the canvas while a component it connects is selected: its label chip shows. */
   endSelected?: boolean;
+  /** Set by the canvas while it's picked out in the inspector's list: drawn like a selected one. */
+  highlighted?: boolean;
 }
 
 export type ArchEdge = Edge<ArchEdgeData>;

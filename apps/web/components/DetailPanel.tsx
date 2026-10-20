@@ -542,6 +542,13 @@ interface ConnectionsProps {
   /** Show a connection (the editor); unset, a row shows the component at its far end. */
   onSelectConnection?: (key: string) => void;
   onSelectComponent?: (path: string) => void;
+  /** The connection picked out in the list (and on the canvas), by key. */
+  spotlight?: string | null;
+  /**
+   * Set: a click picks a connection out (again, puts it back: null) and a
+   * double-click (or Enter) shows it with `onSelectConnection`.
+   */
+  onSpotlight?: (key: string | null) => void;
 }
 
 const DIRECTION: Record<LinkDirection, { label: string; icon: (p: { className?: string }) => ReactNode }> = {
@@ -557,13 +564,19 @@ function ConnectionRow({
   path,
   link,
   library,
+  active = false,
   onClick,
+  onOpen,
 }: {
   doc: ArchDoc;
   path: string;
   link: ComponentLink;
   library?: UserLibrary;
+  /** Picked out (`onClick` toggles it). */
+  active?: boolean;
   onClick?: () => void;
+  /** Double-click or Enter. */
+  onOpen?: () => void;
 }) {
   const { conn, direction, near, far } = link;
   const farNode = findComponent(doc, far);
@@ -613,13 +626,24 @@ function ConnectionRow({
     </>
   );
   const row = "flex w-full items-start gap-2 rounded-md px-1.5 py-1 text-left text-base text-ink";
+  const title = `${label}: ${pathToString(conn.source)} ${conn.arrow} ${pathToString(conn.target)}`;
   return onClick ? (
     <li>
       <button
         type="button"
-        title={`${label}: ${pathToString(conn.source)} ${conn.arrow} ${pathToString(conn.target)}`}
-        onClick={onClick}
-        className={cx(row, "hover:bg-surface-2")}
+        title={onOpen ? `${title}\nDouble-click to open` : title}
+        aria-pressed={onOpen ? active : undefined}
+        onClick={(e) => {
+          // The second click of a double-click is the open, not another toggle.
+          if (!onOpen || e.detail < 2) onClick();
+        }}
+        onDoubleClick={onOpen}
+        onKeyDown={(e) => {
+          if (!onOpen || e.key !== "Enter") return;
+          e.preventDefault();
+          onOpen();
+        }}
+        className={cx(row, active ? "bg-accent-soft" : "hover:bg-surface-2")}
       >
         {body}
       </button>
@@ -636,6 +660,8 @@ function ConnectionsReadout({
   library,
   onSelectConnection,
   onSelectComponent,
+  spotlight = null,
+  onSpotlight,
 }: ConnectionsProps & { library?: UserLibrary }) {
   const links = useMemo(() => connectionsOf(doc, path.split(".")), [doc, path]);
   return (
@@ -644,22 +670,29 @@ function ConnectionsReadout({
         <p className="py-1 text-base text-ink-3">No connections</p>
       ) : (
         <ul className="-mx-1.5 flex flex-col">
-          {links.map((link) => (
-            <ConnectionRow
-              key={link.index}
-              doc={doc}
-              path={path}
-              link={link}
-              library={library}
-              onClick={
-                onSelectConnection
-                  ? () => onSelectConnection(connectionKey(link.conn))
-                  : onSelectComponent && findComponent(doc, link.far)
-                    ? () => onSelectComponent(pathToString(link.far))
-                    : undefined
-              }
-            />
-          ))}
+          {links.map((link) => {
+            const key = connectionKey(link.conn);
+            const open = onSelectConnection && (() => onSelectConnection(key));
+            return (
+              <ConnectionRow
+                key={link.index}
+                doc={doc}
+                path={path}
+                link={link}
+                library={library}
+                active={spotlight === key}
+                onClick={
+                  onSpotlight && open
+                    ? () => onSpotlight(spotlight === key ? null : key)
+                    : (open ??
+                      (onSelectComponent && findComponent(doc, link.far)
+                        ? () => onSelectComponent(pathToString(link.far))
+                        : undefined))
+                }
+                onOpen={onSpotlight ? open : undefined}
+              />
+            );
+          })}
         </ul>
       )}
     </Section>
@@ -871,6 +904,8 @@ function ComponentInspector({
   repo,
   openPicker,
   onPickerOpened,
+  spotlight,
+  onSpotlight,
 }: {
   doc: ArchDoc;
   path: string;
@@ -886,6 +921,8 @@ function ComponentInspector({
   /** Open the form's shape, icon or color list as soon as it shows. */
   openPicker?: Picker;
   onPickerOpened?: () => void;
+  spotlight?: string | null;
+  onSpotlight?: (key: string | null) => void;
 }) {
   const isDark = useIsDark();
   const segments = path.split(".");
@@ -1006,6 +1043,8 @@ function ComponentInspector({
               doc,
               path,
               onSelectConnection: (key) => onSelect({ kind: "connection", key }),
+              spotlight,
+              onSpotlight,
             }}
           />
         )}
@@ -1566,6 +1605,8 @@ export function DetailPanel({
   repo = null,
   pickerFor = null,
   onPickerOpened,
+  spotlight = null,
+  onSpotlight,
 }: {
   doc: ArchDoc;
   selection: Selection;
@@ -1586,6 +1627,12 @@ export function DetailPanel({
   /** A component whose form should open straight onto its shape, icon or color list ("Change shape…"). */
   pickerFor?: { path: string; picker: Picker } | null;
   onPickerOpened?: () => void;
+  /**
+   * A component's connection picked out in its list (one click), by key; the
+   * canvas lights it too. A double-click opens the connection instead.
+   */
+  spotlight?: string | null;
+  onSpotlight?: (key: string | null) => void;
 }) {
   if (selection === null && multi === null) return null;
   const form = editing && !readOnly;
@@ -1623,6 +1670,8 @@ export function DetailPanel({
           repo={repo}
           openPicker={pickerFor?.path === selection.path ? pickerFor.picker : undefined}
           onPickerOpened={onPickerOpened}
+          spotlight={spotlight}
+          onSpotlight={onSpotlight}
         />
       ) : (
         <ConnectionInspector

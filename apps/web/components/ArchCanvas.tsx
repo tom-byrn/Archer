@@ -121,6 +121,8 @@ export interface ArchCanvasProps {
    * edits with it, and reports clicks and box selections through callbacks.
    */
   selection?: CanvasSelection;
+  /** Draw this connection (key) lit, as picked out elsewhere (the inspector's list). */
+  highlightedEdge?: string | null;
   /** Pan and zoom to this node once it's on the canvas (bump `nonce` to repeat). */
   reveal?: { path: string; nonce: number } | null;
   /** The reveal happened; the caller clears it so a later remount doesn't repeat it. */
@@ -192,6 +194,7 @@ function CanvasInner({
   callbacks,
   selectedPath,
   selection,
+  highlightedEdge = null,
   reveal,
   onRevealed,
   exportRef,
@@ -394,15 +397,17 @@ function CanvasInner({
       edges.map((e) => {
         const on = lit === null ? undefined : lit.edges.has(e.id);
         const ends = selectedEnds.has(e.source) || selectedEnds.has(e.target);
+        const spot = highlightedEdge !== null && e.data?.key === highlightedEdge;
         return {
           ...e,
-          ...(e.data && (on !== e.data.lit || ends !== !!e.data.endSelected)
-            ? { data: { ...e.data, lit: on, endSelected: ends } }
+          ...(e.data &&
+          (on !== e.data.lit || ends !== !!e.data.endSelected || spot !== !!e.data.highlighted)
+            ? { data: { ...e.data, lit: on, endSelected: ends, highlighted: spot } }
             : {}),
           className: joinCls(on === false && "dim"),
         };
       }),
-    [edges, lit, selectedEnds],
+    [edges, lit, selectedEnds, highlightedEdge],
   );
 
   /** Report where dragged nodes landed: absolute position in this view, center, and grid size. */

@@ -271,11 +271,14 @@ button.arch-nested:hover {
 .react-flow__edge:hover .arch-edge-arrow {
   fill: var(--edge-strong);
 }
-.react-flow__edge.selected .arch-edge-path {
+/* Highlighted: picked out in the inspector's connection list. */
+.react-flow__edge.selected .arch-edge-path,
+.react-flow__edge .arch-edge-path.arch-edge-highlighted {
   stroke: var(--accent);
   stroke-width: 2;
 }
-.react-flow__edge.selected .arch-edge-arrow {
+.react-flow__edge.selected .arch-edge-arrow,
+.react-flow__edge .arch-edge-arrow.arch-edge-highlighted {
   fill: var(--accent);
 }
 /* Label chips show only while their edge, or a component it connects, is
