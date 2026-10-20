@@ -15,6 +15,7 @@ import {
   type ButtonHTMLAttributes,
   type CSSProperties,
   type InputHTMLAttributes,
+  type PointerEvent,
   type ReactNode,
   type Ref,
   type TextareaHTMLAttributes,
@@ -58,6 +59,7 @@ import {
   NetworkIcon,
   PaperPlaneTiltIcon,
   PaletteIcon,
+  PictureInPictureIcon,
   PencilSimpleIcon,
   PlugIcon,
   PlusIcon,
@@ -491,6 +493,156 @@ export function SidePanel({
   );
 }
 
+/* ------------------------------------------------------------ Floating panel */
+
+const FLOAT_KEY = "archer.inspectorFloat";
+const FLOAT_MIN = { w: 300, h: 240 };
+/** Header height: the strip of a floating panel that drags it. */
+const FLOAT_GRIP = 44;
+
+interface FloatRect {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+/** Keep a window reachable: its title strip stays on screen, and it never outgrows the viewport. */
+function clampFloat(r: FloatRect): FloatRect {
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+  const w = Math.round(Math.min(Math.max(r.w, FLOAT_MIN.w), Math.max(FLOAT_MIN.w, vw - 16)));
+  const h = Math.round(Math.min(Math.max(r.h, FLOAT_MIN.h), Math.max(FLOAT_MIN.h, vh - 16)));
+  return {
+    w,
+    h,
+    x: Math.round(Math.min(Math.max(r.x, 8 - w + 96), vw - 96)),
+    y: Math.round(Math.min(Math.max(r.y, 0), vh - FLOAT_GRIP)),
+  };
+}
+
+function initialFloat(): FloatRect {
+  const fallback = { w: 400, h: 520, x: window.innerWidth - 400 - 16, y: 64 };
+  try {
+    const v = JSON.parse(localStorage.getItem(FLOAT_KEY) ?? "null");
+    if (v && [v.x, v.y, v.w, v.h].every((n) => typeof n === "number")) return clampFloat(v);
+  } catch {
+    /* private mode or bad data: use the default spot */
+  }
+  return clampFloat(fallback);
+}
+
+/**
+ * A panel that floats over the canvas as a window (from `md` up): drag its
+ * header to move it, its bottom-right corner to resize it; where it sits is
+ * remembered. Below `md` it is the same bottom sheet as `SidePanel`. Nothing is
+ * moved aside, so the canvas keeps its whole width.
+ */
+export function FloatingPanel({ children }: { children: ReactNode }) {
+  const [rect, setRect] = useState<FloatRect>(initialFloat);
+  const drag = useRef<{ kind: "move" | "size"; px: number; py: number; from: FloatRect } | null>(null);
+  const [active, setActive] = useState(false);
+  const latest = useRef(rect);
+  latest.current = rect;
+
+  const save = (r: FloatRect) => {
+    try {
+      localStorage.setItem(FLOAT_KEY, JSON.stringify(r));
+    } catch {
+      /* not remembered */
+    }
+  };
+
+  useEffect(() => {
+    const onResize = () => setRect((r) => clampFloat(r));
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+
+  const begin = (e: PointerEvent<HTMLElement>, kind: "move" | "size") => {
+    if (e.button !== 0 || !window.matchMedia("(min-width: 768px)").matches) return;
+    e.preventDefault();
+    e.currentTarget.setPointerCapture(e.pointerId);
+    drag.current = { kind, px: e.clientX, py: e.clientY, from: latest.current };
+    setActive(true);
+  };
+  const move = (e: PointerEvent<HTMLElement>) => {
+    const d = drag.current;
+    if (!d) return;
+    const dx = e.clientX - d.px;
+    const dy = e.clientY - d.py;
+    setRect(
+      clampFloat(
+        d.kind === "move"
+          ? { ...d.from, x: d.from.x + dx, y: d.from.y + dy }
+          : { ...d.from, w: d.from.w + dx, h: d.from.h + dy },
+      ),
+    );
+  };
+  const end = (e: PointerEvent<HTMLElement>) => {
+    if (!drag.current) return;
+    e.currentTarget.releasePointerCapture(e.pointerId);
+    drag.current = null;
+    setActive(false);
+    save(latest.current);
+  };
+
+  return (
+    <aside
+      role="dialog"
+      aria-label="Inspector"
+      style={
+        {
+          "--fx": `${rect.x}px`,
+          "--fy": `${rect.y}px`,
+          "--fw": `${rect.w}px`,
+          "--fh": `${rect.h}px`,
+        } as CSSProperties
+      }
+      className={cx(
+        "fixed inset-x-0 bottom-0 z-40 flex h-[55dvh] w-full flex-col rounded-t-xl border-t border-line bg-surface pb-[env(safe-area-inset-bottom)] shadow-md [&_.overflow-y-auto]:overscroll-contain",
+        "md:inset-auto md:left-[var(--fx)] md:top-[var(--fy)] md:h-[var(--fh)] md:w-[var(--fw)] md:rounded-xl md:border md:pb-0 md:shadow-lg",
+        active && "select-none",
+      )}
+    >
+      <div className="mx-auto mt-1.5 h-1 w-8 shrink-0 rounded-full bg-line-2 md:hidden" aria-hidden />
+      {/* The inspector's own header is the title bar: grab it anywhere but on a control. */}
+      <div
+        className="flex min-h-0 flex-1 flex-col md:[&>div>div:first-child]:cursor-grab"
+        onPointerDown={(e) => {
+          const box = e.currentTarget.getBoundingClientRect();
+          const target = e.target as Element;
+          if (
+            e.clientY - box.top > FLOAT_GRIP ||
+            target.closest("button, a, input, textarea, select, [role=menu]")
+          )
+            return;
+          begin(e, "move");
+        }}
+        onPointerMove={move}
+        onPointerUp={end}
+        onPointerCancel={end}
+      >
+        {children}
+      </div>
+      <div
+        role="separator"
+        aria-label="Resize window"
+        title="Drag to resize"
+        onPointerDown={(e) => begin(e, "size")}
+        onPointerMove={move}
+        onPointerUp={end}
+        onPointerCancel={end}
+        className="absolute bottom-0 right-0 z-10 hidden h-4 w-4 cursor-nwse-resize touch-none md:block"
+      >
+        <span className="absolute bottom-1 right-1 h-2 w-2 border-b-2 border-r-2 border-line-2" />
+      </div>
+      {/* Keep the pointer events while it is off the grip. */}
+      {active && <div className="fixed inset-0 z-50" />}
+    </aside>
+  );
+}
+
 /* ------------------------------------------------------------- Status chips */
 
 export function Chip({
@@ -839,6 +991,8 @@ export const Icon = {
   SelectAll: (p: IconProps) => <SelectionAllIcon {...UI} {...p} />,
   Swap: (p: IconProps) => <ArrowsLeftRightIcon {...UI} {...p} />,
   Sidebar: (p: IconProps) => <SidebarSimpleIcon {...UI} {...p} />,
+  /** Pop a docked panel out into a floating window. */
+  Float: (p: IconProps) => <PictureInPictureIcon {...UI} {...p} />,
   Shapes: (p: IconProps) => <ShapesIcon {...UI} {...p} />,
   /** A component's icon (the picker, "Change icon…"). */
   Icons: (p: IconProps) => <SmileyIcon {...UI} {...p} />,

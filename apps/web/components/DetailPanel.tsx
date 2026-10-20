@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   checkPayload,
   componentToPlane,
@@ -63,6 +63,7 @@ import {
   PropertyRow,
   Section,
   Segmented,
+  FloatingPanel,
   SidePanel,
   SwapIcon,
   TextArea,
@@ -1016,6 +1017,7 @@ function ComponentInspector({
             items={actions}
           />
         )}
+        <DockToggle />
         <IconButton label="Close" onClick={onClose}>
           <Icon.Close />
         </IconButton>
@@ -1263,6 +1265,7 @@ function PlaneInspector({
             items={actions}
           />
         )}
+        <DockToggle />
         <IconButton label="Close" onClick={onClose}>
           <Icon.Close />
         </IconButton>
@@ -1411,6 +1414,7 @@ function ConnectionInspector({
             />
           </>
         )}
+        <DockToggle />
         <IconButton label="Close" onClick={onClose}>
           <Icon.Close />
         </IconButton>
@@ -1527,6 +1531,7 @@ function MultiInspector({
         <span className="min-w-0 flex-1 truncate text-base font-semibold">
           {parts.join(", ")} selected
         </span>
+        <DockToggle />
         <IconButton label="Clear selection" onClick={onClose}>
           <Icon.Close />
         </IconButton>
@@ -1591,6 +1596,53 @@ function MultiInspector({
 
 /* ---------------------------------------------------------------- Panel */
 
+const FLOATING_KEY = "archer.inspectorFloating";
+
+/** Whether the inspector floats over the canvas instead of docking at the right; remembered. */
+function useFloating() {
+  const [floating, setFloating] = useState(false);
+  useEffect(() => {
+    try {
+      setFloating(localStorage.getItem(FLOATING_KEY) === "1");
+    } catch {
+      /* default: docked */
+    }
+  }, []);
+  const toggle = () => {
+    const next = !floating;
+    setFloating(next);
+    try {
+      localStorage.setItem(FLOATING_KEY, next ? "1" : "0");
+    } catch {
+      /* not remembered */
+    }
+  };
+  return { floating, toggle };
+}
+
+const DockContext = createContext<{ floating: boolean; toggle: () => void } | null>(null);
+
+/** Header button that floats the inspector or docks it again (desktop only: phones always get a sheet). */
+function DockToggle() {
+  const dock = useContext(DockContext);
+  if (!dock) return null;
+  return (
+    <IconButton
+      label={dock.floating ? "Dock to the side" : "Float as a window"}
+      onClick={dock.toggle}
+      className="hidden md:inline-flex"
+    >
+      {dock.floating ? <Icon.Sidebar /> : <Icon.Float />}
+    </IconButton>
+  );
+}
+
+const DockedPanel = ({ children }: { children: ReactNode }) => (
+  <SidePanel resizable defaultWidth={480}>
+    {children}
+  </SidePanel>
+);
+
 export function DetailPanel({
   doc,
   selection,
@@ -1634,11 +1686,14 @@ export function DetailPanel({
   spotlight?: string | null;
   onSpotlight?: (key: string | null) => void;
 }) {
+  const dock = useFloating();
   if (selection === null && multi === null) return null;
   const form = editing && !readOnly;
-  // Desktop: a right-hand column. Phones: a bottom sheet over the canvas.
+  // Desktop: a right-hand column, or a floating window. Phones: a bottom sheet over the canvas.
+  const Shell = dock.floating ? FloatingPanel : DockedPanel;
   return (
-    <SidePanel resizable defaultWidth={480}>
+    <DockContext.Provider value={dock}>
+      <Shell>
       {selection === null ? (
         <MultiInspector multi={multi!} onSelect={onSelect} onClose={() => onSelect(null)} />
       ) : selection.kind === "plane" ? (
@@ -1687,6 +1742,7 @@ export function DetailPanel({
           library={library}
         />
       )}
-    </SidePanel>
+      </Shell>
+    </DockContext.Provider>
   );
 }
