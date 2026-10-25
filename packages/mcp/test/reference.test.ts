@@ -15,7 +15,7 @@ process.env.ARCHER_SERVICE_SECRET ??= "test-service-secret";
 const ANY = "…";
 
 /** Stands in for the web app's renderer (lib/svg.ts); apps/web/test/mcpRender.test.ts checks the real one. */
-const renderSvg = (source: string, theme: "light" | "dark") =>
+const renderSvg = (source: string, { theme }: { theme: "light" | "dark" }) =>
   `<svg xmlns="http://www.w3.org/2000/svg" data-theme="${theme}"><!-- ${source.length} --></svg>`;
 const documented = TOOL_GROUPS.flatMap((g) => g.tools);
 

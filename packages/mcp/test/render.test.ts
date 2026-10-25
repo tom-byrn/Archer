@@ -12,9 +12,9 @@ import { seedExample } from "./seedExample";
 process.env.ARCHER_SERVICE_SECRET ??= "test-service-secret";
 
 const { user, project, team } = EXAMPLE_STATE;
-const calls: { source: string; theme: string }[] = [];
-const renderSvg = (source: string, theme: "light" | "dark") => {
-  calls.push({ source, theme });
+const calls: { source: string; theme: string; focus: string[] }[] = [];
+const renderSvg = (source: string, { theme, focus }: { theme: "light" | "dark"; focus: string[] }) => {
+  calls.push({ source, theme, focus });
   return `<svg xmlns="http://www.w3.org/2000/svg" data-theme="${theme}"></svg>`;
 };
 
@@ -50,9 +50,24 @@ describe("render_project", () => {
     const dark = await mcp.call("render_project", { project_id: project.id, theme: "dark" });
     expect(dark.text).toContain('data-theme="dark"');
     expect(calls).toEqual([
-      { source: stored, theme: "light" },
-      { source: stored, theme: "dark" },
+      { source: stored, theme: "light", focus: [] },
+      { source: stored, theme: "dark", focus: [] },
     ]);
+  });
+
+  it("draws the inside of a component when asked for one", async () => {
+    const { mcp, fake } = await connect();
+    const stored = fake.state.projects.get(project.id)!;
+    stored.source = `arch "Shop" v0.2\n\ncomponent backend {\n  component api\n  component db\n}\n`;
+
+    const res = await mcp.call("render_project", { project_id: project.id, component: "backend" });
+    expect(res.isError, res.text).toBe(false);
+    expect(calls).toEqual([{ source: stored.source, theme: "light", focus: ["backend"] }]);
+
+    const missing = await mcp.call("render_project", { project_id: project.id, component: "backend.cache" });
+    expect(missing.isError).toBe(true);
+    expect(missing.text).toMatch(/No component "backend.cache" in this project/);
+    expect(calls).toHaveLength(1);
   });
 
   it("lets a viewer render a project in their current workspace", async () => {

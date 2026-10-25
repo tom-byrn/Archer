@@ -7,14 +7,21 @@ import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Loading } from "loading-dev";
 import { DocumentViewer } from "@/components/DocumentViewer";
+import { parseFocus } from "@/lib/toFlow";
 
-/** Public, read-only view of a document shared with "anyone with the link". */
+/**
+ * Public, read-only view of a document shared with "anyone with the link".
+ * `?component=<path>` opens it on that component's canvas.
+ */
 export default function SharedDocumentPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{ component?: string | string[] }>;
 }) {
   const { slug } = use(params);
+  const { component } = use(searchParams);
   const { isSignedIn } = useAuth();
   const doc = useQuery(api.documents.getPublic, { slug });
 
@@ -53,6 +60,7 @@ export default function SharedDocumentPage({
       editHref={doc.role ? `/documents/${doc._id}` : undefined}
       signedIn={!!isSignedIn}
       repo={doc.repo ?? null}
+      initialFocus={parseFocus(typeof component === "string" ? component : undefined)}
     />
   );
 }

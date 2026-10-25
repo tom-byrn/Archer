@@ -185,7 +185,9 @@ From then on the agent acts as you:
   with the one-line summary the agent gives. The canvas highlights what an
   agent changed until you review it.
 - Sharing links, workspace members and invitations, and PNG export stay in
-  the app. Agents can draw a project as an SVG with `render_project`.
+  the app. Agents can draw any canvas of a project (the top level, or the
+  inside of a nested component) as an SVG with `render_project`, and so can
+  `archer render`.
 
 To disconnect an agent, remove the server from the client or clear its
 sign-in there (in Claude Code, from `/mcp`).

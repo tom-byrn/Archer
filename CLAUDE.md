@@ -6,7 +6,7 @@ language (`.arch` files). pnpm monorepo, TypeScript throughout:
 pure TS, no app deps), `packages/catalog` (component types + glyphs),
 `packages/mcp` (the MCP tools the app serves at `/mcp`, `docs/mcp.md`),
 `packages/cli` (the published `archer` binary — check/fmt/init/login/
-workspace/push/pull + `archer mcp`, a stdio relay; validates with
+workspace/push/pull/render + `archer mcp`, a stdio relay; validates with
 `mcp/src/analysis.ts` and does everything else through the hosted `/mcp`
 tools, signed in with the same OAuth flow agents use; bundled with tsup,
 `docs/cli.md`),
@@ -29,7 +29,10 @@ Router + React Flow + Convex).
   API keys (removed — don't reintroduce per-workspace secrets). Browsers use
   the Clerk JWT; agents and the CLI come through the hosted MCP route.
   Public share links: `documents.publicSlug` → `/share/<slug>` (viewer UI) and
-  `/share/<slug>/image.svg` (server-rendered SVG from `lib/svg.ts`). Pre-auth
+  `/share/<slug>/image.svg` (server-rendered SVG from `lib/svg.ts`); both take
+  `?component=<path>` for a nested component's canvas (`renderArchSvg(…, {
+  focus })`, outside neighbours placed by toFlow's `placeContext`), as do
+  `render_project`'s `component` and `archer render --component`. Pre-auth
   anonymous workspaces are claimed on first sign-in (`workspaces.claimLegacy`);
   `admin:transferWorkspace` (internal, CLI only) moves data between
   workspaces. Env: `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` + `CLERK_SECRET_KEY` in

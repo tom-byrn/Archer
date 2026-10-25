@@ -194,6 +194,26 @@ describe("signed in", () => {
     expect((await run(["pull", "x.arch", "--project", "not-an-id"])).err).toContain("No project with id not-an-id");
   });
 
+  it("render draws the linked project's canvas, or a component's inside", async () => {
+    write("shop.arch", 'arch "Shop" v0.2\n\ncomponent backend {\n  component api\n  component db\n}\n');
+    await run(["push", "shop.arch"]);
+
+    let r = await run(["render", "shop.arch"]);
+    expect(r.code, r.err).toBe(0);
+    expect(r.out).toContain('data-theme="light" data-focus=""');
+
+    r = await run(["render", "shop.arch", "--component", "backend", "--theme", "dark", "-o", "backend.svg"]);
+    expect(r.code, r.err).toBe(0);
+    expect(read("backend.svg")).toContain('data-theme="dark" data-focus="backend"');
+    expect(r.err).toContain("backend.svg: rendered the inside of backend");
+
+    r = await run(["render", "shop.arch", "--component", "backend.cache"]);
+    expect(r.code).toBe(2);
+    expect(r.err).toContain('No component "backend.cache"');
+    expect((await run(["render", "other.arch"])).err).toContain("isn't linked to a project");
+    expect((await run(["render", "shop.arch", "--theme", "blue"])).code).toBe(2);
+  });
+
   it("lists and switches workspaces; projects follow the current one", async () => {
     write("shop.arch", SHOP);
     await run(["push", "shop.arch"]);

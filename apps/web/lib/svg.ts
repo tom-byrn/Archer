@@ -2,18 +2,23 @@
  * Pure SVG renderer for an Archer document — no React, no DOM. Powers the
  * public embed endpoint (`/share/<slug>/image.svg`) so a README can show a live
  * architecture diagram. Mirrors the canvas look in `components/nodes.tsx`:
- * the document's top level, planes as regions, and each component as a box
- * (one with components nested in it says how many).
+ * one canvas (the document's top level, or the inside of a component with
+ * `focus`), planes as regions, and each component as a box (one with
+ * components nested in it says how many). Inside a component, the outside
+ * components its parts connect to sit at the sides, as on the canvas.
  */
 
 import {
   EMPTY_PLANE_SIZE,
   LEAF_SIZE,
   autoLayout,
+  findComponent,
   layoutMap,
   parse,
+  pathToString,
   planeTree,
   resolveColor,
+  scopeAt,
   shapeOf,
   type ArchDoc,
   type ComponentNode,
@@ -32,9 +37,8 @@ import {
   type Obstacle,
   type RoutedEdge,
 } from "./edgeRoute";
+import { CELL, CONTEXT_SIZE, inside as isInside, placeContext } from "./toFlow";
 
-/** One grid cell in pixels (mirrors lib/toFlow.ts, which is client-only). */
-const CELL = 40;
 const PAD = 40;
 const TITLE_H = 36;
 /** Height of a plane's title bar (the rule under the name). */
@@ -50,6 +54,27 @@ export interface RenderOptions {
    * them every type draws its glyph, as on the landing page.
    */
   logos?: Readonly<Record<string, Logo>>;
+  /**
+   * The canvas to draw: the inside of the component at this path (the
+   * editor's drill-down); the top level when empty. A path that names no
+   * component draws a "not found" image — check with `canvasTrail` first.
+   */
+  focus?: readonly string[];
+}
+
+/**
+ * The names of the components a canvas is inside, outermost first ([] for the
+ * top level), or undefined when `focus` names no component in `source`.
+ */
+export function canvasTrail(source: string, focus: readonly string[]): string[] | undefined {
+  const { doc } = parse(source);
+  const trail: string[] = [];
+  for (let i = 1; i <= focus.length; i++) {
+    const c = findComponent(doc, focus.slice(0, i));
+    if (!c) return undefined;
+    trail.push(c.name ?? c.id);
+  }
+  return trail;
 }
 
 interface Palette {
@@ -203,6 +228,8 @@ interface Box {
   shape?: ShapeGeometry;
   /** It picked its own color (`color blue`), which `color` is: its card or outline takes a tint of it. */
   colored?: boolean;
+  /** A component outside the open one, drawn beside the canvas (its `path` is `ctx:<far path>`). */
+  context?: string;
 }
 
 /**
@@ -241,13 +268,24 @@ export function renderArchSvg(source: string, opts: RenderOptions = {}): string 
     return invalidSvg(P, background);
   }
 
+  const focus = opts.focus ?? [];
+  const scope = scopeAt(doc, focus);
+  if (!scope) return notFoundSvg(P, focus.join("."), background);
+  // A component's canvas is titled with the components it's inside.
+  const trail = focus.map((_, i) => {
+    const c = findComponent(doc, focus.slice(0, i + 1))!;
+    return c.name ?? c.id;
+  });
+  const heading = [doc.title, ...trail].join(" › ");
+
   const layout = layoutMap(doc);
   const boxes: Box[] = [];
-  const tree = planeTree({ components: doc.components, planes: doc.planes });
+  const tree = planeTree(scope);
+  const pre = focus.join(".");
 
   const walk = (on: PlaneNode | undefined, origin: [number, number], chain: string[]) => {
     for (const item of tree.itemsOn(on)) {
-      const path = item.id;
+      const path = pre === "" ? item.id : `${pre}.${item.id}`;
       const entry = layout.get(path);
       const at = entry?.at ?? [0, 0];
       const plane = item.kind === "plane";
@@ -280,7 +318,42 @@ export function renderArchSvg(source: string, opts: RenderOptions = {}): string 
   };
   walk(undefined, [0, 0], []);
 
-  if (boxes.length === 0) return emptySvg(P, doc.title, showTitle, background);
+  if (boxes.length === 0) return emptySvg(P, heading, showTitle, background);
+
+  // The box on this canvas a connection end is drawn as: a component here, or
+  // the one here it's nested in (mirrors toFlow).
+  const here = new Map(boxes.map((b) => [b.path, b]));
+  const boxOf = (p: readonly string[]): string | undefined => {
+    if (!isInside(p, focus)) return undefined;
+    const key = p.slice(0, focus.length + 1).join(".");
+    return here.get(key)?.plane === false ? key : undefined;
+  };
+  // Inside a component: what outside it connects in, beside the canvas.
+  const contextOf = new Map<string, string>();
+  if (focus.length > 0) {
+    for (const { far, node, at } of placeContext(doc, boxOf, here)) {
+      const type = node.type ? lookupType(node.type) : undefined;
+      const icon = iconMarkup(node.icon);
+      const own = resolveColor(node.color);
+      const path = `ctx:${far}`;
+      contextOf.set(far, path);
+      boxes.push({
+        path,
+        node,
+        x: at[0] * CELL,
+        y: at[1] * CELL,
+        w: CONTEXT_SIZE[0] * CELL,
+        h: CONTEXT_SIZE[1] * CELL,
+        plane: false,
+        on: [],
+        color: displayColor(own ?? type?.color ?? P.fallback, dark),
+        glyph: type?.glyph ?? "box",
+        logo: type?.logo === undefined ? undefined : opts.logos?.[type.logo],
+        ...(icon !== undefined ? { icon } : {}),
+        context: far,
+      });
+    }
+  }
 
   // Bounds → translate so the diagram starts at (PAD, PAD + title).
   const minX = Math.min(...boxes.map((b) => b.x));
@@ -290,7 +363,9 @@ export function renderArchSvg(source: string, opts: RenderOptions = {}): string 
   const top = PAD + (showTitle ? TITLE_H : 0);
   const dx = PAD - minX;
   const dy = top - minY;
-  const width = Math.ceil(maxX - minX + PAD * 2);
+  // Wide enough for the title (a nested canvas's names the components it's in).
+  const titleW = showTitle ? heading.length * 9 + 80 : 0;
+  const width = Math.ceil(Math.max(maxX - minX, titleW) + PAD * 2);
   const height = Math.ceil(maxY - minY + PAD + top);
 
   const byPath = new Map(boxes.map((b) => [b.path, b]));
@@ -302,7 +377,9 @@ export function renderArchSvg(source: string, opts: RenderOptions = {}): string 
     const x = b.x + dx;
     const y = b.y + dy;
     const name = b.node.name ?? b.node.id;
-    if (b.plane) {
+    if (b.context !== undefined) {
+      out.push(contextSvg(b, x, y, P, dark));
+    } else if (b.plane) {
       const stroke = alpha(b.color, 0.35);
       const fill = b.node.type ? alpha(b.color, 0.05) : alpha(P.surface2, 0.5);
       out.push(
@@ -378,15 +455,18 @@ export function renderArchSvg(source: string, opts: RenderOptions = {}): string 
     }
     return list;
   };
-  // A connection to something nested in a component is drawn to that component.
-  const boxFor = (path: readonly string[]) => {
-    const b = byPath.get(path[0] ?? "");
-    return b && !b.plane ? b : undefined;
-  };
+  // A connection to something nested in a component is drawn to that
+  // component; inside one, a connection out is drawn to its context node.
   const routed: (RoutedEdge & { c: ArchDoc["connections"][number] })[] = [];
   for (const c of doc.connections) {
-    const s = boxFor(c.source);
-    const t = boxFor(c.target);
+    let source = boxOf(c.source);
+    let target = boxOf(c.target);
+    if ((source === undefined) !== (target === undefined)) {
+      source ??= contextOf.get(pathToString(c.source));
+      target ??= contextOf.get(pathToString(c.target));
+    }
+    const s = source === undefined ? undefined : byPath.get(source);
+    const t = target === undefined ? undefined : byPath.get(target);
     if (!s || !t || s === t) continue;
     const sr = { x: s.x + dx, y: s.y + dy, w: s.w, h: s.h };
     const tr = { x: t.x + dx, y: t.y + dy, w: t.w, h: t.h };
@@ -528,13 +608,13 @@ export function renderArchSvg(source: string, opts: RenderOptions = {}): string 
     `</defs>`;
 
   const title = showTitle
-    ? `<text x="${PAD}" y="${PAD + 12}" font-family='${SANS}' font-size="16" font-weight="700" fill="${P.ink}">${esc(doc.title)}</text>` +
+    ? `<text x="${PAD}" y="${PAD + 12}" font-family='${SANS}' font-size="16" font-weight="700" fill="${P.ink}">${esc(heading)}</text>` +
       `<text x="${width - PAD}" y="${PAD + 12}" text-anchor="end" font-family='${SANS}' font-size="11" font-weight="600" letter-spacing="0.04em" fill="${P.ink3}">ARCHER</text>`
     : "";
 
   return (
-    `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" role="img" aria-label="${esc(doc.title)}">` +
-    `<title>${esc(doc.title)}</title>` +
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" role="img" aria-label="${esc(heading)}">` +
+    `<title>${esc(heading)}</title>` +
     defs +
     (background ? `<rect width="${width}" height="${height}" fill="${P.ground}"/>` : "") +
     title +
@@ -597,6 +677,28 @@ function shapeSvg(b: Box, x: number, y: number, P: Palette, dark: boolean): stri
   if (inside > 0) svg += nestedBadge(x, y, b.w, b.h, inside, P);
   return `<g>${svg}</g>`;
 }
+
+/**
+ * A component outside the open one (mirrors nodes.tsx ArchContextNode): a
+ * dashed card with its icon, name and path.
+ */
+function contextSvg(b: Box, x: number, y: number, P: Palette, dark: boolean): string {
+  const tile = hasIcon(b);
+  const textX = x + 8 + (tile ? 16 + 8 : 0);
+  const textW = b.w - (textX - x) - 8;
+  const midY = y + b.h / 2;
+  return (
+    `<g>` +
+    `<rect x="${x}" y="${y}" width="${b.w}" height="${b.h}" rx="6" fill="${P.surface}" stroke="${P.line2}" stroke-dasharray="4 3"/>` +
+    (tile ? iconSvg(b, 16, x + 8, midY - 8, dark) : "") +
+    `<text x="${textX}" y="${midY - 2}" font-family='${SANS}' font-size="13" font-weight="600" fill="${P.ink2}">${esc(fit(b.node.name ?? b.node.id, textW, 6.8))}</text>` +
+    `<text x="${textX}" y="${midY + 12}" font-family='${MONO}' font-size="10" fill="${P.ink3}">${esc(fit(b.context!, textW, 6.2))}</text>` +
+    `</g>`
+  );
+}
+
+const notFoundSvg = (P: Palette, path: string, background: boolean): string =>
+  `<svg xmlns="http://www.w3.org/2000/svg" width="320" height="80" viewBox="0 0 320 80">${background ? `<rect width="320" height="80" rx="8" fill="${P.ground}" stroke="${P.line}"/>` : ""}<text x="160" y="45" text-anchor="middle" font-family='${SANS}' font-size="13" fill="${P.ink2}">${esc(fit(`No component ${path}`, 290, 7))}</text></svg>`;
 
 const invalidSvg = (P: Palette, background: boolean): string =>
   `<svg xmlns="http://www.w3.org/2000/svg" width="320" height="80" viewBox="0 0 320 80">${background ? `<rect width="320" height="80" rx="8" fill="${P.ground}" stroke="${P.line}"/>` : ""}<text x="160" y="45" text-anchor="middle" font-family='${SANS}' font-size="13" fill="${P.ink2}">Invalid document</text></svg>`;

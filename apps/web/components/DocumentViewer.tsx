@@ -57,6 +57,8 @@ interface DocumentViewerProps {
   signedIn: boolean;
   /** Linked repository: shown in the header, turns `src` paths into GitHub links. */
   repo?: RepoLink | null;
+  /** The component whose canvas to open on (a shared link's `?component=`); the top level by default. */
+  initialFocus?: string[];
 }
 
 function DocumentView({
@@ -67,11 +69,12 @@ function DocumentView({
   backHref,
   signedIn,
   repo = null,
+  initialFocus = [],
 }: DocumentViewerProps) {
   const isDark = useIsDark();
   const derived = useMemo(() => deriveDoc(source), [source]);
   const [selected, setSelected] = useState<string | null>(null);
-  const [focus, setFocus] = useState<string[]>([]);
+  const [focus, setFocus] = useState<string[]>(initialFocus);
   const [codeOpen, setCodeOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const exportRef = useRef<(() => void) | null>(null);

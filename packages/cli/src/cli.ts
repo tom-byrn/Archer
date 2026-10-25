@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { parseArgs } from "node:util";
 import { APP_URL } from "./config";
-import { EXIT, UsageError, check, fmt, init, list, login, logout, pull, push, workspace } from "./commands";
+import { EXIT, UsageError, check, fmt, init, list, login, logout, pull, push, render, workspace } from "./commands";
 
 const HELP = `archer — check, format and sync Archer (.arch) architecture files
 
@@ -26,6 +26,10 @@ Usage
       --project <id>  -m, --message <summary>
   archer pull <file>           Overwrite the file with the project's saved source
       --project <id>  --force
+  archer render [file]         Draw a project's canvas as SVG (its share image)
+      --project <id>           The project (default: the one the file is linked to)
+      --component <path>       Draw the inside of a component (e.g. backend.api)
+      --theme <light|dark>  -o, --out <file.svg>  (default: stdout)
   archer mcp                   The hosted MCP server over stdio, for clients
                                that only run local servers (uses your sign-in)
 
@@ -52,6 +56,9 @@ async function main(argv: string[]): Promise<number> {
       project: { type: "string" },
       message: { type: "string", short: "m" },
       force: { type: "boolean" },
+      component: { type: "string" },
+      theme: { type: "string" },
+      out: { type: "string", short: "o" },
     },
   });
   const [command, ...rest] = positionals;
@@ -92,6 +99,9 @@ async function main(argv: string[]): Promise<number> {
       return push(one("file"), values);
     case "pull":
       return pull(one("file"), values);
+    case "render":
+      if (rest.length > 1) throw new UsageError("archer render takes at most one file.");
+      return render(rest[0], values);
     case "mcp":
       // stdout belongs to the protocol from here on; this returns when the
       // client disconnects.

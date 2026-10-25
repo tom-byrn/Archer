@@ -397,3 +397,37 @@ export async function list(opts: { json?: boolean }): Promise<number> {
   }
   return EXIT.ok;
 }
+
+// ---------------------------------------------------------------------------
+// render — draw a project's canvas, the way its share image does
+
+export async function render(
+  file: string | undefined,
+  opts: { project?: string; component?: string; theme?: string; out?: string },
+): Promise<number> {
+  const projectId = opts.project ?? (file ? readLinks().projects[linkKey(file)] : undefined);
+  if (!projectId)
+    throw new UsageError(
+      file
+        ? `${file} isn't linked to a project yet — push it, or pass --project <id> (see: archer list).`
+        : "archer render needs a linked file or --project <id> (see: archer list).",
+    );
+  if (opts.theme !== undefined && opts.theme !== "light" && opts.theme !== "dark")
+    throw new UsageError(`--theme is light or dark, not "${opts.theme}".`);
+  if (opts.out !== undefined && extname(opts.out) !== ".svg")
+    throw new UsageError(`${opts.out}: the image is an SVG — name the file .svg.`);
+  const svg = await withServer((client) =>
+    callTool<string>(client, "render_project", {
+      project_id: projectId,
+      ...(opts.component ? { component: opts.component } : {}),
+      ...(opts.theme ? { theme: opts.theme } : {}),
+    }).catch((e: unknown) => rethrowMissingProject(e, projectId)),
+  );
+  if (opts.out === undefined) {
+    process.stdout.write(svg.endsWith("\n") ? svg : svg + "\n");
+  } else {
+    writeFileSync(opts.out, svg);
+    console.error(`${opts.out}: rendered ${opts.component ? `the inside of ${opts.component}` : "the top level"}`);
+  }
+  return EXIT.ok;
+}

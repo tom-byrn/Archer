@@ -6,7 +6,7 @@ and runs the [MCP server](mcp.md) for agents that can only start local
 servers. The npm package is called `archerctl`.
 
 `check` and `fmt` need no account, so they fit CI and pre-commit hooks.
-Commands that touch a workspace (`push`, `pull`, `list`, `workspace`, `mcp`)
+Commands that touch a workspace (`push`, `pull`, `list`, `render`, `workspace`, `mcp`)
 sign in the same way agents do and act as you.
 
 The CLI and the MCP server share their code. `archer check` finds the same
@@ -307,6 +307,34 @@ archer: shop.arch differs from the project — pass --force to overwrite it.
 $ archer pull shop.arch --force
 shop.arch: pulled "Shop"
 ```
+
+### `archer render`
+
+```
+archer render [file] [--project <id>] [--component <path>] [--theme <light|dark>] [-o, --out <file.svg>]
+```
+
+Draws one of a project's canvases as an SVG: the same picture as its share
+link's image, drawn by the MCP tool `render_project`, so the project doesn't
+need a share link and a viewer can render it too. Without `--project`, it
+draws the project the file is linked to. The SVG goes to stdout unless
+`--out` names a `.svg` file.
+
+```console
+$ archer render shop.arch -o docs/architecture.svg
+docs/architecture.svg: rendered the top level
+$ archer render shop.arch --component backend --theme dark -o docs/backend.svg
+docs/backend.svg: rendered the inside of backend
+```
+
+| Option | Description |
+| --- | --- |
+| `--project <id>` | The project to draw, instead of the one the file is linked to. |
+| `--component <path>` | Draw the inside of this component instead of the top level: its path, dot-separated ids (`backend.api`). The canvas is titled with the components it's in, and the outside components its parts connect to are drawn dashed at the sides. A share link takes the same path as `?component=`. |
+| `--theme <light\|dark>` | The palette (default `light`). |
+| `-o`, `--out <file.svg>` | Write the image to this file instead of stdout. |
+
+A path that names no component is an error (exit 2), as is a missing project.
 
 ### `archer mcp`
 

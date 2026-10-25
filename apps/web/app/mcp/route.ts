@@ -1,7 +1,7 @@
 import { after } from "next/server";
 import { auth, clerkClient } from "@clerk/nextjs/server";
 import { verifyClerkToken } from "@clerk/mcp-tools/next";
-import { handleRemoteRequest } from "@archer/mcp/remote";
+import { handleRemoteRequest, type RenderSvgOptions } from "@archer/mcp/remote";
 import { LOGOS } from "@archer/catalog/logos";
 import { renderArchSvg } from "@/lib/svg";
 import { recordToolCalls, toolCallsIn } from "@/lib/server/usage";
@@ -75,8 +75,8 @@ async function agentNameFor(clientId: string): Promise<string> {
 }
 
 /** render_project draws what /share/<slug>/image.svg draws, logos included. */
-const renderSvg = (source: string, theme: "light" | "dark") =>
-  renderArchSvg(source, { theme, logos: LOGOS });
+const renderSvg = (source: string, { theme, focus }: RenderSvgOptions) =>
+  renderArchSvg(source, { theme, focus, logos: LOGOS });
 
 async function handle(req: Request): Promise<Response> {
   const header = req.headers.get("authorization") ?? "";

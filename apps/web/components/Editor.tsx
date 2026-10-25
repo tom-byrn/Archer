@@ -1829,6 +1829,8 @@ function EditorView({ initialSource, library, session }: EditorProps) {
             documentId={stored.id}
             workspaceId={stored.workspaceId}
             publicSlug={stored.publicSlug}
+            doc={derived.doc}
+            focus={liveFocus.join(".")}
           />
           <RepoDialog
             open={repoOpen}

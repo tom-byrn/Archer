@@ -39,7 +39,7 @@ export const MIN_PLANE_SIZE: [number, number] = [4, 3];
 /** Height of a plane's title bar in pixels (see ArchPlaneNode). */
 const PLANE_TITLE = 32;
 /** A context node's footprint, and its distance from what the view shows, in cells. */
-const CONTEXT_SIZE: [number, number] = [4, 2];
+export const CONTEXT_SIZE: [number, number] = [4, 2];
 const CONTEXT_GAP = 3;
 /** Prefix of a context node's id (component paths never contain a colon). */
 export const CONTEXT_PREFIX = "ctx:";
@@ -164,9 +164,77 @@ export interface ToFlowOptions {
   context?: boolean;
 }
 
+/** A canvas's path as share links (`?component=`) and the MCP tools take it: dot-separated ids. */
+export const parseFocus = (path: string | null | undefined): string[] =>
+  path ? path.split(".").filter((s) => s !== "") : [];
+
 /** Whether `path` is strictly inside the component at `focus` (everything is, at the top level). */
-const inside = (path: readonly string[], focus: readonly string[]) =>
+export const inside = (path: readonly string[], focus: readonly string[]) =>
   path.length > focus.length && focus.every((seg, i) => path[i] === seg);
+
+/** A component outside the open one that something inside connects to, and where it goes. */
+export interface ContextPlacement {
+  /** Its path. */
+  far: string;
+  node: ComponentNode;
+  /** Left when it only starts connections in; right otherwise. */
+  side: "left" | "right";
+  /** Top-left, in grid cells (its size is `CONTEXT_SIZE`). */
+  at: [number, number];
+}
+
+/**
+ * Inside a component, the components outside it that its parts connect to,
+ * stacked down the canvas's sides, each as near its partners' middle as it
+ * can. `boxOf` maps a connection end to the box drawn for it on this canvas
+ * (undefined when it's outside), `rects` are the drawn boxes in pixels.
+ * Shared by the canvas (toFlow) and the SVG renderer (lib/svg.ts).
+ */
+export function placeContext(
+  doc: ArchDoc,
+  boxOf: (p: readonly string[]) => string | undefined,
+  rects: ReadonlyMap<string, Rect>,
+): ContextPlacement[] {
+  if (rects.size === 0) return [];
+  const outside = new Map<string, { partners: string[]; incoming: boolean }>();
+  for (const c of doc.connections) {
+    const s = boxOf(c.source);
+    const t = boxOf(c.target);
+    if ((s === undefined) === (t === undefined)) continue;
+    const far = pathToString(s === undefined ? c.source : c.target);
+    if (!findComponent(doc, far.split("."))) continue;
+    const o = outside.get(far) ?? { partners: [], incoming: true };
+    o.partners.push((s ?? t)!);
+    // Incoming when the outside end starts it; `--` and `<->` count as outgoing.
+    if (!(s === undefined && c.arrow === "->")) o.incoming = false;
+    outside.set(far, o);
+  }
+  if (outside.size === 0) return [];
+  const all = [...rects.values()];
+  const minX = Math.min(...all.map((r) => r.x));
+  const maxX = Math.max(...all.map((r) => r.x + r.w));
+  const [w, h] = CONTEXT_SIZE;
+  const placed: ContextPlacement[] = [];
+  for (const side of ["left", "right"] as const) {
+    const list = [...outside.entries()]
+      .filter(([, o]) => (side === "left") === o.incoming)
+      .map(([far, o]) => {
+        const ys = o.partners.map((p) => rects.get(p)!).map((r) => r.y + r.h / 2);
+        const mid = ys.reduce((a, b) => a + b, 0) / ys.length;
+        return { far, y: Math.round((mid - (h * CELL) / 2) / CELL) };
+      })
+      .sort((a, b) => a.y - b.y || (a.far < b.far ? -1 : 1));
+    // Stack them down the side, each as near its partners' middle as it can.
+    let next = -Infinity;
+    const x = side === "left" ? Math.floor(minX / CELL) - CONTEXT_GAP - w : Math.ceil(maxX / CELL) + CONTEXT_GAP;
+    for (const item of list) {
+      const y = Math.max(item.y, next);
+      next = y + h + 1;
+      placed.push({ far: item.far, node: findComponent(doc, item.far.split("."))!, side, at: [x, y] });
+    }
+  }
+  return placed;
+}
 
 /**
  * Compile a (fully laid out) doc into React Flow nodes/edges for one canvas:
@@ -290,70 +358,38 @@ export function toFlow(
   // Inside a component: what outside it connects in, beside the canvas.
   const context: ArchNode[] = [];
   const contextOf = new Map<string, string>();
-  if (focus.length > 0 && opts.context !== false && rects.size > 0) {
-    const outside = new Map<string, { partners: string[]; incoming: boolean }>();
-    for (const c of doc.connections) {
-      const s = boxOf(c.source);
-      const t = boxOf(c.target);
-      if ((s === undefined) === (t === undefined)) continue;
-      const far = pathToString(s === undefined ? c.source : c.target);
-      if (!findComponent(doc, far.split("."))) continue;
-      const o = outside.get(far) ?? { partners: [], incoming: true };
-      o.partners.push((s ?? t)!);
-      // Incoming when the outside end starts it; `--` and `<->` count as outgoing.
-      if (!(s === undefined && c.arrow === "->")) o.incoming = false;
-      outside.set(far, o);
-    }
-    if (outside.size > 0) {
-      const all = [...rects.values()];
-      const minX = Math.min(...all.map((r) => r.x));
-      const maxX = Math.max(...all.map((r) => r.x + r.w));
+  if (focus.length > 0 && opts.context !== false) {
+    for (const placed of placeContext(doc, boxOf, rects)) {
+      const { far, node, side } = placed;
+      const [x, y] = placed.at;
       const [w, h] = CONTEXT_SIZE;
-      for (const side of ["left", "right"] as const) {
-        const list = [...outside.entries()]
-          .filter(([, o]) => (side === "left") === o.incoming)
-          .map(([far, o]) => {
-            const ys = o.partners.map((p) => rects.get(p)!).map((r) => r.y + r.h / 2);
-            const mid = ys.reduce((a, b) => a + b, 0) / ys.length;
-            return { far, y: Math.round((mid - (h * CELL) / 2) / CELL) };
-          })
-          .sort((a, b) => a.y - b.y || (a.far < b.far ? -1 : 1));
-        // Stack them down the side, each as near its partners' middle as it can.
-        let next = -Infinity;
-        const x = side === "left" ? Math.floor(minX / CELL) - CONTEXT_GAP - w : Math.ceil(maxX / CELL) + CONTEXT_GAP;
-        for (const item of list) {
-          const y = Math.max(item.y, next);
-          next = y + h + 1;
-          const node = findComponent(doc, item.far.split("."))!;
-          const id = CONTEXT_PREFIX + item.far;
-          contextOf.set(item.far, id);
-          rects.set(id, { x: x * CELL, y: y * CELL, w: w * CELL, h: h * CELL, plane: false });
-          onPlanes.set(id, []);
-          context.push({
-            id,
-            type: "archContext",
-            position: { x: x * CELL, y: y * CELL },
-            width: w * CELL,
-            height: h * CELL,
-            draggable: false,
-            selectable: false,
-            connectable: false,
-            deletable: false,
-            data: {
-              kind: "context",
-              path: item.far,
-              label: node.name ?? node.id,
-              typeTag: node.type,
-              ...(isIcon(node.icon) ? { icon: node.icon } : {}),
-              side,
-              childCount: node.children.length,
-              payloadCount: node.payloads.length,
-              minSize: [...CONTEXT_SIZE],
-              ...style(node, item.far),
-            },
-          });
-        }
-      }
+      const id = CONTEXT_PREFIX + far;
+      contextOf.set(far, id);
+      rects.set(id, { x: x * CELL, y: y * CELL, w: w * CELL, h: h * CELL, plane: false });
+      onPlanes.set(id, []);
+      context.push({
+        id,
+        type: "archContext",
+        position: { x: x * CELL, y: y * CELL },
+        width: w * CELL,
+        height: h * CELL,
+        draggable: false,
+        selectable: false,
+        connectable: false,
+        deletable: false,
+        data: {
+          kind: "context",
+          path: far,
+          label: node.name ?? node.id,
+          typeTag: node.type,
+          ...(isIcon(node.icon) ? { icon: node.icon } : {}),
+          side,
+          childCount: node.children.length,
+          payloadCount: node.payloads.length,
+          minSize: [...CONTEXT_SIZE],
+          ...style(node, far),
+        },
+      });
     }
   }
 

@@ -592,6 +592,7 @@ api -> db @sql
     notes: [
       "The SVG markup itself, ready to save as a `.svg` file or put in a README. It's the picture a public share link's `image.svg` shows, but the project needs no share link: any member of the workspace, viewers included, can render it.",
       "It draws the top level: planes as regions, components with their shapes, icons, logos and colors, and the connections between them. A component with components nested in it is one box with a count. `theme` is `light` (the default) or `dark`.",
+      "`component` draws one level down instead: the inside of that component, by its path (`backend.api`, dot-separated ids; planes aren't part of a path), as the editor shows it when you open the component, titled with the components it's inside. The outside components its parts connect to are drawn dashed at the sides. A share link's image takes the same path as `?component=`. A path that names no component is an error.",
     ],
   },
   auto_layout_project: {

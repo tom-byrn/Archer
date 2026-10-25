@@ -2,6 +2,8 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
 import { registerArcherTools, type ArcherToolOptions } from "./server";
 
+export type { RenderSvgOptions } from "./server";
+
 /** What the hosting route has verified about the caller (OAuth). */
 export interface RemoteAuth {
   /** The bearer token that was verified. */

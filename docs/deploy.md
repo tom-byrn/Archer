@@ -106,8 +106,12 @@ Any document with *Share → Anyone with the link* enabled is viewable at
 `/share/<slug>` and embeddable as an image:
 
 ```md
-![Architecture](https://<your-domain>/s/<slug>/image.svg)
+![Architecture](https://<your-domain>/share/<slug>/image.svg)
 ```
 
-Append `?theme=dark` for the dark palette. The image is rendered from the
-current document on every request and cached for one minute.
+Append `?theme=dark` for the dark palette, and `?component=<path>` (dot-
+separated ids, e.g. `backend.api`) to draw the inside of a nested component
+instead of the top level; the same parameter on the `/share/<slug>` link opens
+the viewer on that component. The Share dialog's "Canvas" picker builds both.
+The image is rendered from the current document on every request and cached
+for one minute.

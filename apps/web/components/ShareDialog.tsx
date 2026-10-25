@@ -1,16 +1,45 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation } from "convex/react";
+import type { ArchDoc, ComponentNode } from "@archer/lang";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
-import { Dialog, Icon, IconButton, SwapIcon, cx } from "./ui";
+import { Dialog, Icon, IconButton, SwapIcon, cx, inputCls } from "./ui";
 
 /** README image variants: the image route paints the light palette unless `?theme=dark`. */
 const EMBED_THEMES = [
-  { label: "Light", query: "" },
-  { label: "Dark", query: "?theme=dark" },
+  { label: "Light", theme: undefined },
+  { label: "Dark", theme: "dark" },
 ] as const;
+
+/**
+ * Every canvas a link can open on: the top level, then each component with
+ * components nested in it (depth first), labelled with the components it's in.
+ */
+function canvasesOf(doc: ArchDoc): { path: string; label: string }[] {
+  const out = [{ path: "", label: "Top level" }];
+  const walk = (nodes: ComponentNode[], path: string[], names: string[]) => {
+    for (const c of nodes) {
+      if (c.children.length === 0) continue;
+      const here = [...path, c.id];
+      const label = [...names, c.name ?? c.id];
+      out.push({ path: here.join("."), label: label.join(" › ") });
+      walk(c.children, here, label);
+    }
+  };
+  walk(doc.components, [], []);
+  return out;
+}
+
+/** A share URL for one canvas: `?component=` picks a component's inside, `theme` the image's colors. */
+const withQuery = (url: string, component: string, theme?: string): string => {
+  const q = new URLSearchParams();
+  if (component) q.set("component", component);
+  if (theme) q.set("theme", theme);
+  const qs = q.toString();
+  return qs ? `${url}?${qs}` : url;
+};
 
 function CopyButton({ text, label }: { text: string; label: string }) {
   const [done, setDone] = useState(false);
@@ -59,17 +88,30 @@ export function ShareDialog({
   documentId,
   workspaceId,
   publicSlug,
+  doc,
+  focus,
 }: {
   open: boolean;
   onClose: () => void;
   documentId: Id<"documents">;
   workspaceId: string;
   publicSlug: string | null | undefined;
+  /** The document as it stands, for the canvases a link can open on. */
+  doc: ArchDoc;
+  /** The canvas open in the editor (a component path, dot-joined; "" for the top level). */
+  focus: string;
 }) {
   const setPublic = useMutation(api.documents.setPublic);
   const [slug, setSlug] = useState<string | null>(publicSlug ?? null);
   const [busy, setBusy] = useState(false);
   useEffect(() => setSlug(publicSlug ?? null), [publicSlug]);
+  const canvases = useMemo(() => canvasesOf(doc), [doc]);
+  // Each time it opens, it shares the canvas on screen.
+  const [canvas, setCanvas] = useState(focus);
+  useEffect(() => {
+    if (open) setCanvas(focus);
+  }, [open, focus]);
+  const component = canvases.some((c) => c.path === canvas) ? canvas : "";
 
   const toggle = async (enabled: boolean) => {
     if (busy) return;
@@ -83,7 +125,8 @@ export function ShareDialog({
   };
 
   const origin = typeof window === "undefined" ? "" : window.location.origin;
-  const link = slug ? `${origin}/share/${slug}` : "";
+  const base = slug ? `${origin}/share/${slug}` : "";
+  const link = withQuery(base, component);
 
   return (
     <Dialog open={open} onClose={onClose} title="Share" width={520}>
@@ -97,6 +140,24 @@ export function ShareDialog({
 
       {slug && (
         <>
+          {canvases.length > 1 && (
+            <div className="mt-4 grid grid-cols-[88px_1fr] items-center gap-x-3">
+              <span className="text-sm text-ink-2">Canvas</span>
+              <select
+                value={component}
+                onChange={(e) => setCanvas(e.target.value)}
+                aria-label="Canvas to share"
+                className={cx(inputCls, "h-7 pr-7")}
+              >
+                {canvases.map((c) => (
+                  <option key={c.path} value={c.path}>
+                    {c.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
           <div className="mt-4 flex h-6 items-center">
             <span className="eyebrow">Link</span>
           </div>
@@ -109,8 +170,8 @@ export function ShareDialog({
             <span className="eyebrow">Embed in a README</span>
           </div>
           <div className="divide-y divide-line rounded-md border border-line bg-surface-2">
-            {EMBED_THEMES.map(({ label, query }) => {
-              const embed = `![Architecture](${link}/image.svg${query})`;
+            {EMBED_THEMES.map(({ label, theme }) => {
+              const embed = `![Architecture](${withQuery(`${base}/image.svg`, component, theme)})`;
               return (
                 <div key={label} className="flex items-start gap-2 px-2.5 py-1.5">
                   <span className="w-9 shrink-0 text-sm font-medium leading-relaxed text-ink-2">{label}</span>
@@ -120,7 +181,11 @@ export function ShareDialog({
               );
             })}
           </div>
-          <p className="pt-2 text-xs text-ink-3">The image re-renders on every save.</p>
+          <p className="pt-2 text-xs text-ink-3">
+            {component
+              ? "The link opens on this component, and the image draws its inside. Both update on every save."
+              : "The image re-renders on every save."}
+          </p>
         </>
       )}
     </Dialog>

@@ -345,6 +345,11 @@ export async function startHost(): Promise<Host> {
         userId: grant.userId,
         agentName: as.clients.get(grant.clientId)?.client_name ?? "agent",
       },
+      // The real renderer lives in the web app; this one says what it was asked to draw.
+      {
+        renderSvg: (source, { theme, focus }) =>
+          `<svg xmlns="http://www.w3.org/2000/svg" data-theme="${theme}" data-focus="${focus.join(".")}" data-length="${source.length}"></svg>`,
+      },
     );
     res.writeHead(response.status, Object.fromEntries(response.headers));
     if (response.body) for await (const chunk of response.body) res.write(chunk);

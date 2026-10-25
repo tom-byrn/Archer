@@ -8,6 +8,7 @@
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { ArcherToolOptions } from "../src/server";
 
 /** Exit 2 with the usage line unless every variable is set. */
 export function requireEnv(names: string[], usage: string): void {
@@ -22,7 +23,7 @@ export async function connectInProcess(opts: {
   userId: string;
   agentName: string;
   /** The SVG renderer the web app passes the tools (render_project). */
-  renderSvg?: (source: string, theme: "light" | "dark") => string;
+  renderSvg?: ArcherToolOptions["renderSvg"];
 }) {
   // Imported late: backend.ts reads CONVEX_URL at import time.
   const { registerArcherTools } = await import("../src/server");

@@ -4,6 +4,7 @@ import {
   autoLayout,
   compileForAgent,
   componentPaths,
+  findComponent,
   diffDocs,
   format,
   isEmptyDiff,
@@ -205,14 +206,22 @@ const requireProject = async (ws: Workspace, projectId: string) => {
   return doc;
 };
 
+/** Which canvas `renderSvg` draws, and in what colors. */
+export interface RenderSvgOptions {
+  theme: "light" | "dark";
+  /** A component's path ([] for the top level); `render_project` checks it names one. */
+  focus: string[];
+}
+
 /** What the host supplies that this package can't do itself. */
 export interface ArcherToolOptions {
   /**
-   * Draw a document as an SVG, the way its share image is drawn. The renderer
-   * lives in the web app (`lib/svg.ts`), which passes it in; without it
-   * `render_project` answers with an error.
+   * Draw one canvas of a document as an SVG, the way its share image is
+   * drawn: the top level, or the inside of the component at `focus`. The
+   * renderer lives in the web app (`lib/svg.ts`), which passes it in; without
+   * it `render_project` answers with an error.
    */
-  renderSvg?: (source: string, theme: "light" | "dark") => string;
+  renderSvg?: (source: string, opts: RenderSvgOptions) => string;
 }
 
 /**
@@ -670,17 +679,26 @@ export function registerArcherTools(server: McpServer, options: ArcherToolOption
     {
       title: "Render a project as SVG",
       description:
-        "Draw a stored project's canvas as an SVG image — the same picture as its share image: the top level with its planes, connections, icons and logos, where a component with components nested in it shows as one box with a count. Returns the SVG markup itself (not JSON), ready to save as a .svg file, embed in a README or docs, or inspect. Read-only: nothing is saved and the project doesn't need a share link. theme: light (default) or dark.",
+        "Draw one of a stored project's canvases as an SVG image — the same picture as its share image: the top level by default, or with `component` the inside of that component (the canvas the editor shows when you open it), with its planes, connections, icons and logos, where a component with components nested in it shows as one box with a count, and, inside a component, the outside components its parts connect to drawn dashed at the sides. Returns the SVG markup itself (not JSON), ready to save as a .svg file, embed in a README or docs, or inspect. Read-only: nothing is saved and the project doesn't need a share link. theme: light (default) or dark.",
       inputSchema: {
         project_id: z.string(),
+        component: z
+          .string()
+          .optional()
+          .describe("Draw the inside of this component: its path, dot-separated ids (e.g. backend.api). Default: the top level"),
         theme: z.enum(["light", "dark"]).optional().describe("Colors to draw in (default light)"),
       },
     },
-    wrap(async ({ project_id, theme }) => {
+    wrap(async ({ project_id, component, theme }) => {
       if (!options.renderSvg) throw new Error("Rendering isn't available on this server.");
       const ws = await requireWorkspace();
       const doc = await requireProject(ws, project_id);
-      return text(options.renderSvg(doc.source, theme ?? "light"));
+      const focus = (component ?? "").split(".").filter((s) => s !== "");
+      if (focus.length > 0 && !findComponent(parse(doc.source).doc, focus))
+        throw new Error(
+          `No component "${focus.join(".")}" in this project. Paths are dot-separated ids from the top level (e.g. backend.api); get_project lists them.`,
+        );
+      return text(options.renderSvg(doc.source, { theme: theme ?? "light", focus }));
     }),
   );
 
