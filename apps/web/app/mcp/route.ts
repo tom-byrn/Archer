@@ -5,6 +5,7 @@ import { handleRemoteRequest } from "@archer/mcp/remote";
 import { LOGOS } from "@archer/catalog/logos";
 import { renderArchSvg } from "@/lib/svg";
 import { recordToolCalls, toolCallsIn } from "@/lib/server/usage";
+import { audienceIncludes } from "@/lib/server/audience";
 
 /**
  * Hosted MCP server: https://<app>/mcp (Streamable HTTP, stateless).
@@ -85,6 +86,9 @@ async function handle(req: Request): Promise<Response> {
   const clerkAuth = await auth({ acceptsToken: "oauth_token" });
   const verified = verifyClerkToken(clerkAuth, token);
   if (!verified) return unauthorized(req, "Invalid or expired access token");
+  if (!audienceIncludes(token, `${originOf(req)}/mcp`)) {
+    return unauthorized(req, "Access token was not issued for this server");
+  }
 
   const userId = verified.extra!.userId as string;
   const agentName = await agentNameFor(verified.clientId);
