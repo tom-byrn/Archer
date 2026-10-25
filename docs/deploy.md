@@ -64,7 +64,10 @@ server at `/mcp`, signing in with MCP-standard OAuth (Clerk is the
 authorization server). There are no API keys. Setup:
 
 1. **Clerk** → OAuth applications → enable **Dynamic client registration**
-   (MCP clients, including the CLI, register themselves).
+   (MCP clients, including the CLI, register themselves), and register
+   `https://<your-domain>/mcp` as an MCP server / OAuth resource so access
+   tokens carry it as their audience (`aud`). The route refuses tokens
+   without it.
 2. Generate a service secret, at least 32 characters
    (`openssl rand -base64 48`), and set the **same** value in both places:
    `npx convex env set --prod ARCHER_SERVICE_SECRET <value>` (from
