@@ -571,6 +571,13 @@ function CanvasInner({
           }}
           onNodeDragStart={(e, node) => {
             setBusy(true);
+            // The embedded canvas can't pan, so keep drags inside the box it shows.
+            if (embedded && wrapper.current) {
+              const r = wrapper.current.getBoundingClientRect();
+              const a = screenToFlowPosition({ x: r.left, y: r.top }, { snapToGrid: false });
+              const b = screenToFlowPosition({ x: r.right, y: r.bottom }, { snapToGrid: false });
+              store.setState({ nodeExtent: [[a.x, a.y], [b.x, b.y]] });
+            }
             // Dragging an unselected node selects it (React Flow does the same internally).
             if (controlled && !selRef.current.nodes.has(node.id))
               callbacks.onSelectNode(node.id, isAdditive(e));
@@ -645,6 +652,8 @@ function CanvasInner({
           zoomOnPinch={!embedded}
           zoomOnDoubleClick={!embedded}
           panOnDrag={!embedded}
+          autoPanOnNodeDrag={!embedded}
+          autoPanOnConnect={!embedded}
           proOptions={{ hideAttribution: true }}
         >
           <Background variant={BackgroundVariant.Dots} gap={CELL} size={1.5} color="var(--dot)" />
