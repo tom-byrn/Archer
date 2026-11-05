@@ -392,23 +392,38 @@ function CanvasInner({
       }),
     [nodes, lit, selectedPath, soleSelected, dropTarget],
   );
-  const styledEdges = useMemo(
-    () =>
-      edges.map((e) => {
-        const on = lit === null ? undefined : lit.edges.has(e.id);
-        const ends = selectedEnds.has(e.source) || selectedEnds.has(e.target);
-        const spot = highlightedEdge !== null && e.data?.key === highlightedEdge;
-        return {
-          ...e,
-          ...(e.data &&
-          (on !== e.data.lit || ends !== !!e.data.endSelected || spot !== !!e.data.highlighted)
-            ? { data: { ...e.data, lit: on, endSelected: ends, highlighted: spot } }
-            : {}),
-          className: joinCls(on === false && "dim"),
-        };
-      }),
-    [edges, lit, selectedEnds, highlightedEdge],
-  );
+  // React Flow stacks edges by z-index, then in array order, and lifts an edge
+  // touching a component on a plane one level per plane. Selected, highlighted
+  // and lit edges go last and above the deepest level, so others never cover them.
+  const nodeDepth = useMemo(() => {
+    const byId = new Map(nodes.map((n) => [n.id, n]));
+    let max = 0;
+    for (const n of nodes) {
+      let d = 0;
+      for (let p = n.parentId; p; p = byId.get(p)?.parentId) d++;
+      max = Math.max(max, d);
+    }
+    return max;
+  }, [nodes]);
+  const styledEdges = useMemo(() => {
+    const styled = edges.map((e) => {
+      const on = lit === null ? undefined : lit.edges.has(e.id);
+      const ends = selectedEnds.has(e.source) || selectedEnds.has(e.target);
+      const spot = highlightedEdge !== null && e.data?.key === highlightedEdge;
+      const raised = !!e.selected || spot || on === true;
+      return {
+        ...e,
+        ...(e.data &&
+        (on !== e.data.lit || ends !== !!e.data.endSelected || spot !== !!e.data.highlighted)
+          ? { data: { ...e.data, lit: on, endSelected: ends, highlighted: spot } }
+          : {}),
+        ...(raised ? { zIndex: nodeDepth } : {}),
+        className: joinCls(on === false && "dim"),
+      };
+    });
+    const top = styled.filter((e) => e.zIndex !== undefined);
+    return top.length === 0 ? styled : [...styled.filter((e) => e.zIndex === undefined), ...top];
+  }, [edges, lit, selectedEnds, highlightedEdge, nodeDepth]);
 
   /** Report where dragged nodes landed: absolute position in this view, center, and grid size. */
   /** Top-left of a node in the canvas's own coordinates (positions are relative to its plane). */
