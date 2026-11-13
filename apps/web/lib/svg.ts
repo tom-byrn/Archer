@@ -1,7 +1,8 @@
 /**
  * Pure SVG renderer for an Archer document — no React, no DOM. Powers the
  * public embed endpoint (`/share/<slug>/image.svg`) so a README can show a live
- * architecture diagram. Mirrors the canvas look in `components/nodes.tsx`:
+ * architecture diagram, and the mobile app's diagrams (`renderArch`, which
+ * also says where each box is). Mirrors the canvas look in `components/nodes.tsx`:
  * the document's top level, planes as regions, and each component as a box
  * (one with components nested in it says how many).
  */
@@ -225,7 +226,36 @@ const nestedBadge = (x: number, y: number, w: number, h: number, count: number, 
 const NO_INSET = { t: 0, r: 0, b: 0, l: 0 };
 const insets = (b: Box) => b.shape?.anchors ?? NO_INSET;
 
+/** Where a component or plane landed in a rendered diagram, in SVG pixels. */
+export interface RenderedBox {
+  /** Its path: the id of a top-level component or plane. */
+  path: string;
+  kind: "component" | "plane";
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+/** A rendered diagram with its size and where each box is drawn (for hit-testing taps). */
+export interface RenderedArch {
+  svg: string;
+  width: number;
+  height: number;
+  /** Planes and components in paint order (planes first). */
+  boxes: RenderedBox[];
+}
+
 export function renderArchSvg(source: string, opts: RenderOptions = {}): string {
+  return renderArch(source, opts).svg;
+}
+
+/**
+ * `renderArchSvg`, plus the diagram's size and the rectangle of every box, so
+ * a viewer that shows the image (the mobile app) can tell which component a
+ * tap landed on.
+ */
+export function renderArch(source: string, opts: RenderOptions = {}): RenderedArch {
   const dark = opts.theme === "dark";
   const P = dark ? DARK : LIGHT;
   const showTitle = opts.showTitle ?? true;
@@ -238,7 +268,7 @@ export function renderArchSvg(source: string, opts: RenderOptions = {}): string 
       throw new Error("parse error");
     doc = autoLayout(parsed.doc);
   } catch {
-    return invalidSvg(P, background);
+    return { svg: invalidSvg(P, background), width: 320, height: 80, boxes: [] };
   }
 
   const layout = layoutMap(doc);
@@ -280,7 +310,8 @@ export function renderArchSvg(source: string, opts: RenderOptions = {}): string 
   };
   walk(undefined, [0, 0], []);
 
-  if (boxes.length === 0) return emptySvg(P, doc.title, showTitle, background);
+  if (boxes.length === 0)
+    return { svg: emptySvg(P, doc.title, showTitle, background), width: 320, height: 120, boxes: [] };
 
   // Bounds → translate so the diagram starts at (PAD, PAD + title).
   const minX = Math.min(...boxes.map((b) => b.x));
@@ -532,7 +563,7 @@ export function renderArchSvg(source: string, opts: RenderOptions = {}): string 
       `<text x="${width - PAD}" y="${PAD + 12}" text-anchor="end" font-family='${SANS}' font-size="11" font-weight="600" letter-spacing="0.04em" fill="${P.ink3}">ARCHER</text>`
     : "";
 
-  return (
+  const svg =
     `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" role="img" aria-label="${esc(doc.title)}">` +
     `<title>${esc(doc.title)}</title>` +
     defs +
@@ -541,8 +572,20 @@ export function renderArchSvg(source: string, opts: RenderOptions = {}): string 
     out.join("") +
     edgeOut.join("") +
     chipOut.join("") +
-    `</svg>`
-  );
+    `</svg>`;
+  return {
+    svg,
+    width,
+    height,
+    boxes: ordered.map((b) => ({
+      path: b.path,
+      kind: b.plane ? "plane" : "component",
+      x: b.x + dx,
+      y: b.y + dy,
+      w: b.w,
+      h: b.h,
+    })),
+  };
 }
 
 /**
