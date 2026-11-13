@@ -7,6 +7,7 @@
     "dev": "pnpm --filter @archer/web dev:all",
     "build": "pnpm -r build",
     "dev:web": "pnpm --filter @archer/web dev",
+    "mobile": "pnpm --filter @archer/mobile start",
     "convex": "pnpm --filter @archer/web exec convex"
   },
   "packageManager": "pnpm@10.17.0",
