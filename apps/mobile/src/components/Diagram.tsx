@@ -141,6 +141,8 @@ export function ZoomableDiagram({
   const ty = useSharedValue(0);
   const minScale = useSharedValue(0.1);
   const fitScale = useSharedValue(1);
+  // Hidden until the first fit, so it never shows a frame at 1:1 first.
+  const shown = useSharedValue(0);
 
   const fit = useCallback(
     (animated: boolean) => {
@@ -152,8 +154,9 @@ export function ZoomableDiagram({
       scale.value = to(v.scale);
       tx.value = to(v.x);
       ty.value = to(v.y);
+      shown.value = 1;
     },
-    [view, rendered.width, rendered.height, fitScale, minScale, scale, tx, ty],
+    [view, rendered.width, rendered.height, fitScale, minScale, scale, tx, ty, shown],
   );
 
   // Fit on first layout, and whenever the diagram or the view changes size.
@@ -226,6 +229,7 @@ export function ZoomableDiagram({
   const gesture = useCompetingGestures(moves, taps);
 
   const contentStyle = useAnimatedStyle(() => ({
+    opacity: shown.value,
     transform: [{ translateX: tx.value }, { translateY: ty.value }, { scale: scale.value }],
   }));
 

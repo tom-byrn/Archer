@@ -83,6 +83,9 @@ function Navigation() {
       <StatusBar style={dark ? "light" : "dark"} />
       <Stack
         screenOptions={{
+          // Screens set their own titles once their content is in; until then
+          // the header stays empty rather than showing the route's file name.
+          title: "",
           headerShadowVisible: false,
           headerTintColor: palette.ink,
           headerStyle: { backgroundColor: palette.bg },
