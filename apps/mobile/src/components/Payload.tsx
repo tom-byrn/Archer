@@ -1,10 +1,11 @@
 /**
- * A payload as the inspector shows it: its name and format, then a table
- * drawn as one, markdown rendered, json and yaml as written — with its check
- * (the same `checkPayload` the validator runs) when it doesn't parse.
+ * A payload to read, as the web inspector's `PayloadReadout`: a bordered card
+ * with its name (mono, semibold) and format chip on a surface-2 strip, then
+ * the content on the code color — markdown and tables rendered, json and
+ * yaml as written (highlighted), a table that fails its check as source.
  */
 
-import { StyleSheet, View } from "react-native";
+import { View } from "react-native";
 import { checkPayload, type PayloadNode } from "@archer/lang";
 import { useTheme } from "@/lib/theme";
 import { RADIUS } from "@/lib/tokens";
@@ -12,42 +13,47 @@ import { CodeView } from "./CodeView";
 import { Markdown, MarkdownTable, parseTable } from "./Markdown";
 import { Chip, Txt } from "./ui";
 
-export function PayloadView({ payload }: { payload: PayloadNode }) {
+export function PayloadReadout({ payload, first }: { payload: PayloadNode; first?: boolean }) {
   const { palette } = useTheme();
-  const problem = checkPayload(payload.format, payload.content);
-  const table = payload.format === "table" && !problem ? parseTable(payload.content) : null;
+  const { format, content } = payload;
+  const table = format === "table" && checkPayload(format, content) === null ? parseTable(content) : null;
   return (
-    <View style={{ gap: 6 }}>
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 4 }}>
-        <Txt weight="600" mono style={{ flex: 1 }}>
+    <View
+      style={{
+        marginTop: first ? 0 : 8,
+        borderRadius: RADIUS.md,
+        borderWidth: 1,
+        borderColor: palette.line,
+        overflow: "hidden",
+      }}
+    >
+      <View
+        style={{
+          height: 28,
+          flexDirection: "row",
+          alignItems: "center",
+          gap: 6,
+          paddingLeft: 10,
+          paddingRight: 6,
+          borderBottomWidth: 1,
+          borderBottomColor: palette.line,
+          backgroundColor: palette.surface2,
+        }}
+      >
+        <Txt size="sm" weight="600" mono numberOfLines={1} style={{ flex: 1 }}>
           {payload.name}
         </Txt>
-        <Chip label={payload.format} mono tone={problem ? "danger" : "neutral"} />
+        <Chip label={format} />
       </View>
-      {table ? (
-        <View style={frame(palette)}>
+      <View style={{ backgroundColor: palette.code.bg, maxHeight: 280 }}>
+        {format === "markdown" ? (
+          <Markdown source={content} />
+        ) : table ? (
           <MarkdownTable token={table} />
-        </View>
-      ) : payload.format === "markdown" ? (
-        <View style={[frame(palette), { padding: 12 }]}>
-          <Markdown source={payload.content} />
-        </View>
-      ) : (
-        <CodeView source={payload.content} language="plain" gutter={false} />
-      )}
-      {problem && (
-        <Txt size="sm" tone="danger" style={{ paddingHorizontal: 4 }}>
-          {problem}
-        </Txt>
-      )}
+        ) : (
+          <CodeView source={content} language={format === "table" ? "plain" : format} gutter={false} />
+        )}
+      </View>
     </View>
   );
 }
-
-const frame = (palette: ReturnType<typeof useTheme>["palette"]) => ({
-  backgroundColor: palette.code.bg,
-  borderRadius: RADIUS.lg,
-  borderWidth: StyleSheet.hairlineWidth,
-  borderColor: palette.line,
-  overflow: "hidden" as const,
-});

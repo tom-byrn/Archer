@@ -1,108 +1,116 @@
 /**
- * UI icons: Phosphor, bold, as on the web (`apps/web/components/ui.tsx`
- * `Icon`). Add a name here rather than importing Phosphor elsewhere; each
- * comes from its own module so the bundle holds only these.
+ * UI icons: Phosphor, bold, under the same names as the web's `Icon` set
+ * (`apps/web/components/ui.tsx`). Add a name here rather than importing
+ * Phosphor elsewhere; each comes from its own module so the bundle holds only
+ * these. `GitHubMark` stays GitHub's own mark, as on the web.
  */
 
 import Svg, { Path } from "react-native-svg";
-import type { Icon as PhosphorIcon } from "phosphor-react-native";
+import type { Icon as PhosphorIcon, IconWeight } from "phosphor-react-native";
 import { ArrowCounterClockwiseIcon } from "phosphor-react-native/src/icons/ArrowCounterClockwise";
+import { ArrowDownIcon } from "phosphor-react-native/src/icons/ArrowDown";
 import { ArrowLeftIcon } from "phosphor-react-native/src/icons/ArrowLeft";
 import { ArrowRightIcon } from "phosphor-react-native/src/icons/ArrowRight";
-import { ArrowsLeftRightIcon } from "phosphor-react-native/src/icons/ArrowsLeftRight";
+import { ArrowSquareInIcon } from "phosphor-react-native/src/icons/ArrowSquareIn";
 import { ArrowSquareOutIcon } from "phosphor-react-native/src/icons/ArrowSquareOut";
-import { BookOpenIcon } from "phosphor-react-native/src/icons/BookOpen";
+import { ArrowsLeftRightIcon } from "phosphor-react-native/src/icons/ArrowsLeftRight";
 import { CaretDownIcon } from "phosphor-react-native/src/icons/CaretDown";
+import { CaretLeftIcon } from "phosphor-react-native/src/icons/CaretLeft";
 import { CaretRightIcon } from "phosphor-react-native/src/icons/CaretRight";
-import { ChatCircleIcon } from "phosphor-react-native/src/icons/ChatCircle";
+import { ChatCircleTextIcon } from "phosphor-react-native/src/icons/ChatCircleText";
 import { CheckIcon } from "phosphor-react-native/src/icons/Check";
+import { CheckCircleIcon } from "phosphor-react-native/src/icons/CheckCircle";
+import { CircleHalfIcon } from "phosphor-react-native/src/icons/CircleHalf";
 import { ClipboardTextIcon } from "phosphor-react-native/src/icons/ClipboardText";
 import { ClockCounterClockwiseIcon } from "phosphor-react-native/src/icons/ClockCounterClockwise";
 import { CodeIcon } from "phosphor-react-native/src/icons/Code";
-import { CompassIcon } from "phosphor-react-native/src/icons/Compass";
 import { CopyIcon } from "phosphor-react-native/src/icons/Copy";
-import { CornersOutIcon } from "phosphor-react-native/src/icons/CornersOut";
-import { DesktopIcon } from "phosphor-react-native/src/icons/Desktop";
+import { CopySimpleIcon } from "phosphor-react-native/src/icons/CopySimple";
 import { DotsThreeIcon } from "phosphor-react-native/src/icons/DotsThree";
+import { DownloadSimpleIcon } from "phosphor-react-native/src/icons/DownloadSimple";
 import { ExportIcon } from "phosphor-react-native/src/icons/Export";
-import { FileTextIcon } from "phosphor-react-native/src/icons/FileText";
-import { GitBranchIcon } from "phosphor-react-native/src/icons/GitBranch";
-import { GitCommitIcon } from "phosphor-react-native/src/icons/GitCommit";
-import { GlobeIcon } from "phosphor-react-native/src/icons/Globe";
-import { GraphIcon } from "phosphor-react-native/src/icons/Graph";
-import { InfoIcon } from "phosphor-react-native/src/icons/Info";
-import { LinkIcon } from "phosphor-react-native/src/icons/Link";
-import { LockIcon } from "phosphor-react-native/src/icons/Lock";
+import { FrameCornersIcon } from "phosphor-react-native/src/icons/FrameCorners";
+import { LinkSimpleIcon } from "phosphor-react-native/src/icons/LinkSimple";
 import { MagnifyingGlassIcon } from "phosphor-react-native/src/icons/MagnifyingGlass";
 import { MinusIcon } from "phosphor-react-native/src/icons/Minus";
+import { MonitorIcon } from "phosphor-react-native/src/icons/Monitor";
 import { MoonIcon } from "phosphor-react-native/src/icons/Moon";
+import { NetworkIcon } from "phosphor-react-native/src/icons/Network";
+import { PaperPlaneTiltIcon } from "phosphor-react-native/src/icons/PaperPlaneTilt";
 import { PencilSimpleIcon } from "phosphor-react-native/src/icons/PencilSimple";
+import { PlugIcon } from "phosphor-react-native/src/icons/Plug";
 import { PlusIcon } from "phosphor-react-native/src/icons/Plus";
+import { RectangleDashedIcon } from "phosphor-react-native/src/icons/RectangleDashed";
 import { RobotIcon } from "phosphor-react-native/src/icons/Robot";
-import { SignOutIcon } from "phosphor-react-native/src/icons/SignOut";
-import { SquaresFourIcon } from "phosphor-react-native/src/icons/SquaresFour";
-import { StackIcon } from "phosphor-react-native/src/icons/Stack";
+import { SparkleIcon } from "phosphor-react-native/src/icons/Sparkle";
+import { StackSimpleIcon } from "phosphor-react-native/src/icons/StackSimple";
 import { SunIcon } from "phosphor-react-native/src/icons/Sun";
-import { TrashIcon } from "phosphor-react-native/src/icons/Trash";
+import { TrashSimpleIcon } from "phosphor-react-native/src/icons/TrashSimple";
 import { UserIcon } from "phosphor-react-native/src/icons/User";
 import { UsersIcon } from "phosphor-react-native/src/icons/Users";
 import { WarningIcon } from "phosphor-react-native/src/icons/Warning";
+import { WarningCircleIcon } from "phosphor-react-native/src/icons/WarningCircle";
 import { XIcon } from "phosphor-react-native/src/icons/X";
 
 const ICONS = {
-  "arrow-counter-clockwise": ArrowCounterClockwiseIcon,
-  "arrow-left": ArrowLeftIcon,
+  close: XIcon,
+  "chevron-left": CaretLeftIcon,
+  "chevron-right": CaretRightIcon,
+  "chevron-down": CaretDownIcon,
   "arrow-right": ArrowRightIcon,
-  "arrows-left-right": ArrowsLeftRightIcon,
-  "arrow-square-out": ArrowSquareOutIcon,
-  "book-open": BookOpenIcon,
-  "caret-down": CaretDownIcon,
-  "caret-right": CaretRightIcon,
-  "chat-circle": ChatCircleIcon,
-  check: CheckIcon,
-  "clipboard-text": ClipboardTextIcon,
-  history: ClockCounterClockwiseIcon,
-  code: CodeIcon,
-  compass: CompassIcon,
-  copy: CopyIcon,
-  "corners-out": CornersOutIcon,
-  desktop: DesktopIcon,
-  "dots-three": DotsThreeIcon,
-  export: ExportIcon,
-  "file-text": FileTextIcon,
-  "git-branch": GitBranchIcon,
-  "git-commit": GitCommitIcon,
-  globe: GlobeIcon,
-  graph: GraphIcon,
-  info: InfoIcon,
-  link: LinkIcon,
-  lock: LockIcon,
-  search: MagnifyingGlassIcon,
+  "arrow-left": ArrowLeftIcon,
+  "arrow-down": ArrowDownIcon,
+  swap: ArrowsLeftRightIcon,
   minus: MinusIcon,
-  moon: MoonIcon,
-  pencil: PencilSimpleIcon,
   plus: PlusIcon,
-  robot: RobotIcon,
-  "sign-out": SignOutIcon,
-  "squares-four": SquaresFourIcon,
-  stack: StackIcon,
-  sun: SunIcon,
-  trash: TrashIcon,
+  code: CodeIcon,
+  history: ClockCounterClockwiseIcon,
+  more: DotsThreeIcon,
+  check: CheckIcon,
+  copy: CopyIcon,
+  duplicate: CopySimpleIcon,
+  sparkle: SparkleIcon,
+  download: DownloadSimpleIcon,
+  link: LinkSimpleIcon,
+  external: ArrowSquareOutIcon,
+  pencil: PencilSimpleIcon,
+  trash: TrashSimpleIcon,
   user: UserIcon,
   users: UsersIcon,
+  bot: RobotIcon,
+  plug: PlugIcon,
+  sun: SunIcon,
+  moon: MoonIcon,
+  monitor: MonitorIcon,
+  contrast: CircleHalfIcon,
+  fit: FrameCornersIcon,
+  restore: ArrowCounterClockwiseIcon,
+  open: ArrowSquareInIcon,
+  nested: StackSimpleIcon,
+  plane: RectangleDashedIcon,
+  send: PaperPlaneTiltIcon,
+  feedback: ChatCircleTextIcon,
+  "check-circle": CheckCircleIcon,
   warning: WarningIcon,
-  x: XIcon,
+  alert: WarningCircleIcon,
+  diagram: NetworkIcon,
+  share: ExportIcon,
+  paste: ClipboardTextIcon,
+  search: MagnifyingGlassIcon,
 } satisfies Record<string, PhosphorIcon>;
 
 export type IconName = keyof typeof ICONS;
 
-export function Icon({ name, size = 18, color }: { name: IconName; size?: number; color: string }) {
+/** Fill weight reads better than bold's hatching for the half-filled contrast circle, as on the web. */
+const WEIGHT: Partial<Record<IconName, IconWeight>> = { contrast: "fill" };
+
+export function Icon({ name, size = 16, color }: { name: IconName; size?: number; color: string }) {
   const C = ICONS[name];
-  return <C size={size} color={color} weight="bold" />;
+  return <C size={size} color={color} weight={WEIGHT[name] ?? "bold"} />;
 }
 
-/** GitHub's own mark (as the web's `GitHubMark`), not a Phosphor drawing of it. */
-export function GitHubMark({ size = 18, color }: { size?: number; color: string }) {
+/** GitHub's own mark (the web's `GitHubMark`), not a Phosphor drawing of it. */
+export function GitHubMark({ size = 14, color }: { size?: number; color: string }) {
   return (
     <Svg width={size} height={size} viewBox="0 0 16 16">
       <Path

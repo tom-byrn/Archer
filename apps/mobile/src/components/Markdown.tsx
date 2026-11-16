@@ -1,17 +1,19 @@
 /**
  * Markdown as the web's inspector reads it (`apps/web/components/Markdown.tsx`):
- * marked's tokens rendered straight to native views. HTML shows as text, and
- * a link opens only to the web or an email address. Also renders `table`
- * payloads, which are markdown tables.
+ * marked's tokens rendered straight to native views, 12px in the code color
+ * with the payload editors' padding. HTML shows as text, and a link opens
+ * only to the web or an email address. Tables (`table` payloads) render the
+ * same way, ruled, the header row in semibold ink.
  */
 
 import { Fragment, useMemo, type ReactNode } from "react";
-import { Linking, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Linking, ScrollView, Text, View } from "react-native";
 import { Marked, type MarkedToken, type Token, type Tokens } from "marked";
-import { useTheme } from "@/lib/theme";
-import { RADIUS } from "@/lib/tokens";
+import { sans } from "@/lib/fonts";
 import { decodeEntities } from "@/lib/nativeSvg";
-import { Txt } from "./ui";
+import { useTheme } from "@/lib/theme";
+import { RADIUS, TEXT } from "@/lib/tokens";
+import { Icon } from "./Icon";
 
 const md = new Marked({ gfm: true });
 
@@ -31,7 +33,7 @@ function InlineToken({ token: t }: { token: MarkedToken }): ReactNode {
       return t.text;
     case "strong":
       return (
-        <Text style={{ fontWeight: "600", color: palette.ink }}>
+        <Text style={{ fontFamily: sans("600"), color: palette.ink }}>
           <Inline tokens={t.tokens} />
         </Text>
       );
@@ -49,15 +51,14 @@ function InlineToken({ token: t }: { token: MarkedToken }): ReactNode {
       );
     case "codespan":
       return (
-        <Text style={{ fontFamily: mono, fontSize: 12.5, backgroundColor: palette.surface2 }}>
-          {decodeEntities(t.text)}
+        <Text style={{ fontFamily: mono, fontSize: 11, backgroundColor: palette.surface2 }}>
+          {` ${decodeEntities(t.text)} `}
         </Text>
       );
     case "br":
       return "\n";
     case "link":
     case "image": {
-      // An image reads as a link to it, as on the web: nothing is fetched.
       const label = t.type === "image" ? decodeEntities(t.text) || t.href : <Inline tokens={t.tokens} />;
       const href = safeHref(t.href);
       if (!href) return <Fragment>{label}</Fragment>;
@@ -77,10 +78,17 @@ function InlineToken({ token: t }: { token: MarkedToken }): ReactNode {
   }
 }
 
-function Blocks({ tokens, gap = 8 }: { tokens: Token[]; gap?: number }) {
-  const blocks = tokens.filter(
-    (t) => t.type !== "space" && t.type !== "def" && t.type !== "checkbox" && !isComment(t),
+function Para({ children, size = "sm", bold }: { children: ReactNode; size?: "sm" | "base"; bold?: boolean }) {
+  const { palette } = useTheme();
+  return (
+    <Text style={[TEXT[size], { fontFamily: sans(bold ? "600" : "400"), color: bold ? palette.ink : palette.code.fg }]}>
+      {children}
+    </Text>
   );
+}
+
+function Blocks({ tokens, gap = 8 }: { tokens: Token[]; gap?: number }) {
+  const blocks = tokens.filter((t) => t.type !== "space" && t.type !== "def" && t.type !== "checkbox" && !isComment(t));
   return (
     <View style={{ gap }}>
       {blocks.map((t, i) => (
@@ -95,38 +103,47 @@ function Block({ token: t }: { token: MarkedToken }) {
   switch (t.type) {
     case "paragraph":
       return (
-        <Txt size="sm" style={{ color: palette.code.fg }}>
+        <Para>
           <Inline tokens={t.tokens} />
-        </Txt>
+        </Para>
       );
     case "text":
-      return (
-        <Txt size="sm" style={{ color: palette.code.fg }}>
-          {t.tokens ? <Inline tokens={t.tokens} /> : decodeEntities(t.text)}
-        </Txt>
-      );
+      return <Para>{t.tokens ? <Inline tokens={t.tokens} /> : decodeEntities(t.text)}</Para>;
     case "heading":
       return (
-        <Txt size={t.depth <= 2 ? "base" : "sm"} weight="600" style={{ marginTop: 4 }}>
-          <Inline tokens={t.tokens} />
-        </Txt>
+        <View style={{ marginTop: 4 }}>
+          <Para size={t.depth <= 2 ? "base" : "sm"} bold>
+            <Inline tokens={t.tokens} />
+          </Para>
+        </View>
       );
     case "list":
       return (
-        <View style={{ gap: t.loose ? 8 : 3 }}>
+        <View style={{ gap: t.loose ? 8 : 2 }}>
           {t.items.map((item: Tokens.ListItem, i: number) => (
-            <View key={i} style={{ flexDirection: "row", gap: 8 }}>
-              <Txt size="sm" tone="ink3" style={{ minWidth: 14 }}>
-                {item.task
-                  ? item.checked
-                    ? "☑"
-                    : "☐"
-                  : t.ordered
-                    ? `${(typeof t.start === "number" ? t.start : 1) + i}.`
-                    : "•"}
-              </Txt>
+            <View key={i} style={{ flexDirection: "row" }}>
+              <View style={{ width: 20, alignItems: "center", paddingTop: item.task ? 3 : 0 }}>
+                {item.task ? (
+                  <View
+                    style={{
+                      width: 12,
+                      height: 12,
+                      borderRadius: RADIUS.xs,
+                      borderWidth: 1,
+                      borderColor: item.checked ? palette.accent : palette.line2,
+                      backgroundColor: item.checked ? palette.accent : palette.surface,
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    {item.checked && <Icon name="check" size={9} color={palette.accentInk} />}
+                  </View>
+                ) : (
+                  <Text style={[TEXT.sm, { color: palette.ink3 }]}>{t.ordered ? `${(typeof t.start === "number" ? t.start : 1) + i}.` : "•"}</Text>
+                )}
+              </View>
               <View style={{ flex: 1 }}>
-                <Blocks tokens={item.tokens} gap={t.loose ? 8 : 3} />
+                <Blocks tokens={item.tokens} gap={t.loose ? 8 : 2} />
               </View>
             </View>
           ))}
@@ -141,46 +158,49 @@ function Block({ token: t }: { token: MarkedToken }) {
     case "code":
       return (
         <ScrollView horizontal style={{ backgroundColor: palette.surface2, borderRadius: RADIUS.sm }}>
-          <Text selectable style={{ fontFamily: mono, fontSize: 12, color: palette.code.fg, padding: 8 }}>
+          <Text selectable style={{ fontFamily: mono, fontSize: 11, lineHeight: 16, color: palette.code.fg, paddingHorizontal: 8, paddingVertical: 6 }}>
             {t.text}
           </Text>
         </ScrollView>
       );
     case "table":
-      return <MarkdownTable token={t} />;
-    case "hr":
-      return <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: palette.line }} />;
-    case "html":
       return (
-        <Text style={{ fontFamily: mono, fontSize: 12, color: palette.ink2 }}>{t.text}</Text>
+        <View style={{ marginHorizontal: -10, borderTopWidth: 1, borderBottomWidth: 1, borderColor: palette.line }}>
+          <MarkdownTable token={t} />
+        </View>
       );
+    case "hr":
+      return <View style={{ height: 1, backgroundColor: palette.line }} />;
+    case "html":
+      return <Text style={{ fontFamily: mono, fontSize: 11, color: palette.ink2 }}>{t.text}</Text>;
     default:
-      return <Txt size="sm">{(t as Token).raw}</Txt>;
+      return <Para>{(t as Token).raw}</Para>;
   }
 }
 
-/** A table, sideways-scrolling when it's wider than the screen. */
+/** A table, ruled like the web's: header row in semibold ink over a line-2 rule, rows split by lines. */
 export function MarkdownTable({ token }: { token: Tokens.Table }) {
   const { palette } = useTheme();
-  // Columns sized to their longest cell, within reason.
   const widths = token.header.map((h, c) =>
-    Math.min(
-      260,
-      Math.max(72, ...[h.text, ...token.rows.map((r) => r[c]?.text ?? "")].map((s) => s.length * 8 + 24)),
-    ),
+    Math.min(280, Math.max(60, ...[h.text, ...token.rows.map((r) => r[c]?.text ?? "")].map((s) => s.length * 7.6 + 26))),
   );
   const align = (a: Tokens.TableCell["align"]) => (a === "right" ? "right" : a === "center" ? "center" : "left");
   const cell = (cellToken: Tokens.TableCell, c: number, head: boolean) => (
-    <View key={c} style={{ width: widths[c], paddingHorizontal: 10, paddingVertical: 6 }}>
-      <Txt size="sm" weight={head ? "600" : undefined} style={{ textAlign: align(cellToken.align), color: head ? palette.ink : palette.code.fg }}>
+    <View key={c} style={{ width: widths[c], paddingHorizontal: 10, paddingVertical: 4 }}>
+      <Text
+        style={[
+          TEXT.sm,
+          { fontFamily: sans(head ? "600" : "400"), color: head ? palette.ink : palette.code.fg, textAlign: align(cellToken.align) },
+        ]}
+      >
         <Inline tokens={cellToken.tokens} />
-      </Txt>
+      </Text>
     </View>
   );
   return (
-    <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-      <View>
-        <View style={{ flexDirection: "row", borderBottomWidth: 1, borderBottomColor: palette.line2 }}>
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ flexGrow: 1 }}>
+      <View style={{ flexGrow: 1 }}>
+        <View style={{ flexDirection: "row", borderBottomWidth: 1, borderBottomColor: palette.line2, backgroundColor: palette.code.bg }}>
           {token.header.map((h, c) => cell(h, c, true))}
         </View>
         {token.rows.map((row, r) => (
@@ -188,7 +208,7 @@ export function MarkdownTable({ token }: { token: Tokens.Table }) {
             key={r}
             style={{
               flexDirection: "row",
-              borderBottomWidth: r < token.rows.length - 1 ? StyleSheet.hairlineWidth : 0,
+              borderBottomWidth: r < token.rows.length - 1 ? 1 : 0,
               borderBottomColor: palette.line,
             }}
           >
@@ -201,12 +221,16 @@ export function MarkdownTable({ token }: { token: Tokens.Table }) {
 }
 
 export function Markdown({ source }: { source: string }) {
+  const { palette } = useTheme();
   const tokens = useMemo(() => md.lexer(source), [source]);
-  if (source.trim() === "") return <Txt size="sm" tone="ink3">Empty</Txt>;
-  return <Blocks tokens={tokens} />;
+  return (
+    <View style={{ paddingHorizontal: 10, paddingVertical: 8 }}>
+      {source.trim() === "" ? <Text style={[TEXT.sm, { fontFamily: sans(), color: palette.ink3 }]}>Empty</Text> : <Blocks tokens={tokens} />}
+    </View>
+  );
 }
 
-/** A `table` payload's table, or null when marked doesn't read it as exactly one table (as the web's `parseTable`). */
+/** A `table` payload's table, or null when marked doesn't read it as exactly one table (the web's `parseTable`). */
 export function parseTable(source: string): Tokens.Table | null {
   const lines = source
     .split("\n")

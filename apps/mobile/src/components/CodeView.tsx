@@ -1,16 +1,16 @@
 /**
- * Read-only code: `.arch` source highlighted by the web's tokenizer
- * (`@web/highlightArch`, the editor's own), or a payload's text as written.
- * Line numbers in a gutter; long lines scroll sideways rather than wrap, so
- * the structure reads as it does in the editor.
+ * Read-only code as the web's code views draw it (the "View code" popout's
+ * `Source`): line numbers in a gutter, 12px mono at 1.6 line height, the
+ * editor's own `.arch` tokenizer (`@web/highlightArch`) for colors. Long lines
+ * scroll sideways rather than wrap. Payloads (json, yaml) get the code
+ * editor's key and value colors.
  */
 
 import { memo, useMemo } from "react";
-import { ScrollView, StyleSheet, Text, View } from "react-native";
-import { highlightArch } from "@web/highlightArch";
+import { ScrollView, Text, View } from "react-native";
+import { highlightArch, type HighlightToken } from "@web/highlightArch";
 import { useTheme } from "@/lib/theme";
 import type { CodePalette } from "@/lib/tokens";
-import { RADIUS } from "@/lib/tokens";
 
 const TOKEN: Record<string, keyof CodePalette> = {
   "tok-kw": "kw",
@@ -24,76 +24,116 @@ const TOKEN: Record<string, keyof CodePalette> = {
   "tok-version": "version",
 };
 
+/**
+ * JSON and YAML colored as the payload editors color them: keys in the type
+ * color, strings, numbers and keywords in theirs. A line-by-line tokenizer;
+ * good enough for reading.
+ */
+export function highlightData(source: string, format: "json" | "yaml"): HighlightToken[][] {
+  const re =
+    format === "json"
+      ? /("(?:[^"\\]|\\.)*")(\s*:)?|(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)|\b(true|false|null)\b|([^"\d\-tfn]+|.)/g
+      : /^(\s*-?\s*)([^:#\s][^:#]*?)(\s*:)(?=\s|$)|("(?:[^"\\]|\\.)*"|'[^']*')|(#.*$)|(-?\d+(?:\.\d+)?)(?=\s*$)|\b(true|false|null|yes|no)\b(?=\s*$)|([^"'#\d]+|.)/g;
+  return source
+    .replace(/\n$/, "")
+    .split("\n")
+    .map((line) => {
+      const out: HighlightToken[] = [];
+      const push = (text: string, className?: string) => {
+        if (text === "") return;
+        const last = out[out.length - 1];
+        if (last && last.className === className) last.text += text;
+        else out.push({ text, ...(className ? { className } : {}) });
+      };
+      for (const m of line.matchAll(re)) {
+        if (format === "json") {
+          if (m[1] !== undefined) {
+            push(m[1], m[2] !== undefined ? "tok-type" : "tok-string");
+            if (m[2]) push(m[2]);
+          } else if (m[3] !== undefined) push(m[3], "tok-num");
+          else if (m[4] !== undefined) push(m[4], "tok-kw");
+          else push(m[0]);
+        } else if (m[2] !== undefined) {
+          push(m[1] ?? "");
+          push(m[2], "tok-type");
+          push(m[3] ?? "");
+        } else if (m[4] !== undefined) push(m[4], "tok-string");
+        else if (m[5] !== undefined) push(m[5], "tok-comment");
+        else if (m[6] !== undefined) push(m[6], "tok-num");
+        else if (m[7] !== undefined) push(m[7], "tok-kw");
+        else push(m[0]);
+      }
+      return out;
+    });
+}
+
 export const CodeView = memo(function CodeView({
   source,
   language = "arch",
   gutter = true,
-  framed = true,
-  highlightLines,
+  scroll = false,
+  errorLines,
 }: {
   source: string;
-  /** `arch` is highlighted; anything else shows as written. */
-  language?: "arch" | "plain";
+  language?: "arch" | "json" | "yaml" | "plain";
   gutter?: boolean;
-  /** In a bordered box (off when the code fills a screen). */
-  framed?: boolean;
-  /** 1-based lines to mark (diagnostics). */
-  highlightLines?: ReadonlySet<number>;
+  /** Scroll vertically too (a full-screen code view). */
+  scroll?: boolean;
+  /** 1-based lines the validator flagged, washed in the danger tint. */
+  errorLines?: ReadonlySet<number>;
 }) {
   const { palette, mono } = useTheme();
   const c = palette.code;
-  const lines = useMemo(
+  const lines = useMemo<HighlightToken[][]>(
     () =>
       language === "arch"
         ? highlightArch(source)
-        : source.replace(/\n$/, "").split("\n").map((text) => [{ text, className: undefined as string | undefined }]),
+        : language === "plain"
+          ? source.replace(/\n$/, "").split("\n").map((text) => [{ text }] as HighlightToken[])
+          : highlightData(source, language),
     [source, language],
   );
-  const width = String(lines.length).length;
-  const text = { fontFamily: mono, fontSize: 12.5, lineHeight: 19 };
-
-  return (
-    <View
-      style={[
-        { backgroundColor: c.bg },
-        framed && {
-          borderRadius: RADIUS.lg,
-          borderWidth: StyleSheet.hairlineWidth,
-          borderColor: palette.line,
-          overflow: "hidden",
-        },
-      ]}
-    >
-      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-        <View style={{ paddingVertical: 10 }}>
-          {lines.map((tokens, i) => {
-            const marked = highlightLines?.has(i + 1);
-            return (
-              <View
-                key={i}
-                style={{ flexDirection: "row", backgroundColor: marked ? palette.dangerSoft : undefined }}
-              >
-                {gutter && (
-                  <Text
-                    style={[text, { color: c.gutter, width: width * 8 + 20, textAlign: "right", paddingRight: 12 }]}
-                  >
-                    {i + 1}
-                  </Text>
-                )}
-                <Text selectable style={[text, { color: c.fg, paddingRight: 16, paddingLeft: gutter ? 0 : 12 }]}>
-                  {tokens.length === 0
-                    ? " "
-                    : tokens.map((t, j) => (
-                        <Text key={j} style={t.className ? { color: c[TOKEN[t.className] ?? "fg"] } : undefined}>
-                          {t.text}
-                        </Text>
-                      ))}
-                </Text>
-              </View>
-            );
-          })}
+  const text = { fontFamily: mono, fontSize: 12, lineHeight: 19 } as const;
+  const body = (
+    <View style={{ flexDirection: "row", paddingVertical: 8 }}>
+      {gutter && (
+        <View style={{ paddingLeft: 4 }}>
+          {lines.map((_, i) => (
+            <Text key={i} style={[text, { color: c.gutter, minWidth: 28, paddingRight: 6, textAlign: "right" }]}>
+              {i + 1}
+            </Text>
+          ))}
         </View>
-      </ScrollView>
+      )}
+      <View style={{ paddingLeft: gutter ? 24 : 10, paddingRight: 12 }}>
+        {lines.map((tokens, i) => (
+          <Text
+            key={i}
+            selectable
+            style={[text, { color: c.fg }, errorLines?.has(i + 1) && { backgroundColor: palette.dangerSoft }]}
+          >
+            {tokens.length === 0
+              ? " "
+              : tokens.map((t, j) => (
+                  <Text key={j} style={t.className ? { color: c[TOKEN[t.className] ?? "fg"] } : undefined}>
+                    {t.text}
+                  </Text>
+                ))}
+          </Text>
+        ))}
+      </View>
     </View>
+  );
+  const sideways = (
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ backgroundColor: c.bg }}>
+      {body}
+    </ScrollView>
+  );
+  return scroll ? (
+    <ScrollView style={{ flex: 1, backgroundColor: c.bg }} contentContainerStyle={{ flexGrow: 1 }}>
+      {sideways}
+    </ScrollView>
+  ) : (
+    sideways
   );
 });

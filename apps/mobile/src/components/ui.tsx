@@ -1,20 +1,24 @@
 /**
- * The app's controls, on the theme's tokens (`lib/tokens.ts`): the mobile
- * counterpart of the web's `components/ui.tsx`. Screens build from these
- * rather than styling raw views, so every surface, line and text color comes
- * from the palette and follows the theme.
+ * The app's controls: the web's `components/ui.tsx` primitives rebuilt for
+ * React Native, at the same sizes, radii, borders and colors (tokens from
+ * `lib/tokens.ts`), so every surface reads as the same product. Screens build
+ * from these rather than styling raw views.
  */
 
-import type { ReactNode } from "react";
+import { useCallback, useRef, useState, type ComponentRef, type ReactNode } from "react";
 import {
   ActivityIndicator,
+  Image,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
   View,
-  type ScrollViewProps,
+  useWindowDimensions,
   type StyleProp,
   type TextInputProps,
   type TextProps,
@@ -22,207 +26,71 @@ import {
   type ViewStyle,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { DISPLAY, sans, type Weight } from "@/lib/fonts";
 import { useTheme } from "@/lib/theme";
-import { DISPLAY_FONT, RADIUS, TEXT, type TextSize } from "@/lib/tokens";
+import { RADIUS, SHADOW, TEXT, type Palette, type TextSize } from "@/lib/tokens";
 import { Icon, type IconName } from "./Icon";
 
-type Tone = "ink" | "ink2" | "ink3" | "accent" | "danger" | "warn" | "accentInk";
+export const HAIR = StyleSheet.hairlineWidth;
 
+/* --------------------------------------------------------------------- Text */
+
+type Tone = "ink" | "ink2" | "ink3" | "accent" | "danger" | "warn";
+
+/** Text in Inter at a token size; `display` is Playfair (`font-display`), `mono` the code face. */
 export function Txt({
   size = "base",
   tone = "ink",
-  weight,
+  weight = "400",
   mono,
   display,
   style,
   ...rest
-}: TextProps & {
-  size?: TextSize;
-  tone?: Tone;
-  weight?: "400" | "500" | "600" | "700";
-  mono?: boolean;
-  /** The display serif (headings), as the web's `font-display`. */
-  display?: boolean;
-}) {
+}: TextProps & { size?: TextSize; tone?: Tone; weight?: Weight; mono?: boolean; display?: boolean }) {
   const { palette, mono: monoFont } = useTheme();
-  const color = palette[tone];
   return (
     <Text
       {...rest}
       style={[
         TEXT[size],
-        { color },
-        weight ? { fontWeight: weight } : null,
-        mono ? { fontFamily: monoFont, fontSize: TEXT[size].fontSize - 1 } : null,
-        display ? { fontFamily: DISPLAY_FONT, fontWeight: undefined } : null,
+        { color: palette[tone], fontFamily: sans(weight) },
+        mono && { fontFamily: monoFont, fontWeight: weight === "400" ? undefined : (weight as TextStyle["fontWeight"]) },
+        display && DISPLAY,
         style,
       ]}
     />
   );
 }
 
-/** A scrolling page on the app's background, clear of the home indicator. */
-export function Screen({
-  children,
-  style,
-  contentStyle,
-  ...rest
-}: ScrollViewProps & { children: ReactNode; contentStyle?: StyleProp<ViewStyle> }) {
-  const { palette } = useTheme();
-  const insets = useSafeAreaInsets();
+/** `.eyebrow`: the section label (xs, semibold, ink-3, uppercase, tracked). */
+export function Eyebrow({ children, style }: { children: ReactNode; style?: StyleProp<TextStyle> }) {
   return (
-    <ScrollView
-      {...rest}
-      style={[{ flex: 1, backgroundColor: palette.bg }, style]}
-      contentContainerStyle={[{ padding: 16, paddingBottom: 24 + insets.bottom, gap: 20 }, contentStyle]}
-      contentInsetAdjustmentBehavior="automatic"
-      keyboardShouldPersistTaps="handled"
-    >
+    <Txt size="xs" tone="ink3" weight="600" style={[{ letterSpacing: 0.44, textTransform: "uppercase" }, style]}>
       {children}
-    </ScrollView>
+    </Txt>
   );
 }
 
-export function Card({ children, style }: { children: ReactNode; style?: StyleProp<ViewStyle> }) {
-  const { palette } = useTheme();
-  return (
-    <View
-      style={[
-        {
-          backgroundColor: palette.surface,
-          borderColor: palette.line,
-          borderWidth: StyleSheet.hairlineWidth,
-          borderRadius: RADIUS.xl,
-          overflow: "hidden",
-        },
-        style,
-      ]}
-    >
-      {children}
-    </View>
-  );
-}
+/* ------------------------------------------------------------------ Buttons */
 
-/** A titled group of rows or content. */
-export function Section({
-  title,
-  action,
-  children,
-  plain,
-}: {
-  title?: string;
-  /** Shown at the right of the title (a small button). */
-  action?: ReactNode;
-  children: ReactNode;
-  /** Content goes straight on the page rather than in a card. */
-  plain?: boolean;
-}) {
-  return (
-    <View style={{ gap: 8 }}>
-      {(title || action) && (
-        <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 4, minHeight: 20 }}>
-          {title && (
-            <Txt size="xs" tone="ink3" weight="600" style={{ flex: 1, textTransform: "uppercase", letterSpacing: 0.6 }}>
-              {title}
-            </Txt>
-          )}
-          {action}
-        </View>
-      )}
-      {plain ? children : <Card>{children}</Card>}
-    </View>
-  );
-}
+type Variant = "primary" | "secondary" | "ghost" | "danger";
+type Size = "sm" | "md" | "lg";
 
-/** One row of a list: an optional leading icon or element, a title and subtitle, an accessory. */
-export function Row({
-  icon,
-  leading,
-  title,
-  subtitle,
-  detail,
-  right,
-  onPress,
-  onLongPress,
-  chevron = onPress !== undefined,
-  first,
-  tone,
-  numberOfLines = 1,
-  indent = 0,
-}: {
-  icon?: IconName;
-  leading?: ReactNode;
-  title: ReactNode;
-  subtitle?: ReactNode;
-  /** Short text at the right (a count, a time). */
-  detail?: string;
-  right?: ReactNode;
-  onPress?: () => void;
-  onLongPress?: () => void;
-  chevron?: boolean;
-  /** No rule above it (the first row of a group). */
-  first?: boolean;
-  tone?: "danger" | "accent";
-  numberOfLines?: number;
-  indent?: number;
-}) {
-  const { palette } = useTheme();
-  const color = tone ? palette[tone] : palette.ink;
-  return (
-    <Pressable
-      onPress={onPress}
-      onLongPress={onLongPress}
-      disabled={!onPress && !onLongPress}
-      style={({ pressed }) => ({ backgroundColor: pressed ? palette.surface2 : "transparent" })}
-    >
-      <View
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          gap: 12,
-          paddingVertical: 12,
-          paddingRight: 14,
-          paddingLeft: 14 + indent * 14,
-          borderTopWidth: first ? 0 : StyleSheet.hairlineWidth,
-          borderTopColor: palette.line,
-          minHeight: 48,
-        }}
-      >
-        {leading ?? (icon ? <Icon name={icon} size={18} color={tone ? color : palette.ink2} /> : null)}
-        <View style={{ flex: 1, gap: 2 }}>
-          {typeof title === "string" ? (
-            <Txt weight="500" numberOfLines={numberOfLines} style={{ color }}>
-              {title}
-            </Txt>
-          ) : (
-            title
-          )}
-          {typeof subtitle === "string" ? (
-            <Txt size="sm" tone="ink3" numberOfLines={2}>
-              {subtitle}
-            </Txt>
-          ) : (
-            subtitle
-          )}
-        </View>
-        {detail !== undefined && (
-          <Txt size="sm" tone="ink3">
-            {detail}
-          </Txt>
-        )}
-        {right}
-        {chevron && <Icon name="caret-right" size={14} color={palette.ink3} />}
-      </View>
-    </Pressable>
-  );
-}
+const SIZE: Record<Size, { height: number; px: number; gap: number; text: TextSize }> = {
+  sm: { height: 28, px: 10, gap: 6, text: "sm" },
+  md: { height: 32, px: 12, gap: 8, text: "sm" },
+  lg: { height: 40, px: 16, gap: 8, text: "lg" },
+};
 
+/** The web's Button: primary is ink on the page color, secondary a bordered surface. */
 export function Button({
   title,
   icon,
   leading,
+  trailing,
   onPress,
   variant = "secondary",
+  size = "md",
   disabled,
   loading,
   style,
@@ -230,147 +98,309 @@ export function Button({
   title: string;
   icon?: IconName;
   leading?: ReactNode;
+  trailing?: ReactNode;
   onPress?: () => void;
-  variant?: "primary" | "secondary" | "ghost" | "danger";
+  variant?: Variant;
+  size?: Size;
   disabled?: boolean;
   loading?: boolean;
   style?: StyleProp<ViewStyle>;
 }) {
   const { palette } = useTheme();
-  const fg =
-    variant === "primary" ? palette.accentInk : variant === "danger" ? palette.danger : palette.ink;
-  const bg =
-    variant === "primary"
-      ? palette.accent
-      : variant === "danger"
-        ? palette.dangerSoft
-        : variant === "ghost"
-          ? "transparent"
-          : palette.surface;
+  const s = SIZE[size];
+  const fg = variant === "primary" ? palette.bg : variant === "danger" ? palette.danger : variant === "ghost" ? palette.ink2 : palette.ink;
   return (
     <Pressable
       onPress={onPress}
       disabled={disabled || loading}
       accessibilityRole="button"
+      accessibilityState={{ disabled: !!disabled }}
+      hitSlop={size === "lg" ? 0 : 6}
       style={({ pressed }) => [
         {
+          height: s.height,
+          paddingHorizontal: s.px,
+          gap: s.gap,
           flexDirection: "row",
           alignItems: "center",
           justifyContent: "center",
-          gap: 8,
-          minHeight: 44,
-          paddingHorizontal: 16,
-          borderRadius: RADIUS.lg,
-          backgroundColor: bg,
-          borderWidth: variant === "secondary" ? StyleSheet.hairlineWidth : 0,
-          borderColor: palette.line2,
-          opacity: disabled ? 0.45 : pressed ? 0.8 : 1,
+          borderRadius: RADIUS.md,
+          borderWidth: 1,
+          borderColor: variant === "secondary" ? palette.line : variant === "danger" ? palette.danger : "transparent",
+          backgroundColor:
+            variant === "primary"
+              ? palette.ink
+              : variant === "secondary"
+                ? pressed
+                  ? palette.surface2
+                  : palette.surface
+                : pressed
+                  ? variant === "danger"
+                    ? palette.dangerSoft
+                    : palette.surface2
+                  : "transparent",
+          opacity: disabled ? 0.4 : variant === "primary" && pressed ? 0.9 : 1,
         },
+        (variant === "primary" || variant === "secondary") && SHADOW.sm,
         style,
       ]}
     >
       {loading ? (
-        <ActivityIndicator size="small" color={fg} />
+        <ActivityIndicator size="small" color={fg} style={{ transform: [{ scale: 0.7 }] }} />
       ) : (
-        (leading ?? (icon ? <Icon name={icon} size={17} color={fg} /> : null))
+        (leading ?? (icon ? <Icon name={icon} size={14} color={fg} /> : null))
       )}
-      <Txt weight="600" style={{ color: fg }}>
-        {title}
-      </Txt>
+      {title !== "" && (
+        <Txt size={s.text} weight="500" style={{ color: fg }} numberOfLines={1}>
+          {title}
+        </Txt>
+      )}
+      {trailing}
     </Pressable>
   );
 }
 
-/** A bare icon button, for headers. */
+/** Square icon-only button (32px, 24px small). Always pass `label`. */
 export function IconButton({
   icon,
   label,
   onPress,
+  size = "md",
+  active,
+  disabled,
   color,
+  style,
+  children,
 }: {
-  icon: IconName;
-  /** Accessibility label. */
+  icon?: IconName;
   label: string;
-  onPress: () => void;
+  onPress?: () => void;
+  size?: "sm" | "md";
+  active?: boolean;
+  disabled?: boolean;
   color?: string;
+  style?: StyleProp<ViewStyle>;
+  children?: ReactNode;
 }) {
   const { palette } = useTheme();
+  const box = size === "sm" ? 24 : 32;
   return (
     <Pressable
       onPress={onPress}
+      disabled={disabled}
       accessibilityRole="button"
       accessibilityLabel={label}
-      hitSlop={8}
-      style={({ pressed }) => ({ padding: 6, borderRadius: RADIUS.md, opacity: pressed ? 0.6 : 1 })}
+      hitSlop={size === "sm" ? 10 : 6}
+      style={({ pressed }) => [
+        {
+          width: box,
+          height: box,
+          borderRadius: RADIUS.md,
+          alignItems: "center",
+          justifyContent: "center",
+          backgroundColor: active ? palette.surface3 : pressed ? palette.surface2 : "transparent",
+          opacity: disabled ? 0.4 : 1,
+        },
+        style,
+      ]}
     >
-      <Icon name={icon} size={20} color={color ?? palette.ink} />
+      {children ??
+        (icon ? <Icon name={icon} size={size === "sm" ? 14 : 18} color={color ?? (active ? palette.ink : palette.ink2)} /> : null)}
     </Pressable>
   );
 }
 
-/** A small tag: a type (`@postgres`), a format, a role. */
+/* -------------------------------------------------------------------- Chips */
+
+export type ChipTone = "neutral" | "accent" | "danger" | "warn";
+
+/** The web's Chip: 20px tall, xs semibold, tinted by tone. */
 export function Chip({
   label,
-  mono,
   tone = "neutral",
+  mono,
   icon,
+  style,
 }: {
   label: string;
+  tone?: ChipTone;
   mono?: boolean;
-  tone?: "neutral" | "accent" | "warn" | "danger";
-  icon?: IconName;
+  icon?: ReactNode;
+  style?: StyleProp<ViewStyle>;
 }) {
   const { palette } = useTheme();
-  const bg =
-    tone === "accent"
-      ? palette.accentSoft
-      : tone === "warn"
-        ? palette.warnSoft
-        : tone === "danger"
-          ? palette.dangerSoft
-          : palette.surface2;
-  const fg = tone === "accent" ? palette.accent : tone === "warn" ? palette.warn : tone === "danger" ? palette.danger : palette.ink2;
+  const bg = { neutral: palette.surface2, accent: palette.accentSoft, danger: palette.dangerSoft, warn: palette.warnSoft }[tone];
+  const fg = { neutral: palette.ink2, accent: palette.accent, danger: palette.danger, warn: palette.warn }[tone];
   return (
     <View
-      style={{
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 4,
-        alignSelf: "flex-start",
-        backgroundColor: bg,
-        borderRadius: RADIUS.sm,
-        paddingHorizontal: 6,
-        paddingVertical: 2,
-      }}
+      style={[
+        {
+          height: 20,
+          flexDirection: "row",
+          alignItems: "center",
+          gap: 4,
+          paddingHorizontal: 6,
+          borderRadius: RADIUS.sm,
+          backgroundColor: bg,
+        },
+        style,
+      ]}
     >
-      {icon && <Icon name={icon} size={12} color={fg} />}
-      <Txt size="xs" mono={mono} weight="500" style={{ color: fg }}>
+      {icon}
+      <Txt size="xs" weight="600" mono={mono} style={{ color: fg }} numberOfLines={1}>
         {label}
       </Txt>
     </View>
   );
 }
 
-/** Tabs as a segmented control. */
-export function Segmented<T extends string>({
-  value,
-  options,
-  onChange,
+/* ------------------------------------------------------------------- Inputs */
+
+const inputStyle = (palette: Palette, focused: boolean, invalid?: boolean): TextStyle => ({
+  ...TEXT.base,
+  fontFamily: sans("400"),
+  color: palette.ink,
+  backgroundColor: palette.surface,
+  borderColor: invalid ? palette.danger : focused ? palette.ink3 : palette.line,
+  borderWidth: 1,
+  borderRadius: RADIUS.md,
+  paddingHorizontal: 10,
+});
+
+/** The web's Input: 28px tall, bordered, the border darkening on focus. */
+export function Input({ style, mono, invalid, onFocus, onBlur, ...rest }: TextInputProps & { mono?: boolean; invalid?: boolean }) {
+  const { palette, mono: monoFont } = useTheme();
+  const [focused, setFocused] = useState(false);
+  return (
+    <TextInput
+      placeholderTextColor={palette.ink3}
+      selectionColor={palette.accent}
+      autoCorrect={false}
+      spellCheck={false}
+      {...rest}
+      onFocus={(e) => {
+        setFocused(true);
+        onFocus?.(e);
+      }}
+      onBlur={(e) => {
+        setFocused(false);
+        onBlur?.(e);
+      }}
+      style={[
+        inputStyle(palette, focused, invalid),
+        { height: 30, paddingVertical: 0 },
+        mono && { fontFamily: monoFont, fontSize: 12 },
+        style as StyleProp<TextStyle>,
+      ]}
+    />
+  );
+}
+
+/** The web's TextArea: the Input's border, padded, growing with its text. */
+export function TextArea({ style, mono, invalid, onFocus, onBlur, ...rest }: TextInputProps & { mono?: boolean; invalid?: boolean }) {
+  const { palette, mono: monoFont } = useTheme();
+  const [focused, setFocused] = useState(false);
+  return (
+    <TextInput
+      multiline
+      textAlignVertical="top"
+      placeholderTextColor={palette.ink3}
+      selectionColor={palette.accent}
+      {...rest}
+      onFocus={(e) => {
+        setFocused(true);
+        onFocus?.(e);
+      }}
+      onBlur={(e) => {
+        setFocused(false);
+        onBlur?.(e);
+      }}
+      style={[
+        inputStyle(palette, focused, invalid),
+        { paddingVertical: 6, minHeight: 80, lineHeight: 18 },
+        mono && { fontFamily: monoFont, fontSize: 12 },
+        style as StyleProp<TextStyle>,
+      ]}
+    />
+  );
+}
+
+/* ----------------------------------------------------------------- Sections */
+
+/** Panel section: an eyebrow header, an optional trailing action, a rule under it. */
+export function Section({
+  title,
+  action,
+  children,
+  last,
+  style,
 }: {
-  value: T;
-  options: { value: T; label: string }[];
-  onChange: (v: T) => void;
+  title?: string;
+  action?: ReactNode;
+  children: ReactNode;
+  /** No rule under the last section. */
+  last?: boolean;
+  style?: StyleProp<ViewStyle>;
 }) {
   const { palette } = useTheme();
   return (
     <View
-      accessibilityRole="tablist"
+      style={[
+        { paddingHorizontal: 12, paddingVertical: 10, borderBottomWidth: last ? 0 : 1, borderBottomColor: palette.line },
+        style,
+      ]}
+    >
+      {(title || action) && (
+        <View style={{ height: 24, flexDirection: "row", alignItems: "center" }}>
+          {title && <Eyebrow>{title}</Eyebrow>}
+          {action && <View style={{ marginLeft: "auto" }}>{action}</View>}
+        </View>
+      )}
+      <View style={{ paddingTop: title || action ? 4 : 0 }}>{children}</View>
+    </View>
+  );
+}
+
+/** A read-only property: an 88px label column (sm, ink-2), the value beside it (base, ink). */
+export function ReadRow({ label, children, align = "start" }: { label: string; children: ReactNode; align?: "start" | "center" }) {
+  return (
+    <View style={{ flexDirection: "row", gap: 12, paddingVertical: 4, alignItems: align === "center" ? "center" : "flex-start" }}>
+      <Txt size="sm" tone="ink2" numberOfLines={1} style={{ width: 88, lineHeight: 20 }}>
+        {label}
+      </Txt>
+      <View style={{ flex: 1, minWidth: 0 }}>
+        {typeof children === "string" ? <Txt>{children}</Txt> : children}
+      </View>
+    </View>
+  );
+}
+
+/** The web's Segmented: a 28px track, the chosen option raised on a surface. Icon options show only the icon. */
+export function Segmented<T extends string>({
+  value,
+  options,
+  onChange,
+  label,
+}: {
+  value: T;
+  options: { value: T; label: string; icon?: IconName }[];
+  onChange: (v: T) => void;
+  label?: string;
+}) {
+  const { palette } = useTheme();
+  return (
+    <View
+      accessibilityRole="radiogroup"
+      accessibilityLabel={label}
       style={{
+        height: 28,
         flexDirection: "row",
+        alignSelf: "flex-start",
+        borderRadius: RADIUS.md,
+        borderWidth: 1,
+        borderColor: palette.line,
         backgroundColor: palette.surface2,
-        borderRadius: RADIUS.lg,
-        padding: 3,
-        gap: 3,
+        padding: 2,
       }}
     >
       {options.map((o) => {
@@ -378,22 +408,29 @@ export function Segmented<T extends string>({
         return (
           <Pressable
             key={o.value}
-            accessibilityRole="tab"
+            accessibilityRole="radio"
             accessibilityState={{ selected: on }}
+            accessibilityLabel={o.label}
             onPress={() => onChange(o.value)}
-            style={{
-              flex: 1,
-              alignItems: "center",
-              paddingVertical: 7,
-              borderRadius: RADIUS.md,
-              backgroundColor: on ? palette.surface : "transparent",
-              borderWidth: on ? StyleSheet.hairlineWidth : 0,
-              borderColor: palette.line2,
-            }}
+            hitSlop={{ top: 8, bottom: 8 }}
+            style={[
+              {
+                borderRadius: 4,
+                alignItems: "center",
+                justifyContent: "center",
+                ...(o.icon ? { width: 24 } : { paddingHorizontal: 10 }),
+                backgroundColor: on ? palette.surface : "transparent",
+              },
+              on && SHADOW.sm,
+            ]}
           >
-            <Txt size="sm" weight={on ? "600" : "500"} tone={on ? "ink" : "ink2"}>
-              {o.label}
-            </Txt>
+            {o.icon ? (
+              <Icon name={o.icon} size={14} color={on ? palette.ink : palette.ink2} />
+            ) : (
+              <Txt size="sm" weight="500" tone={on ? "ink" : "ink2"}>
+                {o.label}
+              </Txt>
+            )}
           </Pressable>
         );
       })}
@@ -401,85 +438,356 @@ export function Segmented<T extends string>({
   );
 }
 
-export function Input({ style, mono, ...rest }: TextInputProps & { mono?: boolean }) {
-  const { palette, mono: monoFont } = useTheme();
+/** The web's switch (share dialog): accent when on. */
+export function Switch({ on, onChange, label, disabled }: { on: boolean; onChange: (v: boolean) => void; label: string; disabled?: boolean }) {
+  const { palette } = useTheme();
   return (
-    <TextInput
-      placeholderTextColor={palette.ink3}
-      selectionColor={palette.accent}
-      {...rest}
-      style={[
-        TEXT.base,
-        {
-          color: palette.ink,
-          backgroundColor: palette.surface,
-          borderColor: palette.line2,
-          borderWidth: StyleSheet.hairlineWidth,
-          borderRadius: RADIUS.lg,
-          paddingHorizontal: 12,
-          paddingVertical: 10,
-          minHeight: 44,
-        },
-        mono ? { fontFamily: monoFont, fontSize: 13 } : null,
-        style as StyleProp<TextStyle>,
-      ]}
-    />
+    <Pressable
+      accessibilityRole="switch"
+      accessibilityState={{ checked: on, disabled }}
+      accessibilityLabel={label}
+      onPress={() => onChange(!on)}
+      disabled={disabled}
+      hitSlop={10}
+      style={{
+        width: 36,
+        height: 20,
+        borderRadius: 10,
+        borderWidth: 1,
+        borderColor: on ? palette.accent : palette.line2,
+        backgroundColor: on ? palette.accent : palette.surface3,
+        opacity: disabled ? 0.6 : 1,
+      }}
+    >
+      <View
+        style={[
+          { position: "absolute", top: 2, left: on ? 17 : 2, width: 14, height: 14, borderRadius: 7, backgroundColor: palette.surface },
+          SHADOW.sm,
+        ]}
+      />
+    </Pressable>
   );
 }
 
-/** A centered message: loading, nothing here yet, or something went wrong. */
-export function Empty({
-  icon,
-  title,
-  body,
-  action,
-  loading,
+/** A 16px vertical rule between header controls. */
+export function VRule({ style }: { style?: StyleProp<ViewStyle> }) {
+  const { palette } = useTheme();
+  return <View style={[{ width: 1, height: 16, backgroundColor: palette.line }, style]} />;
+}
+
+/* --------------------------------------------------------------------- Menu */
+
+export interface MenuItem {
+  label: string;
+  hint?: string;
+  icon?: IconName | ReactNode;
+  danger?: boolean;
+  disabled?: boolean;
+  onSelect: () => void;
+}
+
+/** A row with a control of its own (the theme switcher), used without closing the menu. */
+export interface MenuControl {
+  label: string;
+  icon?: IconName | ReactNode;
+  control: ReactNode;
+}
+
+export type MenuEntry = MenuItem | MenuControl | "separator";
+
+/**
+ * The web's dropdown Menu: a bordered card under its trigger, rows of icon,
+ * label and hint, closing on a choice or a tap outside. `trigger` gets the
+ * open state and a toggle.
+ */
+export function Menu({
+  trigger,
+  items,
+  header,
+  align = "end",
+  width = 220,
 }: {
-  icon?: IconName;
-  title?: string;
-  body?: string;
-  action?: ReactNode;
-  loading?: boolean;
+  trigger: (props: { open: boolean; toggle: () => void }) => ReactNode;
+  items: MenuEntry[];
+  header?: ReactNode;
+  align?: "start" | "end";
+  width?: number;
 }) {
   const { palette } = useTheme();
+  const anchor = useRef<ComponentRef<typeof View>>(null);
+  const [at, setAt] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
+  const { width: screenW } = useWindowDimensions();
+  const close = useCallback(() => setAt(null), []);
+  const toggle = useCallback(() => {
+    if (at) return setAt(null);
+    anchor.current?.measureInWindow((x, y, w, h) => setAt({ x, y, w, h }));
+  }, [at]);
+  const left = at ? Math.max(8, Math.min(align === "end" ? at.x + at.w - width : at.x, screenW - width - 8)) : 0;
   return (
-    <View style={{ flex: 1, alignItems: "center", justifyContent: "center", padding: 32, gap: 10, backgroundColor: palette.bg }}>
-      {loading ? (
-        <ActivityIndicator color={palette.ink3} />
-      ) : icon ? (
-        <View style={{ padding: 12, borderRadius: RADIUS.xl, backgroundColor: palette.surface2 }}>
-          <Icon name={icon} size={24} color={palette.ink2} />
-        </View>
-      ) : null}
-      {title && (
-        <Txt size="xl" display style={{ textAlign: "center" }}>
-          {title}
-        </Txt>
-      )}
-      {body && (
-        <Txt tone="ink2" style={{ textAlign: "center", maxWidth: 320 }}>
-          {body}
-        </Txt>
-      )}
-      {action && <View style={{ paddingTop: 8 }}>{action}</View>}
+    <>
+      <View ref={anchor} collapsable={false}>
+        {trigger({ open: at !== null, toggle })}
+      </View>
+      <Modal visible={at !== null} transparent animationType="fade" onRequestClose={close} statusBarTranslucent>
+        <Pressable style={StyleSheet.absoluteFill} onPress={close} accessibilityLabel="Close menu" />
+        {at && (
+          <View
+            accessibilityRole="menu"
+            style={[
+              {
+                position: "absolute",
+                top: at.y + at.h + 4,
+                left,
+                width,
+                padding: 4,
+                borderRadius: RADIUS.lg,
+                borderWidth: 1,
+                borderColor: palette.line,
+                backgroundColor: palette.surface,
+              },
+              SHADOW.md,
+            ]}
+          >
+            {header && (
+              <>
+                {header}
+                <View style={{ height: 1, backgroundColor: palette.line, marginVertical: 4 }} />
+              </>
+            )}
+            <MenuRows items={items} onClose={close} />
+          </View>
+        )}
+      </Modal>
+    </>
+  );
+}
+
+function MenuIcon({ icon, color }: { icon: IconName | ReactNode; color: string }) {
+  return (
+    <View style={{ width: 16, alignItems: "center" }}>
+      {typeof icon === "string" ? <Icon name={icon as IconName} size={14} color={color} /> : icon}
     </View>
   );
 }
 
-/** A colored square behind an icon, like a component's tile on the canvas. */
-export function Tile({ color, children, size = 32 }: { color: string; children: ReactNode; size?: number }) {
+function MenuRows({ items, onClose }: { items: MenuEntry[]; onClose: () => void }) {
+  const { palette } = useTheme();
+  return (
+    <>
+      {items.map((item, i) =>
+        item === "separator" ? (
+          <View key={i} style={{ height: 1, backgroundColor: palette.line, marginVertical: 4 }} />
+        ) : "control" in item ? (
+          <View key={i} style={{ flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 8, paddingVertical: 2 }}>
+            {item.icon && <MenuIcon icon={item.icon} color={palette.ink2} />}
+            <Txt size="sm" style={{ flex: 1 }} numberOfLines={1}>
+              {item.label}
+            </Txt>
+            {item.control}
+          </View>
+        ) : (
+          <Pressable
+            key={i}
+            accessibilityRole="menuitem"
+            disabled={item.disabled}
+            onPress={() => {
+              onClose();
+              item.onSelect();
+            }}
+            style={({ pressed }) => ({
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 8,
+              paddingHorizontal: 8,
+              paddingVertical: 6,
+              borderRadius: RADIUS.md,
+              backgroundColor: pressed ? (item.danger ? palette.dangerSoft : palette.surface2) : "transparent",
+              opacity: item.disabled ? 0.4 : 1,
+            })}
+          >
+            {item.icon && <MenuIcon icon={item.icon} color={item.danger ? palette.danger : palette.ink2} />}
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <Txt size="sm" tone={item.danger ? "danger" : "ink"} numberOfLines={1}>
+                {item.label}
+              </Txt>
+              {item.hint && (
+                <Txt size="xs" tone="ink3" numberOfLines={1}>
+                  {item.hint}
+                </Txt>
+              )}
+            </View>
+          </Pressable>
+        ),
+      )}
+    </>
+  );
+}
+
+/* ------------------------------------------------------------------- Dialog */
+
+/** The web's Dialog: a centered card on a dimmed page, titled, with a close button. */
+export function Dialog({
+  open,
+  onClose,
+  title,
+  width = 480,
+  children,
+}: {
+  open: boolean;
+  onClose: () => void;
+  title: string;
+  width?: number;
+  children: ReactNode;
+}) {
+  const { palette } = useTheme();
+  return (
+    <Modal visible={open} transparent animationType="fade" onRequestClose={onClose} statusBarTranslucent>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        style={{ flex: 1, alignItems: "center", justifyContent: "center", padding: 16, backgroundColor: palette.scrim }}
+      >
+        <Pressable style={StyleSheet.absoluteFill} onPress={onClose} accessibilityLabel="Close" />
+        <View
+          accessibilityViewIsModal
+          style={[
+            {
+              width,
+              maxWidth: "100%",
+              maxHeight: "90%",
+              borderRadius: RADIUS.xl,
+              borderWidth: 1,
+              borderColor: palette.line,
+              backgroundColor: palette.surface,
+              overflow: "hidden",
+            },
+            SHADOW.md,
+          ]}
+        >
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              paddingLeft: 16,
+              paddingRight: 10,
+              paddingVertical: 10,
+              borderBottomWidth: 1,
+              borderBottomColor: palette.line,
+            }}
+          >
+            <Txt size="lg" weight="600" style={{ flex: 1 }} accessibilityRole="header">
+              {title}
+            </Txt>
+            <IconButton icon="close" label="Close" onPress={onClose} />
+          </View>
+          <ScrollView bounces={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 12 }}>
+            {children}
+          </ScrollView>
+        </View>
+      </KeyboardAvoidingView>
+    </Modal>
+  );
+}
+
+/** A dialog's buttons, at its right. */
+export function DialogActions({ children }: { children: ReactNode }) {
+  return <View style={{ flexDirection: "row", justifyContent: "flex-end", gap: 8, paddingTop: 12 }}>{children}</View>;
+}
+
+/* -------------------------------------------------------------- Bottom panel */
+
+/**
+ * The web's SidePanel as a phone shows it: a sheet over the canvas, rounded
+ * on top, with a grabber. 55% of the screen, or 70% when `tall`.
+ */
+export function BottomPanel({ tall, children }: { tall?: boolean; children: ReactNode }) {
+  const { palette } = useTheme();
+  const { height } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
+  return (
+    <View
+      style={[
+        {
+          position: "absolute",
+          left: 0,
+          right: 0,
+          bottom: 0,
+          height: Math.round(height * (tall ? 0.7 : 0.55)),
+          borderTopLeftRadius: RADIUS.xl,
+          borderTopRightRadius: RADIUS.xl,
+          borderTopWidth: 1,
+          borderLeftWidth: HAIR,
+          borderRightWidth: HAIR,
+          borderColor: palette.line,
+          backgroundColor: palette.surface,
+          paddingBottom: insets.bottom,
+          overflow: "hidden",
+        },
+        SHADOW.md,
+      ]}
+    >
+      <View style={{ alignSelf: "center", width: 32, height: 4, borderRadius: 2, backgroundColor: palette.line2, marginTop: 6 }} />
+      {children}
+    </View>
+  );
+}
+
+/* ------------------------------------------------------------- Odds and ends */
+
+/** The account avatar: the photo, or initials on surface-2 (the web's AccountMenu trigger). */
+export function Avatar({ image, name, size = 28 }: { image?: string | null; name?: string | null; size?: number }) {
+  const { palette } = useTheme();
+  const src = (name ?? "").trim();
+  const parts = src.split(/\s+/);
+  const initials = src === "" ? "?" : (parts.length > 1 ? parts[0]![0]! + parts[1]![0]! : src.slice(0, 2)).toUpperCase();
   return (
     <View
       style={{
         width: size,
         height: size,
-        borderRadius: RADIUS.md,
+        borderRadius: size / 2,
+        borderWidth: 1,
+        borderColor: palette.line,
+        backgroundColor: palette.surface2,
         alignItems: "center",
         justifyContent: "center",
-        backgroundColor: withAlpha(color, 0.14),
+        overflow: "hidden",
       }}
     >
-      {children}
+      {image ? (
+        <Image source={{ uri: image }} style={{ width: size, height: size }} />
+      ) : (
+        <Txt size="xs" weight="600" tone="ink2">
+          {initials}
+        </Txt>
+      )}
+    </View>
+  );
+}
+
+/** Loading: the page color with a quiet spinner. */
+export function Loading() {
+  const { palette } = useTheme();
+  return (
+    <View style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: palette.bg }} accessibilityLabel="Loading">
+      <ActivityIndicator color={palette.ink3} />
+    </View>
+  );
+}
+
+/** A page-level message ("Document not found"): the display serif, a line of ink-3, an action. */
+export function Message({ title, body, action }: { title: string; body?: string; action?: ReactNode }) {
+  const { palette } = useTheme();
+  return (
+    <View style={{ flex: 1, alignItems: "center", justifyContent: "center", padding: 24, backgroundColor: palette.bg }}>
+      <Txt size="xl" display style={{ textAlign: "center" }}>
+        {title}
+      </Txt>
+      {body && (
+        <Txt size="sm" tone="ink3" style={{ textAlign: "center", paddingTop: 4, maxWidth: 320 }}>
+          {body}
+        </Txt>
+      )}
+      {action && <View style={{ paddingTop: 16 }}>{action}</View>}
     </View>
   );
 }

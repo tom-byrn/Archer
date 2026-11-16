@@ -4,7 +4,8 @@
  */
 
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import { Platform, useColorScheme } from "react-native";
+import { useColorScheme } from "react-native";
+import { MONO } from "./fonts";
 import { DARK, LIGHT, type Palette } from "./tokens";
 import { getPref, setPref } from "./storage";
 
@@ -20,7 +21,6 @@ interface ThemeState {
 }
 
 const KEY = "archer.theme";
-const MONO = Platform.select({ ios: "Menlo", android: "monospace", default: 'ui-monospace, "SF Mono", Menlo, monospace' });
 
 const ThemeContext = createContext<ThemeState>({
   palette: LIGHT,

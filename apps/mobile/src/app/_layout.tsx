@@ -10,8 +10,6 @@ import * as SystemUI from "expo-system-ui";
 import * as WebBrowser from "expo-web-browser";
 import { StatusBar } from "expo-status-bar";
 import { useFonts } from "expo-font";
-// Only the weight the app uses, so the bundle carries one font file.
-import { PlayfairDisplay_600SemiBold } from "@expo-google-fonts/playfair-display/600SemiBold";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { ClerkProvider, useAuth } from "@clerk/expo";
 import { tokenCache } from "@clerk/expo/token-cache";
@@ -19,6 +17,7 @@ import { ConvexReactClient } from "convex/react";
 import { ConvexProviderWithClerk } from "convex/react-clerk";
 import { ClerkAccountProvider } from "@/lib/auth";
 import { CLERK_PUBLISHABLE_KEY, CONVEX_URL } from "@/lib/env";
+import { FONT_FILES } from "@/lib/fonts";
 import { ThemeProvider, useTheme } from "@/lib/theme";
 import { WorkspaceProvider } from "@/lib/workspace";
 
@@ -29,7 +28,8 @@ void SplashScreen.preventAutoHideAsync();
 const convex = CONVEX_URL ? new ConvexReactClient(CONVEX_URL, { unsavedChangesWarning: false }) : null;
 
 export default function RootLayout() {
-  const [fontsLoaded, fontError] = useFonts({ PlayfairDisplay_600SemiBold });
+  // The web's faces: Inter, Playfair Display (700, 900) and Newsreader, one file per weight used.
+  const [fontsLoaded, fontError] = useFonts(FONT_FILES);
   const ready = fontsLoaded || fontError !== null;
   useEffect(() => {
     if (ready) void SplashScreen.hideAsync();
@@ -81,29 +81,8 @@ function Navigation() {
   return (
     <NavigationTheme value={theme}>
       <StatusBar style={dark ? "light" : "dark"} />
-      <Stack
-        screenOptions={{
-          // Screens set their own titles once their content is in; until then
-          // the header stays empty rather than showing the route's file name.
-          title: "",
-          headerShadowVisible: false,
-          headerTintColor: palette.ink,
-          headerStyle: { backgroundColor: palette.bg },
-          headerTitleStyle: { fontWeight: "600" },
-          headerBackButtonDisplayMode: "minimal",
-          contentStyle: { backgroundColor: palette.bg },
-        }}
-      >
-        <Stack.Screen name="index" options={{ title: "Documents" }} />
-        <Stack.Screen name="welcome" options={{ headerShown: false }} />
-        <Stack.Screen name="sso-callback" options={{ headerShown: false }} />
-        <Stack.Screen name="examples/index" options={{ title: "Examples" }} />
-        <Stack.Screen name="account" options={{ presentation: "modal", title: "Account" }} />
-        <Stack.Screen name="workspaces" options={{ presentation: "modal", title: "Workspaces" }} />
-        <Stack.Screen name="new" options={{ presentation: "modal", title: "New document" }} />
-        <Stack.Screen name="open-link" options={{ presentation: "modal", title: "Open a share link" }} />
-        <Stack.Screen name="feedback" options={{ presentation: "modal", title: "Send feedback" }} />
-      </Stack>
+      {/* Every screen draws its own header, as the web's pages do. */}
+      <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: palette.bg } }} />
     </NavigationTheme>
   );
 }

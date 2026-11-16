@@ -24,8 +24,12 @@ export interface SvgNode {
 export interface NativeSvgOptions {
   /** The monospace font to draw type tags in ("Menlo" on iOS, "monospace" on Android). */
   mono: string;
-  /** The sans font for everything else; unset keeps the platform default. */
-  sans?: string;
+  /**
+   * The sans font for everything else: one family, or one per weight (an app
+   * font loads each weight as its own family, which then carries the weight).
+   * Unset keeps the platform default.
+   */
+  sans?: string | ((weight: number) => string);
 }
 
 const ENTITIES: Record<string, string> = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'" };
@@ -91,7 +95,10 @@ function adapt(node: SvgNode, opts: NativeSvgOptions, root: boolean): void {
   const family = node.props.fontFamily;
   if (typeof family === "string") {
     if (/monospace|mono\b|menlo/i.test(family)) node.props.fontFamily = opts.mono;
-    else if (opts.sans) node.props.fontFamily = opts.sans;
+    else if (typeof opts.sans === "function") {
+      node.props.fontFamily = opts.sans(num(node.props.fontWeight, 400));
+      delete node.props.fontWeight;
+    } else if (opts.sans) node.props.fontFamily = opts.sans;
     else delete node.props.fontFamily;
   }
   const spacing = node.props.letterSpacing;

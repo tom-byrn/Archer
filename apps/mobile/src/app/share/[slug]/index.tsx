@@ -1,4 +1,4 @@
-import { DocumentHome } from "@/screens/DocumentHome";
+import { DocumentScreen } from "@/screens/DocumentScreen";
 import { shared } from "@/screens/sources";
 
-export default shared(DocumentHome);
+export default shared(DocumentScreen);

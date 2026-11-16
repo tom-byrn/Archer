@@ -1,4 +1,4 @@
-import { DocumentHome } from "@/screens/DocumentHome";
+import { DocumentScreen } from "@/screens/DocumentScreen";
 import { stored } from "@/screens/sources";
 
-export default stored(DocumentHome);
+export default stored(DocumentScreen);

@@ -54,14 +54,6 @@ const EMPTY_DOC = parse('arch "Untitled" v0.2\n').doc;
 
 const DocContext = createContext<DocValue | null>(null);
 
-/**
- * Hand a screen's document to what renders outside the screen's tree: a
- * navigator header (`headerRight`) isn't inside the route's provider.
- */
-export function ProvideDoc({ value, children }: { value: DocValue; children: ReactNode }) {
-  return <DocContext.Provider value={value}>{children}</DocContext.Provider>;
-}
-
 export function useDoc(): DocValue {
   const v = useContext(DocContext);
   if (!v) throw new Error("useDoc() outside a document provider");

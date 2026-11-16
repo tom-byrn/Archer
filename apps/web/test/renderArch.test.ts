@@ -38,3 +38,24 @@ describe("renderArch", () => {
     expect(renderArch("not arch").boxes).toEqual([]);
   });
 });
+
+describe("renderArch label and emphasis filters", () => {
+  const source = EXAMPLES.find((e) => e.slug === "descriptions-and-payloads")!.source;
+
+  it("draws every chip by default, and only the chosen ones with `labels`", () => {
+    const all = renderArch(source).svg;
+    expect(all).toContain(">· charges<");
+    const none = renderArch(source, { labels: () => false }).svg;
+    expect(none).not.toContain("charges");
+    const some = renderArch(source, { labels: (c) => c.label === "charges" }).svg;
+    expect(some).toContain("charges");
+    expect(some).not.toContain(">sql<");
+  });
+
+  it("draws emphasized connections in the strong edge color, with their own arrowheads", () => {
+    const svg = renderArch(source, { emphasize: (c) => c.source[0] === "api" }).svg;
+    expect(svg).toContain('stroke="#4f4a43"');
+    expect(svg).toContain('url(#arrow-end-strong)');
+    expect(renderArch(source).svg).not.toContain("arrow-end-strong");
+  });
+});

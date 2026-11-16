@@ -7,13 +7,12 @@
 
 import type { ComponentType, ReactNode } from "react";
 import { Redirect, useLocalSearchParams } from "expo-router";
-import { Empty } from "@/components/ui";
+import { Loading, Message } from "@/components/ui";
 import { useAccount } from "@/lib/auth";
 import { ExampleDocProvider, SharedDocProvider, StoredDocProvider } from "@/lib/doc";
 
 const NOT_CONFIGURED = (
-  <Empty
-    icon="lock"
+  <Message
     title="Accounts aren't set up"
     body="This build has no Convex URL or Clerk key, so it can only show the examples. See apps/mobile/.env.example."
   />
@@ -23,7 +22,7 @@ const NOT_CONFIGURED = (
 export function SignedInOnly({ children }: { children: ReactNode }) {
   const a = useAccount();
   if (!a.configured) return NOT_CONFIGURED;
-  if (!a.isLoaded) return <Empty loading />;
+  if (!a.isLoaded) return <Loading />;
   if (!a.isSignedIn) return <Redirect href="/welcome" />;
   return children;
 }

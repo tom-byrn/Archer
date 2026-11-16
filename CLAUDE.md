@@ -260,20 +260,30 @@ companion app, `docs/mobile.md`).
   `apps/web/convex/_generated/api` by a type-only import (`src/lib/convex.ts`;
   at runtime `api` is `anyApi`). `@web/*` is an alias to `apps/web/lib/*`:
   import only pure modules through it (no React DOM, Next, CodeMirror or
-  server code; that's why the tokenizer is `lib/archTokens.ts`). Diagrams are
-  the share image: `renderArch` in `lib/svg.ts` (`renderArchSvg` plus box
-  rectangles for tap hit-testing), drawn by react-native-svg after
-  `src/lib/nativeSvg.ts` adapts it — change how diagrams look in `lib/svg.ts`.
-  They draw logos, except the welcome screen's (glyphs, like the landing page).
-  Every document screen reads `useDoc()` (stored, share-link and example
-  providers in `src/lib/doc.tsx`, picked per route in `src/screens/sources.tsx`);
-  navigator headers render outside that provider, so hand them the document
-  with `ProvideDoc`. Colors and type come from `src/lib/tokens.ts` (the
-  `globals.css` tokens as literals) through `src/components/ui.tsx`; UI icons
-  are Phosphor bold behind `src/components/Icon.tsx`. Without
-  `EXPO_PUBLIC_CONVEX_URL` and `EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY` it runs
-  examples-only. Checks: `pnpm --filter @archer/mobile typecheck`, `test`,
-  `export:ios`, `export:android` (Metro bundles).
+  server code; that's why the tokenizer is `lib/archTokens.ts` and the setup
+  prompt `agentPrompt` lives in `lib/landingCopy.ts`). It is the web app on a
+  phone, 1:1: the dashboard is `app/page.tsx` (site shell, square cards), a
+  document is `DocumentViewer` / the editor's header (40px bar, canvas with
+  dot grid and bottom-left zoom controls, the inspector and history as bottom
+  sheets, the code popout), welcome is the landing, examples the docs page.
+  Port a web change to its counterpart rather than inventing mobile styling.
+  Diagrams are the share image: `renderArch` in `lib/svg.ts` (`renderArchSvg`
+  plus box rectangles for tap hit-testing; `labels`/`emphasize` light the
+  selected component's connections, as the canvas does), drawn by
+  react-native-svg after `src/lib/nativeSvg.ts` adapts it — change how
+  diagrams look in `lib/svg.ts`. They draw logos, except the welcome screen's
+  (glyphs, like the landing page). Every document screen reads `useDoc()`
+  (stored, share-link and example providers in `src/lib/doc.tsx`, picked per
+  route in `src/screens/sources.tsx`). Tokens (`src/lib/tokens.ts`) are the
+  `globals.css` values as literals, type is Inter / Playfair Display /
+  Newsreader (`src/lib/fonts.ts`; the family carries the weight), and
+  controls come from `src/components/ui.tsx` (the web's Button, IconButton,
+  Chip, Section, ReadRow, Segmented, Menu, Dialog, BottomPanel at the web's
+  sizes); UI icons are Phosphor bold behind `src/components/Icon.tsx`, under
+  the web's names. Without `EXPO_PUBLIC_CONVEX_URL` and
+  `EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY` it runs examples-only. Checks:
+  `pnpm --filter @archer/mobile typecheck`, `test`, `export:ios`,
+  `export:android` (Metro bundles).
 - Language/product specs live in `docs/`; keep `docs/language-spec.md` in
   sync with its copies (`packages/mcp/src/languageSpec.ts`,
   `apps/web/lib/languageSpec.ts`) when the grammar changes — tests fail until

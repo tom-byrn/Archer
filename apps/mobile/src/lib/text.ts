@@ -18,6 +18,3 @@ export function relativeTime(ts: number, now = Date.now()): string {
     ...(sameYear ? {} : { year: "numeric" }),
   });
 }
-
-/** "1 component", "3 components". */
-export const plural = (n: number, one: string, many = `${one}s`): string => `${n} ${n === 1 ? one : many}`;

@@ -1,59 +1,88 @@
 /**
- * A component's or plane's icon as the canvas draws it (mirrors `lib/svg.ts`
- * `iconSvg`): the icon it picked, else its type's logo, else its type's
- * glyph, on a tile tinted with its color. Untyped components without an icon
- * get a plain box.
+ * A component's or plane's icon as the web draws it (`components/logos.tsx`
+ * Glyph and GlyphSwatch): the icon it picked, else its type's logo, else its
+ * type's glyph, in its color. `GlyphSwatch` puts it on the tinted square the
+ * inspector's header uses.
  */
 
 import { memo } from "react";
-import { GLYPHS, GLYPH_VIEWBOX, lookupType } from "@archer/catalog";
+import { View } from "react-native";
+import { GLYPHS, GLYPH_VIEWBOX, lookupType, type Logo } from "@archer/catalog";
 import { iconMarkup } from "@archer/catalog/icons";
 import { LOGOS } from "@archer/catalog/logos";
 import { resolveColor, type ComponentNode, type PlaneNode } from "@archer/lang";
 import { displayColor } from "@web/svg";
 import { useTheme } from "@/lib/theme";
+import { RADIUS } from "@/lib/tokens";
 import { ArchSvg } from "./Diagram";
-import { Tile } from "./ui";
+import { withAlpha } from "./ui";
 
 const FALLBACK = { light: "#64748b", dark: "#94a3b8" };
 
-/** The color a component or plane is drawn in (its own, else its type's). */
-export function useNodeColor(node: ComponentNode | PlaneNode): string {
+type Node = Pick<ComponentNode, "type"> & Partial<Pick<ComponentNode, "icon" | "color">> & { kind: (ComponentNode | PlaneNode)["kind"] };
+
+/** The color a component or plane is drawn in: its own, else its type's. */
+export function useNodeColor(node: Node): string {
   const { dark } = useTheme();
   const type = lookupType(node.type);
   const own = node.kind === "component" ? resolveColor(node.color) : undefined;
   return displayColor(own ?? type?.color ?? FALLBACK[dark ? "dark" : "light"], dark);
 }
 
-export const TypeIcon = memo(function TypeIcon({
-  node,
-  size = 32,
-}: {
-  node: ComponentNode | PlaneNode;
-  size?: number;
-}) {
-  const { dark, palette } = useTheme();
-  const color = useNodeColor(node);
+function markup(node: Node, color: string, dark: boolean, size: number): { svg: string; logo?: Logo } {
   const type = lookupType(node.type);
   const own = node.kind === "component" ? iconMarkup(node.icon) : undefined;
   const logo = own === undefined && type?.logo ? LOGOS[type.logo] : undefined;
-  const g = Math.round(size * 0.56);
   const nested = (viewBox: string, body: string, paint?: string) =>
-    `<svg xmlns="http://www.w3.org/2000/svg" width="${g}" height="${g}" viewBox="0 0 ${g} ${g}">` +
-    `<svg x="0" y="0" width="${g}" height="${g}" viewBox="${viewBox}"${paint ? ` style="color:${paint}"` : ""}>${body}</svg></svg>`;
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">` +
+    `<svg x="0" y="0" width="${size}" height="${size}" viewBox="${viewBox}"${paint ? ` style="color:${paint}"` : ""}>${body}</svg></svg>`;
+  if (logo)
+    return { svg: nested(logo.viewBox, logo.body, logo.kind === "mono" ? displayColor(logo.color!, dark) : undefined), logo };
+  return { svg: nested(GLYPH_VIEWBOX, own ?? iconMarkup(type?.glyph ?? "box") ?? GLYPHS.box!, color) };
+}
 
+/** Its icon alone, at `size` (the connection rows' and type row's 14px). */
+export const Glyph = memo(function Glyph({ node, size = 14 }: { node: Node; size?: number }) {
+  const { dark } = useTheme();
+  const color = useNodeColor(node);
+  const { svg } = markup(node, color, dark, size);
+  return <ArchSvg svg={svg} width={size} height={size} />;
+});
+
+/** Its icon on a square tinted with its color (the inspector header's 24px swatch). */
+export const GlyphSwatch = memo(function GlyphSwatch({
+  node,
+  box = 24,
+  size = 14,
+}: {
+  node: Node;
+  box?: number;
+  size?: number;
+}) {
+  const { dark } = useTheme();
+  const color = useNodeColor(node);
+  const { svg, logo } = markup(node, color, dark, size);
   if (logo?.kind === "tile") {
-    // A vendor's square icon (AWS) takes the tinted tile's place, as on the canvas.
-    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}"><svg x="0" y="0" width="${size}" height="${size}" viewBox="${logo.viewBox}">${logo.body}</svg></svg>`;
-    return <ArchSvg svg={svg} width={size} height={size} />;
+    // A vendor's own square icon (AWS) takes the tile's place.
+    const tile = `<svg xmlns="http://www.w3.org/2000/svg" width="${box}" height="${box}" viewBox="0 0 ${box} ${box}"><svg x="0" y="0" width="${box}" height="${box}" viewBox="${logo.viewBox}">${logo.body}</svg></svg>`;
+    return <ArchSvg svg={tile} width={box} height={box} />;
   }
-  const untyped = own === undefined && node.type === undefined;
-  const svg = logo
-    ? nested(logo.viewBox, logo.body, logo.kind === "mono" ? displayColor(logo.color!, dark) : undefined)
-    : nested(GLYPH_VIEWBOX, own ?? iconMarkup(type?.glyph ?? "box") ?? GLYPHS.box!, untyped ? palette.ink3 : color);
   return (
-    <Tile color={untyped ? palette.ink3 : color} size={size}>
-      <ArchSvg svg={svg} width={g} height={g} />
-    </Tile>
+    <View
+      style={{
+        width: box,
+        height: box,
+        borderRadius: RADIUS.md,
+        alignItems: "center",
+        justifyContent: "center",
+        backgroundColor: withAlpha(color, 0.14),
+      }}
+    >
+      <ArchSvg svg={svg} width={size} height={size} />
+    </View>
   );
 });
+
+/** Whether it shows an icon at all (an untyped component without an icon has none, as on the canvas). */
+export const hasGlyph = (node: Node): boolean =>
+  node.type !== undefined || (node.kind === "component" && iconMarkup(node.icon) !== undefined);
