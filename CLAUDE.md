@@ -124,6 +124,14 @@ Router + React Flow + Convex).
   and blurb in `lib/samples/index.ts`). Choosing one saves the source as a new
   document verbatim, so like the docs examples, samples stay canonical and
   validate clean — `apps/web/test/samples.test.ts` enforces it.
+- First-run walkthrough: new accounts (no `onboarding` row, nothing in the
+  personal workspace) get a tour on the dashboard that ends on "New
+  document", which makes "My first architecture" and continues in its editor
+  (add two components, move one, connect them, open the code). Skip ends it
+  for good. Steps are `lib/onboarding.ts` (pure, `test/onboarding.test.ts`),
+  drawn by `components/Tour.tsx`, which rings elements marked
+  `data-tour="<target>"`; state is `convex/onboarding.ts`. Stored documents
+  only, never the sandbox.
 - Catalog (`packages/catalog`): two kinds of type. Vendor-neutral building
   blocks (`@load_balancer`, `@rate_limiter`, `@cache`, `@llm`…) are grouped by
   concern (generic, ai, network, compute, storage, messaging, data,

@@ -16,6 +16,7 @@ import type * as documents from "../documents.js";
 import type * as drift from "../drift.js";
 import type * as feedback from "../feedback.js";
 import type * as library from "../library.js";
+import type * as onboarding from "../onboarding.js";
 import type * as repoSync from "../repoSync.js";
 import type * as revisions from "../revisions.js";
 import type * as usage from "../usage.js";
@@ -36,6 +37,7 @@ declare const fullApi: ApiFromModules<{
   drift: typeof drift;
   feedback: typeof feedback;
   library: typeof library;
+  onboarding: typeof onboarding;
   repoSync: typeof repoSync;
   revisions: typeof revisions;
   usage: typeof usage;
