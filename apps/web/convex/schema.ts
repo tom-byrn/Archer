@@ -216,6 +216,19 @@ export default defineSchema({
     device: v.optional(v.string()),
   }),
 
+  /**
+   * Where a user is in the first-run walkthrough (convex/onboarding.ts,
+   * components/Tour.tsx). No row: the dashboard tour, unless the user already
+   * has documents. "editor": the tour continues in `documentId`, the document
+   * it had them create. "done"/"skipped": never shown again.
+   */
+  onboarding: defineTable({
+    userId: v.string(),
+    status: v.union(v.literal("editor"), v.literal("done"), v.literal("skipped")),
+    documentId: v.optional(v.id("documents")),
+    updatedAt: v.number(),
+  }).index("by_user", ["userId"]),
+
   libraryTypes: defineTable({
     workspaceId: v.string(),
     tag: v.string(),

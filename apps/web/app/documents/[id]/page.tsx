@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useCallback } from "react";
+import { use, useCallback, useState } from "react";
 import Link from "next/link";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
@@ -26,6 +26,17 @@ export default function DocumentPage({
     workspaceId ? { id: id as Id<"documents">, workspaceId } : "skip",
   );
   const updateSource = useMutation(api.documents.updateSource);
+  // The first-run walkthrough continues here on the document it had the user make.
+  const onboarding = useQuery(api.onboarding.get, isSignedIn ? {} : "skip");
+  const endTour = useMutation(api.onboarding.end);
+  const [tourEnded, setTourEnded] = useState(false);
+  const onTourEnd = useCallback(
+    (how: "done" | "skipped") => {
+      setTourEnded(true);
+      void endTour({ how });
+    },
+    [endTour],
+  );
   const library = useUserLibrary();
 
   const persist = useCallback(
@@ -72,6 +83,11 @@ export default function DocumentPage({
       key={doc._id}
       initialSource={doc.source}
       library={library}
+      tour={
+        !tourEnded && onboarding?.status === "editor" && onboarding.documentId === doc._id
+          ? { onEnd: onTourEnd }
+          : undefined
+      }
       session={{
         kind: "document",
         id: doc._id,

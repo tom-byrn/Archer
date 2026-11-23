@@ -94,6 +94,7 @@ import {
   type Selection,
 } from "./DetailPanel";
 import { FeedbackDialog } from "./FeedbackDialog";
+import { EditorTour } from "./Tour";
 import { LogoProvider } from "./logos";
 import { Palette } from "./Palette";
 import {
@@ -294,6 +295,11 @@ interface EditorProps {
   /** Custom component types: the workspace's, or in-memory ones in a sandbox. */
   library: UserLibrary;
   session: EditorSession;
+  /**
+   * The first-run walkthrough's editor steps (components/Tour.tsx), on the
+   * document the tour had a new account make. Stored documents only.
+   */
+  tour?: { onEnd: (how: "done" | "skipped") => void };
 }
 
 /** The editor draws catalog types with their product logos (components/logos.tsx). */
@@ -305,7 +311,7 @@ export function Editor(props: EditorProps) {
   );
 }
 
-function EditorView({ initialSource, library, session }: EditorProps) {
+function EditorView({ initialSource, library, session, tour }: EditorProps) {
   // Everything that saves, shares or exports checks `stored`; a sandbox has none of it.
   const stored = session.kind === "document" ? session : null;
   const persist = stored?.persist;
@@ -375,6 +381,8 @@ function EditorView({ initialSource, library, session }: EditorProps) {
   const setRepo = useMutation(api.documents.setRepo);
   const [diffView, setDiffView] = useState<DiffView>(null);
 
+  /** Components dragged since the editor opened, for the walkthrough's "move" step. */
+  const [moves, setMoves] = useState(0);
   const toggleCode = useCallback(() => setCodeOpen((open) => !open), []);
   const toggleComponents = useCallback(() => setComponentsOpen((open) => !open), []);
 
@@ -469,6 +477,7 @@ function EditorView({ initialSource, library, session }: EditorProps) {
   const callbacks: CanvasCallbacks = useMemo(
     () => ({
       onNodesDragEnd: (moves) => {
+        setMoves((n) => n + 1);
         const moved = mutateWith((d) => {
           const dragged = moves.map((m) => m.path.split("."));
           // Every landing spot is decided on the doc as it was, before any of them moves.
@@ -1399,6 +1408,7 @@ function EditorView({ initialSource, library, session }: EditorProps) {
         {/* The component palette is desktop only; phones add with the + button. */}
         <span className="hidden md:contents">
           <IconButton
+            data-tour="add-component"
             label="Components"
             onClick={toggleComponents}
             active={componentsOpen}
@@ -1432,6 +1442,7 @@ function EditorView({ initialSource, library, session }: EditorProps) {
           onClick={toggleCode}
           active={codeOpen}
           className="relative ml-1"
+          data-tour="code"
         >
           <Icon.Code />
           {(!derived.valid || warnings > 0) && (
@@ -1477,7 +1488,7 @@ function EditorView({ initialSource, library, session }: EditorProps) {
               )}
             />
           </span>
-          <IconButton label="Add component" onClick={() => openPalette("add")}>
+          <IconButton data-tour="add-component" label="Add component" onClick={() => openPalette("add")}>
             <Icon.Plus />
           </IconButton>
           {stored && (
@@ -1639,7 +1650,7 @@ function EditorView({ initialSource, library, session }: EditorProps) {
               </Button>
             </nav>
           )}
-          <div className="relative min-h-0 flex-1 bg-ground">
+          <div data-tour="canvas" className="relative min-h-0 flex-1 bg-ground">
             {diff ? (
               <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex justify-center p-2 md:p-3">
                 <div className="pointer-events-auto flex min-h-9 max-w-full flex-wrap items-center gap-2 rounded-lg border border-line bg-surface py-1 pl-3 pr-1.5 shadow-md">
@@ -1882,6 +1893,17 @@ function EditorView({ initialSource, library, session }: EditorProps) {
         onGoTo={goTo}
       />
       <ContextMenu at={menu?.at ?? null} items={menuItems()} onClose={closeMenu} />
+      {tour && stored && (
+        <EditorTour
+          progress={{
+            components: componentPaths(derived.doc).size,
+            connections: derived.doc.connections.length,
+            moves,
+            codeOpen,
+          }}
+          onEnd={tour.onEnd}
+        />
+      )}
     </div>
   );
 }

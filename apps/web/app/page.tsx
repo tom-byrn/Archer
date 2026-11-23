@@ -18,6 +18,7 @@ import { FeedbackDialog } from "@/components/FeedbackDialog";
 import { LogoProvider } from "@/components/logos";
 import { SampleDialog } from "@/components/SampleDialog";
 import { GitHubFileDialog } from "@/components/GitHubFileDialog";
+import { DashboardTour } from "@/components/Tour";
 import { SiteFrame, siteNavLinkCls } from "@/components/landing/SiteFrame";
 import {
   Button,
@@ -34,6 +35,9 @@ import {
 } from "@/components/ui";
 
 const BLANK = 'arch "Untitled" v0.2\n';
+/** The document the first-run tour has a new account make. */
+const FIRST_TITLE = "My first architecture";
+const FIRST = `arch "${FIRST_TITLE}" v0.2\n`;
 
 interface DocRow {
   _id: Id<"documents">;
@@ -477,6 +481,11 @@ function Dashboard() {
   const create = useMutation(api.documents.create);
   const remove = useMutation(api.documents.remove);
   const updateSource = useMutation(api.documents.updateSource);
+  const onboarding = useQuery(api.onboarding.get);
+  const startTourEditor = useMutation(api.onboarding.startEditor);
+  const endTour = useMutation(api.onboarding.end);
+  // Latched off once skipped or started, so the scrim goes at once rather than when the query catches up.
+  const [tourClosed, setTourClosed] = useState(false);
 
   const [connectOpen, setConnectOpen] = useState(false);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
@@ -507,22 +516,41 @@ function Dashboard() {
     await remove({ id: doc._id, workspaceId });
   };
 
+  const loading = docs === undefined;
+  const empty = docs !== undefined && docs.length === 0;
+
+  // First-run walkthrough (components/Tour.tsx): new accounts that haven't
+  // made a document or skipped it. "New document" then makes the tour's
+  // document, and the tour carries on in its editor.
+  const touring = onboarding?.status === "dashboard" && canEdit && !loading && !tourClosed;
+  const startFirst = async () => {
+    if (!workspaceId) return;
+    setTourClosed(true);
+    const id = await create({ workspaceId, title: FIRST_TITLE, source: FIRST });
+    await startTourEditor({ documentId: id });
+    router.push(`/documents/${id}`);
+  };
+
   const createButtons = (
     <>
-      <Button icon={<Icon.Diagram />} onClick={() => setSampleOpen(true)}>
-        From sample
-      </Button>
-      <Button icon={<GitHubMark className="h-3.5 w-3.5" />} onClick={() => setGithubOpen(true)}>
-        From GitHub
-      </Button>
-      <Button variant="primary" icon={<Icon.Plus />} onClick={() => void newDoc(BLANK, "Untitled")}>
+      <span data-tour="import" className="flex gap-2">
+        <Button icon={<Icon.Diagram />} onClick={() => setSampleOpen(true)}>
+          From sample
+        </Button>
+        <Button icon={<GitHubMark className="h-3.5 w-3.5" />} onClick={() => setGithubOpen(true)}>
+          From GitHub
+        </Button>
+      </span>
+      <Button
+        data-tour="new-document"
+        variant="primary"
+        icon={<Icon.Plus />}
+        onClick={() => void (touring ? startFirst() : newDoc(BLANK, "Untitled"))}
+      >
         New document
       </Button>
     </>
   );
-
-  const loading = docs === undefined;
-  const empty = docs !== undefined && docs.length === 0;
 
   // The header's controls depend on Clerk, the workspace list and the
   // documents. On a fresh load those arrive one after another, and shown as
@@ -544,7 +572,7 @@ function Dashboard() {
             <div className="fade-in flex flex-1 items-center gap-5">
               <WorkspaceSwitcher workspaces={workspaces} current={current} onSelect={select} />
               <div className="ml-auto flex items-center gap-2">
-                <Button icon={<Icon.Plug />} onClick={() => setConnectOpen(true)}>
+                <Button data-tour="connect-agent" icon={<Icon.Plug />} onClick={() => setConnectOpen(true)}>
                   Connect an agent
                 </Button>
                 {!empty && canEdit && createButtons}
@@ -616,6 +644,14 @@ function Dashboard() {
         </div>
       )}
 
+      {touring && settled && (
+        <DashboardTour
+          onSkip={() => {
+            setTourClosed(true);
+            void endTour({ how: "skipped" });
+          }}
+        />
+      )}
       <FeedbackDialog open={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
       <ConnectAgentDialog
         open={connectOpen}
