@@ -146,7 +146,7 @@ function Card({
   );
 }
 
-const SCRIM = "bg-[rgba(10,10,8,0.45)]";
+const SCRIM = "pointer-events-auto bg-[rgba(10,10,8,0.45)]";
 
 /**
  * The dashboard part: a few words on what Archer is, then the controls that
@@ -187,12 +187,13 @@ export function DashboardTour({ onSkip }: { onSkip: () => void }) {
       primary={primary}
       onSkip={onSkip}
       style={hole ? cardBeside(hole, viewport) : undefined}
-      className={hole ? "fixed" : undefined}
+      className={hole ? "pointer-events-auto fixed" : "pointer-events-auto"}
     />
   );
 
   return (
-    <div className="fixed inset-0 z-[90]">
+    // Only the panes, the blocker and the card take clicks: the cut-out lets them through to the target.
+    <div className="pointer-events-none fixed inset-0 z-[90]">
       {hole ? (
         <>
           {/* Four panes around the target: they dim and block everything else. */}
@@ -210,7 +211,7 @@ export function DashboardTour({ onSkip }: { onSkip: () => void }) {
             style={{ top: hole.top, height: hole.height, left: hole.left + hole.width }}
           />
           {/* Info steps: the target is shown, not clickable. */}
-          {!step.clickTarget && <div className="fixed" style={hole} />}
+          {!step.clickTarget && <div className="pointer-events-auto fixed" style={hole} />}
           <Ring box={hole} />
           {card}
         </>
@@ -253,6 +254,9 @@ export function EditorTour({
 }) {
   const [from, setFrom] = useState(0);
   const index = nextEditorStep(from, progress);
+  // Latch it: a step once done stays done, so closing the code pane or
+  // deleting a component doesn't send the tour back.
+  if (index !== from) setFrom(index);
   const step = EDITOR_STEPS[index]!;
   const boxes = useTargets(step.target);
   // The card sits in the canvas's bottom-right corner, clear of new components (placed mid-canvas).

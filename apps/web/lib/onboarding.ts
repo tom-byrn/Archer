@@ -91,7 +91,7 @@ export const EDITOR_STEPS: readonly EditorStep[] = [
   {
     id: "connect",
     title: "Connect them",
-    body: "Hover a component and drag from one of the dots on its edge to the other component. Select the arrow to label it.",
+    body: "Hover a component and drag from one of the dots on its edge onto a dot on the other one. Select the arrow to label it.",
     hint: "Waiting for a connection…",
     done: (p) => p.connections >= 1,
   },
