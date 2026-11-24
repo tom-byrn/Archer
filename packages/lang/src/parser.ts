@@ -7,6 +7,14 @@ import {
   type ComponentNode,
   type ConnectionNode,
   type Diagnostic,
+  type FragmentKind,
+  type FragmentStep,
+  type MessageArrow,
+  type MessageStep,
+  type NoteStep,
+  type SequenceNode,
+  type StepNode,
+  FRAGMENT_KINDS,
   type LayoutEntry,
   type ParseResult,
   type PayloadFormat,
@@ -61,6 +69,7 @@ export function parse(source: string): ParseResult {
     components: [],
     planes: [],
     connections: [],
+    sequences: [],
     layout: [],
   };
 
@@ -310,6 +319,12 @@ export function parse(source: string): ParseResult {
   const parseConnection = (): ConnectionNode => {
     const src = parsePath();
     const arrowTok = expect("arrow", "an arrow (-> | <-> | --)");
+    if (arrowTok.value === "-->" || arrowTok.value === "~>") {
+      fail(
+        `'${arrowTok.value}' is a sequence arrow (a reply or an async call): connections use -> | <-> | --.`,
+        arrowTok.span,
+      );
+    }
     const tgt = parsePath();
     const node: ConnectionNode = {
       kind: "connection",
@@ -360,6 +375,152 @@ export function parse(source: string): ParseResult {
       const close = expect("rbrace", "'}' closing the connection body");
       node.span = { start: src.span.start, end: close.span.end };
     }
+    return node;
+  };
+
+  /**
+   * `sequence <id> <name> { … }` ahead. Checking for the id keeps `sequence`
+   * usable as a component id in connections.
+   */
+  const startsSequence = (): boolean => at("ident", "sequence") && peek(1).type === "ident";
+
+  /** A message ahead: a path, then an arrow. */
+  const startsMessage = (): boolean =>
+    at("ident") && (peek(1).type === "arrow" || peek(1).type === "dot");
+  const startsFragment = (): boolean =>
+    at("ident") &&
+    FRAGMENT_KINDS.includes(peek().value as FragmentKind) &&
+    (peek(1).type === "string" || peek(1).type === "lbrace");
+  const startsNote = (): boolean => at("ident", "note") && peek(1).type === "ident" && peek(1).value === "over";
+
+  const parseMessage = (): MessageStep => {
+    const from = parsePath();
+    const arrowTok = expect("arrow", "a message arrow (-> | --> | ~>)");
+    if (arrowTok.value !== "->" && arrowTok.value !== "-->" && arrowTok.value !== "~>") {
+      fail(
+        `'${arrowTok.value}' isn't a message arrow: use -> (a call), --> (a reply) or ~> (an async call).`,
+        arrowTok.span,
+      );
+    }
+    const to = parsePath();
+    const node: MessageStep = {
+      kind: "message",
+      from: from.path,
+      to: to.path,
+      arrow: arrowTok.value as MessageArrow,
+      span: { start: from.span.start, end: to.span.end },
+    };
+    if (at("at")) node.type = parseType();
+    if (at("colon")) {
+      next();
+      node.label = expect("string", "a quoted message label after ':'").value;
+    }
+    node.span = { start: from.span.start, end: lastEnd() };
+    return node;
+  };
+
+  const parseNote = (): NoteStep => {
+    const kw = next(); // 'note'
+    next(); // 'over'
+    const over = [parsePath().path];
+    while (at("comma")) {
+      next();
+      over.push(parsePath().path);
+    }
+    const t = peek();
+    if (t.type !== "string" && t.type !== "triple-string")
+      fail(`Expected the note's text (a quoted string), got ${describe(t)}.`, t.span);
+    const text = next().value;
+    return { kind: "note", over, text, span: { start: kw.span.start, end: lastEnd() } };
+  };
+
+  /**
+   * The '}' after a list of steps. When it's missing, parseSteps has already
+   * said so (or the file ended): leave what follows to the statement it starts.
+   */
+  const closeSteps = (what: string) => {
+    if (at("rbrace")) next();
+    else if (at("eof"))
+      diagnostics.push({ code: "E001", severity: "error", message: `Expected '}' closing the ${what}, got end of file.`, span: peek().span });
+  };
+
+  const parseBranch = (): StepNode[] => {
+    expect("lbrace", "'{'");
+    const steps = parseSteps();
+    closeSteps("fragment");
+    return steps;
+  };
+
+  const parseFragment = (): FragmentStep => {
+    const kw = next();
+    const fragment = kw.value as FragmentKind;
+    const guard = at("string") ? next().value : undefined;
+    const node: FragmentStep = {
+      kind: "fragment",
+      fragment,
+      branches: [{ ...(guard !== undefined ? { guard } : {}), steps: parseBranch() }],
+      span: kw.span,
+    };
+    while (at("ident", "else") && peek(1).type !== "arrow" && peek(1).type !== "dot") {
+      const elseTok = next();
+      if (fragment !== "alt" && fragment !== "par") {
+        diagnostics.push({
+          code: "E001",
+          severity: "error",
+          message: `Only 'alt' and 'par' take 'else' branches, not '${fragment}'.`,
+          span: elseTok.span,
+        });
+      }
+      const g = at("string") ? next().value : undefined;
+      node.branches.push({ ...(g !== undefined ? { guard: g } : {}), steps: parseBranch() });
+    }
+    node.span = { start: kw.span.start, end: lastEnd() };
+    return node;
+  };
+
+  /** Steps up to the closing '}' of a sequence or a branch (not consumed). */
+  const parseSteps = (): StepNode[] => {
+    const steps: StepNode[] = [];
+    while (!at("rbrace") && !at("eof")) {
+      // A top-level keyword means a body was never closed: leave it to the top level.
+      if (at("ident", "component") || at("ident", "layout") || startsPlane() || startsSequence()) {
+        diagnostics.push({
+          code: "E001",
+          severity: "error",
+          message: `Expected '}' closing the sequence, got ${describe(peek())}.`,
+          span: peek().span,
+        });
+        return steps;
+      }
+      const start = i;
+      try {
+        if (startsMessage()) steps.push(parseMessage());
+        else if (startsFragment()) steps.push(parseFragment());
+        else if (startsNote()) steps.push(parseNote());
+        else
+          fail(
+            `Expected a message (a -> b), a fragment (alt, opt, loop, par) or a note inside a sequence, got ${describe(peek())}.`,
+            peek().span,
+          );
+      } catch (e) {
+        if (!(e instanceof ParseError)) throw e;
+        diagnostics.push(e.diagnostic);
+        if (i === start) next();
+        while (!at("eof") && !at("rbrace") && !startsMessage() && !startsFragment() && !startsNote()) next();
+      }
+    }
+    return steps;
+  };
+
+  const parseSequence = (): SequenceNode => {
+    const kw = next(); // 'sequence'
+    const idTok = expect("ident", "a sequence id");
+    const node: SequenceNode = { kind: "sequence", id: idTok.value, steps: [], span: kw.span };
+    if (at("string")) node.name = next().value;
+    expect("lbrace", "'{' opening the sequence");
+    node.steps = parseSteps();
+    closeSteps("sequence");
+    node.span = { start: kw.span.start, end: lastEnd() };
     return node;
   };
 
@@ -428,13 +589,15 @@ export function parse(source: string): ParseResult {
         doc.components.push(parseComponent());
       } else if (startsPlane()) {
         parsePlane(top);
+      } else if (startsSequence()) {
+        doc.sequences.push(parseSequence());
       } else if (at("ident", "layout")) {
         parseLayoutBlock();
       } else if (at("ident")) {
         doc.connections.push(parseConnection());
       } else {
         fail(
-          `Expected 'component', 'plane', 'layout', or a connection, got ${describe(peek())}.`,
+          `Expected 'component', 'plane', 'sequence', 'layout', or a connection, got ${describe(peek())}.`,
           peek().span,
         );
       }

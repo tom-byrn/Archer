@@ -156,6 +156,7 @@ const EMPTY_DOC = (like: ArchDoc): ArchDoc => ({
   components: [],
   planes: [],
   connections: [],
+  sequences: [],
   layout: [],
 });
 

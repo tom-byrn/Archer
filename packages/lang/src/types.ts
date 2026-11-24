@@ -134,6 +134,70 @@ export interface LayoutEntry {
   span: Span;
 }
 
+/** A message arrow in a sequence: a call, the reply to one, or a call nobody waits on. */
+export type MessageArrow = "->" | "-->" | "~>";
+
+export const MESSAGE_KINDS = { "->": "call", "-->": "reply", "~>": "async" } as const;
+export type MessageKind = (typeof MESSAGE_KINDS)[MessageArrow];
+
+/** One message between two components (or a component and itself). */
+export interface MessageStep {
+  kind: "message";
+  from: string[];
+  to: string[];
+  arrow: MessageArrow;
+  /** Connection type tag without `@`, e.g. "http". */
+  type?: string;
+  label?: string;
+  span: Span;
+}
+
+export type FragmentKind = "alt" | "opt" | "loop" | "par";
+export const FRAGMENT_KINDS: readonly FragmentKind[] = ["alt", "opt", "loop", "par"];
+
+/** One branch of a fragment: its guard (`"slug is free"`) and its steps. */
+export interface FragmentBranch {
+  guard?: string;
+  steps: StepNode[];
+}
+
+/**
+ * `alt "a" { … } else "b" { … }`, `opt`, `loop`, `par`: a group of steps that
+ * runs conditionally, repeatedly or concurrently. Only alt and par have more
+ * than one branch.
+ */
+export interface FragmentStep {
+  kind: "fragment";
+  fragment: FragmentKind;
+  branches: FragmentBranch[];
+  span: Span;
+}
+
+/** `note over a, b "text"`: a remark spanning one or more lifelines. */
+export interface NoteStep {
+  kind: "note";
+  over: string[][];
+  text: string;
+  span: Span;
+}
+
+export type StepNode = MessageStep | FragmentStep | NoteStep;
+
+/**
+ * A sequence: the order in which components exchange messages for one
+ * scenario. Connections say who talks to whom; a sequence says when. Every
+ * participant is a declared component, so it can't drift from the
+ * architecture.
+ */
+export interface SequenceNode {
+  kind: "sequence";
+  id: string;
+  /** Display name; defaults to id when absent. */
+  name?: string;
+  steps: StepNode[];
+  span: Span;
+}
+
 export interface ArchDoc {
   kind: "doc";
   title: string;
@@ -144,6 +208,8 @@ export interface ArchDoc {
   /** Top-level planes. */
   planes: PlaneNode[];
   connections: ConnectionNode[];
+  /** Sequences, in document order (the order the switcher lists them). */
+  sequences: SequenceNode[];
   layout: LayoutEntry[];
 }
 

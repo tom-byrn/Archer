@@ -8,6 +8,7 @@ import {
 } from "./scope";
 import { SHAPES, isShape } from "./shapes";
 import { COLORS, isColor } from "./colors";
+import { messageConnection, sequenceRows } from "./sequence";
 import {
   pathToString,
   type ArchDoc,
@@ -246,6 +247,65 @@ export function validate(doc: ArchDoc, opts: ValidateOptions = {}): Diagnostic[]
         message: `Unknown connection type '@${c.type}'.`,
         span: c.span,
       });
+    }
+  }
+
+  // E002 (unique sequence ids), E101 (participants resolve), W307 (every call
+  // travels on a connection), W301 for message types
+  const seqIds = new Set<string>();
+  for (const seq of doc.sequences) {
+    if (seqIds.has(seq.id)) {
+      diagnostics.push({
+        code: "E002",
+        severity: "error",
+        message: `Duplicate sequence id '${seq.id}'.`,
+        span: seq.span,
+      });
+    }
+    seqIds.add(seq.id);
+    const resolves = (path: readonly string[], span: Diagnostic["span"]): boolean => {
+      const key = pathToString(path);
+      if (paths.has(key)) return true;
+      const meant = withoutPlanes(doc, path);
+      diagnostics.push({
+        code: "E101",
+        severity: "error",
+        message: planes.has(key)
+          ? `Sequence '${seq.id}': '${key}' is a plane, and only components take part in sequences.`
+          : meant
+            ? `Sequence '${seq.id}': '${key}' does not resolve to a declared component. Planes aren't part of paths: did you mean '${pathToString(meant)}'?`
+            : `Sequence '${seq.id}': '${key}' does not resolve to a declared component.`,
+        ...(span ? { span } : {}),
+      });
+      return false;
+    };
+    for (const row of sequenceRows(seq)) {
+      if (row.kind === "note") {
+        for (const p of row.step.over) resolves(p, row.step.span);
+        continue;
+      }
+      if (row.kind !== "message") continue;
+      const m = row.step;
+      const ok = [resolves(m.from, m.span), resolves(m.to, m.span)].every(Boolean);
+      if (m.type && connectionTypes && !connectionTypes.has(m.type)) {
+        diagnostics.push({
+          code: "W301",
+          severity: "warning",
+          message: `Unknown connection type '@${m.type}' in sequence '${seq.id}'.`,
+          span: m.span,
+        });
+      }
+      if (!ok || m.arrow === "-->" || pathToString(m.from) === pathToString(m.to)) continue;
+      if (messageConnection(doc.connections, m) === -1) {
+        const from = pathToString(m.from);
+        const to = pathToString(m.to);
+        diagnostics.push({
+          code: "W307",
+          severity: "warning",
+          message: `Sequence '${seq.id}', step ${row.number}: ${from} calls ${to}, but no connection joins them. Add one (${from} -> ${to}) so the architecture shows it.`,
+          span: m.span,
+        });
+      }
     }
   }
 

@@ -146,7 +146,7 @@ const describeSummary = (s: DiffSummary): string => {
 const revisionView = (r: RevisionRow, previous: ArchDoc | null) => {
   const doc = parse(r.source).doc;
   const summary = summarizeDiff(
-    diffDocs(previous ?? { kind: "doc", title: doc.title, version: doc.version, components: [], planes: [], connections: [], layout: [] }, doc),
+    diffDocs(previous ?? { kind: "doc", title: doc.title, version: doc.version, components: [], planes: [], connections: [], sequences: [], layout: [] }, doc),
   );
   return {
     revision_id: r._id,

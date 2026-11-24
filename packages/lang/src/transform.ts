@@ -8,6 +8,12 @@ import {
   type PayloadFormat,
   type PayloadNode,
   type PlaneNode,
+  type FragmentKind,
+  type MessageArrow,
+  type MessageStep,
+  type SequenceNode,
+  type StepNode,
+  FRAGMENT_KINDS,
 } from "./types";
 import {
   componentPaths,
@@ -32,6 +38,7 @@ import {
   planePathOf,
 } from "./layout";
 import { isColor } from "./colors";
+import { remapSequencePaths, stepAt, stepList, type StepAddress, type StepSlot } from "./sequence";
 
 /**
  * Pure AST transforms — the single mutation path for every canvas edit.
@@ -227,6 +234,7 @@ function dropComponents(doc: ArchDoc, paths: readonly (readonly string[])[]): vo
   }
   const gone = (p: readonly string[]) => paths.some((d) => isUnder(p, d));
   doc.connections = doc.connections.filter((c) => !gone(c.source) && !gone(c.target));
+  remapSequencePaths(doc, (p) => (gone(p) ? null : p));
   doc.layout = doc.layout.filter((e) => !gone(e.path));
 }
 
@@ -314,6 +322,7 @@ export function renameComponent(
     c.source = renamed(c.source);
     c.target = renamed(c.target);
   }
+  remapSequencePaths(next, renamed);
   for (const e of next.layout) e.path = renamed(e.path);
   return next;
 }
@@ -685,6 +694,7 @@ export function reparentComponent(
     c.source = remap(c.source);
     c.target = remap(c.target);
   }
+  remapSequencePaths(next, remap);
   for (const e of next.layout) e.path = remap(e.path);
   if (at !== undefined) return moveComponent(next, targetPath, at);
   // Position unknown: drop stale coords so auto-layout re-places it.
@@ -811,6 +821,7 @@ export function extractFragment(doc: ArchDoc, paths: Paths): ArchDoc {
     components: [],
     planes: [],
     connections: [],
+    sequences: [],
     layout: [],
   };
   if (roots.length === 0) return out;
@@ -1128,6 +1139,7 @@ export function componentToPlane(
     c.source = remapUnder(c.source, moves) ?? c.source;
     c.target = remapUnder(c.target, moves) ?? c.target;
   }
+  remapSequencePaths(next, (p) => remapUnder(p, moves) ?? p);
   // Keep the box's size: auto-layout grows the plane around what's on it
   // and moves aside whatever it then covers.
   return { doc: autoLayout(next), path: [...scopePath, plane.id] };
@@ -1185,6 +1197,7 @@ export function relayoutComponents(doc: ArchDoc, paths: Paths): ArchDoc {
       connections: laid.connections
         .filter((c) => under(c.source) && under(c.target))
         .map((c) => ({ ...clone(c), source: strip(c.source), target: strip(c.target) })),
+      sequences: [],
       layout: [],
     });
     const subLayout = layoutMap(sub);
@@ -1246,4 +1259,275 @@ export function duplicateComponents(
     [x - base[0]! + offset[0], y - base[1]! + offset[1]],
     under?.id,
   );
+}
+
+/* ------------------------------------------------------------ Sequences */
+
+const sequenceIn = (doc: ArchDoc, id: string): SequenceNode => {
+  const seq = doc.sequences.find((q) => q.id === id);
+  if (!seq) throw new Error(`No sequence '${id}'.`);
+  return seq;
+};
+
+const listIn = (seq: SequenceNode, list: StepAddress): StepNode[] => {
+  const steps = stepList(seq, list);
+  if (!steps) throw new Error(`No step list at [${list.join(", ")}] in sequence '${seq.id}'.`);
+  return steps;
+};
+
+/** A message's ends must be components: sequences, like connections, never auto-create one. */
+const checkMessage = (doc: ArchDoc, m: Pick<MessageStep, "from" | "to">): void => {
+  for (const p of [m.from, m.to]) {
+    const key = pathToString(p);
+    if (componentPaths(doc).has(key)) continue;
+    throw new Error(
+      planePaths(doc).has(key)
+        ? `'${key}' is a plane: only components take part in sequences.`
+        : `No component '${key}'.`,
+    );
+  }
+};
+
+const checkStep = (doc: ArchDoc, step: StepNode): void => {
+  if (step.kind === "message") checkMessage(doc, step);
+  else if (step.kind === "note") step.over.forEach((p) => checkMessage(doc, { from: p, to: p }));
+  else {
+    if (!FRAGMENT_KINDS.includes(step.fragment)) throw new Error(`Unknown fragment '${step.fragment}'.`);
+    if (step.branches.length === 0) throw new Error("A fragment needs at least one branch.");
+    if (step.branches.length > 1 && step.fragment !== "alt" && step.fragment !== "par")
+      throw new Error(`Only alt and par take else branches.`);
+    step.branches.forEach((b) => b.steps.forEach((x) => checkStep(doc, x)));
+  }
+};
+
+export interface AddSequenceOptions {
+  id?: string;
+  name?: string;
+  steps?: StepNode[];
+}
+
+/** Add a sequence at the end of the document's list. Returns its id. */
+export function addSequence(doc: ArchDoc, opts: AddSequenceOptions = {}): { doc: ArchDoc; id: string } {
+  const taken = new Set(doc.sequences.map((q) => q.id));
+  const id = opts.id ?? uniqueId(taken, opts.name ?? "sequence");
+  if (!NAME_RE.test(id)) throw new Error(`Invalid id '${id}' (need snake_case).`);
+  if (taken.has(id)) throw new Error(`Duplicate sequence id '${id}'.`);
+  const steps = structuredClone(opts.steps ?? []);
+  steps.forEach((x) => checkStep(doc, x));
+  const next = clone(doc);
+  next.sequences.push({
+    kind: "sequence",
+    id,
+    ...(opts.name !== undefined ? { name: opts.name } : {}),
+    steps,
+    span: ZERO_SPAN,
+  });
+  return { doc: next, id };
+}
+
+export function removeSequence(doc: ArchDoc, id: string): ArchDoc {
+  sequenceIn(doc, id);
+  const next = clone(doc);
+  next.sequences = next.sequences.filter((q) => q.id !== id);
+  return next;
+}
+
+export interface SequenceMeta {
+  /** A new id (snake_case, unique among sequences). */
+  id?: string;
+  /** null clears it (the id is shown instead). */
+  name?: string | null;
+}
+
+export function setSequenceMeta(doc: ArchDoc, id: string, meta: SequenceMeta): ArchDoc {
+  const next = clone(doc);
+  const seq = sequenceIn(next, id);
+  if (meta.id !== undefined && meta.id !== id) {
+    if (!NAME_RE.test(meta.id)) throw new Error(`Invalid id '${meta.id}' (need snake_case).`);
+    if (next.sequences.some((q) => q.id === meta.id)) throw new Error(`Duplicate sequence id '${meta.id}'.`);
+    seq.id = meta.id;
+  }
+  if (meta.name === null || meta.name === "") delete seq.name;
+  else if (meta.name !== undefined) seq.name = meta.name;
+  return next;
+}
+
+/** Insert a step (a message, a note or a fragment) at `slot`. Returns the new step's address. */
+export function insertStep(
+  doc: ArchDoc,
+  id: string,
+  slot: StepSlot,
+  step: StepNode,
+): { doc: ArchDoc; address: number[] } {
+  checkStep(doc, step);
+  const next = clone(doc);
+  const steps = listIn(sequenceIn(next, id), slot.list);
+  const index = Math.max(0, Math.min(slot.index, steps.length));
+  steps.splice(index, 0, { ...structuredClone(step), span: ZERO_SPAN });
+  return { doc: next, address: [...slot.list, index] };
+}
+
+export function removeStep(doc: ArchDoc, id: string, address: StepAddress): ArchDoc {
+  const next = clone(doc);
+  const seq = sequenceIn(next, id);
+  const steps = listIn(seq, address.slice(0, -1));
+  const index = address[address.length - 1]!;
+  if (!steps[index]) throw new Error(`No step at [${address.join(", ")}].`);
+  steps.splice(index, 1);
+  return next;
+}
+
+export interface MessageMeta {
+  from?: string[];
+  to?: string[];
+  arrow?: MessageArrow;
+  /** null clears it. */
+  type?: string | null;
+  label?: string | null;
+}
+
+export function setMessageMeta(doc: ArchDoc, id: string, address: StepAddress, meta: MessageMeta): ArchDoc {
+  const next = clone(doc);
+  const step = stepAt(sequenceIn(next, id), address);
+  if (step?.kind !== "message") throw new Error(`No message at [${address.join(", ")}].`);
+  if (meta.from !== undefined) step.from = [...meta.from];
+  if (meta.to !== undefined) step.to = [...meta.to];
+  checkMessage(next, step);
+  if (meta.arrow !== undefined) {
+    if (!["->", "-->", "~>"].includes(meta.arrow)) throw new Error(`Invalid message arrow '${meta.arrow}'.`);
+    step.arrow = meta.arrow;
+  }
+  for (const key of ["type", "label"] as const) {
+    const v = meta[key];
+    if (v === undefined) continue;
+    if (v === null || v === "") delete step[key];
+    else {
+      if (key === "type" && !/^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)*$/.test(v)) throw new Error(`Invalid type '${v}'.`);
+      step[key] = v;
+    }
+  }
+  return next;
+}
+
+export function setNoteText(doc: ArchDoc, id: string, address: StepAddress, text: string): ArchDoc {
+  const next = clone(doc);
+  const step = stepAt(sequenceIn(next, id), address);
+  if (step?.kind !== "note") throw new Error(`No note at [${address.join(", ")}].`);
+  step.text = text;
+  return next;
+}
+
+/** Change a fragment's kind, or one branch's guard (null clears it). */
+export function setFragmentMeta(
+  doc: ArchDoc,
+  id: string,
+  address: StepAddress,
+  meta: { fragment?: FragmentKind; branch?: number; guard?: string | null },
+): ArchDoc {
+  const next = clone(doc);
+  const step = stepAt(sequenceIn(next, id), address);
+  if (step?.kind !== "fragment") throw new Error(`No fragment at [${address.join(", ")}].`);
+  if (meta.fragment !== undefined) {
+    if (!FRAGMENT_KINDS.includes(meta.fragment)) throw new Error(`Unknown fragment '${meta.fragment}'.`);
+    if (step.branches.length > 1 && meta.fragment !== "alt" && meta.fragment !== "par")
+      throw new Error(`Only alt and par take else branches: remove the others first.`);
+    step.fragment = meta.fragment;
+  }
+  if (meta.guard !== undefined) {
+    const b = step.branches[meta.branch ?? 0];
+    if (!b) throw new Error(`No branch ${meta.branch}.`);
+    if (meta.guard === null || meta.guard === "") delete b.guard;
+    else b.guard = meta.guard;
+  }
+  return next;
+}
+
+/**
+ * Move a step one place up or down. At the edge of a fragment's branch it
+ * steps out of the fragment (above or below it); next to a fragment it
+ * steps over the whole fragment, so order stays easy to reason about.
+ */
+export function moveStep(doc: ArchDoc, id: string, address: StepAddress, delta: -1 | 1): { doc: ArchDoc; address: number[] } {
+  const next = clone(doc);
+  const seq = sequenceIn(next, id);
+  const listAddr = address.slice(0, -1);
+  const steps = listIn(seq, listAddr);
+  const index = address[address.length - 1]!;
+  const step = steps[index];
+  if (!step) throw new Error(`No step at [${address.join(", ")}].`);
+  const to = index + delta;
+  if (to >= 0 && to < steps.length) {
+    steps.splice(index, 1);
+    steps.splice(to, 0, step);
+    return { doc: next, address: [...listAddr, to] };
+  }
+  if (listAddr.length === 0) return { doc, address: [...address] };
+  // Out of the branch, beside its fragment.
+  steps.splice(index, 1);
+  const fragAddr = listAddr.slice(0, -1);
+  const parent = listIn(seq, fragAddr.slice(0, -1));
+  const fragIndex = fragAddr[fragAddr.length - 1]!;
+  const at = delta < 0 ? fragIndex : fragIndex + 1;
+  parent.splice(at, 0, step);
+  return { doc: next, address: [...fragAddr.slice(0, -1), at] };
+}
+
+/** Wrap consecutive steps of one list in a new fragment. Returns the fragment's address. */
+export function wrapInFragment(
+  doc: ArchDoc,
+  id: string,
+  slot: StepSlot,
+  count: number,
+  fragment: FragmentKind,
+  guard?: string,
+): { doc: ArchDoc; address: number[] } {
+  if (!FRAGMENT_KINDS.includes(fragment)) throw new Error(`Unknown fragment '${fragment}'.`);
+  const next = clone(doc);
+  const steps = listIn(sequenceIn(next, id), slot.list);
+  const taken = steps.splice(slot.index, Math.max(0, count));
+  steps.splice(slot.index, 0, {
+    kind: "fragment",
+    fragment,
+    branches: [{ ...(guard !== undefined ? { guard } : {}), steps: taken }],
+    span: ZERO_SPAN,
+  });
+  return { doc: next, address: [...slot.list, slot.index] };
+}
+
+/**
+ * Calls along the connections among some components, as starting steps for
+ * a new sequence: breadth-first from the ones nothing in the set calls, in
+ * document order, so a selection on the canvas reads left to right.
+ */
+export function stepsFromConnections(doc: ArchDoc, paths: readonly (readonly string[])[]): MessageStep[] {
+  const keys = new Set(paths.map(pathToString));
+  const inside = doc.connections.filter((c) => keys.has(pathToString(c.source)) && keys.has(pathToString(c.target)));
+  const called = new Set(inside.map((c) => pathToString(c.target)));
+  const order = [...keys].filter((k) => !called.has(k));
+  const queue = order.length > 0 ? order : [...keys].slice(0, 1);
+  const seen = new Set(queue);
+  const used = new Set<number>();
+  const out: MessageStep[] = [];
+  while (queue.length > 0) {
+    const k = queue.shift()!;
+    inside.forEach((c, i) => {
+      if (used.has(i) || pathToString(c.source) !== k) return;
+      used.add(i);
+      out.push({
+        kind: "message",
+        from: [...c.source],
+        to: [...c.target],
+        arrow: "->",
+        ...(c.type !== undefined ? { type: c.type } : {}),
+        ...(c.label !== undefined ? { label: c.label } : {}),
+        span: ZERO_SPAN,
+      });
+      const t = pathToString(c.target);
+      if (!seen.has(t)) {
+        seen.add(t);
+        queue.push(t);
+      }
+    });
+  }
+  return out;
 }

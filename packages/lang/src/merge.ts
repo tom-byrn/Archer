@@ -1,6 +1,8 @@
 import { connectionKey, sameSources } from "./diff";
 import { PLANE_INNER_ORIGIN, canvasAt, layoutMap, planeChainOf } from "./layout";
 import { componentPaths, planePaths, scopeOf, type Scope } from "./scope";
+import { formatSequence } from "./format";
+import { remapSequencePaths } from "./sequence";
 import {
   pathToString,
   type ArchDoc,
@@ -9,6 +11,7 @@ import {
   type LayoutEntry,
   type PayloadNode,
   type PlaneNode,
+  type SequenceNode,
 } from "./types";
 
 /**
@@ -36,8 +39,8 @@ import {
  */
 
 export interface MergeConflict {
-  kind: "title" | "component" | "plane" | "connection";
-  /** Dotted component or plane path, connectionKey(), or "title". */
+  kind: "title" | "component" | "plane" | "connection" | "sequence";
+  /** Dotted component or plane path, connectionKey(), a sequence id, or "title". */
   path: string;
   /** Human-readable, e.g. "changed desc on both sides". */
   reason: string;
@@ -357,6 +360,41 @@ function mergeConnections(
   return out;
 }
 
+/**
+ * Sequences merge whole, matched by id: steps are an ordered story, and two
+ * sides reordering one differently has no sensible combination. One side's
+ * edit wins over the other's no-change; both editing it differently is a
+ * conflict (ours wins).
+ */
+function mergeSequences(
+  base: readonly SequenceNode[],
+  ours: readonly SequenceNode[],
+  theirs: readonly SequenceNode[],
+  conflicts: Conflicts,
+): SequenceNode[] {
+  const text = (s: SequenceNode | undefined) => (s ? formatSequence(s) : undefined);
+  const b = new Map(base.map((s) => [s.id, s]));
+  const o = new Map(ours.map((s) => [s.id, s]));
+  const t = new Map(theirs.map((s) => [s.id, s]));
+  const out: SequenceNode[] = [];
+  for (const id of unionOrder([...o.keys()], [...t.keys()])) {
+    const bs = text(b.get(id));
+    const os = o.get(id);
+    const ts = t.get(id);
+    const m = merge3(bs, text(os), text(ts), sameValue);
+    if (m.conflict) {
+      conflicts.add(
+        "sequence",
+        id,
+        os && ts ? "changed on both sides" : "removed on one side, changed on the other",
+      );
+    }
+    const pick = m.value === undefined ? undefined : m.value === text(os) ? os : ts;
+    if (pick) out.push(structuredClone(pick));
+  }
+  return out;
+}
+
 export function mergeDocs(base: ArchDoc, ours: ArchDoc, theirs: ArchDoc): MergeResult {
   const conflicts = new Conflicts();
 
@@ -377,9 +415,17 @@ export function mergeDocs(base: ArchDoc, ours: ArchDoc, theirs: ArchDoc): MergeR
     components: top.components,
     planes: top.planes,
     connections: [],
+    sequences: mergeSequences(base.sequences, ours.sequences, theirs.sequences, conflicts),
     layout: [],
   };
   const paths = componentPaths(merged);
+  // Like connections, steps can't name a component the other side removed.
+  for (const seq of merged.sequences) {
+    const before = formatSequence(seq);
+    remapSequencePaths({ ...merged, sequences: [seq] }, (p) => (paths.has(pathToString(p)) ? p : null));
+    if (formatSequence(seq) !== before)
+      conflicts.add("sequence", seq.id, "names a component the other side removed");
+  }
 
   // A connection is only as good as its endpoints: one side may have removed
   // a component the other side's new connection points at.

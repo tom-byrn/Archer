@@ -26,7 +26,23 @@ export {
   hasErrors,
 } from "./validate";
 export type { ValidateOptions } from "./validate";
-export { format } from "./format";
+export { format, formatSequence } from "./format";
+export {
+  sequenceRows,
+  sequenceMessages,
+  sequenceParticipants,
+  sequenceUses,
+  sequencesWith,
+  messageConnection,
+  messageKind,
+  remapSequencePaths,
+  stepAt,
+  stepList,
+  addressKey,
+  parseAddressKey,
+  MESSAGE_ARROWS,
+} from "./sequence";
+export type { SequenceRow, StepAddress, StepSlot } from "./sequence";
 export type { FormatOptions } from "./format";
 export { compileForAgent } from "./agentExport";
 export {
@@ -70,6 +86,17 @@ export {
   relayoutComponents,
   duplicateComponents,
   outermostItems,
+  addSequence,
+  removeSequence,
+  setSequenceMeta,
+  insertStep,
+  removeStep,
+  setMessageMeta,
+  setNoteText,
+  setFragmentMeta,
+  moveStep,
+  wrapInFragment,
+  stepsFromConnections,
 } from "./transform";
 export type {
   AddComponentOptions,
@@ -80,6 +107,9 @@ export type {
   ConnectionOptions,
   ConnectionMeta,
   GroupOptions,
+  AddSequenceOptions,
+  SequenceMeta,
+  MessageMeta,
 } from "./transform";
 export {
   diffDocs,
@@ -93,6 +123,7 @@ export type {
   ComponentChange,
   PlaneChange,
   ConnectionChange,
+  SequenceChange,
   DocDiff,
   DiffSummary,
 } from "./diff";

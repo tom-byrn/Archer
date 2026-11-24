@@ -7,6 +7,8 @@ import {
   type LayoutEntry,
   type PayloadNode,
   type PlaneNode,
+  type SequenceNode,
+  type StepNode,
 } from "./types";
 
 const INDENT = "  ";
@@ -123,6 +125,39 @@ function joinConnections(lines: string[]): string {
   return out;
 }
 
+function formatSteps(steps: readonly StepNode[], depth: number): string[] {
+  const pad = INDENT.repeat(depth);
+  const out: string[] = [];
+  for (const step of steps) {
+    if (step.kind === "message") {
+      let line = `${pad}${pathToString(step.from)} ${step.arrow} ${pathToString(step.to)}`;
+      if (step.type !== undefined) line += ` @${step.type}`;
+      if (step.label !== undefined) line += ` : ${quote(step.label)}`;
+      out.push(line);
+    } else if (step.kind === "note") {
+      out.push(`${pad}note over ${step.over.map(pathToString).join(", ")} ${quote(step.text)}`);
+    } else {
+      let line = pad;
+      step.branches.forEach((b, i) => {
+        line += i === 0 ? step.fragment : " else";
+        if (b.guard !== undefined) line += ` ${quote(b.guard)}`;
+        const inner = formatSteps(b.steps, depth + 1);
+        line += inner.length === 0 ? " {}" : ` {\n${inner.join("\n")}\n${pad}}`;
+      });
+      out.push(line);
+    }
+  }
+  return out;
+}
+
+/** One sequence in canonical form: how merge and diff compare them. */
+export function formatSequence(s: SequenceNode): string {
+  let head = `sequence ${s.id}`;
+  if (s.name !== undefined) head += ` ${quote(s.name)}`;
+  const steps = formatSteps(s.steps, 1);
+  return steps.length === 0 ? `${head} {}` : `${head} {\n${steps.join("\n")}\n}`;
+}
+
 function formatLayoutEntry(e: LayoutEntry): string {
   const props: string[] = [];
   if (e.at) props.push(`at: [${e.at[0]}, ${e.at[1]}]`);
@@ -137,8 +172,8 @@ export interface FormatOptions {
 
 /**
  * Canonical form: header, declarations (components and planes in document
- * order, see PlaneTree.itemsOn), connections (sorted), layout (sorted by
- * path). format(parse(format(x))) === format(x).
+ * order, see PlaneTree.itemsOn), connections (sorted), sequences (in
+ * document order, steps as written), layout (sorted by path). format(parse(format(x))) === format(x).
  */
 export function format(doc: ArchDoc, opts: FormatOptions = {}): string {
   const sections: string[] = [`arch ${quote(doc.title)} v${doc.version}`];
@@ -152,6 +187,9 @@ export function format(doc: ArchDoc, opts: FormatOptions = {}): string {
     );
     sections.push(joinConnections(sorted.map(formatConnection)));
   }
+
+  // Sequences keep document order, and their steps always do: order is what they mean.
+  for (const seq of doc.sequences) sections.push(formatSequence(seq));
 
   if (!opts.stripLayout && doc.layout.length > 0) {
     const sorted = [...doc.layout].sort((a, b) =>

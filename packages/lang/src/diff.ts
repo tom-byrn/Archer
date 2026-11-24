@@ -10,6 +10,7 @@ import {
 import { findComponent, planeTree, scopeOf, type Scope } from "./scope";
 import { normalizeLayout } from "./validate";
 import { layoutMap } from "./layout";
+import { formatSequence } from "./format";
 
 /**
  * Semantic diff between two documents. Layout is never a change — moving
@@ -43,6 +44,12 @@ export interface ConnectionChange {
   connection: ConnectionNode;
 }
 
+export interface SequenceChange {
+  id: string;
+  /** "changed": its name or any of its steps. */
+  kind: ChangeKind;
+}
+
 export interface DocDiff {
   title?: { from: string; to: string };
   /** Document order of `next`, then removed ones in `base` order. */
@@ -50,6 +57,8 @@ export interface DocDiff {
   /** Same order as components. */
   planes: PlaneChange[];
   connections: ConnectionChange[];
+  /** Document order of `next`, then removed ones in `base` order. */
+  sequences: SequenceChange[];
 }
 
 export interface DiffSummary {
@@ -62,6 +71,9 @@ export interface DiffSummary {
   planesAdded: number;
   planesRemoved: number;
   planesChanged: number;
+  sequencesAdded: number;
+  sequencesRemoved: number;
+  sequencesChanged: number;
 }
 
 /** Identity of a connection independent of position: source|arrow|target|type|label. */
@@ -174,11 +186,22 @@ export function diffDocs(base: ArchDoc, next: ArchDoc): DocDiff {
     if (!afterConns.has(key)) connections.push({ key, kind: "removed", connection });
   }
 
+  const beforeSeqs = new Map(base.sequences.map((q) => [q.id, formatSequence(q)]));
+  const afterSeqs = new Map(next.sequences.map((q) => [q.id, formatSequence(q)]));
+  const sequences: SequenceChange[] = [];
+  for (const [id, text] of afterSeqs) {
+    const prev = beforeSeqs.get(id);
+    if (prev === undefined) sequences.push({ id, kind: "added" });
+    else if (prev !== text) sequences.push({ id, kind: "changed" });
+  }
+  for (const id of beforeSeqs.keys()) if (!afterSeqs.has(id)) sequences.push({ id, kind: "removed" });
+
   return {
     ...(base.title !== next.title ? { title: { from: base.title, to: next.title } } : {}),
     components: diffMaps(before.components, after.components, changedFields),
     planes: diffMaps(before.planes, after.planes, changedPlaneFields),
     connections,
+    sequences,
   };
 }
 
@@ -193,6 +216,9 @@ export function summarizeDiff(diff: DocDiff): DiffSummary {
     planesAdded: 0,
     planesRemoved: 0,
     planesChanged: 0,
+    sequencesAdded: 0,
+    sequencesRemoved: 0,
+    sequencesChanged: 0,
   };
   for (const c of diff.components) s[c.kind]++;
   for (const c of diff.connections) {
@@ -205,6 +231,11 @@ export function summarizeDiff(diff: DocDiff): DiffSummary {
     else if (p.kind === "removed") s.planesRemoved++;
     else s.planesChanged++;
   }
+  for (const q of diff.sequences) {
+    if (q.kind === "added") s.sequencesAdded++;
+    else if (q.kind === "removed") s.sequencesRemoved++;
+    else s.sequencesChanged++;
+  }
   return s;
 }
 
@@ -212,7 +243,8 @@ export const isEmptyDiff = (d: DocDiff): boolean =>
   d.title === undefined &&
   d.components.length === 0 &&
   d.planes.length === 0 &&
-  d.connections.length === 0;
+  d.connections.length === 0 &&
+  d.sequences.length === 0;
 
 /**
  * Build a renderable "diff view": `next` plus every component, plane and
