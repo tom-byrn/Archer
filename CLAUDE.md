@@ -208,25 +208,33 @@ Router + React Flow + Convex).
   plane, not the reverse), so keep the two concepts apart. There is no
   support for older language versions: there are no users yet, so change the
   grammar freely.
-- Sequences (spec §6.1): `sequence <id> "Name" { … }` blocks after the
-  connections say in what order components exchange messages for one
-  scenario (`->` call, `-->` reply, `~>` async; `alt`/`else`, `opt`, `loop`,
-  `par`; `note over a, b "…"`). Participants are components (`E101`) and a
-  call should travel on a connection (`W307`). The AST is
-  `ArchDoc.sequences`; helpers (rows, numbering, participants, the
-  connection a message travels on) are `packages/lang/src/sequence.ts`, and
-  edits are transforms in `transform.ts` (steps addressed by index paths,
-  `[i, branch, j…]`). Any transform that changes component paths must call
-  `remapSequencePaths` beside its connection rewrite, or steps go stale.
-  Steps are never reordered by the formatter; merge takes a sequence whole by
-  id. In the editor a sequence is a *view*, not a tab: the header's
-  `ViewSwitcher` (after the title) moves between the architecture and each
-  sequence; `SequenceView` + `SequenceDiagram` draw it (geometry in
-  `lib/sequenceLayout.ts`, pure), `SequenceInspector` edits it, and
-  `PlaybackBar` plays it on the canvas (the step's connection lit through
-  `highlightedEdge`, non-participants faded through `spotlightNodes`).
-  "In sequences" in the inspector (`components/InSequences.tsx`) reaches the
-  editor through `SequenceNavContext`, so it only shows inside the editor.
+- Views (spec §6): diagrams over the same document, after the connections:
+  `sequence` (who calls whom, in order: `->` call, `-->` reply, `~>` async;
+  `alt`/`else`, `opt`, `loop`, `par`; `note over`), `flow` (activity
+  diagram: `start`/`step`/`decision`/`end` nodes `in` a component's lane),
+  `states` (a component's state machine, `of <path>`) and `entities` (a
+  store's data model, `on <path>`; one field per line, `-> entity.field`
+  references). The AST has `sequences`, `flows`, `machines`, `models`; all
+  views share one id namespace (`E002`), name components by path (`E101`),
+  and resolve their own edges and references (`E102`); `W307` warns on a
+  call no connection carries, `W308` on a state machine with no initial
+  state. Helpers: `packages/lang/src/views.ts` (all kinds) and
+  `sequence.ts`; edits are transforms in `transform.ts` (sequence steps by
+  index path, graph nodes by id, edges by index). Any transform that changes
+  component paths must call `remapViewPaths` beside its connection rewrite.
+  The formatter never reorders view contents; diff reports `views`, and merge
+  takes each view whole by id. In the editor a view is a place, not a tab:
+  the header's `ViewSwitcher` (after the title) moves between the
+  architecture and every view, and "New view…" (`NewViewDialog`) makes one.
+  Sequences: `SequenceView` + `SequenceDiagram` (geometry `lib/sequenceLayout.ts`),
+  `SequenceInspector`, and `PlaybackBar`, which plays one on the canvas (the
+  step's connection lit through `highlightedEdge`, others faded through
+  `spotlightNodes`). Flows, state machines, data models: `ViewCanvas` +
+  `ViewDiagrams` (geometry `lib/graphLayout.ts`: rank columns, flow lanes,
+  right-angled routes) and `ViewInspector`. Views hold no layout: it's
+  computed. "In sequences" / "In views" in the inspector
+  (`components/InSequences.tsx`) reach the editor through
+  `SequenceNavContext`, so they only show inside the editor.
 - Admin dashboard: `/admin-dashboard` (linked from nowhere) is for one person,
   hard-coded in `lib/admin.ts` (`isAdmin`: verified email
   tombyrne788@gmail.com or verified GitHub login tom-byrn — a code change, not

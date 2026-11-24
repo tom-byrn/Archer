@@ -1,12 +1,13 @@
 "use client";
 
 import { createContext, useContext } from "react";
-import { sequenceUses, sequencesWith, sequenceMessages, type ArchDoc, type ConnectionNode } from "@archer/lang";
+import { VIEW_LABELS, sequenceUses, viewsWith, type ArchDoc, type ConnectionNode } from "@archer/lang";
+import { VIEW_ICONS, viewSize } from "./ViewSwitcher";
 import { Chip, Icon, IconButton, Section } from "./ui";
 
 /** How the inspector reaches the document's sequences; absent outside the editor. */
 export interface SequenceNav {
-  /** Open a sequence, on a step (its message number) when given. */
+  /** Open a view; for a sequence, on a step (its message number) when given. */
   open: (id: string, step?: number) => void;
   /** Play a sequence on the architecture, from a step when given. */
   play: (id: string, step?: number) => void;
@@ -64,31 +65,38 @@ export function ConnectionSequences({ doc, conn }: { doc: ArchDoc; conn: Connect
   );
 }
 
-/** "In sequences" for a selected component: the sequences it (or anything in it) takes part in. */
+/** "In views" for a selected component: the sequences, flows, state machines and data models that name it (or anything in it). */
 export function ComponentSequences({ doc, path }: { doc: ArchDoc; path: string }) {
   const nav = useContext(SequenceNavContext);
   if (!nav) return null;
-  const seqs = sequencesWith(doc, path.split("."));
-  if (seqs.length === 0) return null;
+  const views = viewsWith(doc, path.split("."));
+  if (views.length === 0) return null;
   return (
-    <Section title="In sequences" action={<Chip>{seqs.length}</Chip>}>
+    <Section title="In views" action={<Chip>{views.length}</Chip>}>
       <ul className="flex flex-col">
-        {seqs.map((s) => (
-          <li key={s.id} className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => nav.open(s.id)}
-              className="flex min-w-0 flex-1 items-center gap-2 rounded-md px-1 py-1 text-left text-sm hover:bg-surface-2"
-            >
-              <Icon.Sequence className="h-3.5 w-3.5 shrink-0 text-accent" />
-              <span className="truncate">{s.name ?? s.id}</span>
-              <span className="ml-auto shrink-0 text-xs text-ink-3">{sequenceMessages(s).length} steps</span>
-            </button>
-            <IconButton label={`Play ${s.name ?? s.id} on the architecture`} onClick={() => nav.play(s.id)}>
-              <Icon.Play className="text-accent" />
-            </IconButton>
-          </li>
-        ))}
+        {views.map((v) => {
+          const KindIcon = VIEW_ICONS[v.kind];
+          return (
+            <li key={v.node.id} className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => nav.open(v.node.id)}
+                className="flex min-w-0 flex-1 items-center gap-2 rounded-md px-1 py-1 text-left text-sm hover:bg-surface-2"
+              >
+                <KindIcon className="h-3.5 w-3.5 shrink-0 text-accent" />
+                <span className="truncate">{v.node.name ?? v.node.id}</span>
+                <span className="ml-auto shrink-0 text-xs text-ink-3">
+                  {VIEW_LABELS[v.kind].one} · {viewSize(v)}
+                </span>
+              </button>
+              {v.kind === "sequence" && (
+                <IconButton label={`Play ${v.node.name ?? v.node.id} on the architecture`} onClick={() => nav.play(v.node.id)}>
+                  <Icon.Play className="text-accent" />
+                </IconButton>
+              )}
+            </li>
+          );
+        })}
       </ul>
     </Section>
   );

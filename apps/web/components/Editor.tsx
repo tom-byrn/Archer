@@ -49,6 +49,11 @@ import {
   sequenceMessages,
   sequenceParticipants,
   stepsFromConnections,
+  addView,
+  allViews,
+  findView,
+  VIEW_LABELS,
+  type ViewKind,
 } from "@archer/lang";
 import Link from "next/link";
 import { useAuth } from "@clerk/nextjs";
@@ -107,7 +112,9 @@ import { SequenceNavContext, type SequenceNav } from "./InSequences";
 import { SequenceInspector } from "./SequenceInspector";
 import { SequenceView } from "./SequenceView";
 import { PlaybackBar } from "./PlaybackBar";
-import { NewSequenceDialog, ViewSwitcher, type EditorView } from "./ViewSwitcher";
+import { NewViewDialog, VIEW_ICONS, ViewSwitcher, type EditorView, type NewViewRequest } from "./ViewSwitcher";
+import { ViewCanvas } from "./ViewCanvas";
+import { ViewInspector } from "./ViewInspector";
 import {
   Button,
   Chip,
@@ -374,7 +381,8 @@ function EditorView({ initialSource, library, session, tour }: EditorProps) {
   const [stepSel, setStepSel] = useState<string | null>(null);
   /** A sequence playing on the architecture: which, and the index of the message it's on. */
   const [playback, setPlayback] = useState<{ id: string; step: number; playing: boolean } | null>(null);
-  const [newSequenceOpen, setNewSequenceOpen] = useState(false);
+  /** "New view…" is open, starting on this kind. */
+  const [newView, setNewView] = useState<ViewKind | null>(null);
   const [codeOpen, setCodeOpen] = useState(false);
   // The component palette (left sidebar) starts closed every time the editor
   // opens, so the canvas gets the whole width until it's asked for.
@@ -420,9 +428,21 @@ function EditorView({ initialSource, library, session, tour }: EditorProps) {
 
   // The sequence open, or playing; one that stopped resolving (deleted,
   // renamed) falls back to the architecture.
+  const openRef = view.kind === "architecture" ? undefined : findView(derived.doc, view.id);
   const openSequence =
-    view.kind === "sequence" ? derived.doc.sequences.find((q) => q.id === view.id) : undefined;
-  const liveView: EditorView = openSequence ? view : { kind: "architecture" };
+    openRef?.kind === "sequence" ? derived.doc.sequences.find((q) => q.id === openRef.node.id) : undefined;
+  /** A flow, state machine or data model open. */
+  const openGraph =
+    openRef?.kind === "flow"
+      ? { kind: "flow" as const, node: derived.doc.flows.find((f) => f.id === openRef.node.id)! }
+      : openRef?.kind === "states"
+        ? { kind: "states" as const, node: derived.doc.machines.find((m) => m.id === openRef.node.id)! }
+        : openRef?.kind === "entities"
+          ? { kind: "entities" as const, node: derived.doc.models.find((m) => m.id === openRef.node.id)! }
+          : undefined;
+  // A view that stopped resolving (deleted, renamed in the code) falls back to
+  // the architecture; one whose kind changed in the code follows it.
+  const liveView: EditorView = openRef ? { kind: openRef.kind, id: openRef.node.id } : { kind: "architecture" };
   const playing = playback ? derived.doc.sequences.find((q) => q.id === playback.id) : undefined;
   const playMessage = playing && playback ? sequenceMessages(playing)[playback.step] : undefined;
   /** The connection the message playback is on travels on: lit on the canvas. */
@@ -461,8 +481,10 @@ function EditorView({ initialSource, library, session, tour }: EditorProps) {
   const sequenceNav: SequenceNav = useMemo(
     () => ({
       open: (id, step) => {
+        const ref = findView(derived.doc, id);
+        if (!ref) return;
         const seq = derived.doc.sequences.find((q) => q.id === id);
-        setView({ kind: "sequence", id });
+        setView({ kind: ref.kind, id });
         setPlayback(null);
         const m = seq && step !== undefined ? sequenceMessages(seq).find((x) => x.number === step) : undefined;
         setStepSel(m ? m.address.join(".") : null);
@@ -477,7 +499,7 @@ function EditorView({ initialSource, library, session, tour }: EditorProps) {
         setPlayback({ id, step: i, playing: true });
       },
     }),
-    [derived.doc.sequences],
+    [derived.doc],
   );
 
   // Diff mode: the doc to draw plus per-path/per-connection statuses.
@@ -1170,7 +1192,7 @@ function EditorView({ initialSource, library, session, tour }: EditorProps) {
   const escape = () => {
     if (menu) setMenu(null);
     else if (playback) setPlayback(null);
-    else if (liveView.kind === "sequence") {
+    else if (liveView.kind !== "architecture") {
       if (stepSel !== null) setStepSel(null);
       else goToView({ kind: "architecture" });
     } else if (diffView) setDiffView(null);
@@ -1180,15 +1202,24 @@ function EditorView({ initialSource, library, session, tour }: EditorProps) {
     else setFocus((f) => f.slice(0, -1));
   };
 
+  const newViewSelection = useMemo(
+    () => liveSel.nodes.filter((p) => !findPlane(derived.doc, p.split("."))).map((p) => p.split(".")),
+    [liveSel.nodes, derived.doc],
+  );
+
   /** "New sequence…": a sequence, seeded from the selected components' connections when asked, opened. */
-  const createSequence = (name: string, fromSelection: boolean) => {
+  const createView = (req: NewViewRequest) => {
     const id = mutateWith((d) => {
-      const steps = fromSelection ? stepsFromConnections(d, liveSel.nodes.map((p) => p.split("."))) : [];
-      const r = addSequence(d, { name, steps });
+      if (req.kind === "sequence") {
+        const steps = req.fromSelection ? stepsFromConnections(d, liveSel.nodes.map((p) => p.split("."))) : [];
+        const r = addSequence(d, { name: req.name, steps });
+        return { doc: r.doc, value: r.id };
+      }
+      const r = addView(d, req.kind, { name: req.name, ...(req.subject ? { subject: req.subject } : {}) });
       return { doc: r.doc, value: r.id };
     });
-    setNewSequenceOpen(false);
-    if (id) goToView({ kind: "sequence", id });
+    setNewView(null);
+    if (id) goToView({ kind: req.kind, id });
   };
 
   actions.current = {
@@ -1261,7 +1292,7 @@ function EditorView({ initialSource, library, session, tour }: EditorProps) {
       ? [{ label: selCount > 1 ? "Re-layout selection" : "Re-layout inside", icon: <Icon.Layout />, onSelect: relayoutSelection }]
       : []),
     ...(selCount > 1
-      ? [{ label: "New sequence from these…", hint: "Their connections, as first steps", icon: <Icon.Sequence />, onSelect: () => setNewSequenceOpen(true) }]
+      ? [{ label: "New sequence from these…", hint: "Their connections, as first steps", icon: <Icon.Sequence />, onSelect: () => setNewView("sequence") }]
       : []),
     "separator",
     {
@@ -1429,17 +1460,27 @@ function EditorView({ initialSource, library, session, tour }: EditorProps) {
           { id: "relayout-all", label: "Re-layout everything", keywords: "tidy arrange auto-layout", icon: <Icon.Layout />, run: relayoutAll },
         ]
       : []),
-    ...derived.doc.sequences
-      .filter((q) => !(liveView.kind === "sequence" && liveView.id === q.id))
-      .flatMap((q) => [
-        { id: `sequence:${q.id}`, label: `Open sequence: ${q.name ?? q.id}`, keywords: "sequence diagram flow scenario view", icon: <Icon.Sequence />, run: () => goToView({ kind: "sequence", id: q.id }) },
-        { id: `play:${q.id}`, label: `Play ${q.name ?? q.id} on the architecture`, keywords: "sequence playback animate", icon: <Icon.Play />, run: () => sequenceNav.play(q.id) },
-      ]),
-    ...(liveView.kind === "sequence"
+    ...allViews(derived.doc)
+      .filter((v) => !(liveView.kind !== "architecture" && liveView.id === v.node.id))
+      .flatMap((v) => {
+        const KindIcon = VIEW_ICONS[v.kind];
+        return [
+          { id: `view:${v.node.id}`, label: `Open ${VIEW_LABELS[v.kind].one}: ${v.node.name ?? v.node.id}`, keywords: "view diagram sequence flow activity state machine data model entities", icon: <KindIcon />, run: () => goToView({ kind: v.kind, id: v.node.id }) },
+          ...(v.kind === "sequence"
+            ? [{ id: `play:${v.node.id}`, label: `Play ${v.node.name ?? v.node.id} on the architecture`, keywords: "sequence playback animate", icon: <Icon.Play />, run: () => sequenceNav.play(v.node.id) }]
+            : []),
+        ];
+      }),
+    ...(liveView.kind !== "architecture"
       ? [{ id: "architecture", label: "Back to the architecture", icon: <Icon.Diagram />, shortcut: "esc", run: () => goToView({ kind: "architecture" }) }]
       : []),
     ...(editable
-      ? [{ id: "new-sequence", label: "New sequence…", keywords: "sequence diagram flow scenario plantuml", icon: <Icon.Sequence />, run: () => setNewSequenceOpen(true) }]
+      ? [
+          { id: "new-sequence", label: "New sequence…", keywords: "sequence diagram scenario plantuml", icon: <Icon.Sequence />, run: () => setNewView("sequence") },
+          { id: "new-flow", label: "New flow…", keywords: "activity diagram process plantuml", icon: <Icon.Flow />, run: () => setNewView("flow") },
+          { id: "new-states", label: "New state machine…", keywords: "states lifecycle plantuml", icon: <Icon.States />, run: () => setNewView("states") },
+          { id: "new-entities", label: "New data model…", keywords: "entities schema er erd tables plantuml", icon: <Icon.Entities />, run: () => setNewView("entities") },
+        ]
       : []),
     { id: "find", label: "Find a component", keywords: "search go to jump", icon: <Icon.Search />, shortcut: `${MOD}F`, run: () => openPalette("find") },
     { id: "fit", label: "Zoom to fit", keywords: "fit view", icon: <Icon.FitView />, run: () => canvasApi.current?.fitView() },
@@ -1548,9 +1589,9 @@ function EditorView({ initialSource, library, session, tour }: EditorProps) {
         <Icon.ChevronRight className="hidden h-3 w-3 shrink-0 text-ink-3 md:block" />
         <ViewSwitcher
           view={liveView}
-          sequences={derived.doc.sequences}
+          doc={derived.doc}
           onChange={goToView}
-          onNew={editable ? () => setNewSequenceOpen(true) : undefined}
+          onNew={editable ? () => setNewView("sequence") : undefined}
         />
         {!stored && <Chip className="ml-1 shrink-0">Sandbox</Chip>}
         <IconButton
@@ -1744,6 +1785,16 @@ function EditorView({ initialSource, library, session, tour }: EditorProps) {
               readOnly={!editable}
               onPlay={() => sequenceNav.play(openSequence.id)}
               onError={notify}
+            />
+          ) : openGraph ? (
+            <ViewCanvas
+              key={openGraph.node.id}
+              doc={derived.doc}
+              view={openGraph}
+              selected={stepSel}
+              onSelect={setStepSel}
+              mutateWith={mutateWith}
+              readOnly={!editable}
             />
           ) : (
           <>
@@ -1955,6 +2006,17 @@ function EditorView({ initialSource, library, session, tour }: EditorProps) {
             onPlay={(from) => sequenceNav.play(openSequence.id, from)}
             onDeleted={() => goToView({ kind: "architecture" })}
           />
+        ) : openGraph && !(panel && stored) ? (
+          <ViewInspector
+            key={openGraph.node.id}
+            doc={derived.doc}
+            view={openGraph}
+            selected={stepSel}
+            onSelect={setStepSel}
+            mutate={mutate}
+            readOnly={!editable}
+            onDeleted={() => goToView({ kind: "architecture" })}
+          />
         ) : panel && stored ? (
           <ActivityPanel
             tab={panel}
@@ -2049,11 +2111,13 @@ function EditorView({ initialSource, library, session, tour }: EditorProps) {
           )}
         </>
       )}
-      <NewSequenceDialog
-        open={newSequenceOpen}
-        onClose={() => setNewSequenceOpen(false)}
-        selectedCount={liveSel.nodes.filter((p) => !findPlane(derived.doc, p.split("."))).length}
-        onCreate={createSequence}
+      <NewViewDialog
+        open={newView !== null}
+        initialKind={newView ?? "sequence"}
+        onClose={() => setNewView(null)}
+        doc={derived.doc}
+        selected={newViewSelection}
+        onCreate={createView}
       />
       <CommandPalette
         open={palette !== null}
