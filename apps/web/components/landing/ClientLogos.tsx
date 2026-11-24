@@ -36,7 +36,7 @@ const MARKS: Mark[] = [
 
 export function ClientLogos() {
   return (
-    <ul className="flex flex-wrap items-center gap-x-8 gap-y-3 text-ink-3">
+    <ul className="flex cursor-default flex-wrap items-center gap-x-8 gap-y-3 text-ink-3">
       {MARKS.map(({ name, viewBox = "0 0 24 24", children }) => (
         <li key={name} className="flex items-center gap-2.5">
           <svg
