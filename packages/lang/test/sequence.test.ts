@@ -232,9 +232,9 @@ describe("sequences: diff and merge", () => {
   it("diff reports sequences added, changed and removed", () => {
     const base = doc();
     const next = setMessageMeta(addSequence(base, { id: "other" }).doc, "shorten", [0], { label: "Paste" });
-    expect(diffDocs(base, next).sequences).toEqual([
-      { id: "shorten", kind: "changed" },
-      { id: "other", kind: "added" },
+    expect(diffDocs(base, next).views).toEqual([
+      { view: "sequence", id: "shorten", kind: "changed" },
+      { view: "sequence", id: "other", kind: "added" },
     ]);
   });
 
@@ -248,7 +248,7 @@ describe("sequences: diff and merge", () => {
     expect(format(m.doc)).toContain(': "ours"');
 
     const both = mergeDocs(base, ours, setMessageMeta(base, "shorten", [0], { label: "theirs" }));
-    expect(both.conflicts).toEqual([{ kind: "sequence", path: "shorten", reason: "changed on both sides" }]);
+    expect(both.conflicts).toEqual([{ kind: "view", path: "shorten", reason: "changed on both sides" }]);
   });
 
   it("drops steps naming a component the other side removed", () => {

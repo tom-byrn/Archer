@@ -1,8 +1,8 @@
 import { connectionKey, sameSources } from "./diff";
 import { PLANE_INNER_ORIGIN, canvasAt, layoutMap, planeChainOf } from "./layout";
 import { componentPaths, planePaths, scopeOf, type Scope } from "./scope";
-import { formatSequence } from "./format";
-import { remapSequencePaths } from "./sequence";
+import { formatView } from "./format";
+import { remapViewPaths, viewsOf } from "./views";
 import {
   pathToString,
   type ArchDoc,
@@ -11,7 +11,8 @@ import {
   type LayoutEntry,
   type PayloadNode,
   type PlaneNode,
-  type SequenceNode,
+  type ViewKind,
+  type ViewNode,
 } from "./types";
 
 /**
@@ -39,8 +40,8 @@ import {
  */
 
 export interface MergeConflict {
-  kind: "title" | "component" | "plane" | "connection" | "sequence";
-  /** Dotted component or plane path, connectionKey(), a sequence id, or "title". */
+  kind: "title" | "component" | "plane" | "connection" | "view";
+  /** Dotted component or plane path, connectionKey(), a view's id, or "title". */
   path: string;
   /** Human-readable, e.g. "changed desc on both sides". */
   reason: string;
@@ -361,35 +362,31 @@ function mergeConnections(
 }
 
 /**
- * Sequences merge whole, matched by id: steps are an ordered story, and two
- * sides reordering one differently has no sensible combination. One side's
- * edit wins over the other's no-change; both editing it differently is a
- * conflict (ours wins).
+ * Views (sequences, flows, state machines, data models) merge whole, matched
+ * by id: their contents are an ordered story or a small graph, and two sides
+ * rearranging one differently has no sensible combination. One side's edit
+ * wins over the other's no-change; both editing it differently is a conflict
+ * (ours wins).
  */
-function mergeSequences(
-  base: readonly SequenceNode[],
-  ours: readonly SequenceNode[],
-  theirs: readonly SequenceNode[],
+function mergeViews<T extends ViewNode>(
+  kind: ViewKind,
+  base: readonly T[],
+  ours: readonly T[],
+  theirs: readonly T[],
   conflicts: Conflicts,
-): SequenceNode[] {
-  const text = (s: SequenceNode | undefined) => (s ? formatSequence(s) : undefined);
-  const b = new Map(base.map((s) => [s.id, s]));
-  const o = new Map(ours.map((s) => [s.id, s]));
-  const t = new Map(theirs.map((s) => [s.id, s]));
-  const out: SequenceNode[] = [];
+): T[] {
+  const text = (v: T | undefined) => (v ? formatView(kind, v) : undefined);
+  const b = new Map(base.map((v) => [v.id, v]));
+  const o = new Map(ours.map((v) => [v.id, v]));
+  const t = new Map(theirs.map((v) => [v.id, v]));
+  const out: T[] = [];
   for (const id of unionOrder([...o.keys()], [...t.keys()])) {
-    const bs = text(b.get(id));
-    const os = o.get(id);
-    const ts = t.get(id);
-    const m = merge3(bs, text(os), text(ts), sameValue);
-    if (m.conflict) {
-      conflicts.add(
-        "sequence",
-        id,
-        os && ts ? "changed on both sides" : "removed on one side, changed on the other",
-      );
-    }
-    const pick = m.value === undefined ? undefined : m.value === text(os) ? os : ts;
+    const ov = o.get(id);
+    const tv = t.get(id);
+    const m = merge3(text(b.get(id)), text(ov), text(tv), sameValue);
+    if (m.conflict)
+      conflicts.add("view", id, ov && tv ? "changed on both sides" : "removed on one side, changed on the other");
+    const pick = m.value === undefined ? undefined : m.value === text(ov) ? ov : tv;
     if (pick) out.push(structuredClone(pick));
   }
   return out;
@@ -415,16 +412,22 @@ export function mergeDocs(base: ArchDoc, ours: ArchDoc, theirs: ArchDoc): MergeR
     components: top.components,
     planes: top.planes,
     connections: [],
-    sequences: mergeSequences(base.sequences, ours.sequences, theirs.sequences, conflicts),
+    sequences: mergeViews("sequence", base.sequences, ours.sequences, theirs.sequences, conflicts),
+    flows: mergeViews("flow", base.flows, ours.flows, theirs.flows, conflicts),
+    machines: mergeViews("states", base.machines, ours.machines, theirs.machines, conflicts),
+    models: mergeViews("entities", base.models, ours.models, theirs.models, conflicts),
     layout: [],
   };
   const paths = componentPaths(merged);
-  // Like connections, steps can't name a component the other side removed.
-  for (const seq of merged.sequences) {
-    const before = formatSequence(seq);
-    remapSequencePaths({ ...merged, sequences: [seq] }, (p) => (paths.has(pathToString(p)) ? p : null));
-    if (formatSequence(seq) !== before)
-      conflicts.add("sequence", seq.id, "names a component the other side removed");
+  // Like connections, views can't name a component the other side removed.
+  for (const kind of ["sequence", "flow", "states", "entities"] as const) {
+    for (const v of viewsOf(merged, kind) as ViewNode[]) {
+      const before = formatView(kind, v);
+      const one = { ...merged, sequences: [], flows: [], machines: [], models: [] } as ArchDoc;
+      (viewsOf(one, kind) as ViewNode[]).push(v);
+      remapViewPaths(one, (p) => (paths.has(pathToString(p)) ? p : null));
+      if (formatView(kind, v) !== before) conflicts.add("view", v.id, "names a component the other side removed");
+    }
   }
 
   // A connection is only as good as its endpoints: one side may have removed

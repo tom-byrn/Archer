@@ -207,9 +207,9 @@ const REVISION_CHANGES = {
   planesAdded: 0,
   planesRemoved: 0,
   planesChanged: 0,
-  sequencesAdded: 0,
-  sequencesRemoved: 0,
-  sequencesChanged: 0,
+  viewsAdded: 0,
+  viewsRemoved: 0,
+  viewsChanged: 0,
 };
 
 // ---------------------------------------------------------------------------
@@ -677,12 +677,12 @@ api -> db @sql
             },
           },
         ],
-        sequences: [],
+        views: [],
       },
     },
     notes: [
       "`from` and `to` are revision ids, `current` (the project as it is now) or `empty` (before the first revision). Only the newest 200 revisions can be named.",
-      "A changed component lists its changed `fields`: `name`, `type`, `shape`, `icon`, `color`, `desc`, `src`, `payloads` or `plane` (it sits on a different plane). `planes` lists planes added, removed and changed (`name`, `type`, `desc` or `plane`) the same way. A connection is `changed` when only its payloads differ, a sequence (by `id`) when its name or any step does, and `title` appears when the document was renamed.",
+      "A changed component lists its changed `fields`: `name`, `type`, `shape`, `icon`, `color`, `desc`, `src`, `payloads` or `plane` (it sits on a different plane). `planes` lists planes added, removed and changed (`name`, `type`, `desc` or `plane`) the same way. A connection is `changed` when only its payloads differ, a view (`view` is its kind: sequence, flow, states or entities; `id` its id) when anything in it does, and `title` appears when the document was renamed.",
     ],
   },
 

@@ -26,7 +26,19 @@ export {
   hasErrors,
 } from "./validate";
 export type { ValidateOptions } from "./validate";
-export { format, formatSequence } from "./format";
+export { format, formatSequence, formatFlow, formatMachine, formatModel, formatView } from "./format";
+export {
+  VIEW_KINDS,
+  VIEW_LABELS,
+  allViews,
+  findView,
+  viewsOf,
+  viewName,
+  viewComponents,
+  viewsWith,
+  remapViewPaths,
+} from "./views";
+export type { ViewRef } from "./views";
 export {
   sequenceRows,
   sequenceMessages,
@@ -100,6 +112,21 @@ export {
   removeBranch,
   unwrapFragment,
   stepsFromConnections,
+  addView,
+  removeView,
+  setViewMeta,
+  addFlowNode,
+  setFlowNode,
+  addState,
+  setState,
+  removeGraphNode,
+  addGraphEdgeTo,
+  setGraphEdge,
+  removeGraphEdge,
+  addEntity,
+  setEntity,
+  setEntityFields,
+  removeEntity,
 } from "./transform";
 export type {
   AddComponentOptions,
@@ -113,6 +140,12 @@ export type {
   AddSequenceOptions,
   SequenceMeta,
   MessageMeta,
+  AddViewOptions,
+  ViewMeta,
+  FlowNodeOptions,
+  FlowNodeMeta,
+  StateOptions,
+  StateMeta,
 } from "./transform";
 export {
   diffDocs,
@@ -126,7 +159,7 @@ export type {
   ComponentChange,
   PlaneChange,
   ConnectionChange,
-  SequenceChange,
+  ViewChange,
   DocDiff,
   DiffSummary,
 } from "./diff";

@@ -301,6 +301,34 @@ The full language specification is at the end of this guide. Key habits:
   \`->\` is a call, \`-->\` its reply, \`~>\` an async call. Group steps with
   \`alt "…" { } else "…" { }\`, \`opt\`, \`loop\` and \`par\`, and annotate with
   \`note over a, b "…"\`. Keep one scenario per sequence, under ~20 steps.
+- **Other views, when they carry real detail.** A \`flow\` is an activity
+  diagram (\`start\`/\`step\`/\`decision\`/\`end\` nodes \`in\` the component
+  that does them, joined by \`a -> b : "label"\`); a \`states\` block is a
+  component's state machine (\`state x initial\`, \`state y final\`,
+  \`x -> y : "event"\`); an \`entities\` block is a store's data model
+  (\`entity link { id uuid pk; slug text unique; owner_id uuid -> user.id }\`,
+  one field per line). All views share one id namespace, name components
+  by path, and hold no layout:
+
+      states order_status "Order status" of orders.db {
+        state placed initial
+        state paid
+        state shipped final
+        placed -> paid : "payment captured"
+        paid -> shipped : "label printed"
+      }
+
+      entities orders_schema "Orders" on orders.db {
+        entity order {
+          id uuid pk
+          customer_id uuid -> customer.id
+          total_cents int
+        }
+        entity customer {
+          id uuid pk
+          email text unique
+        }
+      }
 - **Use \`desc\` on every non-obvious component** — it is what humans read in
   the detail panel and what agents rely on when implementing.
 - **Add \`src\` when you know where a component lives in code** — it is how
@@ -427,10 +455,11 @@ The full language specification is at the end of this guide. Key habits:
 | Code | Meaning | Fix |
 | ---- | ------- | --- |
 | E001 | Syntax error | Follow the message; check fences and quotes |
-| E002 | Duplicate id in one scope (components and planes share ids), or two sequences with one id | Rename one of them |
+| E002 | Duplicate id in one scope (components and planes share ids), two views with one id, or a duplicate inside a view | Rename one of them |
 | E003 | Duplicate payload name on one component or connection | Rename one payload |
 | E004 | More than one \`shape\`, \`icon\` or \`color\` on a component | Keep one |
-| E101 | Connection endpoint or sequence participant doesn't resolve, or is a plane | Declare the component, fix the path, or use a component on the plane |
+| E101 | Connection endpoint, sequence participant, lane, \`of\` or \`on\` doesn't resolve, or is a plane | Declare the component, fix the path, or use a component on the plane |
+| E102 | A flow edge, transition or entity reference names something that isn't in its view | Declare the node, state, entity or field, or fix the id |
 | E201 | json/yaml/table payload doesn't parse | Fix the payload content |
 | W301 | Unknown type tag (warning) | Optional: use a catalog tag or create a custom type |
 | W302 | Duplicate connection (warning) | Optional: remove one |
@@ -439,6 +468,7 @@ The full language specification is at the end of this guide. Key habits:
 | W305 | Unknown icon (warning) | Optional: use an icon \`list_types\` lists |
 | W306 | Unknown color (warning) | Optional: use a color \`list_types\` lists, or \`"#rrggbb"\` |
 | W307 | A call in a sequence has no connection to travel on (warning) | Add the connection (\`a -> b\`), or fix the step |
+| W308 | A state machine has no initial state (warning) | Mark one: \`state x initial\` |
 
 ## Capability map (vs. the human app)
 

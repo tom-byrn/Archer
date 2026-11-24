@@ -41,6 +41,16 @@ const PREAMBLE = `# This is an Archer architecture document — a complete, mach
 #   \`note over a, b "…"\` is a remark. Calls travel on the connections above.
 #   Implement each sequence as written, and treat it as an end-to-end test
 #   scenario: it is behavior the system must have.
+# - \`flow <id> "Name" { ... }\` is an activity diagram: \`start\`, \`step\`,
+#   \`decision\` and \`end\` nodes, each \`in\` the component that does it, joined
+#   by \`a -> b : "label"\` (a decision's labels are its outcomes). Implement
+#   the process it describes.
+# - \`states <id> "Name" of <component> { ... }\` is a state machine: the
+#   \`state\`s that component moves through (one \`initial\`, any \`final\`) and
+#   \`a -> b : "event"\` transitions. Enforce exactly these transitions.
+# - \`entities <id> "Name" on <component> { ... }\` is a data model of that
+#   store: \`entity\` blocks of \`field type [pk] [unique] [optional]\`, with
+#   \`-> entity[.field]\` for a reference. Build the schema from it.
 # - The closing \`layout { ... }\` block is where each component and plane
 #   sits on the author's canvas: \`path: { at: [col, row], size: [w, h] }\` on
 #   an integer grid. The top level and the inside of each component are

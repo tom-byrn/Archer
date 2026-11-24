@@ -198,6 +198,106 @@ export interface SequenceNode {
   span: Span;
 }
 
+/* ------------------------------------------------------------ Flows (§6.2) */
+
+export type FlowNodeKind = "start" | "step" | "decision" | "end";
+export const FLOW_NODE_KINDS: readonly FlowNodeKind[] = ["start", "step", "decision", "end"];
+
+/** A node of an activity flow, in the lane of the component that does it (`in api`). */
+export interface FlowNodeDecl {
+  kind: "flow-node";
+  node: FlowNodeKind;
+  id: string;
+  name?: string;
+  lane?: string[];
+  span: Span;
+}
+
+/** `a -> b : "yes"`: control passes from one node to the next. */
+export interface FlowEdgeDecl {
+  kind: "flow-edge";
+  from: string;
+  to: string;
+  label?: string;
+  span: Span;
+}
+
+/** An activity diagram: the steps and decisions of a process, one lane per component. */
+export interface FlowNode {
+  kind: "flow";
+  id: string;
+  name?: string;
+  nodes: FlowNodeDecl[];
+  edges: FlowEdgeDecl[];
+  span: Span;
+}
+
+/* ------------------------------------------------------- State machines (§6.3) */
+
+export interface StateDecl {
+  kind: "state";
+  id: string;
+  name?: string;
+  initial?: true;
+  final?: true;
+  span: Span;
+}
+
+/** `a -> b : "event"`: what moves the machine from one state to another. */
+export interface TransitionDecl {
+  kind: "transition";
+  from: string;
+  to: string;
+  label?: string;
+  span: Span;
+}
+
+/** The states one component (`of db`) moves through, and what moves it. */
+export interface MachineNode {
+  kind: "machine";
+  id: string;
+  name?: string;
+  of?: string[];
+  states: StateDecl[];
+  transitions: TransitionDecl[];
+  span: Span;
+}
+
+/* --------------------------------------------------------- Data models (§6.4) */
+
+export interface EntityField {
+  name: string;
+  /** As written: an identifier (`uuid`) or a quoted string (`"varchar(255)"`). */
+  type: string;
+  pk?: true;
+  unique?: true;
+  optional?: true;
+  /** `-> link` or `-> link.id`: a reference to another entity of the same model. */
+  ref?: { entity: string; field?: string };
+}
+
+export interface EntityDecl {
+  kind: "entity";
+  id: string;
+  name?: string;
+  fields: EntityField[];
+  span: Span;
+}
+
+/** The entities a store (`on db`) holds and how they relate. */
+export interface ModelNode {
+  kind: "model";
+  id: string;
+  name?: string;
+  on?: string[];
+  entities: EntityDecl[];
+  span: Span;
+}
+
+/** Every kind of view (diagram) a document can hold besides its architecture. */
+export type ViewKind = "sequence" | "flow" | "states" | "entities";
+export type ViewNode = SequenceNode | FlowNode | MachineNode | ModelNode;
+
 export interface ArchDoc {
   kind: "doc";
   title: string;
@@ -210,6 +310,12 @@ export interface ArchDoc {
   connections: ConnectionNode[];
   /** Sequences, in document order (the order the switcher lists them). */
   sequences: SequenceNode[];
+  /** Activity flows, in document order. */
+  flows: FlowNode[];
+  /** State machines (`states` blocks), in document order. */
+  machines: MachineNode[];
+  /** Data models (`entities` blocks), in document order. */
+  models: ModelNode[];
   layout: LayoutEntry[];
 }
 

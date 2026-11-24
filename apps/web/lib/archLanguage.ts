@@ -26,6 +26,9 @@ interface ArchState {
 const KEYWORDS = new Set([
   "arch", "component", "plane", "desc", "src", "shape", "icon", "color", "layout",
   "sequence", "alt", "opt", "loop", "par", "else", "note", "over",
+  "flow", "start", "step", "decision", "end", "in",
+  "states", "state", "initial", "final", "of",
+  "entities", "entity", "on", "pk", "unique", "optional",
 ]);
 const TYPE_RE = /^@[a-z][a-z0-9_]*(?:\.[a-z][a-z0-9_]*)*/;
 const ARROW_RE = /^(?:<->|-->|->|--|~>)/;

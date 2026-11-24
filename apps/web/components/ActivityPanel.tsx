@@ -141,8 +141,8 @@ function ChangeChips({ summary }: { summary: DiffSummary | null }) {
   const planes = summary.planesAdded + summary.planesRemoved + summary.planesChanged;
   if (planes > 0) chips.push(<Chip key="p">{planes} plane{planes === 1 ? "" : "s"}</Chip>);
   if (conn > 0) chips.push(<Chip key="n">{conn} conn</Chip>);
-  const seqs = (summary.sequencesAdded ?? 0) + (summary.sequencesRemoved ?? 0) + (summary.sequencesChanged ?? 0);
-  if (seqs > 0) chips.push(<Chip key="s">{seqs} sequence{seqs === 1 ? "" : "s"}</Chip>);
+  const views = (summary.viewsAdded ?? 0) + (summary.viewsRemoved ?? 0) + (summary.viewsChanged ?? 0);
+  if (views > 0) chips.push(<Chip key="v">{views} view{views === 1 ? "" : "s"}</Chip>);
   if (chips.length === 0) chips.push(<Chip key="0">No component changes</Chip>);
   return <span className="flex flex-wrap gap-1">{chips}</span>;
 }

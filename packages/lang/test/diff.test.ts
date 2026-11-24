@@ -101,9 +101,9 @@ backend.api -> backend.cache @redis`,
       planesAdded: 0,
       planesRemoved: 0,
       planesChanged: 0,
-      sequencesAdded: 0,
-      sequencesRemoved: 0,
-      sequencesChanged: 0,
+      viewsAdded: 0,
+      viewsRemoved: 0,
+      viewsChanged: 0,
     });
   });
 

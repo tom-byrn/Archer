@@ -168,6 +168,9 @@ const EMPTY_DOC = (like: ArchDoc): ArchDoc => ({
   planes: [],
   connections: [],
   sequences: [],
+  flows: [],
+  machines: [],
+  models: [],
   layout: [],
 });
 

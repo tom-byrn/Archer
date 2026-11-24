@@ -140,16 +140,16 @@ const describeSummary = (s: DiffSummary): string => {
   if (s.connectionsAdded) parts.push(`+${s.connectionsAdded} connection${s.connectionsAdded === 1 ? "" : "s"}`);
   if (s.connectionsRemoved) parts.push(`−${s.connectionsRemoved} connection${s.connectionsRemoved === 1 ? "" : "s"}`);
   if (s.connectionsChanged) parts.push(`~${s.connectionsChanged} connection${s.connectionsChanged === 1 ? "" : "s"} changed`);
-  if (s.sequencesAdded) parts.push(`+${s.sequencesAdded} sequence${s.sequencesAdded === 1 ? "" : "s"}`);
-  if (s.sequencesRemoved) parts.push(`−${s.sequencesRemoved} sequence${s.sequencesRemoved === 1 ? "" : "s"}`);
-  if (s.sequencesChanged) parts.push(`~${s.sequencesChanged} sequence${s.sequencesChanged === 1 ? "" : "s"} changed`);
+  if (s.viewsAdded) parts.push(`+${s.viewsAdded} view${s.viewsAdded === 1 ? "" : "s"}`);
+  if (s.viewsRemoved) parts.push(`−${s.viewsRemoved} view${s.viewsRemoved === 1 ? "" : "s"}`);
+  if (s.viewsChanged) parts.push(`~${s.viewsChanged} view${s.viewsChanged === 1 ? "" : "s"} changed`);
   return parts.length ? parts.join(", ") : "no architectural changes";
 };
 
 const revisionView = (r: RevisionRow, previous: ArchDoc | null) => {
   const doc = parse(r.source).doc;
   const summary = summarizeDiff(
-    diffDocs(previous ?? { kind: "doc", title: doc.title, version: doc.version, components: [], planes: [], connections: [], sequences: [], layout: [] }, doc),
+    diffDocs(previous ?? { kind: "doc", title: doc.title, version: doc.version, components: [], planes: [], connections: [], sequences: [], flows: [], machines: [], models: [], layout: [] }, doc),
   );
   return {
     revision_id: r._id,
