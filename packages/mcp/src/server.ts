@@ -140,6 +140,9 @@ const describeSummary = (s: DiffSummary): string => {
   if (s.connectionsAdded) parts.push(`+${s.connectionsAdded} connection${s.connectionsAdded === 1 ? "" : "s"}`);
   if (s.connectionsRemoved) parts.push(`−${s.connectionsRemoved} connection${s.connectionsRemoved === 1 ? "" : "s"}`);
   if (s.connectionsChanged) parts.push(`~${s.connectionsChanged} connection${s.connectionsChanged === 1 ? "" : "s"} changed`);
+  if (s.sequencesAdded) parts.push(`+${s.sequencesAdded} sequence${s.sequencesAdded === 1 ? "" : "s"}`);
+  if (s.sequencesRemoved) parts.push(`−${s.sequencesRemoved} sequence${s.sequencesRemoved === 1 ? "" : "s"}`);
+  if (s.sequencesChanged) parts.push(`~${s.sequencesChanged} sequence${s.sequencesChanged === 1 ? "" : "s"} changed`);
   return parts.length ? parts.join(", ") : "no architectural changes";
 };
 

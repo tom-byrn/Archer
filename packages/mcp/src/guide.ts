@@ -283,6 +283,24 @@ The full language specification is at the end of this guide. Key habits:
         \`\`\`
       }
 
+- **Write the important flows as sequences.** Connections say who talks
+  to whom; a \`sequence\` says in what order, for one scenario (sign-up,
+  checkout, a cache miss). Its participants are the components you
+  declared, and every call should travel on a connection (W307 warns
+  otherwise, so add the connection rather than leaving it out). The human
+  opens it as a sequence diagram and can play it back on the canvas;
+  agents read it as a test scenario:
+
+      sequence checkout "Check out" {
+        web -> orders.api @http : "POST /orders"
+        orders.api -> orders.db @sql : "INSERT order"
+        orders.api ~> order_events @queue : "order placed"
+        orders.api --> web : "201 Created"
+      }
+
+  \`->\` is a call, \`-->\` its reply, \`~>\` an async call. Group steps with
+  \`alt "…" { } else "…" { }\`, \`opt\`, \`loop\` and \`par\`, and annotate with
+  \`note over a, b "…"\`. Keep one scenario per sequence, under ~20 steps.
 - **Use \`desc\` on every non-obvious component** — it is what humans read in
   the detail panel and what agents rely on when implementing.
 - **Add \`src\` when you know where a component lives in code** — it is how
@@ -409,10 +427,10 @@ The full language specification is at the end of this guide. Key habits:
 | Code | Meaning | Fix |
 | ---- | ------- | --- |
 | E001 | Syntax error | Follow the message; check fences and quotes |
-| E002 | Duplicate id in one scope (components and planes share ids) | Rename one of them |
+| E002 | Duplicate id in one scope (components and planes share ids), or two sequences with one id | Rename one of them |
 | E003 | Duplicate payload name on one component or connection | Rename one payload |
 | E004 | More than one \`shape\`, \`icon\` or \`color\` on a component | Keep one |
-| E101 | Connection endpoint doesn't resolve, or is a plane | Declare the component, fix the path, or connect a component on the plane |
+| E101 | Connection endpoint or sequence participant doesn't resolve, or is a plane | Declare the component, fix the path, or use a component on the plane |
 | E201 | json/yaml/table payload doesn't parse | Fix the payload content |
 | W301 | Unknown type tag (warning) | Optional: use a catalog tag or create a custom type |
 | W302 | Duplicate connection (warning) | Optional: remove one |
@@ -420,6 +438,7 @@ The full language specification is at the end of this guide. Key habits:
 | W304 | Unknown shape (warning) | Optional: use one of the shapes the message lists |
 | W305 | Unknown icon (warning) | Optional: use an icon \`list_types\` lists |
 | W306 | Unknown color (warning) | Optional: use a color \`list_types\` lists, or \`"#rrggbb"\` |
+| W307 | A call in a sequence has no connection to travel on (warning) | Add the connection (\`a -> b\`), or fix the step |
 
 ## Capability map (vs. the human app)
 

@@ -330,6 +330,68 @@ orders.tracker -> orders.db @writes
 `,
   },
   {
+    slug: "sequences",
+    title: "Link Shortener",
+    summary:
+      "Connections say who talks to whom; a sequence says in what order, for one scenario. Its participants are the document's own components, so it can't drift from the architecture, and every call travels on a connection (W307 warns when one doesn't). `->` is a call, `-->` its reply and `~>` a message nobody waits on; `alt`/`else`, `opt`, `loop` and `par` group steps, and a note sits over the lifelines it names. The editor opens each sequence as a diagram and plays it back on the canvas.",
+    features: ["sequences", "messages", "fragments", "notes"],
+    source: `arch "Link Shortener" v0.2
+
+component browser "Browser" @browser {
+  shape browser
+}
+
+component app "Web App" @vercel.nextjs
+
+component api "API" @vercel.functions
+
+component db "Links" @postgres {
+  shape cylinder
+}
+
+component cache "Hot Links" @redis {
+  shape cylinder
+  color orange
+}
+
+component clicks "Click Events" @queue
+
+api -> cache @reads : "resolve"
+api -> clicks @queue : "clicked"
+api -> db @sql
+app -> api @http : "shorten"
+browser -> app @http
+
+sequence shorten "Shorten a link" {
+  browser -> app : "Paste long URL"
+  app -> api @http : "POST /links"
+  api -> cache : "GET slug"
+  cache --> api : "miss"
+  alt "slug is free" {
+    api -> db @sql : "INSERT link"
+    db --> api : "id"
+  } else "taken" {
+    api -> api : "pick another slug"
+  }
+  api --> app : "201 Created"
+  app --> browser : "Short link"
+}
+
+sequence resolve "Resolve a link" {
+  browser -> app : "GET /:slug"
+  app -> api @http : "resolve slug"
+  api -> cache : "GET slug"
+  opt "cache miss" {
+    api -> db @sql : "SELECT url"
+    api -> cache : "SET slug"
+  }
+  api ~> clicks @queue : "clicked"
+  api --> app : "url"
+  app --> browser : "302 redirect"
+}
+`,
+  },
+  {
     slug: "music-streaming",
     title: "Music Streaming",
     summary:

@@ -34,7 +34,7 @@ reading guide, as an implementation spec.
 
 ## 2. File structure
 
-An `.arch` file has up to four sections, in this order:
+An `.arch` file has up to five sections, in this order:
 
 ```
 arch "Title" v0.2          # 1. header (required)
@@ -44,7 +44,9 @@ plane ...
 
 a -> b ...                 # 3. connection declarations
 
-layout { ... }             # 4. presentation (machine-managed, optional)
+sequence ... { ... }       # 4. sequences: scenarios, step by step (§6.1)
+
+layout { ... }             # 5. presentation (machine-managed, optional)
 ```
 
 - Encoding is UTF-8. Comments run from `#` to end of line (outside strings and payload
@@ -445,9 +447,65 @@ Rules:
   nesting boundaries and between a parent and its own descendant. Planes don't affect
   them.
 - Canonical form sorts connections by source path, then target path — so compiled
-  output is deterministic and diffs are clean. Connections carry no sequence/ordering
-  semantics. A connection with payloads is written as a multi-line block separated from
+  output is deterministic and diffs are clean. Connections carry no ordering: the order
+  things happen in belongs to sequences (§6.1). A connection with payloads is written as a multi-line block separated from
   its neighbours by a blank line; the sort order is unaffected.
+
+### 6.1 Sequences
+
+Connections say who talks to whom. A **sequence** says in what order, for one scenario:
+the steps of a checkout, a sign-up, a cache miss. It is drawn as a sequence diagram (one
+lifeline per component, messages top to bottom) and can be played back on the canvas.
+
+````
+sequence shorten "Shorten a link" {
+  browser -> app : "Paste long URL"
+  app -> api @http : "POST /links"
+  api -> cache : "GET slug"
+  cache --> api : "miss"
+  alt "slug is free" {
+    api -> db @sql : "INSERT link"
+    db --> api : "id"
+  } else "taken" {
+    api -> api : "pick another slug"
+  }
+  note over api, db "Slugs are unique per workspace"
+  api --> app : "201 Created"
+  app --> browser : "Short link"
+}
+````
+
+- `sequence <id> ["Name"] { <steps> }`. Ids are snake_case and unique among the
+  document's sequences (`E002`); the name is what the editor shows.
+- Steps, in order:
+
+  | step                                   | meaning                                     |
+  | -------------------------------------- | ------------------------------------------- |
+  | `a -> b [@type] [: "label"]`           | a call: `a` sends, and waits for `b`        |
+  | `b --> a [@type] [: "label"]`          | a reply to an earlier call                  |
+  | `a ~> b [@type] [: "label"]`           | an async call: a message nobody waits on    |
+  | `alt "guard" { … } else "guard" { … }` | one of several branches runs                |
+  | `opt "guard" { … }`                    | runs only if the guard holds                |
+  | `loop "guard" { … }`                   | repeats                                     |
+  | `par { … } else { … }`                 | the branches run at the same time           |
+  | `note over a, b "text"`                | a remark across one or more lifelines       |
+
+  Guards are optional. Only `alt` and `par` take `else` branches.
+- **Participants are components.** Every path in a step resolves to a declared
+  component, like a connection's ends (`E101`); a plane never takes part. The lifelines
+  are the components in order of first appearance, drawn with their own type, shape,
+  icon and color.
+- **Calls travel on connections.** A call (or async call) from `a` to `b` should have a
+  connection that carries it: `a -> b`, or `a <-> b` / `a -- b` either way round. One
+  that doesn't is a warning (`W307`), so a sequence can't quietly add architecture the
+  diagram doesn't show. Replies travel back along the call's connection and a component
+  calling itself needs none, so neither is checked.
+- **Order is the meaning.** Canonical form keeps sequences in document order and their
+  steps exactly as written. Sequences have no layout: the diagram's spacing is computed.
+- Renaming, moving or removing a component on the canvas updates the sequences it takes
+  part in; a removed component's steps go with it.
+- `sequence`, `alt`, `opt`, `loop`, `par`, `else` and `note` are only keywords where a
+  step or a sequence can start, so they remain usable as component ids.
 
 ## 7. The `layout` block
 
@@ -488,10 +546,10 @@ A document is **valid** when:
 | code   | rule                                                             | severity |
 | ------ | ---------------------------------------------------------------- | -------- |
 | `E001` | file parses (header, declarations, fences)                       | error    |
-| `E002` | ids unique within their scope, components and planes together    | error    |
+| `E002` | ids unique within their scope, components and planes together; sequence ids unique | error    |
 | `E003` | payload names unique per component / per connection              | error    |
 | `E004` | at most one `shape`, one `icon` and one `color` per component    | error    |
-| `E101` | every connection endpoint resolves to a declared component       | error    |
+| `E101` | every connection endpoint and sequence participant resolves to a declared component | error    |
 | `E201` | `json` / `yaml` / `table` payloads parse in their format         | error    |
 | `W301` | type tag resolves in the catalog                                 | warning  |
 | `W302` | duplicate connection                                             | warning  |
@@ -499,6 +557,7 @@ A document is **valid** when:
 | `W304` | shape is one the language knows (§3.3)                           | warning (drawn as a box) |
 | `W305` | icon is one the tools know (§3.3)                                | warning (no icon drawn) |
 | `W306` | color is a palette name or `#rrggbb` (§3.3)                      | warning (type's color drawn) |
+| `W307` | every call in a sequence travels on a connection (§6.1)          | warning  |
 
 Errors block agent export ("copy as prompt") and mark the document invalid in the UI;
 the canvas still renders as much as it can. Warnings never block anything.
@@ -605,7 +664,7 @@ layout {
 ## 11. Grammar sketch (EBNF-ish)
 
 ```
-file        = header { declaration | connection } [ layout ] ;
+file        = header { declaration | connection | sequence } [ layout ] ;
 header      = "arch" string version ;
 declaration = component | plane ;
 component   = "component" id [ string ] [ type ] [ "{" { bodyitem } "}" ] ;
@@ -621,6 +680,13 @@ payload     = id format fence ;
 format      = "json" | "yaml" | "table" | "markdown" ;
 connection  = path arrow path [ type ] [ ":" string ] [ "{" { payload } "}" ] ;
 arrow       = "->" | "<->" | "--" ;
+sequence    = "sequence" id [ string ] "{" { step } "}" ;
+step        = message | fragment | note ;
+message     = path msgarrow path [ type ] [ ":" string ] ;
+msgarrow    = "->" | "-->" | "~>" ;
+fragment    = ( "alt" | "opt" | "loop" | "par" ) [ string ] "{" { step } "}"
+              { "else" [ string ] "{" { step } "}" } ;
+note        = "note" "over" path { "," path } ( string | tripleString ) ;
 type        = "@" id { "." id } ;
 path        = id { "." id } ;
 layout      = "layout" "{" { path ":" layoutval } "}" ;
