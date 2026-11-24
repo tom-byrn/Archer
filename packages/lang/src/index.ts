@@ -37,6 +37,8 @@ export {
   viewComponents,
   viewsWith,
   remapViewPaths,
+  placeableIds,
+  viewPositions,
 } from "./views";
 export type { ViewRef } from "./views";
 export {
@@ -127,6 +129,8 @@ export {
   setEntity,
   setEntityFields,
   removeEntity,
+  placeViewNode,
+  clearViewLayout,
 } from "./transform";
 export type {
   AddComponentOptions,

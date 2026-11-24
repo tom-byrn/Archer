@@ -81,6 +81,7 @@ export function parse(source: string): ParseResult {
     machines: [],
     models: [],
     layout: [],
+    viewLayout: [],
   };
 
   // --- header ---------------------------------------------------------------
@@ -717,6 +718,36 @@ export function parse(source: string): ParseResult {
     expect("lbrace", "'{' after 'layout'");
     while (!at("rbrace") && !at("eof")) {
       try {
+        // `view <id> { <node>: { at: [x, y] } … }`: placed nodes of a view.
+        if (at("ident", "view") && peek(1).type === "ident" && peek(2).type === "lbrace") {
+          next();
+          const view = next().value;
+          next(); // '{'
+          while (!at("rbrace") && !at("eof")) {
+            const nodeTok = expect("ident", "a node id");
+            expect("colon", "':' after the node id");
+            expect("lbrace", "'{'");
+            const key = expect("ident", "'at'");
+            if (key.value !== "at") fail(`A view's layout only takes 'at', not '${key.value}'.`, key.span);
+            expect("colon", "':'");
+            expect("lbracket", "'['");
+            const a = expect("number", "a number");
+            expect("comma", "','");
+            const b = expect("number", "a number");
+            expect("rbracket", "']'");
+            if (at("comma")) next();
+            expect("rbrace", "'}'");
+            doc.viewLayout.push({
+              kind: "view-layout",
+              view,
+              node: nodeTok.value,
+              at: [parseInt(a.value, 10), parseInt(b.value, 10)],
+              span: { start: nodeTok.span.start, end: lastEnd() },
+            });
+          }
+          expect("rbrace", "'}' closing the view's layout");
+          continue;
+        }
         const { path, span } = parsePath();
         expect("colon", "':' after layout path");
         expect("lbrace", "'{'");

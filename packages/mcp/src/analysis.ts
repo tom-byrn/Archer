@@ -136,7 +136,8 @@ function planesOf(doc: ArchDoc): Map<string, string> {
  * or plane that still exists and has no explicit entry in the new source keeps
  * its old position and size. An `at` is relative to the plane an item sits on,
  * so one that moved onto another plane (or off one) keeps only its size and is
- * placed afresh. Then auto-layout completes whatever is left.
+ * placed afresh. Placed view nodes carry over the same way. Then auto-layout
+ * completes whatever is left.
  */
 export function mergeLayout(previous: ArchDoc, next: ArchDoc): ArchDoc {
   const nextEntries = new Set(next.layout.map((e) => pathToString(e.path)));
@@ -150,7 +151,14 @@ export function mergeLayout(previous: ArchDoc, next: ArchDoc): ArchDoc {
       const { at: _moved, ...rest } = e;
       return rest;
     });
-  return autoLayout({ ...next, layout: [...next.layout, ...inherited] });
+  // Placed view nodes too: kept for any node the new source doesn't place itself.
+  const placed = new Set(next.viewLayout.map((e) => `${e.view} ${e.node}`));
+  const viewLayout = [
+    ...next.viewLayout,
+    ...normalizeLayout(previous).viewLayout.filter((e) => !placed.has(`${e.view} ${e.node}`)),
+  ];
+  const laid = autoLayout({ ...next, layout: [...next.layout, ...inherited], viewLayout });
+  return { ...laid, viewLayout: normalizeLayout(laid).viewLayout };
 }
 
 export type PreparedWrite =

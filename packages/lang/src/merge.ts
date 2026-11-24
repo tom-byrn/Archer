@@ -2,7 +2,7 @@ import { connectionKey, sameSources } from "./diff";
 import { PLANE_INNER_ORIGIN, canvasAt, layoutMap, planeChainOf } from "./layout";
 import { componentPaths, planePaths, scopeOf, type Scope } from "./scope";
 import { formatView } from "./format";
-import { remapViewPaths, viewsOf } from "./views";
+import { placeableIds, remapViewPaths, viewsOf } from "./views";
 import {
   pathToString,
   type ArchDoc,
@@ -417,6 +417,7 @@ export function mergeDocs(base: ArchDoc, ours: ArchDoc, theirs: ArchDoc): MergeR
     machines: mergeViews("states", base.machines, ours.machines, theirs.machines, conflicts),
     models: mergeViews("entities", base.models, ours.models, theirs.models, conflicts),
     layout: [],
+    viewLayout: [],
   };
   const paths = componentPaths(merged);
   // Like connections, views can't name a component the other side removed.
@@ -440,6 +441,8 @@ export function mergeDocs(base: ArchDoc, ours: ArchDoc, theirs: ArchDoc): MergeR
     },
   );
   merged.layout = carryLayout(ours, merged);
+  // Placed view nodes: ours, for what's still there.
+  merged.viewLayout = ours.viewLayout.filter((e) => placeableIds(merged, e.view).has(e.node)).map((e) => ({ ...e }));
 
   return { doc: merged, conflicts: conflicts.list() };
 }

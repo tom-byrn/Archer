@@ -598,8 +598,9 @@ entities schema "Links schema" on db {
 ### 6.5 Views in general
 
 Sequences, flows, state machines and data models are **views**: diagrams over the same
-document. They share one id namespace (\`E002\`), so a view's id alone names it. They hold
-no layout: their diagrams are arranged automatically. Canonical form keeps each kind in
+document. They share one id namespace (\`E002\`), so a view's id alone names it. Their
+diagrams are arranged automatically; nodes someone placed by hand keep their place in the
+\`layout\` block (§7). Canonical form keeps each kind in
 document order, sequences first, then flows, state machines and data models, with their
 contents as written. Renaming or moving a component on the canvas updates the views that
 name it; removing it drops a sequence's steps with it, takes a flow node out of its lane,
@@ -633,6 +634,21 @@ layout {
   computed position is then written back. A plane grows to hold what's on it.
 - Layout is always optional, never load-bearing: deleting the entire block yields the
   same architecture, auto-laid-out.
+- Views are laid out automatically, but a node of a flow, state machine or data model
+  that someone dragged keeps its place, in a group per view:
+
+  \`\`\`
+  layout {
+    api: { at: [6, 2], size: [4, 3] }
+    view lifecycle {
+      expired: { at: [20, 8] }
+    }
+  }
+  \`\`\`
+
+  \`at\` is in the view's own grid (40px cells, like the canvas). In a flow only the column
+  counts: a node's row is its lane. An entry for a node that isn't there is \`W303\` and is
+  dropped. Sequences have no placed nodes: their order is their layout.
 - Agent guidance (stated in docs and in the export header): read \`layout\` as the
   author's arrangement — context for how they see the system, never something to
   implement; leave it out when writing (surviving components keep their positions,
@@ -799,7 +815,7 @@ entity      = "entity" id [ string ] [ "{" { field } "}" ] ;
 field       = id ( id | string ) { "pk" | "unique" | "optional" } [ "->" id [ "." id ] ] ;
 type        = "@" id { "." id } ;
 path        = id { "." id } ;
-layout      = "layout" "{" { path ":" layoutval } "}" ;
+layout      = "layout" "{" { path ":" layoutval | "view" id "{" { id ":" layoutval } "}" } "}" ;
 \`\`\`
 
 ## 12. Open questions (deferred)

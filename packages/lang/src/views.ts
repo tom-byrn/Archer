@@ -78,6 +78,20 @@ export function viewsWith(doc: ArchDoc, path: readonly string[]): ViewRef[] {
   );
 }
 
+/** The ids a view's diagram can place: a flow's nodes, a machine's states, a model's entities. */
+export function placeableIds(doc: ArchDoc, viewId: string): Set<string> {
+  const v = findView(doc, viewId);
+  if (!v || v.kind === "sequence") return new Set();
+  if (v.kind === "flow") return new Set((v.node as FlowNode).nodes.map((n) => n.id));
+  if (v.kind === "states") return new Set((v.node as MachineNode).states.map((s) => s.id));
+  return new Set((v.node as ModelNode).entities.map((e) => e.id));
+}
+
+/** Placed positions for one view, by node id. */
+export function viewPositions(doc: ArchDoc, viewId: string): Map<string, [number, number]> {
+  return new Map(doc.viewLayout.filter((e) => e.view === viewId).map((e) => [e.node, e.at]));
+}
+
 /**
  * Rewrite every component path views name, in place (a rename, a move).
  * `remap` returns null for a component that's gone: a sequence drops its

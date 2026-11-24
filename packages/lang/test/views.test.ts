@@ -21,6 +21,8 @@ import {
   setViewMeta,
   validate,
   viewsWith,
+  placeViewNode,
+  clearViewLayout,
 } from "../src/index";
 
 const SRC = `arch "Link Shortener" v0.2
@@ -236,5 +238,46 @@ describe("views: diff and merge", () => {
     expect(format(m.doc)).toContain("entity owner");
     const both = mergeDocs(base, ours, setState(base, "lifecycle", "live", { name: "Theirs" }));
     expect(both.conflicts).toEqual([{ kind: "view", path: "lifecycle", reason: "changed on both sides" }]);
+  });
+});
+
+describe("views: placed nodes", () => {
+  const placed = `${SRC.trimEnd()}\n\nlayout {\n  view lifecycle {\n    live: { at: [6, 1] }\n    pending: { at: [1, 1] }\n  }\n  view schema {\n    link: { at: [0, 4] }\n  }\n}\n`;
+
+  it("parses and formats `view <id> { … }` groups in the layout block", () => {
+    const r = parse(placed);
+    expect(r.diagnostics).toEqual([]);
+    expect(r.doc.viewLayout.map((e) => `${e.view}.${e.node}@${e.at}`)).toEqual([
+      "lifecycle.live@6,1", "lifecycle.pending@1,1", "schema.link@0,4",
+    ]);
+    expect(format(r.doc)).toBe(placed);
+    expect(format(r.doc, { stripLayout: true })).not.toContain("view lifecycle");
+  });
+
+  it("W303 for a placed node that isn't there; normalizeLayout drops it", () => {
+    const d = parse(placed.replace("live: {", "ghost: {")).doc;
+    expect(validate(d).map((x) => x.code)).toEqual(["W303"]);
+  });
+
+  it("places, follows renames, and forgets with removals", () => {
+    let d = placeViewNode(doc(), "lifecycle", "live", [3, 2]);
+    d = setState(d, "lifecycle", "live", { id: "active" });
+    expect(d.viewLayout).toMatchObject([{ view: "lifecycle", node: "active", at: [3, 2] }]);
+    d = setViewMeta(d, "lifecycle", { id: "life" });
+    expect(d.viewLayout[0]!.view).toBe("life");
+    d = removeGraphNode(d, "life", "active");
+    expect(d.viewLayout).toEqual([]);
+    d = placeViewNode(placeViewNode(d, "schema", "link", [1, 1]), "schema", "click", [5, 1]);
+    d = removeEntity(d, "schema", "link");
+    expect(d.viewLayout.map((e) => e.node)).toEqual(["click"]);
+    expect(clearViewLayout(d, "schema").viewLayout).toEqual([]);
+    expect(() => placeViewNode(d, "schema", "ghost", [0, 0])).toThrow("No 'ghost'");
+  });
+
+  it("merge keeps our placed nodes for what still exists", () => {
+    const base = doc();
+    const ours = placeViewNode(base, "lifecycle", "live", [4, 0]);
+    const theirs = removeGraphNode(base, "lifecycle", "expired");
+    expect(mergeDocs(base, ours, theirs).doc.viewLayout.map((e) => e.node)).toEqual(["live"]);
   });
 });

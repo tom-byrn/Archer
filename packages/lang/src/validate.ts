@@ -9,7 +9,7 @@ import {
 import { SHAPES, isShape } from "./shapes";
 import { COLORS, isColor } from "./colors";
 import { messageConnection, sequenceRows } from "./sequence";
-import { VIEW_LABELS, allViews } from "./views";
+import { VIEW_LABELS, allViews, placeableIds } from "./views";
 import {
   pathToString,
   type ArchDoc,
@@ -405,6 +405,17 @@ export function validate(doc: ArchDoc, opts: ValidateOptions = {}): Diagnostic[]
     }
   }
 
+  // W303 for placed view nodes too.
+  for (const e of doc.viewLayout) {
+    if (placeableIds(doc, e.view).has(e.node)) continue;
+    diagnostics.push({
+      code: "W303",
+      severity: "warning",
+      message: `Layout entry for '${e.node}' in view '${e.view}' does not match a node of that view (it will be dropped).`,
+      span: e.span,
+    });
+  }
+
   return diagnostics;
 }
 
@@ -423,5 +434,7 @@ export function normalizeLayout(doc: ArchDoc): ArchDoc {
     const key = pathToString(entry.path);
     if (paths.has(key) || planes.has(key)) byPath.set(key, entry);
   }
-  return { ...doc, layout: [...byPath.values()] };
+  const byNode = new Map<string, (typeof doc.viewLayout)[number]>();
+  for (const e of doc.viewLayout) if (placeableIds(doc, e.view).has(e.node)) byNode.set(`${e.view} ${e.node}`, e);
+  return { ...doc, layout: [...byPath.values()], viewLayout: [...byNode.values()] };
 }

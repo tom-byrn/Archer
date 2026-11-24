@@ -15,6 +15,8 @@ import {
   COLOR_HEX,
   type ArchDoc,
   type DiffSummary,
+  allViews,
+  findView,
 } from "@archer/lang";
 import { CATALOG, CONNECTION_TYPES } from "@archer/catalog";
 import { ICON_GROUPS, isIcon } from "@archer/catalog/icons";
@@ -149,7 +151,7 @@ const describeSummary = (s: DiffSummary): string => {
 const revisionView = (r: RevisionRow, previous: ArchDoc | null) => {
   const doc = parse(r.source).doc;
   const summary = summarizeDiff(
-    diffDocs(previous ?? { kind: "doc", title: doc.title, version: doc.version, components: [], planes: [], connections: [], sequences: [], flows: [], machines: [], models: [], layout: [] }, doc),
+    diffDocs(previous ?? { kind: "doc", title: doc.title, version: doc.version, components: [], planes: [], connections: [], sequences: [], flows: [], machines: [], models: [], layout: [], viewLayout: [] }, doc),
   );
   return {
     revision_id: r._id,
@@ -215,7 +217,7 @@ export interface ArcherToolOptions {
    * lives in the web app (`lib/svg.ts`), which passes it in; without it
    * `render_project` answers with an error.
    */
-  renderSvg?: (source: string, theme: "light" | "dark") => string;
+  renderSvg?: (source: string, theme: "light" | "dark", view?: string) => string;
 }
 
 /**
@@ -673,17 +675,30 @@ export function registerArcherTools(server: McpServer, options: ArcherToolOption
     {
       title: "Render a project as SVG",
       description:
-        "Draw a stored project's canvas as an SVG image — the same picture as its share image: the top level with its planes, connections, icons and logos, where a component with components nested in it shows as one box with a count. Returns the SVG markup itself (not JSON), ready to save as a .svg file, embed in a README or docs, or inspect. Read-only: nothing is saved and the project doesn't need a share link. theme: light (default) or dark.",
+        "Draw a stored project's canvas as an SVG image — the same picture as its share image: the top level with its planes, connections, icons and logos, where a component with components nested in it shows as one box with a count. With `view`, draw one of its views instead: a sequence diagram, a flow (activity diagram), a state machine or a data model, by the view's id. Returns the SVG markup itself (not JSON), ready to save as a .svg file, embed in a README or docs, or inspect. Read-only: nothing is saved and the project doesn't need a share link. theme: light (default) or dark.",
       inputSchema: {
         project_id: z.string(),
         theme: z.enum(["light", "dark"]).optional().describe("Colors to draw in (default light)"),
+        view: z
+          .string()
+          .optional()
+          .describe("A view's id (a sequence, flow, states or entities block) to draw instead of the architecture"),
       },
     },
-    wrap(async ({ project_id, theme }) => {
+    wrap(async ({ project_id, theme, view }) => {
       if (!options.renderSvg) throw new Error("Rendering isn't available on this server.");
       const ws = await requireWorkspace();
       const doc = await requireProject(ws, project_id);
-      return text(options.renderSvg(doc.source, theme ?? "light"));
+      if (view !== undefined) {
+        const parsed = parse(doc.source).doc;
+        if (!findView(parsed, view)) {
+          const ids = allViews(parsed).map((v) => v.node.id);
+          throw new Error(
+            `No view '${view}' in this project. ${ids.length ? `Its views: ${ids.join(", ")}.` : "It has no views."}`,
+          );
+        }
+      }
+      return text(options.renderSvg(doc.source, theme ?? "light", view));
     }),
   );
 

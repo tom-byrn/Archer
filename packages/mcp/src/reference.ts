@@ -595,6 +595,7 @@ api -> db @sql
     notes: [
       "The SVG markup itself, ready to save as a `.svg` file or put in a README. It's the picture a public share link's `image.svg` shows, but the project needs no share link: any member of the workspace, viewers included, can render it.",
       "It draws the top level: planes as regions, components with their shapes, icons, logos and colors, and the connections between them. A component with components nested in it is one box with a count. `theme` is `light` (the default) or `dark`.",
+      "`view` draws one of the project's views instead, by id: a sequence as a sequence diagram, a flow with a lane per component, a state machine, or a data model's entity tables. An id that isn't a view is an error that lists the project's views.",
     ],
   },
   auto_layout_project: {

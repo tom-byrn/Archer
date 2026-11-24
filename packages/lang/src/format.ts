@@ -271,11 +271,20 @@ export function format(doc: ArchDoc, opts: FormatOptions = {}): string {
   for (const m of doc.machines) sections.push(formatMachine(m));
   for (const m of doc.models) sections.push(formatModel(m));
 
-  if (!opts.stripLayout && doc.layout.length > 0) {
+  if (!opts.stripLayout && (doc.layout.length > 0 || doc.viewLayout.length > 0)) {
     const sorted = [...doc.layout].sort((a, b) =>
       pathToString(a.path) < pathToString(b.path) ? -1 : 1,
     );
-    sections.push(`layout {\n${sorted.map(formatLayoutEntry).join("\n")}\n}`);
+    const lines = sorted.map(formatLayoutEntry);
+    // Placed view nodes: one group per view, by view id, nodes by id.
+    const views = [...new Set(doc.viewLayout.map((e) => e.view))].sort();
+    for (const v of views) {
+      const entries = doc.viewLayout.filter((e) => e.view === v).sort((a, b) => (a.node < b.node ? -1 : 1));
+      lines.push(
+        `${INDENT}view ${v} {\n${entries.map((e) => `${INDENT.repeat(2)}${e.node}: { at: [${e.at[0]}, ${e.at[1]}] }`).join("\n")}\n${INDENT}}`,
+      );
+    }
+    sections.push(`layout {\n${lines.join("\n")}\n}`);
   }
 
   return sections.join("\n\n") + "\n";

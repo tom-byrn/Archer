@@ -832,6 +832,7 @@ export function extractFragment(doc: ArchDoc, paths: Paths): ArchDoc {
     machines: [],
     models: [],
     layout: [],
+    viewLayout: [],
   };
   if (roots.length === 0) return out;
   const abs = roots.map((p) => canvasAt(laid, p, layout));
@@ -1211,6 +1212,7 @@ export function relayoutComponents(doc: ArchDoc, paths: Paths): ArchDoc {
       machines: [],
       models: [],
       layout: [],
+      viewLayout: [],
     });
     const subLayout = layoutMap(sub);
     const before = topLeft(chosen.map((x) => layout.get(pathToString([...g.scope, x.id]))?.at ?? [0, 0]));
@@ -1622,6 +1624,7 @@ export function removeView(doc: ArchDoc, id: string): ArchDoc {
   const next = clone(doc);
   const list = viewsOf(next, kind) as ViewNode[];
   list.splice(list.findIndex((v) => v.id === id), 1);
+  next.viewLayout = next.viewLayout.filter((e) => e.view !== id);
   return next;
 }
 
@@ -1640,6 +1643,7 @@ export function setViewMeta(doc: ArchDoc, id: string, meta: ViewMeta): ArchDoc {
     if (!NAME_RE.test(meta.id)) throw new Error(`Invalid id '${meta.id}' (need snake_case).`);
     if (findView(next, meta.id)) throw new Error(`Duplicate view id '${meta.id}'.`);
     node.id = meta.id;
+    for (const e of next.viewLayout) if (e.view === id) e.view = meta.id;
   }
   if (meta.name === null || meta.name === "") delete node.name;
   else if (meta.name !== undefined) node.name = meta.name;
@@ -1748,7 +1752,10 @@ export function setFlowNode(doc: ArchDoc, flowId: string, nodeId: string, meta: 
     checkComponent(next, meta.lane);
     n.lane = [...meta.lane];
   }
-  if (meta.id !== undefined) renameGraphNode(g, nodeId, meta.id);
+  if (meta.id !== undefined) {
+    renameGraphNode(g, nodeId, meta.id);
+    renamePlaced(next, flowId, nodeId, meta.id);
+  }
   return next;
 }
 
@@ -1796,7 +1803,10 @@ export function setState(doc: ArchDoc, machineId: string, stateId: string, meta:
     if (meta[flag]) st[flag] = true;
     else delete st[flag];
   }
-  if (meta.id !== undefined) renameGraphNode(g, stateId, meta.id);
+  if (meta.id !== undefined) {
+    renameGraphNode(g, stateId, meta.id);
+    renamePlaced(next, machineId, stateId, meta.id);
+  }
   return next;
 }
 
@@ -1809,6 +1819,7 @@ export function removeGraphNode(doc: ArchDoc, viewId: string, nodeId: string): A
   const i = g.nodes.findIndex((n) => n.id === nodeId);
   if (i < 0) throw new Error(`No ${g.what} '${nodeId}'.`);
   g.nodes.splice(i, 1);
+  next.viewLayout = next.viewLayout.filter((e) => !(e.view === viewId && e.node === nodeId));
   for (let k = g.edges.length - 1; k >= 0; k--)
     if (g.edges[k]!.from === nodeId || g.edges[k]!.to === nodeId) g.edges.splice(k, 1);
   return next;
@@ -1903,6 +1914,7 @@ export function setEntity(doc: ArchDoc, modelId: string, entityId: string, meta:
     if (m.entities.some((x) => x.id === meta.id)) throw new Error(`Duplicate entity id '${meta.id}'.`);
     e.id = meta.id;
     for (const x of m.entities) for (const f of x.fields) if (f.ref?.entity === entityId) f.ref.entity = meta.id;
+    renamePlaced(next, modelId, entityId, meta.id);
   }
   return next;
 }
@@ -1924,6 +1936,41 @@ export function removeEntity(doc: ArchDoc, modelId: string, entityId: string): A
   const i = m.entities.findIndex((x) => x.id === entityId);
   if (i < 0) throw new Error(`No entity '${entityId}'.`);
   m.entities.splice(i, 1);
+  next.viewLayout = next.viewLayout.filter((e) => !(e.view === modelId && e.node === entityId));
   for (const x of m.entities) for (const f of x.fields) if (f.ref?.entity === entityId) delete f.ref;
+  return next;
+}
+
+/* ---------------------------------------------------- Placing view nodes */
+
+function renamePlaced(doc: ArchDoc, viewId: string, from: string, to: string) {
+  for (const e of doc.viewLayout) if (e.view === viewId && e.node === from) e.node = to;
+}
+
+/**
+ * Place a node of a flow, state machine or data model at `at` (grid cells)
+ * in its view's diagram, or (null) hand it back to automatic layout.
+ */
+export function placeViewNode(doc: ArchDoc, viewId: string, nodeId: string, at: [number, number] | null): ArchDoc {
+  const v = viewIn(doc, viewId);
+  if (v.kind === "sequence") throw new Error("A sequence has no placed nodes: its order is its layout.");
+  const ids =
+    v.kind === "flow"
+      ? (v.node as ArchDoc["flows"][number]).nodes.map((n) => n.id)
+      : v.kind === "states"
+        ? (v.node as ArchDoc["machines"][number]).states.map((s) => s.id)
+        : (v.node as ArchDoc["models"][number]).entities.map((e) => e.id);
+  if (!ids.includes(nodeId)) throw new Error(`No '${nodeId}' in '${viewId}'.`);
+  const next = clone(doc);
+  next.viewLayout = next.viewLayout.filter((e) => !(e.view === viewId && e.node === nodeId));
+  if (at) next.viewLayout.push({ kind: "view-layout", view: viewId, node: nodeId, at: [Math.round(at[0]), Math.round(at[1])], span: ZERO_SPAN });
+  return next;
+}
+
+/** Forget every placed node of a view: its diagram is laid out automatically again. */
+export function clearViewLayout(doc: ArchDoc, viewId: string): ArchDoc {
+  viewIn(doc, viewId);
+  const next = clone(doc);
+  next.viewLayout = next.viewLayout.filter((e) => e.view !== viewId);
   return next;
 }

@@ -298,6 +298,21 @@ export interface ModelNode {
 export type ViewKind = "sequence" | "flow" | "states" | "entities";
 export type ViewNode = SequenceNode | FlowNode | MachineNode | ModelNode;
 
+/**
+ * Where a node of a flow, state machine or data model sits in its view's
+ * diagram, when someone placed it (`view <id> { <node>: { at: [x, y] } }` in
+ * the layout block). Presentation only, like component layout; in a flow
+ * only `x` counts, since a node's lane is its row.
+ */
+export interface ViewLayoutEntry {
+  kind: "view-layout";
+  view: string;
+  node: string;
+  /** Grid cells of the view's diagram (40px, like the canvas). */
+  at: [number, number];
+  span: Span;
+}
+
 export interface ArchDoc {
   kind: "doc";
   title: string;
@@ -317,6 +332,8 @@ export interface ArchDoc {
   /** Data models (`entities` blocks), in document order. */
   models: ModelNode[];
   layout: LayoutEntry[];
+  /** Placed nodes of views (machine-managed, like `layout`). */
+  viewLayout: ViewLayoutEntry[];
 }
 
 export type Severity = "error" | "warning";

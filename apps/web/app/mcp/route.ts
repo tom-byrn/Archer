@@ -4,6 +4,7 @@ import { verifyClerkToken } from "@clerk/mcp-tools/next";
 import { handleRemoteRequest } from "@archer/mcp/remote";
 import { LOGOS } from "@archer/catalog/logos";
 import { renderArchSvg } from "@/lib/svg";
+import { renderViewSvg } from "@/lib/viewSvg";
 import { recordToolCalls, toolCallsIn } from "@/lib/server/usage";
 import { audienceIncludes } from "@/lib/server/audience";
 
@@ -74,9 +75,9 @@ async function agentNameFor(clientId: string): Promise<string> {
   return clientNames.get(clientId) ?? "agent";
 }
 
-/** render_project draws what /share/<slug>/image.svg draws, logos included. */
-const renderSvg = (source: string, theme: "light" | "dark") =>
-  renderArchSvg(source, { theme, logos: LOGOS });
+/** render_project draws what /share/<slug>/image.svg draws, logos included; a view when asked. */
+const renderSvg = (source: string, theme: "light" | "dark", view?: string) =>
+  view !== undefined ? renderViewSvg(source, view, { theme, logos: LOGOS }) : renderArchSvg(source, { theme, logos: LOGOS });
 
 async function handle(req: Request): Promise<Response> {
   const header = req.headers.get("authorization") ?? "";
