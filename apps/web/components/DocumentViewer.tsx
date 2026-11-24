@@ -1,5 +1,9 @@
 "use client";
 
+import { allViews, findView, type SequenceNode } from "@archer/lang";
+import { SequenceDiagram } from "./SequenceDiagram";
+import { ViewCanvas } from "./ViewCanvas";
+import { ViewSwitcher, type EditorView } from "./ViewSwitcher";
 import { useCallback, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
@@ -72,6 +76,11 @@ function DocumentView({
   const derived = useMemo(() => deriveDoc(source), [source]);
   const [selected, setSelected] = useState<string | null>(null);
   const [focus, setFocus] = useState<string[]>([]);
+  /** The architecture, or one of the document's views (read-only, like the rest). */
+  const [view, setView] = useState<EditorView>({ kind: "architecture" });
+  const [viewSel, setViewSel] = useState<string | null>(null);
+  const openRef = view.kind === "architecture" ? undefined : findView(derived.doc, view.id);
+  const liveView: EditorView = openRef ? { kind: openRef.kind, id: openRef.node.id } : { kind: "architecture" };
   const [codeOpen, setCodeOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const exportRef = useRef<(() => void) | null>(null);
@@ -150,6 +159,19 @@ function DocumentView({
         </Link>
         <span className="mx-1 hidden h-4 w-px bg-line md:block" />
         <span className="max-w-[38vw] truncate px-1 text-base font-medium text-ink md:max-w-[320px]">{title}</span>
+        {allViews(derived.doc).length > 0 && (
+          <>
+            <Icon.ChevronRight className="hidden h-3 w-3 shrink-0 text-ink-3 md:block" />
+            <ViewSwitcher
+              view={liveView}
+              doc={derived.doc}
+              onChange={(v) => {
+                setView(v);
+                setViewSel(null);
+              }}
+            />
+          </>
+        )}
         <Chip className="ml-1">View only</Chip>
         {repo && (
           <a
@@ -229,6 +251,26 @@ function DocumentView({
           </div>
         )}
         <main className="relative flex min-w-0 flex-1 flex-col">
+          {openRef ? (
+            openRef.kind === "sequence" ? (
+              <div className="relative min-h-0 flex-1 overflow-auto bg-ground" style={{ backgroundImage: "radial-gradient(var(--dot) 1px, transparent 1px)", backgroundSize: "20px 20px" }}>
+                <div className="inline-block min-w-full px-10 pb-16 pt-8">
+                  <SequenceDiagram className="mx-auto" doc={derived.doc} sequence={openRef.node as SequenceNode} selected={viewSel} onSelect={setViewSel} />
+                </div>
+              </div>
+            ) : (
+              <ViewCanvas
+                key={openRef.node.id}
+                doc={derived.doc}
+                view={{ kind: openRef.kind, node: openRef.node } as Parameters<typeof ViewCanvas>[0]["view"]}
+                selected={viewSel}
+                onSelect={setViewSel}
+                mutateWith={() => undefined}
+                readOnly
+              />
+            )
+          ) : (
+          <>
           {liveFocus.length > 0 && (
             <nav className="flex h-8 shrink-0 items-center gap-0.5 overflow-x-auto whitespace-nowrap border-b border-line bg-surface px-2 text-sm">
               <button
@@ -286,8 +328,10 @@ function DocumentView({
               readOnly
             />
           </div>
+          </>
+          )}
         </main>
-        {node && selectedPath && (
+        {!openRef && node && selectedPath && (
           <Details
             doc={derived.doc}
             path={selectedPath}

@@ -1,5 +1,6 @@
 "use client";
 
+import { renderViewSvg } from "@/lib/viewSvg";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   EMPTY_PLANE_SIZE,
@@ -111,7 +112,7 @@ import { Palette } from "./Palette";
 import { SequenceNavContext, type SequenceNav } from "./InSequences";
 import { SequenceInspector } from "./SequenceInspector";
 import { SequenceView } from "./SequenceView";
-import { PlaybackBar } from "./PlaybackBar";
+import { FlowPlaybackBar, PlaybackBar } from "./PlaybackBar";
 import { NewViewDialog, VIEW_ICONS, ViewSwitcher, type EditorView, type NewViewRequest } from "./ViewSwitcher";
 import { ViewCanvas } from "./ViewCanvas";
 import { ViewInspector } from "./ViewInspector";
@@ -179,6 +180,7 @@ const EMPTY_DOC = (like: ArchDoc): ArchDoc => ({
   machines: [],
   models: [],
   layout: [],
+  viewLayout: [],
 });
 
 /**
@@ -381,6 +383,8 @@ function EditorView({ initialSource, library, session, tour }: EditorProps) {
   const [stepSel, setStepSel] = useState<string | null>(null);
   /** A sequence playing on the architecture: which, and the index of the message it's on. */
   const [playback, setPlayback] = useState<{ id: string; step: number; playing: boolean } | null>(null);
+  /** A flow playing on the architecture: the nodes stepped through so far. */
+  const [flowPlay, setFlowPlay] = useState<{ id: string; path: string[]; playing: boolean } | null>(null);
   /** "New view…" is open, starting on this kind. */
   const [newView, setNewView] = useState<ViewKind | null>(null);
   const [codeOpen, setCodeOpen] = useState(false);
@@ -445,20 +449,38 @@ function EditorView({ initialSource, library, session, tour }: EditorProps) {
   const liveView: EditorView = openRef ? { kind: openRef.kind, id: openRef.node.id } : { kind: "architecture" };
   const playing = playback ? derived.doc.sequences.find((q) => q.id === playback.id) : undefined;
   const playMessage = playing && playback ? sequenceMessages(playing)[playback.step] : undefined;
+  const playingFlow = flowPlay ? derived.doc.flows.find((f) => f.id === flowPlay.id) : undefined;
+  /** A flow's current node and the one before it: their lanes are what's lit. */
+  const flowLanes = useMemo(() => {
+    if (!playingFlow || !flowPlay) return null;
+    const laneOf = (id: string | undefined) => playingFlow.nodes.find((n) => n.id === id)?.lane;
+    return { now: laneOf(flowPlay.path[flowPlay.path.length - 1]), before: laneOf(flowPlay.path[flowPlay.path.length - 2]) };
+  }, [playingFlow, flowPlay]);
   /** The connection the message playback is on travels on: lit on the canvas. */
   const playEdge = useMemo(() => {
+    if (flowLanes) {
+      // Control crossing from one lane to another goes along their connection, if there is one.
+      const { now, before } = flowLanes;
+      if (!now || !before || now.join(".") === before.join(".")) return null;
+      const i = messageConnection(derived.doc.connections, { from: before, to: now, arrow: "->" });
+      return i >= 0 ? connectionKey(derived.doc.connections[i]!) : null;
+    }
     if (!playMessage) return null;
     const i = messageConnection(derived.doc.connections, playMessage.step);
     return i >= 0 ? connectionKey(derived.doc.connections[i]!) : null;
-  }, [playMessage, derived.doc.connections]);
+  }, [playMessage, flowLanes, derived.doc.connections]);
   /** While playing: the participants and everything they sit in, so the rest fades. */
   const playNodes = useMemo(() => {
-    if (!playing) return null;
+    const paths = flowLanes
+      ? [flowLanes.now, flowLanes.before].filter((p): p is string[] => p !== undefined)
+      : playing
+        ? sequenceParticipants(playing)
+        : null;
+    if (!paths) return null;
     const out = new Set<string>();
-    for (const p of sequenceParticipants(playing))
-      for (let i = 1; i <= p.length; i++) out.add(p.slice(0, i).join("."));
+    for (const p of paths) for (let i = 1; i <= p.length; i++) out.add(p.slice(0, i).join("."));
     return out;
-  }, [playing]);
+  }, [playing, flowLanes]);
   /** The open sequence's calls that no connection carries (W307), by address key. */
   const warnedSteps = useMemo(() => {
     const out = new Set<string>();
@@ -477,7 +499,25 @@ function EditorView({ initialSource, library, session, tour }: EditorProps) {
     setView(next);
     setStepSel(null);
     setPlayback(null);
+    setFlowPlay(null);
   }, []);
+  /** Play a flow on the architecture, from its start (or what nothing leads to). */
+  const playFlow = useCallback(
+    (id: string) => {
+      const flow = derived.doc.flows.find((f) => f.id === id);
+      if (!flow || flow.nodes.length === 0) return;
+      const first =
+        flow.nodes.find((n) => n.node === "start") ??
+        flow.nodes.find((n) => !flow.edges.some((e) => e.to === n.id)) ??
+        flow.nodes[0]!;
+      setView({ kind: "architecture" });
+      setFocus([]);
+      setStepSel(null);
+      setPlayback(null);
+      setFlowPlay({ id, path: [first.id], playing: true });
+    },
+    [derived.doc.flows],
+  );
   const sequenceNav: SequenceNav = useMemo(
     () => ({
       open: (id, step) => {
@@ -496,6 +536,7 @@ function EditorView({ initialSource, library, session, tour }: EditorProps) {
         setView({ kind: "architecture" });
         setFocus([]);
         setStepSel(null);
+        setFlowPlay(null);
         setPlayback({ id, step: i, playing: true });
       },
     }),
@@ -1192,6 +1233,7 @@ function EditorView({ initialSource, library, session, tour }: EditorProps) {
   const escape = () => {
     if (menu) setMenu(null);
     else if (playback) setPlayback(null);
+    else if (flowPlay) setFlowPlay(null);
     else if (liveView.kind !== "architecture") {
       if (stepSel !== null) setStepSel(null);
       else goToView({ kind: "architecture" });
@@ -1421,12 +1463,29 @@ function EditorView({ initialSource, library, session, tour }: EditorProps) {
       onSelect: () => copyDoc("code"),
     },
     "separator",
-    {
-      label: "Download PNG",
-      hint: "Current view, theme colors",
-      icon: <Icon.Download />,
-      onSelect: () => exportRef.current?.(),
-    },
+    openRef
+      ? {
+          label: "Download SVG",
+          hint: `${openRef.node.name ?? openRef.node.id}, theme colors`,
+          icon: <Icon.Download />,
+          onSelect: async () => {
+            // The logos chunk loads after first paint (components/logos.tsx); reuse it.
+            const { LOGOS } = await import("@archer/catalog/logos");
+            const svg = renderViewSvg(source, openRef.node.id, { theme: isDark ? "dark" : "light", logos: LOGOS });
+            const url = URL.createObjectURL(new Blob([svg], { type: "image/svg+xml" }));
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `${openRef.node.id}.svg`;
+            a.click();
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
+          },
+        }
+      : {
+          label: "Download PNG",
+          hint: "Current view, theme colors",
+          icon: <Icon.Download />,
+          onSelect: () => exportRef.current?.(),
+        },
   ];
   // ⌘K: everything the editor can do right now, above find and add.
   const single = liveSelection?.kind === "component" ? liveSelection.path : null;
@@ -1468,7 +1527,9 @@ function EditorView({ initialSource, library, session, tour }: EditorProps) {
           { id: `view:${v.node.id}`, label: `Open ${VIEW_LABELS[v.kind].one}: ${v.node.name ?? v.node.id}`, keywords: "view diagram sequence flow activity state machine data model entities", icon: <KindIcon />, run: () => goToView({ kind: v.kind, id: v.node.id }) },
           ...(v.kind === "sequence"
             ? [{ id: `play:${v.node.id}`, label: `Play ${v.node.name ?? v.node.id} on the architecture`, keywords: "sequence playback animate", icon: <Icon.Play />, run: () => sequenceNav.play(v.node.id) }]
-            : []),
+            : v.kind === "flow"
+              ? [{ id: `play:${v.node.id}`, label: `Play ${v.node.name ?? v.node.id} on the architecture`, keywords: "flow playback animate", icon: <Icon.Play />, run: () => playFlow(v.node.id) }]
+              : []),
         ];
       }),
     ...(liveView.kind !== "architecture"
@@ -1795,6 +1856,7 @@ function EditorView({ initialSource, library, session, tour }: EditorProps) {
               onSelect={setStepSel}
               mutateWith={mutateWith}
               readOnly={!editable}
+              onPlay={openGraph.kind === "flow" ? () => playFlow(openGraph.node.id) : undefined}
             />
           ) : (
           <>
@@ -1973,6 +2035,22 @@ function EditorView({ initialSource, library, session, tour }: EditorProps) {
               highlightedEdge={playEdge ?? spotlit}
               spotlightNodes={playNodes}
             />
+            {playingFlow && flowPlay && (
+              <FlowPlaybackBar
+                doc={derived.doc}
+                flow={playingFlow}
+                path={flowPlay.path}
+                playing={flowPlay.playing}
+                onPath={(path) => setFlowPlay((p) => (p ? { ...p, path } : p))}
+                onPlayingChange={(on) => setFlowPlay((p) => (p ? { ...p, playing: on } : p))}
+                onOpen={() => {
+                  const last = flowPlay.path[flowPlay.path.length - 1];
+                  goToView({ kind: "flow", id: playingFlow.id });
+                  if (last) setStepSel(`n:${last}`);
+                }}
+                onClose={() => setFlowPlay(null)}
+              />
+            )}
             {playing && playback && (
               <PlaybackBar
                 doc={derived.doc}
@@ -2070,6 +2148,7 @@ function EditorView({ initialSource, library, session, tour }: EditorProps) {
             documentId={stored.id}
             workspaceId={stored.workspaceId}
             publicSlug={stored.publicSlug}
+            view={openRef ? { id: openRef.node.id, name: openRef.node.name ?? openRef.node.id } : null}
           />
           <RepoDialog
             open={repoOpen}

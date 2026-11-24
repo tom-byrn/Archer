@@ -82,11 +82,20 @@ interface RankLayout {
  * Columns by rank, rows by lane (when given), and within a cell nodes stacked
  * in order of their predecessors' positions.
  */
+/** Grid cell of a view's placed positions (`at` in the layout block), as on the canvas. */
+export const VIEW_CELL = 40;
+
+/** Placed positions by node id, in grid cells. */
+export type Placed = ReadonlyMap<string, readonly [number, number]>;
+
 function rankLayout(
   nodes: RankNode[],
   edges: { from: string; to: string; label?: string }[],
   laneCount: number,
   left: number,
+  placed: Placed = new Map(),
+  /** A flow: only a placed node's column counts; its lane is its row. */
+  xOnly = false,
 ): RankLayout {
   // Wide enough that a forward edge's label fits on its last leg.
   const gap = Math.max(COL_GAP, ...edges.map((e) => (e.label ? textWidth(e.label) + 64 : 0)));
@@ -141,11 +150,21 @@ function rankLayout(
       top += n.h + ROW_GAP;
     }
   }
+  let width = Math.max(x - gap + MARGIN, left + 200);
+  let height = y + MARGIN + 40;
+  for (const [id, at] of placed) {
+    const b = boxes.get(id);
+    if (!b) continue;
+    b.x = Math.max(left, at[0] * VIEW_CELL);
+    if (!xOnly) b.y = Math.max(MARGIN, at[1] * VIEW_CELL);
+    width = Math.max(width, b.x + b.w + MARGIN);
+    if (!xOnly) height = Math.max(height, b.y + b.h + MARGIN + 40);
+  }
   return {
     boxes,
     lanes: laneY.map((ly, i) => ({ y: ly, h: laneH[i]! })),
-    width: Math.max(x - gap + MARGIN, left + 200),
-    height: y + MARGIN + 40,
+    width,
+    height,
   };
 }
 
@@ -244,7 +263,7 @@ export interface FlowLayout extends RankLayout {
   laneKeys: (string | null)[];
 }
 
-export function layoutFlow(flow: FlowNode): FlowLayout {
+export function layoutFlow(flow: FlowNode, placed?: Placed): FlowLayout {
   const laneKeys: (string | null)[] = [];
   for (const n of flow.nodes) {
     const k = n.lane ? pathToString(n.lane) : null;
@@ -256,17 +275,17 @@ export function layoutFlow(flow: FlowNode): FlowLayout {
     ...FLOW_SIZES[n.node](n.name ?? n.id),
     lane: laneKeys.indexOf(n.lane ? pathToString(n.lane) : null),
   }));
-  return { ...rankLayout(nodes, flow.edges, laneKeys.length, MARGIN + LANE_HEAD + 24), laneKeys };
+  return { ...rankLayout(nodes, flow.edges, laneKeys.length, MARGIN + LANE_HEAD + 24, placed, true), laneKeys };
 }
 
 /* ------------------------------------------------------- State machines */
 
 export const stateSize = (name: string) => ({ w: Math.max(112, Math.min(220, textWidth(name) + 40)), h: 40 });
 
-export function layoutMachine(m: MachineNode): RankLayout {
+export function layoutMachine(m: MachineNode, placed?: Placed): RankLayout {
   const nodes = m.states.map((s) => ({ id: s.id, ...stateSize(s.name ?? s.id) }));
   // The initial state goes first: its marker sits left of it.
-  return rankLayout(nodes, m.transitions, 1, MARGIN + 44);
+  return rankLayout(nodes, m.transitions, 1, MARGIN + 44, placed);
 }
 
 /* ---------------------------------------------------------- Data models */
@@ -287,13 +306,13 @@ export interface ModelLayout extends RankLayout {
   refs: { entity: string; field: string; d: string; many: { x: number; y: number; dir: 1 | -1 }; one: { x: number; y: number; dir: 1 | -1 } }[];
 }
 
-export function layoutModel(m: ModelNode): ModelLayout {
+export function layoutModel(m: ModelNode, placed?: Placed): ModelLayout {
   const nodes = m.entities.map((e) => ({ id: e.id, ...entitySize(e) }));
   // Referenced entities go left of what refers to them.
   const edges = m.entities.flatMap((e) =>
     e.fields.filter((f) => f.ref && f.ref.entity !== e.id).map((f) => ({ from: f.ref!.entity, to: e.id })),
   );
-  const base = rankLayout(nodes, edges, 1, MARGIN);
+  const base = rankLayout(nodes, edges, 1, MARGIN, placed);
   const rowY = (box: Box, i: number) => box.y + ENTITY_HEAD + i * FIELD_ROW + FIELD_ROW / 2;
   const refs: ModelLayout["refs"] = [];
   let k = 0;

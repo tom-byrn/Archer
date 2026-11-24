@@ -231,8 +231,18 @@ Router + React Flow + Convex).
   step's connection lit through `highlightedEdge`, others faded through
   `spotlightNodes`). Flows, state machines, data models: `ViewCanvas` +
   `ViewDiagrams` (geometry `lib/graphLayout.ts`: rank columns, flow lanes,
-  right-angled routes) and `ViewInspector`. Views hold no layout: it's
-  computed. "In sequences" / "In views" in the inspector
+  right-angled routes) and `ViewInspector`. Views are laid out
+  automatically; a dragged node of a flow, state machine or data model is
+  kept in the layout block as `view <id> { <node>: { at: [x, y] } }`
+  (`ArchDoc.viewLayout`, transforms `placeViewNode`/`clearViewLayout`; in a
+  flow only x counts, and dropping a node in another lane changes its
+  `in`). Flows play on the canvas too (`FlowPlaybackBar`, lighting the lanes'
+  components and the connection between them); a state machine has a
+  simulator in its own view (`StateSimulatorBar`). Outside the editor, views
+  draw through `lib/viewSvg.ts` (`renderViewSvg`, same geometry):
+  `/share/<slug>/image.svg?view=<id>`, MCP `render_project` with `view`, and
+  the editor's Export → Download SVG; the share viewer
+  (`DocumentViewer`) has the view switcher, read-only. "In sequences" / "In views" in the inspector
   (`components/InSequences.tsx`) reach the editor through
   `SequenceNavContext`, so they only show inside the editor.
 - Admin dashboard: `/admin-dashboard` (linked from nowhere) is for one person,

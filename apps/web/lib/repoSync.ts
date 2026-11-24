@@ -60,7 +60,7 @@ export function conflictLine(c: MergeConflict): string {
 export function planSync({ base, draft, head }: { base: string | null; draft: string; head: string }): SyncPlan {
   if (sameArchitecture(head, draft)) return { action: "adopt" }; // e.g. our own pull request merged
   if (base !== null && sameArchitecture(head, base)) return { action: "adopt" }; // only formatting/comments changed
-  const baseDoc = base !== null ? parse(base).doc : { ...parse(draft).doc, components: [], planes: [], connections: [], sequences: [], flows: [], machines: [], models: [], layout: [] };
+  const baseDoc = base !== null ? parse(base).doc : { ...parse(draft).doc, components: [], planes: [], connections: [], sequences: [], flows: [], machines: [], models: [], layout: [], viewLayout: [] };
   const draftDoc = parse(draft).doc;
   if (base !== null && isEmptyDiff(diffDocs(baseDoc, draftDoc))) return { action: "fast-forward", source: head };
   const merged = mergeDocs(baseDoc, draftDoc, parse(head).doc);
@@ -85,7 +85,7 @@ export function resolveMerge({
 }): string {
   const draftDoc = parse(draft).doc;
   const headDoc = parse(head).doc;
-  const baseDoc = base !== null ? parse(base).doc : { ...draftDoc, components: [], planes: [], connections: [], sequences: [], flows: [], machines: [], models: [], layout: [] };
+  const baseDoc = base !== null ? parse(base).doc : { ...draftDoc, components: [], planes: [], connections: [], sequences: [], flows: [], machines: [], models: [], layout: [], viewLayout: [] };
   const merged = prefer === "draft" ? mergeDocs(baseDoc, draftDoc, headDoc) : mergeDocs(baseDoc, headDoc, draftDoc);
   return format(merged.doc);
 }

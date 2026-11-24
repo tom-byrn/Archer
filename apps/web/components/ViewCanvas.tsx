@@ -1,7 +1,13 @@
 "use client";
 
+import { useMemo, useState } from "react";
+import { StateSimulatorBar } from "./PlaybackBar";
 import {
   addEntity,
+  clearViewLayout,
+  placeViewNode,
+  setFlowNode,
+  viewPositions,
   addFlowNode,
   addState,
   componentPaths,
@@ -50,6 +56,10 @@ export function ViewCanvas({
   mutateWith,
   readOnly,
   defaultLane,
+  current,
+  overlay,
+  extraTools,
+  onPlay,
 }: {
   doc: ArchDoc;
   view: GraphView;
@@ -59,8 +69,40 @@ export function ViewCanvas({
   readOnly: boolean;
   /** Lane for a flow's first node: a selected component, or the first one. */
   defaultLane?: string[];
+  /** A node lit by playback or simulation. */
+  current?: string | null;
+  /** Drawn over the diagram's bottom edge instead of the toolbar (a playback bar). */
+  overlay?: React.ReactNode;
+  /** More toolbar buttons. */
+  extraTools?: React.ReactNode;
+  /** A flow: play it on the architecture. */
+  onPlay?: () => void;
 }) {
+  // A state machine's simulator: the states stepped through so far.
+  const [sim, setSim] = useState<string[] | null>(null);
+  const startSim = () => {
+    if (view.kind !== "states" || view.node.states.length === 0) return;
+    const first = view.node.states.find((s) => s.initial) ?? view.node.states[0]!;
+    setSim([first.id]);
+    onSelect(null);
+  };
+  const simBar =
+    sim && view.kind === "states" ? <StateSimulatorBar machine={view.node} path={sim} onPath={setSim} onClose={() => setSim(null)} /> : null;
+  const lit = current ?? (sim ? sim[sim.length - 1]! : null);
   const id = view.node.id;
+  const placed = useMemo(() => viewPositions(doc, id), [doc, id]);
+  const place = (node: string, at: [number, number], lane?: string | null) => {
+    mutateWith((d) => {
+      let next = placeViewNode(d, id, node, at);
+      if (view.kind === "flow" && lane !== undefined) {
+        const n = view.node.nodes.find((x) => x.id === node);
+        const now = n?.lane ? n.lane.join(".") : null;
+        if (now !== lane) next = setFlowNode(next, id, node, { lane: lane === null ? null : lane.split(".") });
+      }
+      return { doc: next, value: null };
+    });
+  };
+  const tidy = () => mutateWith((d) => ({ doc: clearViewLayout(d, id), value: null }));
   const selectedId = selected?.startsWith("n:") ? selected.slice(2) : undefined;
 
   const addNode = (node: FlowNodeKind) => {
@@ -126,22 +168,25 @@ export function ViewCanvas({
             }}
           >
             {view.kind === "flow" ? (
-              <FlowDiagram className="mx-auto" doc={doc} flow={view.node} selected={selected} onSelect={onSelect} />
+              <FlowDiagram className="mx-auto" doc={doc} flow={view.node} selected={selected} onSelect={onSelect} placed={placed} onPlace={readOnly ? undefined : place} current={lit} />
             ) : view.kind === "states" ? (
-              <StatesDiagram className="mx-auto" doc={doc} machine={view.node} selected={selected} onSelect={onSelect} />
+              <StatesDiagram className="mx-auto" doc={doc} machine={view.node} selected={selected} onSelect={onSelect} placed={placed} onPlace={readOnly ? undefined : place} current={lit} />
             ) : (
-              <ModelDiagram className="mx-auto" doc={doc} model={view.node} selected={selected} onSelect={onSelect} />
+              <ModelDiagram className="mx-auto" doc={doc} model={view.node} selected={selected} onSelect={onSelect} placed={placed} onPlace={readOnly ? undefined : place} current={lit} />
             )}
           </div>
         )}
       </div>
 
-      {!readOnly && !empty && (
+      {overlay ?? simBar}
+      {!overlay && !simBar && !empty && (!readOnly || view.kind === "states" || (view.kind === "flow" && onPlay)) && (
         <div
           role="toolbar"
           aria-label="Add to the view"
           className="absolute bottom-4 left-1/2 flex -translate-x-1/2 items-center gap-0.5 rounded-lg border border-line bg-surface p-1 shadow-md"
         >
+          {!readOnly && (
+            <>
           {view.kind === "flow" ? (
             <>
               <ToolButton onClick={() => addNode("step")} title="Add a step after the selected node">
@@ -167,6 +212,33 @@ export function ViewCanvas({
               <Icon.Plus className="h-3.5 w-3.5" /> Entity
             </ToolButton>
           )}
+          {placed.size > 0 && (
+            <>
+              <span className="mx-1 h-4 w-px bg-line" />
+              <ToolButton onClick={tidy} title="Forget where nodes were dragged: lay the view out automatically">
+                <Icon.Layout className="h-3.5 w-3.5" /> Tidy
+              </ToolButton>
+            </>
+          )}
+            </>
+          )}
+          {view.kind === "flow" && onPlay && (
+            <>
+              <span className="mx-1 h-4 w-px bg-line" />
+              <ToolButton onClick={onPlay} title="Play this flow on the architecture">
+                <Icon.Play className="h-3.5 w-3.5 text-accent" /> Play
+              </ToolButton>
+            </>
+          )}
+          {view.kind === "states" && (
+            <>
+              <span className="mx-1 h-4 w-px bg-line" />
+              <ToolButton onClick={startSim} title="Step through the machine's transitions">
+                <Icon.Play className="h-3.5 w-3.5 text-accent" /> Simulate
+              </ToolButton>
+            </>
+          )}
+          {extraTools}
         </div>
       )}
     </div>
