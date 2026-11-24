@@ -1,7 +1,8 @@
 /**
  * Pure SVG renderer for an Archer document — no React, no DOM. Powers the
  * public embed endpoint (`/share/<slug>/image.svg`) so a README can show a live
- * architecture diagram. Mirrors the canvas look in `components/nodes.tsx`:
+ * architecture diagram, and the mobile app's diagrams (`renderArch`, which
+ * also says where each box is). Mirrors the canvas look in `components/nodes.tsx`:
  * the document's top level, planes as regions, and each component as a box
  * (one with components nested in it says how many).
  */
@@ -17,6 +18,7 @@ import {
   shapeOf,
   type ArchDoc,
   type ComponentNode,
+  type ConnectionNode,
   type PlaneNode,
 } from "@archer/lang";
 import { GLYPHS, GLYPH_VIEWBOX, lookupType, type Logo } from "@archer/catalog";
@@ -50,6 +52,14 @@ export interface RenderOptions {
    * them every type draws its glyph, as on the landing page.
    */
   logos?: Readonly<Record<string, Logo>>;
+  /**
+   * Which connections get their label chip. Every one by default, as the
+   * share image draws them; the mobile canvas, like the editor's, shows only
+   * the selected component's.
+   */
+  labels?: (c: ConnectionNode) => boolean;
+  /** Connections drawn in the stronger edge color, as the canvas lights a selected component's. */
+  emphasize?: (c: ConnectionNode) => boolean;
 }
 
 interface Palette {
@@ -62,6 +72,7 @@ interface Palette {
   line: string;
   line2: string;
   edge: string;
+  edgeStrong: string;
   fallback: string;
 }
 
@@ -76,6 +87,7 @@ const LIGHT: Palette = {
   line: "#e7e3dc",
   line2: "#d2ccc3",
   edge: "#8a8479",
+  edgeStrong: "#4f4a43",
   fallback: "#64748b",
 };
 const DARK: Palette = {
@@ -88,6 +100,7 @@ const DARK: Palette = {
   line: "#26292d",
   line2: "#383c42",
   edge: "#7c8088",
+  edgeStrong: "#c6c9ce",
   fallback: "#94a3b8",
 };
 
@@ -225,7 +238,36 @@ const nestedBadge = (x: number, y: number, w: number, h: number, count: number, 
 const NO_INSET = { t: 0, r: 0, b: 0, l: 0 };
 const insets = (b: Box) => b.shape?.anchors ?? NO_INSET;
 
+/** Where a component or plane landed in a rendered diagram, in SVG pixels. */
+export interface RenderedBox {
+  /** Its path: the id of a top-level component or plane. */
+  path: string;
+  kind: "component" | "plane";
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+/** A rendered diagram with its size and where each box is drawn (for hit-testing taps). */
+export interface RenderedArch {
+  svg: string;
+  width: number;
+  height: number;
+  /** Planes and components in paint order (planes first). */
+  boxes: RenderedBox[];
+}
+
 export function renderArchSvg(source: string, opts: RenderOptions = {}): string {
+  return renderArch(source, opts).svg;
+}
+
+/**
+ * `renderArchSvg`, plus the diagram's size and the rectangle of every box, so
+ * a viewer that shows the image (the mobile app) can tell which component a
+ * tap landed on.
+ */
+export function renderArch(source: string, opts: RenderOptions = {}): RenderedArch {
   const dark = opts.theme === "dark";
   const P = dark ? DARK : LIGHT;
   const showTitle = opts.showTitle ?? true;
@@ -238,7 +280,7 @@ export function renderArchSvg(source: string, opts: RenderOptions = {}): string 
       throw new Error("parse error");
     doc = autoLayout(parsed.doc);
   } catch {
-    return invalidSvg(P, background);
+    return { svg: invalidSvg(P, background), width: 320, height: 80, boxes: [] };
   }
 
   const layout = layoutMap(doc);
@@ -280,7 +322,8 @@ export function renderArchSvg(source: string, opts: RenderOptions = {}): string 
   };
   walk(undefined, [0, 0], []);
 
-  if (boxes.length === 0) return emptySvg(P, doc.title, showTitle, background);
+  if (boxes.length === 0)
+    return { svg: emptySvg(P, doc.title, showTitle, background), width: 320, height: 120, boxes: [] };
 
   // Bounds → translate so the diagram starts at (PAD, PAD + title).
   const minX = Math.min(...boxes.map((b) => b.x));
@@ -359,8 +402,12 @@ export function renderArchSvg(source: string, opts: RenderOptions = {}): string 
     .filter((b) => !b.plane)
     .map((b) => ({ x: b.x + dx, y: b.y + dy, w: b.w, h: b.h }));
   const chipRects: { x: number; y: number; w: number; h: number }[] = [];
+  // Emphasized edges paint over the rest, as the canvas raises a selected component's.
+  const strongOut: string[] = [];
   let needEnd = false;
   let needStart = false;
+  let needEndStrong = false;
+  let needStartStrong = false;
   // Routed like the canvas (lib/edgeRoute.ts): bends go where the path clears
   // boxes and plane title bars, and around unrelated planes when possible.
   const obstaclesFor = (source: string, target: string): Obstacle[] => {
@@ -467,13 +514,16 @@ export function renderArchSvg(source: string, opts: RenderOptions = {}): string 
         ...(fanOut ? [far, bend, near] : fanIn ? [near, bend, far] : [bend, near, far]),
       );
     }
-    const markerEnd = c.arrow !== "--" ? ` marker-end="url(#arrow-end)"` : "";
-    const markerStart = c.arrow === "<->" ? ` marker-start="url(#arrow-start)"` : "";
-    if (c.arrow !== "--") needEnd = true;
-    if (c.arrow === "<->") needStart = true;
-    edgeOut.push(
-      `<path d="${d}" fill="none" stroke="${P.edge}" stroke-width="1.5"${markerEnd}${markerStart}/>`,
+    const strong = opts.emphasize?.(c) === true;
+    const suffix = strong ? "-strong" : "";
+    const markerEnd = c.arrow !== "--" ? ` marker-end="url(#arrow-end${suffix})"` : "";
+    const markerStart = c.arrow === "<->" ? ` marker-start="url(#arrow-start${suffix})"` : "";
+    if (c.arrow !== "--") (strong ? (needEndStrong = true) : (needEnd = true));
+    if (c.arrow === "<->") (strong ? (needStartStrong = true) : (needStart = true));
+    (strong ? strongOut : edgeOut).push(
+      `<path d="${d}" fill="none" stroke="${strong ? P.edgeStrong : P.edge}" stroke-width="1.5"${markerEnd}${markerStart}/>`,
     );
+    if (opts.labels && !opts.labels(c)) continue;
     const parts: string[] = [];
     if (c.type) parts.push(c.type);
     if (c.label) parts.push(c.label);
@@ -517,14 +567,16 @@ export function renderArchSvg(source: string, opts: RenderOptions = {}): string 
     }
   }
 
+  const endMarker = (id: string, color: string) =>
+    `<marker id="${id}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M1 1L9 5L1 9z" fill="${color}"/></marker>`;
+  const startMarker = (id: string, color: string) =>
+    `<marker id="${id}" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M9 1L1 5L9 9z" fill="${color}"/></marker>`;
   const defs =
     `<defs>` +
-    (needEnd
-      ? `<marker id="arrow-end" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M1 1L9 5L1 9z" fill="${P.edge}"/></marker>`
-      : "") +
-    (needStart
-      ? `<marker id="arrow-start" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M9 1L1 5L9 9z" fill="${P.edge}"/></marker>`
-      : "") +
+    (needEnd ? endMarker("arrow-end", P.edge) : "") +
+    (needStart ? startMarker("arrow-start", P.edge) : "") +
+    (needEndStrong ? endMarker("arrow-end-strong", P.edgeStrong) : "") +
+    (needStartStrong ? startMarker("arrow-start-strong", P.edgeStrong) : "") +
     `</defs>`;
 
   const title = showTitle
@@ -532,7 +584,7 @@ export function renderArchSvg(source: string, opts: RenderOptions = {}): string 
       `<text x="${width - PAD}" y="${PAD + 12}" text-anchor="end" font-family='${SANS}' font-size="11" font-weight="600" letter-spacing="0.04em" fill="${P.ink3}">ARCHER</text>`
     : "";
 
-  return (
+  const svg =
     `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" role="img" aria-label="${esc(doc.title)}">` +
     `<title>${esc(doc.title)}</title>` +
     defs +
@@ -540,9 +592,22 @@ export function renderArchSvg(source: string, opts: RenderOptions = {}): string 
     title +
     out.join("") +
     edgeOut.join("") +
+    strongOut.join("") +
     chipOut.join("") +
-    `</svg>`
-  );
+    `</svg>`;
+  return {
+    svg,
+    width,
+    height,
+    boxes: ordered.map((b) => ({
+      path: b.path,
+      kind: b.plane ? "plane" : "component",
+      x: b.x + dx,
+      y: b.y + dy,
+      w: b.w,
+      h: b.h,
+    })),
+  };
 }
 
 /**

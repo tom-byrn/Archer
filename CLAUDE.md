@@ -11,7 +11,8 @@ workspace/push/pull + `archer mcp`, a stdio relay; validates with
 tools, signed in with the same OAuth flow agents use; bundled with tsup,
 `docs/cli.md`),
 `apps/web` (Next.js 15 App
-Router + React Flow + Convex).
+Router + React Flow + Convex), `apps/mobile` (the Expo / React Native
+companion app, `docs/mobile.md`).
 
 - Run: `pnpm dev` from the repo root starts Convex and Next together
   (`apps/web` script `dev:all`). NEVER run `npx convex …` from the repo
@@ -261,6 +262,36 @@ Router + React Flow + Convex).
   and table payloads, read-only) renders through `components/Markdown.tsx`:
   marked's tokens straight to React, never an HTML string. React Flow chrome
   lives in `components/canvas.css`.
+- Mobile app (`apps/mobile`, `@archer/mobile`): Expo SDK 58 + expo-router on
+  the web's Clerk instance (GitHub through `useSSO`) and Convex deployment — no
+  backend of its own. Convex functions are typed from
+  `apps/web/convex/_generated/api` by a type-only import (`src/lib/convex.ts`;
+  at runtime `api` is `anyApi`). `@web/*` is an alias to `apps/web/lib/*`:
+  import only pure modules through it (no React DOM, Next, CodeMirror or
+  server code; that's why the tokenizer is `lib/archTokens.ts` and the setup
+  prompt `agentPrompt` lives in `lib/landingCopy.ts`). It is the web app on a
+  phone, 1:1: the dashboard is `app/page.tsx` (site shell, square cards), a
+  document is `DocumentViewer` / the editor's header (40px bar, canvas with
+  dot grid and bottom-left zoom controls, the inspector and history as bottom
+  sheets, the code popout), welcome is the landing, examples the docs page.
+  Port a web change to its counterpart rather than inventing mobile styling.
+  Diagrams are the share image: `renderArch` in `lib/svg.ts` (`renderArchSvg`
+  plus box rectangles for tap hit-testing; `labels`/`emphasize` light the
+  selected component's connections, as the canvas does), drawn by
+  react-native-svg after `src/lib/nativeSvg.ts` adapts it — change how
+  diagrams look in `lib/svg.ts`. They draw logos, except the welcome screen's
+  (glyphs, like the landing page). Every document screen reads `useDoc()`
+  (stored, share-link and example providers in `src/lib/doc.tsx`, picked per
+  route in `src/screens/sources.tsx`). Tokens (`src/lib/tokens.ts`) are the
+  `globals.css` values as literals, type is Inter / Playfair Display /
+  Newsreader (`src/lib/fonts.ts`; the family carries the weight), and
+  controls come from `src/components/ui.tsx` (the web's Button, IconButton,
+  Chip, Section, ReadRow, Segmented, Menu, Dialog, BottomPanel at the web's
+  sizes); UI icons are Phosphor bold behind `src/components/Icon.tsx`, under
+  the web's names. Without `EXPO_PUBLIC_CONVEX_URL` and
+  `EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY` it runs examples-only. Checks:
+  `pnpm --filter @archer/mobile typecheck`, `test`, `export:ios`,
+  `export:android` (Metro bundles).
 - Language/product specs live in `docs/`; keep `docs/language-spec.md` in
   sync with its copies (`packages/mcp/src/languageSpec.ts`,
   `apps/web/lib/languageSpec.ts`) when the grammar changes — tests fail until

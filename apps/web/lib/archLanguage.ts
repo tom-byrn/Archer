@@ -3,138 +3,19 @@
  * Archer diagnostics and the spans of components and planes onto editor
  * positions.
  *
- * The tokenizer is shared with `lib/highlightArch.ts` (static code blocks).
+ * The tokenizer lives in `lib/archTokens.ts`, shared with
+ * `lib/highlightArch.ts` (static code blocks).
  */
 
-import {
-  StreamLanguage,
-  LanguageSupport,
-  type StreamParser,
-  type StringStream,
-} from "@codemirror/language";
+import { StreamLanguage, LanguageSupport, type StreamParser } from "@codemirror/language";
 import type { Diagnostic as CmDiagnostic } from "@codemirror/lint";
 import type { Text } from "@codemirror/state";
 import { findItem, type ArchDoc, type Diagnostic, type ItemNode, type Scope } from "@archer/lang";
+import { archTokenizer, type ArchState } from "./archTokens";
 
-interface ArchState {
-  /** Inside a backtick fence of this length (0 = not in a fence). */
-  fence: number;
-  /** Inside a `"""` multi-line string. */
-  triple: boolean;
-}
-
-const KEYWORDS = new Set(["arch", "component", "plane", "desc", "src", "shape", "icon", "color", "layout"]);
-const TYPE_RE = /^@[a-z][a-z0-9_]*(?:\.[a-z][a-z0-9_]*)*/;
-const ARROW_RE = /^(?:<->|->|--)/;
-const VERSION_RE = /^v\d+\.\d+\b/;
-const NUMBER_RE = /^-?\d+\b/;
-const WORD_RE = /^[A-Za-z_][A-Za-z0-9_]*/;
-
-function token(stream: StringStream, state: ArchState): string | null {
-  // Fenced payload body: everything is content until a closing run of equal or greater length.
-  if (state.fence > 0) {
-    if (stream.sol()) {
-      const m = stream.match(new RegExp(`^\\s*\`{${state.fence},}\\s*$`));
-      if (m) {
-        state.fence = 0;
-        return "meta";
-      }
-    }
-    stream.skipToEnd();
-    return "content";
-  }
-
-  if (state.triple) {
-    const rest = stream.string.slice(stream.pos);
-    const close = rest.indexOf('"""');
-    if (close >= 0) {
-      stream.pos += close + 3;
-      state.triple = false;
-    } else {
-      stream.skipToEnd();
-    }
-    return "string";
-  }
-
-  if (stream.eatSpace()) return null;
-
-  if (stream.peek() === "#") {
-    stream.skipToEnd();
-    return "comment";
-  }
-
-  if (stream.match('"""')) {
-    const rest = stream.string.slice(stream.pos);
-    const close = rest.indexOf('"""');
-    if (close >= 0) stream.pos += close + 3;
-    else {
-      stream.skipToEnd();
-      state.triple = true;
-    }
-    return "string";
-  }
-
-  if (stream.peek() === '"') {
-    stream.next();
-    let escaped = false;
-    while (!stream.eol()) {
-      const ch = stream.next();
-      if (escaped) escaped = false;
-      else if (ch === "\\") escaped = true;
-      else if (ch === '"') break;
-    }
-    return "string";
-  }
-
-  const fence = stream.match(/^`{3,}/) as RegExpMatchArray | null;
-  if (fence) {
-    // Opener. The rest of the line (content, and a same-line closer if any)
-    // is handled by `tokenWithInlineFence`.
-    state.fence = fence[0].length;
-    return "meta";
-  }
-
-  if (stream.match(TYPE_RE)) return "typeName";
-  if (stream.match(ARROW_RE)) return "operator";
-  if (stream.match(VERSION_RE)) return "string.special";
-  if (stream.match(NUMBER_RE)) return "number";
-
-  const word = stream.match(WORD_RE) as RegExpMatchArray | null;
-  if (word) return KEYWORDS.has(word[0]) ? "keyword" : null;
-
-  stream.next();
-  return null;
-}
-
-/**
- * Mid-line fence handling: after an opener, the remainder of that line is
- * content unless it holds a closer of equal or greater length.
- */
-function tokenWithInlineFence(stream: StringStream, state: ArchState): string | null {
-  if (state.fence > 0 && !stream.sol()) {
-    const rest = stream.string.slice(stream.pos);
-    const closeMatch = new RegExp(`\`{${state.fence},}`).exec(rest);
-    if (closeMatch) {
-      if (closeMatch.index === 0) {
-        stream.pos += closeMatch[0].length;
-        state.fence = 0;
-        return "meta";
-      }
-      stream.pos += closeMatch.index;
-      return "content";
-    }
-    stream.skipToEnd();
-    return "content";
-  }
-  return token(stream, state);
-}
-
-/** The tokenizer on its own, so static renderers (`lib/highlightArch.ts`) match the editor. */
 export const archStreamParser: StreamParser<ArchState> = {
   name: "arch",
-  startState: () => ({ fence: 0, triple: false }),
-  copyState: (s) => ({ ...s }),
-  token: tokenWithInlineFence,
+  ...archTokenizer,
   languageData: {
     commentTokens: { line: "#" },
     closeBrackets: { brackets: ["(", "[", "{", '"'] },

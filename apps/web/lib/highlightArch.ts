@@ -2,11 +2,11 @@
  * Static highlighting for `.arch` source: the editor's own tokenizer run line
  * by line, with the `tok-*` classes from globals.css standing in for the
  * editor's highlight style. For server-rendered code blocks (the docs
- * examples), where a CodeMirror instance would be overkill.
+ * examples), where a CodeMirror instance would be overkill, and the mobile
+ * app's code view, which maps the classes to its own colors. No CodeMirror.
  */
 
-import { StringStream } from "@codemirror/language";
-import { archStreamParser } from "./archLanguage";
+import { LineStream, archTokenizer } from "./archTokens";
 
 /** Token name → class; mirrors `archerHighlightStyle` in components/CodeMirror.tsx. */
 const CLASS: Record<string, string> = {
@@ -28,16 +28,16 @@ export interface HighlightToken {
 
 /** One array of tokens per line (no trailing newline). */
 export function highlightArch(source: string): HighlightToken[][] {
-  const state = archStreamParser.startState!(2);
+  const state = archTokenizer.startState();
   return source
     .replace(/\n$/, "")
     .split("\n")
     .map((line) => {
       const tokens: HighlightToken[] = [];
-      const stream = new StringStream(line, 2, 2);
+      const stream = new LineStream(line);
       while (!stream.eol()) {
         stream.start = stream.pos;
-        const style = archStreamParser.token(stream, state);
+        const style = archTokenizer.token(stream, state);
         if (stream.pos === stream.start) stream.pos++; // CodeMirror's own guard
         const text = line.slice(stream.start, stream.pos);
         const className = style ? CLASS[style] : undefined;
