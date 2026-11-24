@@ -149,11 +149,18 @@ export function describeChanges(s: DiffSummary): string {
     const n = s.connectionsAdded + s.connectionsRemoved + s.connectionsChanged;
     parts.push(`${n === 1 ? "connection" : "connections"} ${conns.join(", ")}`);
   }
+  // Summaries stored before sequences existed have no sequence counts.
+  if (s.sequencesAdded) parts.push(`${plural(s.sequencesAdded, "sequence")} added`);
+  if (s.sequencesRemoved) parts.push(`${plural(s.sequencesRemoved, "sequence")} removed`);
+  if (s.sequencesChanged) parts.push(`${plural(s.sequencesChanged, "sequence")} changed`);
   return parts.length ? parts.join(", ") : "no architectural changes";
 }
 
-/** Total number of changed components, planes and connections. */
+/** Total number of changed components, planes, connections and sequences. */
 export const changeCount = (s: DiffSummary): number =>
+  (s.sequencesAdded ?? 0) +
+  (s.sequencesRemoved ?? 0) +
+  (s.sequencesChanged ?? 0) +
   s.added +
   s.removed +
   s.changed +
@@ -211,6 +218,7 @@ export function publishBody(diff: DocDiff, editorUrl: string): string {
     const conn = c.connection;
     lines.push(`- \`${conn.source.join(".")} ${conn.arrow} ${conn.target.join(".")}\`: ${c.kind}`);
   }
+  for (const q of diff.sequences) lines.push(`- sequence \`${q.id}\`: ${q.kind}`);
   return [
     "Architecture changes published from Archer.",
     "",

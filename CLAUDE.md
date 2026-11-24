@@ -208,6 +208,25 @@ Router + React Flow + Convex).
   plane, not the reverse), so keep the two concepts apart. There is no
   support for older language versions: there are no users yet, so change the
   grammar freely.
+- Sequences (spec §6.1): `sequence <id> "Name" { … }` blocks after the
+  connections say in what order components exchange messages for one
+  scenario (`->` call, `-->` reply, `~>` async; `alt`/`else`, `opt`, `loop`,
+  `par`; `note over a, b "…"`). Participants are components (`E101`) and a
+  call should travel on a connection (`W307`). The AST is
+  `ArchDoc.sequences`; helpers (rows, numbering, participants, the
+  connection a message travels on) are `packages/lang/src/sequence.ts`, and
+  edits are transforms in `transform.ts` (steps addressed by index paths,
+  `[i, branch, j…]`). Any transform that changes component paths must call
+  `remapSequencePaths` beside its connection rewrite, or steps go stale.
+  Steps are never reordered by the formatter; merge takes a sequence whole by
+  id. In the editor a sequence is a *view*, not a tab: the header's
+  `ViewSwitcher` (after the title) moves between the architecture and each
+  sequence; `SequenceView` + `SequenceDiagram` draw it (geometry in
+  `lib/sequenceLayout.ts`, pure), `SequenceInspector` edits it, and
+  `PlaybackBar` plays it on the canvas (the step's connection lit through
+  `highlightedEdge`, non-participants faded through `spotlightNodes`).
+  "In sequences" in the inspector (`components/InSequences.tsx`) reaches the
+  editor through `SequenceNavContext`, so it only shows inside the editor.
 - Admin dashboard: `/admin-dashboard` (linked from nowhere) is for one person,
   hard-coded in `lib/admin.ts` (`isAdmin`: verified email
   tombyrne788@gmail.com or verified GitHub login tom-byrn — a code change, not

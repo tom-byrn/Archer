@@ -166,7 +166,7 @@ describe("publish text", () => {
   });
 
   it("describes summaries and conflicts in words", () => {
-    const none = { planesAdded: 0, planesRemoved: 0, planesChanged: 0 };
+    const none = { planesAdded: 0, planesRemoved: 0, planesChanged: 0, sequencesAdded: 0, sequencesRemoved: 0, sequencesChanged: 0 };
     expect(describeChanges({ added: 1, removed: 0, changed: 2, connectionsAdded: 1, connectionsRemoved: 0, connectionsChanged: 0, ...none })).toBe(
       "1 component added, 2 components changed, connection 1 added",
     );

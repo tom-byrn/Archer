@@ -81,6 +81,11 @@ import {
   WarningCircleIcon,
   WarningIcon,
   XIcon,
+  ArrowUpIcon,
+  FlowArrowIcon,
+  NoteIcon,
+  PauseIcon,
+  PlayIcon,
 } from "@phosphor-icons/react";
 
 export const cx = (...parts: Array<string | false | null | undefined>): string =>
@@ -949,6 +954,13 @@ export const Icon = {
   ArrowRight: (p: IconProps) => <ArrowRightIcon {...UI} {...p} />,
   ArrowLeft: (p: IconProps) => <ArrowLeftIcon {...UI} {...p} />,
   ArrowDown: (p: IconProps) => <ArrowDownIcon {...UI} {...p} />,
+  ArrowUp: (p: IconProps) => <ArrowUpIcon {...UI} {...p} />,
+  /** A sequence: a scenario's steps in order (the view switcher, "In sequences"). */
+  Sequence: (p: IconProps) => <FlowArrowIcon {...UI} {...p} />,
+  /** A note in a sequence. */
+  Note: (p: IconProps) => <NoteIcon {...UI} {...p} />,
+  Play: (p: IconProps) => <PlayIcon {...UI} weight="fill" {...p} />,
+  Pause: (p: IconProps) => <PauseIcon {...UI} weight="fill" {...p} />,
   Undo: (p: IconProps) => <ArrowUUpLeftIcon {...UI} {...p} />,
   Redo: (p: IconProps) => <ArrowUUpRightIcon {...UI} {...p} />,
   Layout: (p: IconProps) => <SquaresFourIcon {...UI} {...p} />,

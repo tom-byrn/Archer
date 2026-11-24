@@ -1442,6 +1442,41 @@ export function setFragmentMeta(
   return next;
 }
 
+/** Add an `else` branch to an alt or par fragment. Returns the fragment's address. */
+export function addBranch(doc: ArchDoc, id: string, address: StepAddress, guard?: string): ArchDoc {
+  const next = clone(doc);
+  const step = stepAt(sequenceIn(next, id), address);
+  if (step?.kind !== "fragment") throw new Error(`No fragment at [${address.join(", ")}].`);
+  if (step.fragment !== "alt" && step.fragment !== "par") throw new Error("Only alt and par take else branches.");
+  step.branches.push({ ...(guard !== undefined ? { guard } : {}), steps: [] });
+  return next;
+}
+
+/** Remove one branch of a fragment, with its steps; removing the last one removes the fragment. */
+export function removeBranch(doc: ArchDoc, id: string, address: StepAddress, branch: number): ArchDoc {
+  const next = clone(doc);
+  const step = stepAt(sequenceIn(next, id), address);
+  if (step?.kind !== "fragment") throw new Error(`No fragment at [${address.join(", ")}].`);
+  if (!step.branches[branch]) throw new Error(`No branch ${branch}.`);
+  if (step.branches.length === 1) return removeStep(doc, id, address);
+  step.branches.splice(branch, 1);
+  return next;
+}
+
+/**
+ * Take a fragment apart: its steps (every branch's, in order) take its place.
+ */
+export function unwrapFragment(doc: ArchDoc, id: string, address: StepAddress): ArchDoc {
+  const next = clone(doc);
+  const seq = sequenceIn(next, id);
+  const steps = listIn(seq, address.slice(0, -1));
+  const index = address[address.length - 1]!;
+  const step = steps[index];
+  if (step?.kind !== "fragment") throw new Error(`No fragment at [${address.join(", ")}].`);
+  steps.splice(index, 1, ...step.branches.flatMap((b) => b.steps));
+  return next;
+}
+
 /**
  * Move a step one place up or down. At the edge of a fragment's branch it
  * steps out of the fragment (above or below it); next to a fragment it

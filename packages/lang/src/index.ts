@@ -96,6 +96,9 @@ export {
   setFragmentMeta,
   moveStep,
   wrapInFragment,
+  addBranch,
+  removeBranch,
+  unwrapFragment,
   stepsFromConnections,
 } from "./transform";
 export type {

@@ -123,6 +123,12 @@ export interface ArchCanvasProps {
   selection?: CanvasSelection;
   /** Draw this connection (key) lit, as picked out elsewhere (the inspector's list). */
   highlightedEdge?: string | null;
+  /**
+   * Keep these nodes (and the planes and components they sit in) lit and
+   * fade the rest, while nothing is hovered: a sequence playing shows only
+   * its participants.
+   */
+  spotlightNodes?: ReadonlySet<string> | null;
   /** Pan and zoom to this node once it's on the canvas (bump `nonce` to repeat). */
   reveal?: { path: string; nonce: number } | null;
   /** The reveal happened; the caller clears it so a later remount doesn't repeat it. */
@@ -195,6 +201,7 @@ function CanvasInner({
   selectedPath,
   selection,
   highlightedEdge = null,
+  spotlightNodes = null,
   reveal,
   onRevealed,
   exportRef,
@@ -331,10 +338,14 @@ function CanvasInner({
   // Hover highlighting: the hovered node/edge and what it connects stay lit
   // (lit edges show their label chips); everything else fades.
   const lit = useMemo(() => {
-    if (hover === null || busy) return null;
+    if (busy) return null;
     const litNodes = new Set<string>();
     const litEdges = new Set<string>();
-    if (hover.kind === "node") {
+    if (hover === null) {
+      if (!spotlightNodes) return null;
+      for (const n of nodes) if (spotlightNodes.has(n.id)) litNodes.add(n.id);
+      for (const e of edges) if (litNodes.has(e.source) && litNodes.has(e.target)) litEdges.add(e.id);
+    } else if (hover.kind === "node") {
       litNodes.add(hover.id);
       for (const e of edges) {
         if (e.source === hover.id || e.target === hover.id) {
@@ -360,7 +371,7 @@ function CanvasInner({
       }
     }
     return { nodes: litNodes, edges: litEdges };
-  }, [hover, busy, nodes, edges]);
+  }, [hover, busy, nodes, edges, spotlightNodes]);
 
   // Resize handles go on the node when it's the only thing selected.
   const soleSelected =
