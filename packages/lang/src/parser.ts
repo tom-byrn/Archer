@@ -7,6 +7,21 @@ import {
   type ComponentNode,
   type ConnectionNode,
   type Diagnostic,
+  type FragmentKind,
+  type FragmentStep,
+  type MessageArrow,
+  type MessageStep,
+  type NoteStep,
+  type SequenceNode,
+  type StepNode,
+  FRAGMENT_KINDS,
+  FLOW_NODE_KINDS,
+  type EntityDecl,
+  type EntityField,
+  type FlowNode,
+  type FlowNodeKind,
+  type MachineNode,
+  type ModelNode,
   type LayoutEntry,
   type ParseResult,
   type PayloadFormat,
@@ -61,7 +76,12 @@ export function parse(source: string): ParseResult {
     components: [],
     planes: [],
     connections: [],
+    sequences: [],
+    flows: [],
+    machines: [],
+    models: [],
     layout: [],
+    viewLayout: [],
   };
 
   // --- header ---------------------------------------------------------------
@@ -310,6 +330,12 @@ export function parse(source: string): ParseResult {
   const parseConnection = (): ConnectionNode => {
     const src = parsePath();
     const arrowTok = expect("arrow", "an arrow (-> | <-> | --)");
+    if (arrowTok.value === "-->" || arrowTok.value === "~>") {
+      fail(
+        `'${arrowTok.value}' is a sequence arrow (a reply or an async call): connections use -> | <-> | --.`,
+        arrowTok.span,
+      );
+    }
     const tgt = parsePath();
     const node: ConnectionNode = {
       kind: "connection",
@@ -363,11 +389,365 @@ export function parse(source: string): ParseResult {
     return node;
   };
 
+  /**
+   * `sequence <id> <name> { … }` ahead. Checking for the id keeps `sequence`
+   * usable as a component id in connections.
+   */
+  const startsSequence = (): boolean => at("ident", "sequence") && peek(1).type === "ident";
+
+  /** A message ahead: a path, then an arrow. */
+  const startsMessage = (): boolean =>
+    at("ident") && (peek(1).type === "arrow" || peek(1).type === "dot");
+  const startsFragment = (): boolean =>
+    at("ident") &&
+    FRAGMENT_KINDS.includes(peek().value as FragmentKind) &&
+    (peek(1).type === "string" || peek(1).type === "lbrace");
+  const startsNote = (): boolean => at("ident", "note") && peek(1).type === "ident" && peek(1).value === "over";
+
+  const parseMessage = (): MessageStep => {
+    const from = parsePath();
+    const arrowTok = expect("arrow", "a message arrow (-> | --> | ~>)");
+    if (arrowTok.value !== "->" && arrowTok.value !== "-->" && arrowTok.value !== "~>") {
+      fail(
+        `'${arrowTok.value}' isn't a message arrow: use -> (a call), --> (a reply) or ~> (an async call).`,
+        arrowTok.span,
+      );
+    }
+    const to = parsePath();
+    const node: MessageStep = {
+      kind: "message",
+      from: from.path,
+      to: to.path,
+      arrow: arrowTok.value as MessageArrow,
+      span: { start: from.span.start, end: to.span.end },
+    };
+    if (at("at")) node.type = parseType();
+    if (at("colon")) {
+      next();
+      node.label = expect("string", "a quoted message label after ':'").value;
+    }
+    node.span = { start: from.span.start, end: lastEnd() };
+    return node;
+  };
+
+  const parseNote = (): NoteStep => {
+    const kw = next(); // 'note'
+    next(); // 'over'
+    const over = [parsePath().path];
+    while (at("comma")) {
+      next();
+      over.push(parsePath().path);
+    }
+    const t = peek();
+    if (t.type !== "string" && t.type !== "triple-string")
+      fail(`Expected the note's text (a quoted string), got ${describe(t)}.`, t.span);
+    const text = next().value;
+    return { kind: "note", over, text, span: { start: kw.span.start, end: lastEnd() } };
+  };
+
+  /**
+   * The '}' after a list of steps. When it's missing, parseSteps has already
+   * said so (or the file ended): leave what follows to the statement it starts.
+   */
+  const closeSteps = (what: string) => {
+    if (at("rbrace")) next();
+    else if (at("eof"))
+      diagnostics.push({ code: "E001", severity: "error", message: `Expected '}' closing the ${what}, got end of file.`, span: peek().span });
+  };
+
+  const parseBranch = (): StepNode[] => {
+    expect("lbrace", "'{'");
+    const steps = parseSteps();
+    closeSteps("fragment");
+    return steps;
+  };
+
+  const parseFragment = (): FragmentStep => {
+    const kw = next();
+    const fragment = kw.value as FragmentKind;
+    const guard = at("string") ? next().value : undefined;
+    const node: FragmentStep = {
+      kind: "fragment",
+      fragment,
+      branches: [{ ...(guard !== undefined ? { guard } : {}), steps: parseBranch() }],
+      span: kw.span,
+    };
+    while (at("ident", "else") && peek(1).type !== "arrow" && peek(1).type !== "dot") {
+      const elseTok = next();
+      if (fragment !== "alt" && fragment !== "par") {
+        diagnostics.push({
+          code: "E001",
+          severity: "error",
+          message: `Only 'alt' and 'par' take 'else' branches, not '${fragment}'.`,
+          span: elseTok.span,
+        });
+      }
+      const g = at("string") ? next().value : undefined;
+      node.branches.push({ ...(g !== undefined ? { guard: g } : {}), steps: parseBranch() });
+    }
+    node.span = { start: kw.span.start, end: lastEnd() };
+    return node;
+  };
+
+  /** Steps up to the closing '}' of a sequence or a branch (not consumed). */
+  const parseSteps = (): StepNode[] => {
+    const steps: StepNode[] = [];
+    while (!at("rbrace") && !at("eof")) {
+      // A top-level keyword means a body was never closed: leave it to the top level.
+      if (at("ident", "component") || at("ident", "layout") || startsPlane() || startsSequence() || startsView("flow") || startsView("states") || startsView("entities")) {
+        diagnostics.push({
+          code: "E001",
+          severity: "error",
+          message: `Expected '}' closing the sequence, got ${describe(peek())}.`,
+          span: peek().span,
+        });
+        return steps;
+      }
+      const start = i;
+      try {
+        if (startsMessage()) steps.push(parseMessage());
+        else if (startsFragment()) steps.push(parseFragment());
+        else if (startsNote()) steps.push(parseNote());
+        else
+          fail(
+            `Expected a message (a -> b), a fragment (alt, opt, loop, par) or a note inside a sequence, got ${describe(peek())}.`,
+            peek().span,
+          );
+      } catch (e) {
+        if (!(e instanceof ParseError)) throw e;
+        diagnostics.push(e.diagnostic);
+        if (i === start) next();
+        while (!at("eof") && !at("rbrace") && !startsMessage() && !startsFragment() && !startsNote()) next();
+      }
+    }
+    return steps;
+  };
+
+  const parseSequence = (): SequenceNode => {
+    const kw = next(); // 'sequence'
+    const idTok = expect("ident", "a sequence id");
+    const node: SequenceNode = { kind: "sequence", id: idTok.value, steps: [], span: kw.span };
+    if (at("string")) node.name = next().value;
+    expect("lbrace", "'{' opening the sequence");
+    node.steps = parseSteps();
+    closeSteps("sequence");
+    node.span = { start: kw.span.start, end: lastEnd() };
+    return node;
+  };
+
+  /** `<kw> <id>` ahead at the top level: a view, not a connection from a component called `<kw>`. */
+  const startsView = (kw: string): boolean => at("ident", kw) && peek(1).type === "ident";
+  /** The next token is on the same line as `tok`: a declaration's modifiers never wrap. */
+  const sameLine = (tok: Token): boolean => peek().type !== "eof" && peek().span.start.line === tok.span.start.line;
+
+  /** `{ … }` of a view: statements until '}', each parsed by `statement`, recovering per line. */
+  const parseViewBody = (what: string, statement: () => void) => {
+    expect("lbrace", `'{' opening the ${what}`);
+    while (!at("rbrace") && !at("eof")) {
+      if (at("ident", "component") || at("ident", "layout") || startsPlane() || startsSequence() || startsView("flow") || startsView("states") || startsView("entities")) {
+        diagnostics.push({
+          code: "E001",
+          severity: "error",
+          message: `Expected '}' closing the ${what}, got ${describe(peek())}.`,
+          span: peek().span,
+        });
+        return;
+      }
+      const start = i;
+      const line = peek().span.start.line;
+      try {
+        statement();
+      } catch (e) {
+        if (!(e instanceof ParseError)) throw e;
+        diagnostics.push(e.diagnostic);
+        if (i === start) next();
+        // Skip the rest of the line.
+        while (!at("eof") && !at("rbrace") && peek().span.start.line === line) next();
+      }
+    }
+    closeSteps(what);
+  };
+
+  /** A view's head: `<kw> <id> ["Name"] [<prep> <path>]`. */
+  const parseViewHead = (prep?: string) => {
+    const kw = next();
+    const idTok = expect("ident", `an id after '${kw.value}'`);
+    const head: { kw: Token; id: string; name?: string; subject?: string[] } = { kw, id: idTok.value };
+    if (at("string")) head.name = next().value;
+    if (prep && at("ident", prep) && peek(1).type === "ident" && sameLine(kw)) {
+      next();
+      head.subject = parsePath().path;
+    }
+    return head;
+  };
+
+  const parseEdge = (what: string): { from: string; to: string; label?: string; span: Span } => {
+    const from = expect("ident", `a ${what} id`);
+    const arrow = expect("arrow", "'->'");
+    if (arrow.value !== "->") fail(`Use '->' between ${what}s, not '${arrow.value}'.`, arrow.span);
+    const to = expect("ident", `a ${what} id after '->'`);
+    const edge: { from: string; to: string; label?: string; span: Span } = {
+      from: from.value,
+      to: to.value,
+      span: { start: from.span.start, end: to.span.end },
+    };
+    if (at("colon")) {
+      next();
+      edge.label = expect("string", "a quoted label after ':'").value;
+    }
+    edge.span = { start: from.span.start, end: lastEnd() };
+    return edge;
+  };
+
+  const parseFlow = (): FlowNode => {
+    const head = parseViewHead();
+    const node: FlowNode = {
+      kind: "flow",
+      id: head.id,
+      ...(head.name !== undefined ? { name: head.name } : {}),
+      nodes: [],
+      edges: [],
+      span: head.kw.span,
+    };
+    parseViewBody("flow", () => {
+      if (at("ident") && FLOW_NODE_KINDS.includes(peek().value as FlowNodeKind) && peek(1).type === "ident") {
+        const kw = next();
+        const id = expect("ident", `an id after '${kw.value}'`);
+        const n: FlowNode["nodes"][number] = { kind: "flow-node", node: kw.value as FlowNodeKind, id: id.value, span: kw.span };
+        if (at("string") && sameLine(kw)) n.name = next().value;
+        if (at("ident", "in") && peek(1).type === "ident" && sameLine(kw)) {
+          next();
+          n.lane = parsePath().path;
+        }
+        n.span = { start: kw.span.start, end: lastEnd() };
+        node.nodes.push(n);
+      } else if (at("ident") && peek(1).type === "arrow") {
+        node.edges.push({ kind: "flow-edge", ...parseEdge("node") });
+      } else {
+        fail(`Expected a node (start, step, decision, end) or an edge (a -> b) inside a flow, got ${describe(peek())}.`, peek().span);
+      }
+    });
+    node.span = { start: head.kw.span.start, end: lastEnd() };
+    return node;
+  };
+
+  const parseMachine = (): MachineNode => {
+    const head = parseViewHead("of");
+    const node: MachineNode = {
+      kind: "machine",
+      id: head.id,
+      ...(head.name !== undefined ? { name: head.name } : {}),
+      ...(head.subject ? { of: head.subject } : {}),
+      states: [],
+      transitions: [],
+      span: head.kw.span,
+    };
+    parseViewBody("states block", () => {
+      if (at("ident", "state") && peek(1).type === "ident") {
+        const kw = next();
+        const id = expect("ident", "a state id");
+        const st: MachineNode["states"][number] = { kind: "state", id: id.value, span: kw.span };
+        if (at("string") && sameLine(kw)) st.name = next().value;
+        while ((at("ident", "initial") || at("ident", "final")) && sameLine(kw)) {
+          if (next().value === "initial") st.initial = true;
+          else st.final = true;
+        }
+        st.span = { start: kw.span.start, end: lastEnd() };
+        node.states.push(st);
+      } else if (at("ident") && peek(1).type === "arrow") {
+        node.transitions.push({ kind: "transition", ...parseEdge("state") });
+      } else {
+        fail(`Expected a state (state <id>) or a transition (a -> b) inside a states block, got ${describe(peek())}.`, peek().span);
+      }
+    });
+    node.span = { start: head.kw.span.start, end: lastEnd() };
+    return node;
+  };
+
+  const MODIFIERS = new Set(["pk", "unique", "optional"]);
+
+  const parseField = (): EntityField => {
+    const nameTok = expect("ident", "a field name");
+    const t = peek();
+    if ((t.type !== "ident" && t.type !== "string") || !sameLine(nameTok))
+      fail(`Expected a type after field '${nameTok.value}' (e.g. ${nameTok.value} uuid), got ${describe(t)}.`, t.span);
+    const field: EntityField = { name: nameTok.value, type: next().value };
+    while (at("ident") && MODIFIERS.has(peek().value) && sameLine(nameTok)) {
+      const m = next().value as "pk" | "unique" | "optional";
+      field[m] = true;
+    }
+    if (at("arrow") && sameLine(nameTok)) {
+      const arrow = next();
+      if (arrow.value !== "->") fail(`A reference is written '-> entity' or '-> entity.field', not '${arrow.value}'.`, arrow.span);
+      const { path } = parsePath();
+      if (path.length > 2) fail("A reference names an entity, and optionally one of its fields: '-> link' or '-> link.id'.", arrow.span);
+      field.ref = { entity: path[0]!, ...(path[1] !== undefined ? { field: path[1] } : {}) };
+    }
+    return field;
+  };
+
+  const parseModel = (): ModelNode => {
+    const head = parseViewHead("on");
+    const node: ModelNode = {
+      kind: "model",
+      id: head.id,
+      ...(head.name !== undefined ? { name: head.name } : {}),
+      ...(head.subject ? { on: head.subject } : {}),
+      entities: [],
+      span: head.kw.span,
+    };
+    parseViewBody("entities block", () => {
+      if (at("ident", "entity") && peek(1).type === "ident") {
+        const kw = next();
+        const id = expect("ident", "an entity id");
+        const ent: EntityDecl = { kind: "entity", id: id.value, fields: [], span: kw.span };
+        if (at("string")) ent.name = next().value;
+        if (at("lbrace")) parseViewBody("entity", () => ent.fields.push(parseField()));
+        ent.span = { start: kw.span.start, end: lastEnd() };
+        node.entities.push(ent);
+      } else {
+        fail(`Expected an entity (entity <id> { … }) inside an entities block, got ${describe(peek())}.`, peek().span);
+      }
+    });
+    node.span = { start: head.kw.span.start, end: lastEnd() };
+    return node;
+  };
+
   const parseLayoutBlock = () => {
     next(); // 'layout'
     expect("lbrace", "'{' after 'layout'");
     while (!at("rbrace") && !at("eof")) {
       try {
+        // `view <id> { <node>: { at: [x, y] } … }`: placed nodes of a view.
+        if (at("ident", "view") && peek(1).type === "ident" && peek(2).type === "lbrace") {
+          next();
+          const view = next().value;
+          next(); // '{'
+          while (!at("rbrace") && !at("eof")) {
+            const nodeTok = expect("ident", "a node id");
+            expect("colon", "':' after the node id");
+            expect("lbrace", "'{'");
+            const key = expect("ident", "'at'");
+            if (key.value !== "at") fail(`A view's layout only takes 'at', not '${key.value}'.`, key.span);
+            expect("colon", "':'");
+            expect("lbracket", "'['");
+            const a = expect("number", "a number");
+            expect("comma", "','");
+            const b = expect("number", "a number");
+            expect("rbracket", "']'");
+            if (at("comma")) next();
+            expect("rbrace", "'}'");
+            doc.viewLayout.push({
+              kind: "view-layout",
+              view,
+              node: nodeTok.value,
+              at: [parseInt(a.value, 10), parseInt(b.value, 10)],
+              span: { start: nodeTok.span.start, end: lastEnd() },
+            });
+          }
+          expect("rbrace", "'}' closing the view's layout");
+          continue;
+        }
         const { path, span } = parsePath();
         expect("colon", "':' after layout path");
         expect("lbrace", "'{'");
@@ -428,13 +808,21 @@ export function parse(source: string): ParseResult {
         doc.components.push(parseComponent());
       } else if (startsPlane()) {
         parsePlane(top);
+      } else if (startsSequence()) {
+        doc.sequences.push(parseSequence());
+      } else if (startsView("flow")) {
+        doc.flows.push(parseFlow());
+      } else if (startsView("states")) {
+        doc.machines.push(parseMachine());
+      } else if (startsView("entities")) {
+        doc.models.push(parseModel());
       } else if (at("ident", "layout")) {
         parseLayoutBlock();
       } else if (at("ident")) {
         doc.connections.push(parseConnection());
       } else {
         fail(
-          `Expected 'component', 'plane', 'layout', or a connection, got ${describe(peek())}.`,
+          `Expected 'component', 'plane', 'sequence', 'flow', 'states', 'entities', 'layout', or a connection, got ${describe(peek())}.`,
           peek().span,
         );
       }

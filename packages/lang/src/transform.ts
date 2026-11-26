@@ -8,6 +8,17 @@ import {
   type PayloadFormat,
   type PayloadNode,
   type PlaneNode,
+  type FragmentKind,
+  type MessageArrow,
+  type MessageStep,
+  type SequenceNode,
+  type StepNode,
+  FRAGMENT_KINDS,
+  FLOW_NODE_KINDS,
+  type EntityField,
+  type FlowNodeKind,
+  type ViewKind,
+  type ViewNode,
 } from "./types";
 import {
   componentPaths,
@@ -32,6 +43,8 @@ import {
   planePathOf,
 } from "./layout";
 import { isColor } from "./colors";
+import { allViews, findView, remapViewPaths, viewsOf } from "./views";
+import { stepAt, stepList, type StepAddress, type StepSlot } from "./sequence";
 
 /**
  * Pure AST transforms — the single mutation path for every canvas edit.
@@ -227,6 +240,7 @@ function dropComponents(doc: ArchDoc, paths: readonly (readonly string[])[]): vo
   }
   const gone = (p: readonly string[]) => paths.some((d) => isUnder(p, d));
   doc.connections = doc.connections.filter((c) => !gone(c.source) && !gone(c.target));
+  remapViewPaths(doc, (p) => (gone(p) ? null : p));
   doc.layout = doc.layout.filter((e) => !gone(e.path));
 }
 
@@ -314,6 +328,7 @@ export function renameComponent(
     c.source = renamed(c.source);
     c.target = renamed(c.target);
   }
+  remapViewPaths(next, renamed);
   for (const e of next.layout) e.path = renamed(e.path);
   return next;
 }
@@ -685,6 +700,7 @@ export function reparentComponent(
     c.source = remap(c.source);
     c.target = remap(c.target);
   }
+  remapViewPaths(next, remap);
   for (const e of next.layout) e.path = remap(e.path);
   if (at !== undefined) return moveComponent(next, targetPath, at);
   // Position unknown: drop stale coords so auto-layout re-places it.
@@ -811,7 +827,12 @@ export function extractFragment(doc: ArchDoc, paths: Paths): ArchDoc {
     components: [],
     planes: [],
     connections: [],
+    sequences: [],
+    flows: [],
+    machines: [],
+    models: [],
     layout: [],
+    viewLayout: [],
   };
   if (roots.length === 0) return out;
   const abs = roots.map((p) => canvasAt(laid, p, layout));
@@ -1128,6 +1149,7 @@ export function componentToPlane(
     c.source = remapUnder(c.source, moves) ?? c.source;
     c.target = remapUnder(c.target, moves) ?? c.target;
   }
+  remapViewPaths(next, (p) => remapUnder(p, moves) ?? p);
   // Keep the box's size: auto-layout grows the plane around what's on it
   // and moves aside whatever it then covers.
   return { doc: autoLayout(next), path: [...scopePath, plane.id] };
@@ -1185,7 +1207,12 @@ export function relayoutComponents(doc: ArchDoc, paths: Paths): ArchDoc {
       connections: laid.connections
         .filter((c) => under(c.source) && under(c.target))
         .map((c) => ({ ...clone(c), source: strip(c.source), target: strip(c.target) })),
+      sequences: [],
+      flows: [],
+      machines: [],
+      models: [],
       layout: [],
+      viewLayout: [],
     });
     const subLayout = layoutMap(sub);
     const before = topLeft(chosen.map((x) => layout.get(pathToString([...g.scope, x.id]))?.at ?? [0, 0]));
@@ -1246,4 +1273,704 @@ export function duplicateComponents(
     [x - base[0]! + offset[0], y - base[1]! + offset[1]],
     under?.id,
   );
+}
+
+/* ------------------------------------------------------------ Sequences */
+
+const sequenceIn = (doc: ArchDoc, id: string): SequenceNode => {
+  const seq = doc.sequences.find((q) => q.id === id);
+  if (!seq) throw new Error(`No sequence '${id}'.`);
+  return seq;
+};
+
+const listIn = (seq: SequenceNode, list: StepAddress): StepNode[] => {
+  const steps = stepList(seq, list);
+  if (!steps) throw new Error(`No step list at [${list.join(", ")}] in sequence '${seq.id}'.`);
+  return steps;
+};
+
+/** A message's ends must be components: sequences, like connections, never auto-create one. */
+const checkMessage = (doc: ArchDoc, m: Pick<MessageStep, "from" | "to">): void => {
+  for (const p of [m.from, m.to]) {
+    const key = pathToString(p);
+    if (componentPaths(doc).has(key)) continue;
+    throw new Error(
+      planePaths(doc).has(key)
+        ? `'${key}' is a plane: only components take part in sequences.`
+        : `No component '${key}'.`,
+    );
+  }
+};
+
+const checkStep = (doc: ArchDoc, step: StepNode): void => {
+  if (step.kind === "message") checkMessage(doc, step);
+  else if (step.kind === "note") step.over.forEach((p) => checkMessage(doc, { from: p, to: p }));
+  else {
+    if (!FRAGMENT_KINDS.includes(step.fragment)) throw new Error(`Unknown fragment '${step.fragment}'.`);
+    if (step.branches.length === 0) throw new Error("A fragment needs at least one branch.");
+    if (step.branches.length > 1 && step.fragment !== "alt" && step.fragment !== "par")
+      throw new Error(`Only alt and par take else branches.`);
+    step.branches.forEach((b) => b.steps.forEach((x) => checkStep(doc, x)));
+  }
+};
+
+export interface AddSequenceOptions {
+  id?: string;
+  name?: string;
+  steps?: StepNode[];
+}
+
+/** Add a sequence at the end of the document's list. Returns its id. */
+export function addSequence(doc: ArchDoc, opts: AddSequenceOptions = {}): { doc: ArchDoc; id: string } {
+  const taken = new Set(allViews(doc).map((v) => v.node.id));
+  const id = opts.id ?? uniqueId(taken, opts.name ?? "sequence");
+  if (!NAME_RE.test(id)) throw new Error(`Invalid id '${id}' (need snake_case).`);
+  if (taken.has(id)) throw new Error(`Duplicate view id '${id}'.`);
+  const steps = structuredClone(opts.steps ?? []);
+  steps.forEach((x) => checkStep(doc, x));
+  const next = clone(doc);
+  next.sequences.push({
+    kind: "sequence",
+    id,
+    ...(opts.name !== undefined ? { name: opts.name } : {}),
+    steps,
+    span: ZERO_SPAN,
+  });
+  return { doc: next, id };
+}
+
+export function removeSequence(doc: ArchDoc, id: string): ArchDoc {
+  sequenceIn(doc, id);
+  const next = clone(doc);
+  next.sequences = next.sequences.filter((q) => q.id !== id);
+  return next;
+}
+
+export interface SequenceMeta {
+  /** A new id (snake_case, unique among sequences). */
+  id?: string;
+  /** null clears it (the id is shown instead). */
+  name?: string | null;
+}
+
+export function setSequenceMeta(doc: ArchDoc, id: string, meta: SequenceMeta): ArchDoc {
+  const next = clone(doc);
+  const seq = sequenceIn(next, id);
+  if (meta.id !== undefined && meta.id !== id) {
+    if (!NAME_RE.test(meta.id)) throw new Error(`Invalid id '${meta.id}' (need snake_case).`);
+    if (findView(next, meta.id)) throw new Error(`Duplicate view id '${meta.id}'.`);
+    seq.id = meta.id;
+  }
+  if (meta.name === null || meta.name === "") delete seq.name;
+  else if (meta.name !== undefined) seq.name = meta.name;
+  return next;
+}
+
+/** Insert a step (a message, a note or a fragment) at `slot`. Returns the new step's address. */
+export function insertStep(
+  doc: ArchDoc,
+  id: string,
+  slot: StepSlot,
+  step: StepNode,
+): { doc: ArchDoc; address: number[] } {
+  checkStep(doc, step);
+  const next = clone(doc);
+  const steps = listIn(sequenceIn(next, id), slot.list);
+  const index = Math.max(0, Math.min(slot.index, steps.length));
+  steps.splice(index, 0, { ...structuredClone(step), span: ZERO_SPAN });
+  return { doc: next, address: [...slot.list, index] };
+}
+
+export function removeStep(doc: ArchDoc, id: string, address: StepAddress): ArchDoc {
+  const next = clone(doc);
+  const seq = sequenceIn(next, id);
+  const steps = listIn(seq, address.slice(0, -1));
+  const index = address[address.length - 1]!;
+  if (!steps[index]) throw new Error(`No step at [${address.join(", ")}].`);
+  steps.splice(index, 1);
+  return next;
+}
+
+export interface MessageMeta {
+  from?: string[];
+  to?: string[];
+  arrow?: MessageArrow;
+  /** null clears it. */
+  type?: string | null;
+  label?: string | null;
+}
+
+export function setMessageMeta(doc: ArchDoc, id: string, address: StepAddress, meta: MessageMeta): ArchDoc {
+  const next = clone(doc);
+  const step = stepAt(sequenceIn(next, id), address);
+  if (step?.kind !== "message") throw new Error(`No message at [${address.join(", ")}].`);
+  if (meta.from !== undefined) step.from = [...meta.from];
+  if (meta.to !== undefined) step.to = [...meta.to];
+  checkMessage(next, step);
+  if (meta.arrow !== undefined) {
+    if (!["->", "-->", "~>"].includes(meta.arrow)) throw new Error(`Invalid message arrow '${meta.arrow}'.`);
+    step.arrow = meta.arrow;
+  }
+  for (const key of ["type", "label"] as const) {
+    const v = meta[key];
+    if (v === undefined) continue;
+    if (v === null || v === "") delete step[key];
+    else {
+      if (key === "type" && !/^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)*$/.test(v)) throw new Error(`Invalid type '${v}'.`);
+      step[key] = v;
+    }
+  }
+  return next;
+}
+
+export function setNoteText(doc: ArchDoc, id: string, address: StepAddress, text: string): ArchDoc {
+  const next = clone(doc);
+  const step = stepAt(sequenceIn(next, id), address);
+  if (step?.kind !== "note") throw new Error(`No note at [${address.join(", ")}].`);
+  step.text = text;
+  return next;
+}
+
+/** Change a fragment's kind, or one branch's guard (null clears it). */
+export function setFragmentMeta(
+  doc: ArchDoc,
+  id: string,
+  address: StepAddress,
+  meta: { fragment?: FragmentKind; branch?: number; guard?: string | null },
+): ArchDoc {
+  const next = clone(doc);
+  const step = stepAt(sequenceIn(next, id), address);
+  if (step?.kind !== "fragment") throw new Error(`No fragment at [${address.join(", ")}].`);
+  if (meta.fragment !== undefined) {
+    if (!FRAGMENT_KINDS.includes(meta.fragment)) throw new Error(`Unknown fragment '${meta.fragment}'.`);
+    if (step.branches.length > 1 && meta.fragment !== "alt" && meta.fragment !== "par")
+      throw new Error(`Only alt and par take else branches: remove the others first.`);
+    step.fragment = meta.fragment;
+  }
+  if (meta.guard !== undefined) {
+    const b = step.branches[meta.branch ?? 0];
+    if (!b) throw new Error(`No branch ${meta.branch}.`);
+    if (meta.guard === null || meta.guard === "") delete b.guard;
+    else b.guard = meta.guard;
+  }
+  return next;
+}
+
+/** Add an `else` branch to an alt or par fragment. Returns the fragment's address. */
+export function addBranch(doc: ArchDoc, id: string, address: StepAddress, guard?: string): ArchDoc {
+  const next = clone(doc);
+  const step = stepAt(sequenceIn(next, id), address);
+  if (step?.kind !== "fragment") throw new Error(`No fragment at [${address.join(", ")}].`);
+  if (step.fragment !== "alt" && step.fragment !== "par") throw new Error("Only alt and par take else branches.");
+  step.branches.push({ ...(guard !== undefined ? { guard } : {}), steps: [] });
+  return next;
+}
+
+/** Remove one branch of a fragment, with its steps; removing the last one removes the fragment. */
+export function removeBranch(doc: ArchDoc, id: string, address: StepAddress, branch: number): ArchDoc {
+  const next = clone(doc);
+  const step = stepAt(sequenceIn(next, id), address);
+  if (step?.kind !== "fragment") throw new Error(`No fragment at [${address.join(", ")}].`);
+  if (!step.branches[branch]) throw new Error(`No branch ${branch}.`);
+  if (step.branches.length === 1) return removeStep(doc, id, address);
+  step.branches.splice(branch, 1);
+  return next;
+}
+
+/**
+ * Take a fragment apart: its steps (every branch's, in order) take its place.
+ */
+export function unwrapFragment(doc: ArchDoc, id: string, address: StepAddress): ArchDoc {
+  const next = clone(doc);
+  const seq = sequenceIn(next, id);
+  const steps = listIn(seq, address.slice(0, -1));
+  const index = address[address.length - 1]!;
+  const step = steps[index];
+  if (step?.kind !== "fragment") throw new Error(`No fragment at [${address.join(", ")}].`);
+  steps.splice(index, 1, ...step.branches.flatMap((b) => b.steps));
+  return next;
+}
+
+/**
+ * Move a step one place up or down. At the edge of a fragment's branch it
+ * steps out of the fragment (above or below it); next to a fragment it
+ * steps over the whole fragment, so order stays easy to reason about.
+ */
+export function moveStep(doc: ArchDoc, id: string, address: StepAddress, delta: -1 | 1): { doc: ArchDoc; address: number[] } {
+  const next = clone(doc);
+  const seq = sequenceIn(next, id);
+  const listAddr = address.slice(0, -1);
+  const steps = listIn(seq, listAddr);
+  const index = address[address.length - 1]!;
+  const step = steps[index];
+  if (!step) throw new Error(`No step at [${address.join(", ")}].`);
+  const to = index + delta;
+  if (to >= 0 && to < steps.length) {
+    steps.splice(index, 1);
+    steps.splice(to, 0, step);
+    return { doc: next, address: [...listAddr, to] };
+  }
+  if (listAddr.length === 0) return { doc, address: [...address] };
+  // Out of the branch, beside its fragment.
+  steps.splice(index, 1);
+  const fragAddr = listAddr.slice(0, -1);
+  const parent = listIn(seq, fragAddr.slice(0, -1));
+  const fragIndex = fragAddr[fragAddr.length - 1]!;
+  const at = delta < 0 ? fragIndex : fragIndex + 1;
+  parent.splice(at, 0, step);
+  return { doc: next, address: [...fragAddr.slice(0, -1), at] };
+}
+
+/** Wrap consecutive steps of one list in a new fragment. Returns the fragment's address. */
+export function wrapInFragment(
+  doc: ArchDoc,
+  id: string,
+  slot: StepSlot,
+  count: number,
+  fragment: FragmentKind,
+  guard?: string,
+): { doc: ArchDoc; address: number[] } {
+  if (!FRAGMENT_KINDS.includes(fragment)) throw new Error(`Unknown fragment '${fragment}'.`);
+  const next = clone(doc);
+  const steps = listIn(sequenceIn(next, id), slot.list);
+  const taken = steps.splice(slot.index, Math.max(0, count));
+  steps.splice(slot.index, 0, {
+    kind: "fragment",
+    fragment,
+    branches: [{ ...(guard !== undefined ? { guard } : {}), steps: taken }],
+    span: ZERO_SPAN,
+  });
+  return { doc: next, address: [...slot.list, slot.index] };
+}
+
+/**
+ * Calls along the connections among some components, as starting steps for
+ * a new sequence: breadth-first from the ones nothing in the set calls, in
+ * document order, so a selection on the canvas reads left to right.
+ */
+export function stepsFromConnections(doc: ArchDoc, paths: readonly (readonly string[])[]): MessageStep[] {
+  const keys = new Set(paths.map(pathToString));
+  const inside = doc.connections.filter((c) => keys.has(pathToString(c.source)) && keys.has(pathToString(c.target)));
+  const called = new Set(inside.map((c) => pathToString(c.target)));
+  const order = [...keys].filter((k) => !called.has(k));
+  const queue = order.length > 0 ? order : [...keys].slice(0, 1);
+  const seen = new Set(queue);
+  const used = new Set<number>();
+  const out: MessageStep[] = [];
+  while (queue.length > 0) {
+    const k = queue.shift()!;
+    inside.forEach((c, i) => {
+      if (used.has(i) || pathToString(c.source) !== k) return;
+      used.add(i);
+      out.push({
+        kind: "message",
+        from: [...c.source],
+        to: [...c.target],
+        arrow: "->",
+        ...(c.type !== undefined ? { type: c.type } : {}),
+        ...(c.label !== undefined ? { label: c.label } : {}),
+        span: ZERO_SPAN,
+      });
+      const t = pathToString(c.target);
+      if (!seen.has(t)) {
+        seen.add(t);
+        queue.push(t);
+      }
+    });
+  }
+  return out;
+}
+
+/* --------------------------------------------- Views: flows, states, models */
+
+const viewIn = (doc: ArchDoc, id: string): { kind: ViewKind; node: ViewNode } => {
+  const v = findView(doc, id);
+  if (!v) throw new Error(`No view '${id}'.`);
+  return v;
+};
+
+const checkComponent = (doc: ArchDoc, path: readonly string[]): void => {
+  const key = pathToString(path);
+  if (componentPaths(doc).has(key)) return;
+  throw new Error(planePaths(doc).has(key) ? `'${key}' is a plane: views name components.` : `No component '${key}'.`);
+};
+
+export interface AddViewOptions {
+  id?: string;
+  name?: string;
+  /** What a state machine is of, or a data model on; a flow's first lane. */
+  subject?: string[];
+}
+
+/** Add an empty view of any kind. Returns its id (unique among all views). */
+export function addView(doc: ArchDoc, kind: ViewKind, opts: AddViewOptions = {}): { doc: ArchDoc; id: string } {
+  if (kind === "sequence") return addSequence(doc, { ...(opts.id ? { id: opts.id } : {}), ...(opts.name ? { name: opts.name } : {}) });
+  const taken = new Set(allViews(doc).map((v) => v.node.id));
+  const id = opts.id ?? uniqueId(taken, opts.name ?? kind);
+  if (!NAME_RE.test(id)) throw new Error(`Invalid id '${id}' (need snake_case).`);
+  if (taken.has(id)) throw new Error(`Duplicate view id '${id}'.`);
+  if (opts.subject) checkComponent(doc, opts.subject);
+  const next = clone(doc);
+  const base = { id, ...(opts.name !== undefined ? { name: opts.name } : {}), span: ZERO_SPAN };
+  if (kind === "flow") next.flows.push({ kind: "flow", ...base, nodes: [], edges: [] });
+  else if (kind === "states")
+    next.machines.push({ kind: "machine", ...base, ...(opts.subject ? { of: [...opts.subject] } : {}), states: [], transitions: [] });
+  else next.models.push({ kind: "model", ...base, ...(opts.subject ? { on: [...opts.subject] } : {}), entities: [] });
+  return { doc: next, id };
+}
+
+export function removeView(doc: ArchDoc, id: string): ArchDoc {
+  const { kind } = viewIn(doc, id);
+  const next = clone(doc);
+  const list = viewsOf(next, kind) as ViewNode[];
+  list.splice(list.findIndex((v) => v.id === id), 1);
+  next.viewLayout = next.viewLayout.filter((e) => e.view !== id);
+  return next;
+}
+
+export interface ViewMeta {
+  id?: string;
+  /** null clears it. */
+  name?: string | null;
+  /** A state machine's `of` or a data model's `on`; null clears it. */
+  subject?: string[] | null;
+}
+
+export function setViewMeta(doc: ArchDoc, id: string, meta: ViewMeta): ArchDoc {
+  const next = clone(doc);
+  const { kind, node } = viewIn(next, id);
+  if (meta.id !== undefined && meta.id !== id) {
+    if (!NAME_RE.test(meta.id)) throw new Error(`Invalid id '${meta.id}' (need snake_case).`);
+    if (findView(next, meta.id)) throw new Error(`Duplicate view id '${meta.id}'.`);
+    node.id = meta.id;
+    for (const e of next.viewLayout) if (e.view === id) e.view = meta.id;
+  }
+  if (meta.name === null || meta.name === "") delete node.name;
+  else if (meta.name !== undefined) node.name = meta.name;
+  if (meta.subject !== undefined) {
+    if (kind !== "states" && kind !== "entities") throw new Error("Only state machines and data models are of a component.");
+    const key = kind === "states" ? "of" : "on";
+    const target = node as { of?: string[]; on?: string[] };
+    if (meta.subject === null) delete target[key];
+    else {
+      checkComponent(next, meta.subject);
+      target[key] = [...meta.subject];
+    }
+  }
+  return next;
+}
+
+/* Flows and state machines are both small graphs: nodes by id, edges by index. */
+
+type GraphKind = "flow" | "states";
+interface GraphNodeLike {
+  id: string;
+  name?: string;
+}
+interface GraphEdgeLike {
+  from: string;
+  to: string;
+  label?: string;
+}
+
+const graphIn = (doc: ArchDoc, id: string, kind: GraphKind) => {
+  const v = viewIn(doc, id);
+  if (v.kind !== kind) throw new Error(`'${id}' is not a ${kind === "flow" ? "flow" : "state machine"}.`);
+  if (kind === "flow") {
+    const f = v.node as ArchDoc["flows"][number];
+    return { nodes: f.nodes as GraphNodeLike[], edges: f.edges as GraphEdgeLike[], what: "node" };
+  }
+  const m = v.node as ArchDoc["machines"][number];
+  return { nodes: m.states as GraphNodeLike[], edges: m.transitions as GraphEdgeLike[], what: "state" };
+};
+
+function renameGraphNode(g: ReturnType<typeof graphIn>, from: string, to: string) {
+  if (from === to) return;
+  if (!NAME_RE.test(to)) throw new Error(`Invalid id '${to}' (need snake_case).`);
+  if (g.nodes.some((n) => n.id === to)) throw new Error(`Duplicate ${g.what} id '${to}'.`);
+  g.nodes.find((n) => n.id === from)!.id = to;
+  for (const e of g.edges) {
+    if (e.from === from) e.from = to;
+    if (e.to === from) e.to = to;
+  }
+}
+
+function addGraphEdge(g: ReturnType<typeof graphIn>, from: string, to: string, label?: string, span = ZERO_SPAN) {
+  for (const end of [from, to]) if (!g.nodes.some((n) => n.id === end)) throw new Error(`No ${g.what} '${end}'.`);
+  const kind = g.what === "node" ? "flow-edge" : "transition";
+  g.edges.push({ kind, from, to, ...(label !== undefined && label !== "" ? { label } : {}), span } as GraphEdgeLike);
+  return g.edges.length - 1;
+}
+
+export interface FlowNodeOptions {
+  node: FlowNodeKind;
+  id?: string;
+  name?: string;
+  lane?: string[];
+}
+
+/** Add a node to a flow; with `after`, joined from that node. Returns its id. */
+export function addFlowNode(doc: ArchDoc, flowId: string, opts: FlowNodeOptions, after?: string): { doc: ArchDoc; id: string } {
+  if (!FLOW_NODE_KINDS.includes(opts.node)) throw new Error(`Unknown node kind '${opts.node}'.`);
+  if (opts.lane) checkComponent(doc, opts.lane);
+  const next = clone(doc);
+  const g = graphIn(next, flowId, "flow");
+  const id = opts.id ?? uniqueId(new Set(g.nodes.map((n) => n.id)), opts.name ?? opts.node);
+  if (g.nodes.some((n) => n.id === id)) throw new Error(`Duplicate node id '${id}'.`);
+  g.nodes.push({
+    kind: "flow-node",
+    node: opts.node,
+    id,
+    ...(opts.name !== undefined ? { name: opts.name } : {}),
+    ...(opts.lane ? { lane: [...opts.lane] } : {}),
+    span: ZERO_SPAN,
+  } as GraphNodeLike);
+  if (after !== undefined) addGraphEdge(g, after, id);
+  return { doc: next, id };
+}
+
+export interface FlowNodeMeta {
+  id?: string;
+  name?: string | null;
+  node?: FlowNodeKind;
+  lane?: string[] | null;
+}
+
+export function setFlowNode(doc: ArchDoc, flowId: string, nodeId: string, meta: FlowNodeMeta): ArchDoc {
+  const next = clone(doc);
+  const g = graphIn(next, flowId, "flow");
+  const n = (g.nodes as ArchDoc["flows"][number]["nodes"]).find((x) => x.id === nodeId);
+  if (!n) throw new Error(`No node '${nodeId}'.`);
+  if (meta.node !== undefined) {
+    if (!FLOW_NODE_KINDS.includes(meta.node)) throw new Error(`Unknown node kind '${meta.node}'.`);
+    n.node = meta.node;
+  }
+  if (meta.name === null || meta.name === "") delete n.name;
+  else if (meta.name !== undefined) n.name = meta.name;
+  if (meta.lane === null) delete n.lane;
+  else if (meta.lane !== undefined) {
+    checkComponent(next, meta.lane);
+    n.lane = [...meta.lane];
+  }
+  if (meta.id !== undefined) {
+    renameGraphNode(g, nodeId, meta.id);
+    renamePlaced(next, flowId, nodeId, meta.id);
+  }
+  return next;
+}
+
+export interface StateOptions {
+  id?: string;
+  name?: string;
+  initial?: boolean;
+  final?: boolean;
+}
+
+/** Add a state; with `after`, a transition into it from that state. Returns its id. */
+export function addState(doc: ArchDoc, machineId: string, opts: StateOptions = {}, after?: string): { doc: ArchDoc; id: string } {
+  const next = clone(doc);
+  const g = graphIn(next, machineId, "states");
+  const id = opts.id ?? uniqueId(new Set(g.nodes.map((n) => n.id)), opts.name ?? "state");
+  if (g.nodes.some((n) => n.id === id)) throw new Error(`Duplicate state id '${id}'.`);
+  g.nodes.push({
+    kind: "state",
+    id,
+    ...(opts.name !== undefined ? { name: opts.name } : {}),
+    ...(opts.initial ? { initial: true } : {}),
+    ...(opts.final ? { final: true } : {}),
+    span: ZERO_SPAN,
+  } as GraphNodeLike);
+  if (after !== undefined) addGraphEdge(g, after, id);
+  return { doc: next, id };
+}
+
+export interface StateMeta {
+  id?: string;
+  name?: string | null;
+  initial?: boolean;
+  final?: boolean;
+}
+
+export function setState(doc: ArchDoc, machineId: string, stateId: string, meta: StateMeta): ArchDoc {
+  const next = clone(doc);
+  const g = graphIn(next, machineId, "states");
+  const st = (g.nodes as ArchDoc["machines"][number]["states"]).find((x) => x.id === stateId);
+  if (!st) throw new Error(`No state '${stateId}'.`);
+  if (meta.name === null || meta.name === "") delete st.name;
+  else if (meta.name !== undefined) st.name = meta.name;
+  for (const flag of ["initial", "final"] as const) {
+    if (meta[flag] === undefined) continue;
+    if (meta[flag]) st[flag] = true;
+    else delete st[flag];
+  }
+  if (meta.id !== undefined) {
+    renameGraphNode(g, stateId, meta.id);
+    renamePlaced(next, machineId, stateId, meta.id);
+  }
+  return next;
+}
+
+/** Remove a flow node or a state, with every edge touching it. */
+export function removeGraphNode(doc: ArchDoc, viewId: string, nodeId: string): ArchDoc {
+  const next = clone(doc);
+  const kind = viewIn(next, viewId).kind;
+  if (kind !== "flow" && kind !== "states") throw new Error(`'${viewId}' is not a flow or a state machine.`);
+  const g = graphIn(next, viewId, kind);
+  const i = g.nodes.findIndex((n) => n.id === nodeId);
+  if (i < 0) throw new Error(`No ${g.what} '${nodeId}'.`);
+  g.nodes.splice(i, 1);
+  next.viewLayout = next.viewLayout.filter((e) => !(e.view === viewId && e.node === nodeId));
+  for (let k = g.edges.length - 1; k >= 0; k--)
+    if (g.edges[k]!.from === nodeId || g.edges[k]!.to === nodeId) g.edges.splice(k, 1);
+  return next;
+}
+
+/** Join two nodes of a flow, or two states, by an edge. Returns its index. */
+export function addGraphEdgeTo(doc: ArchDoc, viewId: string, from: string, to: string, label?: string): { doc: ArchDoc; index: number } {
+  const next = clone(doc);
+  const kind = viewIn(next, viewId).kind;
+  if (kind !== "flow" && kind !== "states") throw new Error(`'${viewId}' is not a flow or a state machine.`);
+  const index = addGraphEdge(graphIn(next, viewId, kind), from, to, label);
+  return { doc: next, index };
+}
+
+export function setGraphEdge(
+  doc: ArchDoc,
+  viewId: string,
+  index: number,
+  meta: { from?: string; to?: string; label?: string | null },
+): ArchDoc {
+  const next = clone(doc);
+  const kind = viewIn(next, viewId).kind;
+  if (kind !== "flow" && kind !== "states") throw new Error(`'${viewId}' is not a flow or a state machine.`);
+  const g = graphIn(next, viewId, kind);
+  const e = g.edges[index];
+  if (!e) throw new Error(`No edge ${index}.`);
+  for (const end of ["from", "to"] as const) {
+    const v = meta[end];
+    if (v === undefined) continue;
+    if (!g.nodes.some((n) => n.id === v)) throw new Error(`No ${g.what} '${v}'.`);
+    e[end] = v;
+  }
+  if (meta.label === null || meta.label === "") delete e.label;
+  else if (meta.label !== undefined) e.label = meta.label;
+  return next;
+}
+
+export function removeGraphEdge(doc: ArchDoc, viewId: string, index: number): ArchDoc {
+  const next = clone(doc);
+  const kind = viewIn(next, viewId).kind;
+  if (kind !== "flow" && kind !== "states") throw new Error(`'${viewId}' is not a flow or a state machine.`);
+  const g = graphIn(next, viewId, kind);
+  if (!g.edges[index]) throw new Error(`No edge ${index}.`);
+  g.edges.splice(index, 1);
+  return next;
+}
+
+/* Data models */
+
+const modelIn = (doc: ArchDoc, id: string) => {
+  const v = viewIn(doc, id);
+  if (v.kind !== "entities") throw new Error(`'${id}' is not a data model.`);
+  return v.node as ArchDoc["models"][number];
+};
+
+const checkFields = (fields: readonly EntityField[]) => {
+  const seen = new Set<string>();
+  for (const f of fields) {
+    if (!NAME_RE.test(f.name)) throw new Error(`Invalid field name '${f.name}' (need snake_case).`);
+    if (seen.has(f.name)) throw new Error(`Duplicate field '${f.name}'.`);
+    seen.add(f.name);
+    if (f.type.trim() === "" || f.type.includes('"') || f.type.includes("\n")) throw new Error(`Field '${f.name}' needs a type.`);
+  }
+};
+
+/** Add an entity to a data model. Returns its id. */
+export function addEntity(
+  doc: ArchDoc,
+  modelId: string,
+  opts: { id?: string; name?: string; fields?: EntityField[] } = {},
+): { doc: ArchDoc; id: string } {
+  const fields: EntityField[] = structuredClone(opts.fields ?? [{ name: "id", type: "uuid", pk: true as const }]);
+  checkFields(fields);
+  const next = clone(doc);
+  const m = modelIn(next, modelId);
+  const id = opts.id ?? uniqueId(new Set(m.entities.map((e) => e.id)), opts.name ?? "entity");
+  if (m.entities.some((e) => e.id === id)) throw new Error(`Duplicate entity id '${id}'.`);
+  m.entities.push({ kind: "entity", id, ...(opts.name !== undefined ? { name: opts.name } : {}), fields, span: ZERO_SPAN });
+  return { doc: next, id };
+}
+
+/** Rename an entity (references to it follow) or change its display name. */
+export function setEntity(doc: ArchDoc, modelId: string, entityId: string, meta: { id?: string; name?: string | null }): ArchDoc {
+  const next = clone(doc);
+  const m = modelIn(next, modelId);
+  const e = m.entities.find((x) => x.id === entityId);
+  if (!e) throw new Error(`No entity '${entityId}'.`);
+  if (meta.name === null || meta.name === "") delete e.name;
+  else if (meta.name !== undefined) e.name = meta.name;
+  if (meta.id !== undefined && meta.id !== entityId) {
+    if (!NAME_RE.test(meta.id)) throw new Error(`Invalid id '${meta.id}' (need snake_case).`);
+    if (m.entities.some((x) => x.id === meta.id)) throw new Error(`Duplicate entity id '${meta.id}'.`);
+    e.id = meta.id;
+    for (const x of m.entities) for (const f of x.fields) if (f.ref?.entity === entityId) f.ref.entity = meta.id;
+    renamePlaced(next, modelId, entityId, meta.id);
+  }
+  return next;
+}
+
+/** Replace an entity's fields wholesale (the inspector's field table). */
+export function setEntityFields(doc: ArchDoc, modelId: string, entityId: string, fields: EntityField[]): ArchDoc {
+  checkFields(fields);
+  const next = clone(doc);
+  const e = modelIn(next, modelId).entities.find((x) => x.id === entityId);
+  if (!e) throw new Error(`No entity '${entityId}'.`);
+  e.fields = structuredClone(fields);
+  return next;
+}
+
+/** Remove an entity; fields elsewhere that referred to it keep their type and lose the reference. */
+export function removeEntity(doc: ArchDoc, modelId: string, entityId: string): ArchDoc {
+  const next = clone(doc);
+  const m = modelIn(next, modelId);
+  const i = m.entities.findIndex((x) => x.id === entityId);
+  if (i < 0) throw new Error(`No entity '${entityId}'.`);
+  m.entities.splice(i, 1);
+  next.viewLayout = next.viewLayout.filter((e) => !(e.view === modelId && e.node === entityId));
+  for (const x of m.entities) for (const f of x.fields) if (f.ref?.entity === entityId) delete f.ref;
+  return next;
+}
+
+/* ---------------------------------------------------- Placing view nodes */
+
+function renamePlaced(doc: ArchDoc, viewId: string, from: string, to: string) {
+  for (const e of doc.viewLayout) if (e.view === viewId && e.node === from) e.node = to;
+}
+
+/**
+ * Place a node of a flow, state machine or data model at `at` (grid cells)
+ * in its view's diagram, or (null) hand it back to automatic layout.
+ */
+export function placeViewNode(doc: ArchDoc, viewId: string, nodeId: string, at: [number, number] | null): ArchDoc {
+  const v = viewIn(doc, viewId);
+  if (v.kind === "sequence") throw new Error("A sequence has no placed nodes: its order is its layout.");
+  const ids =
+    v.kind === "flow"
+      ? (v.node as ArchDoc["flows"][number]).nodes.map((n) => n.id)
+      : v.kind === "states"
+        ? (v.node as ArchDoc["machines"][number]).states.map((s) => s.id)
+        : (v.node as ArchDoc["models"][number]).entities.map((e) => e.id);
+  if (!ids.includes(nodeId)) throw new Error(`No '${nodeId}' in '${viewId}'.`);
+  const next = clone(doc);
+  next.viewLayout = next.viewLayout.filter((e) => !(e.view === viewId && e.node === nodeId));
+  if (at) next.viewLayout.push({ kind: "view-layout", view: viewId, node: nodeId, at: [Math.round(at[0]), Math.round(at[1])], span: ZERO_SPAN });
+  return next;
+}
+
+/** Forget every placed node of a view: its diagram is laid out automatically again. */
+export function clearViewLayout(doc: ArchDoc, viewId: string): ArchDoc {
+  viewIn(doc, viewId);
+  const next = clone(doc);
+  next.viewLayout = next.viewLayout.filter((e) => e.view !== viewId);
+  return next;
 }

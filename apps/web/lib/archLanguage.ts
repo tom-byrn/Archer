@@ -23,9 +23,15 @@ interface ArchState {
   triple: boolean;
 }
 
-const KEYWORDS = new Set(["arch", "component", "plane", "desc", "src", "shape", "icon", "color", "layout"]);
+const KEYWORDS = new Set([
+  "arch", "component", "plane", "desc", "src", "shape", "icon", "color", "layout",
+  "sequence", "alt", "opt", "loop", "par", "else", "note", "over",
+  "flow", "start", "step", "decision", "end", "in",
+  "states", "state", "initial", "final", "of",
+  "entities", "entity", "on", "pk", "unique", "optional",
+]);
 const TYPE_RE = /^@[a-z][a-z0-9_]*(?:\.[a-z][a-z0-9_]*)*/;
-const ARROW_RE = /^(?:<->|->|--)/;
+const ARROW_RE = /^(?:<->|-->|->|--|~>)/;
 const VERSION_RE = /^v\d+\.\d+\b/;
 const NUMBER_RE = /^-?\d+\b/;
 const WORD_RE = /^[A-Za-z_][A-Za-z0-9_]*/;

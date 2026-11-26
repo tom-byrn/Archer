@@ -20,7 +20,7 @@ export type TokenType =
 
 export interface Token {
   type: TokenType;
-  /** For ident/string/version/fence: the (unquoted, dedented) value. For arrow: "->" | "<->" | "--". */
+  /** For ident/string/version/fence: the (unquoted, dedented) value. For arrow: "->" | "<->" | "--" | "-->" | "~>". */
   value: string;
   span: Span;
 }
@@ -182,9 +182,19 @@ export function lex(source: string): { tokens: Token[]; diagnostics: Diagnostic[
       push("arrow", "->", start);
       continue;
     }
+    if (c === "-" && peek(1) === "-" && peek(2) === ">") {
+      advance(3);
+      push("arrow", "-->", start);
+      continue;
+    }
     if (c === "-" && peek(1) === "-") {
       advance(2);
       push("arrow", "--", start);
+      continue;
+    }
+    if (c === "~" && peek(1) === ">") {
+      advance(2);
+      push("arrow", "~>", start);
       continue;
     }
     if (c === "-" && isDigit(peek(1))) {

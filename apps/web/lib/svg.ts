@@ -608,3 +608,32 @@ const emptySvg = (P: Palette, title: string, showTitle: boolean, background: boo
     ? `<text x="20" y="34" font-family='${SANS}' font-size="16" font-weight="700" fill="${P.ink}">${esc(title)}</text>`
     : "") +
   `<text x="20" y="72" font-family='${SANS}' font-size="12" fill="${P.ink3}">No components yet</text></svg>`;
+
+/* ------------------------------------------- Shared with lib/viewSvg.ts */
+
+export type { Palette };
+export const PALETTES: Record<"light" | "dark", Palette> = { light: LIGHT, dark: DARK };
+export { esc as escapeXml, fit as fitText, SANS as SANS_FONT, MONO as MONO_FONT };
+
+/**
+ * A component's icon as the canvas draws it (its own icon, else its type's
+ * logo, else its type's glyph) at (x, y), or "" for an untyped component
+ * with no icon of its own.
+ */
+export function componentIconSvg(
+  node: ComponentNode,
+  size: number,
+  x: number,
+  y: number,
+  dark: boolean,
+  logos?: Readonly<Record<string, Logo>>,
+): string {
+  const P = dark ? DARK : LIGHT;
+  const type = node.type ? lookupType(node.type) : undefined;
+  const icon = iconMarkup(node.icon);
+  if (!icon && !node.type) return "";
+  const color = displayColor(resolveColor(node.color) ?? type?.color ?? P.fallback, dark);
+  if (icon) return markupSvg(icon, size, color, x, y);
+  const logo = type?.logo === undefined ? undefined : logos?.[type.logo];
+  return logo ? logoSvg(logo, size, x, y, dark) : glyphSvg(type?.glyph ?? "box", size, color, x, y);
+}

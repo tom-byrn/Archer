@@ -33,6 +33,24 @@ const PREAMBLE = `# This is an Archer architecture document — a complete, mach
 #   A connection may carry its own payload blocks in a \`{ ... }\` body — the
 #   message schema on a queue, the request shape on an API call. Implement the
 #   edge exactly as those payloads describe it.
+# - \`sequence <id> "Name" { ... }\` is one scenario, step by step: the order
+#   in which components exchange messages. \`a -> b\` is a call, \`b --> a\` its
+#   reply, \`a ~> b\` a call nobody waits on; each has an optional \`@type\` and
+#   \`: "label"\`. \`alt "x" { } else "y" { }\`, \`opt\`, \`loop\` and \`par\` group
+#   steps that run conditionally, repeatedly or concurrently, and
+#   \`note over a, b "…"\` is a remark. Calls travel on the connections above.
+#   Implement each sequence as written, and treat it as an end-to-end test
+#   scenario: it is behavior the system must have.
+# - \`flow <id> "Name" { ... }\` is an activity diagram: \`start\`, \`step\`,
+#   \`decision\` and \`end\` nodes, each \`in\` the component that does it, joined
+#   by \`a -> b : "label"\` (a decision's labels are its outcomes). Implement
+#   the process it describes.
+# - \`states <id> "Name" of <component> { ... }\` is a state machine: the
+#   \`state\`s that component moves through (one \`initial\`, any \`final\`) and
+#   \`a -> b : "event"\` transitions. Enforce exactly these transitions.
+# - \`entities <id> "Name" on <component> { ... }\` is a data model of that
+#   store: \`entity\` blocks of \`field type [pk] [unique] [optional]\`, with
+#   \`-> entity[.field]\` for a reference. Build the schema from it.
 # - The closing \`layout { ... }\` block is where each component and plane
 #   sits on the author's canvas: \`path: { at: [col, row], size: [w, h] }\` on
 #   an integer grid. The top level and the inside of each component are

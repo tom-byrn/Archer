@@ -81,6 +81,16 @@ import {
   WarningCircleIcon,
   WarningIcon,
   XIcon,
+  ArrowUpIcon,
+  FlowArrowIcon,
+  NoteIcon,
+  PauseIcon,
+  PlayIcon,
+  TreeStructureIcon,
+  ArrowsClockwiseIcon,
+  TableIcon,
+  DiamondIcon,
+  CircleIcon,
 } from "@phosphor-icons/react";
 
 export const cx = (...parts: Array<string | false | null | undefined>): string =>
@@ -949,6 +959,23 @@ export const Icon = {
   ArrowRight: (p: IconProps) => <ArrowRightIcon {...UI} {...p} />,
   ArrowLeft: (p: IconProps) => <ArrowLeftIcon {...UI} {...p} />,
   ArrowDown: (p: IconProps) => <ArrowDownIcon {...UI} {...p} />,
+  ArrowUp: (p: IconProps) => <ArrowUpIcon {...UI} {...p} />,
+  /** A sequence: a scenario's steps in order (the view switcher, "In sequences"). */
+  Sequence: (p: IconProps) => <FlowArrowIcon {...UI} {...p} />,
+  /** A flow: an activity diagram. */
+  Flow: (p: IconProps) => <TreeStructureIcon {...UI} {...p} />,
+  /** A state machine. */
+  States: (p: IconProps) => <ArrowsClockwiseIcon {...UI} {...p} />,
+  /** A data model. */
+  Entities: (p: IconProps) => <TableIcon {...UI} {...p} />,
+  /** A decision in a flow. */
+  Decision: (p: IconProps) => <DiamondIcon {...UI} {...p} />,
+  /** A flow's start, or a state. */
+  Circle: (p: IconProps) => <CircleIcon {...UI} {...p} />,
+  /** A note in a sequence. */
+  Note: (p: IconProps) => <NoteIcon {...UI} {...p} />,
+  Play: (p: IconProps) => <PlayIcon {...UI} weight="fill" {...p} />,
+  Pause: (p: IconProps) => <PauseIcon {...UI} weight="fill" {...p} />,
   Undo: (p: IconProps) => <ArrowUUpLeftIcon {...UI} {...p} />,
   Redo: (p: IconProps) => <ArrowUUpRightIcon {...UI} {...p} />,
   Layout: (p: IconProps) => <SquaresFourIcon {...UI} {...p} />,

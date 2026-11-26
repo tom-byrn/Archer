@@ -12,9 +12,9 @@ import { seedExample } from "./seedExample";
 process.env.ARCHER_SERVICE_SECRET ??= "test-service-secret";
 
 const { user, project, team } = EXAMPLE_STATE;
-const calls: { source: string; theme: string }[] = [];
-const renderSvg = (source: string, theme: "light" | "dark") => {
-  calls.push({ source, theme });
+const calls: { source: string; theme: string; view?: string }[] = [];
+const renderSvg = (source: string, theme: "light" | "dark", view?: string) => {
+  calls.push({ source, theme, ...(view !== undefined ? { view } : {}) });
   return `<svg xmlns="http://www.w3.org/2000/svg" data-theme="${theme}"></svg>`;
 };
 
@@ -100,5 +100,19 @@ describe("render_project", () => {
     expect((await mcp.call("render_project", { project_id: "p_acme" })).isError).toBe(true);
     await mcp.call("use_workspace", { workspace_id: team.id });
     expect((await mcp.call("render_project", { project_id: "p_acme" })).isError).toBe(false);
+  });
+});
+
+describe("render_project: views", () => {
+  it("passes a view through, and refuses one the project doesn't have", async () => {
+    const { mcp, fake } = await connect();
+    const stored = fake.state.projects.get(project.id)!;
+    stored.source = `${stored.source.trimEnd()}\n\nflow f "F" {\n  step a\n}\n`;
+    const res = await mcp.call("render_project", { project_id: project.id, view: "f" });
+    expect(res.isError, res.text).toBe(false);
+    expect(calls.at(-1)).toMatchObject({ view: "f" });
+    const bad = await mcp.call("render_project", { project_id: project.id, view: "nope" });
+    expect(bad.isError).toBe(true);
+    expect(bad.text).toContain("Its views: f.");
   });
 });

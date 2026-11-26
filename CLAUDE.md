@@ -208,6 +208,43 @@ Router + React Flow + Convex).
   plane, not the reverse), so keep the two concepts apart. There is no
   support for older language versions: there are no users yet, so change the
   grammar freely.
+- Views (spec §6): diagrams over the same document, after the connections:
+  `sequence` (who calls whom, in order: `->` call, `-->` reply, `~>` async;
+  `alt`/`else`, `opt`, `loop`, `par`; `note over`), `flow` (activity
+  diagram: `start`/`step`/`decision`/`end` nodes `in` a component's lane),
+  `states` (a component's state machine, `of <path>`) and `entities` (a
+  store's data model, `on <path>`; one field per line, `-> entity.field`
+  references). The AST has `sequences`, `flows`, `machines`, `models`; all
+  views share one id namespace (`E002`), name components by path (`E101`),
+  and resolve their own edges and references (`E102`); `W307` warns on a
+  call no connection carries, `W308` on a state machine with no initial
+  state. Helpers: `packages/lang/src/views.ts` (all kinds) and
+  `sequence.ts`; edits are transforms in `transform.ts` (sequence steps by
+  index path, graph nodes by id, edges by index). Any transform that changes
+  component paths must call `remapViewPaths` beside its connection rewrite.
+  The formatter never reorders view contents; diff reports `views`, and merge
+  takes each view whole by id. In the editor a view is a place, not a tab:
+  the header's `ViewSwitcher` (after the title) moves between the
+  architecture and every view, and "New view…" (`NewViewDialog`) makes one.
+  Sequences: `SequenceView` + `SequenceDiagram` (geometry `lib/sequenceLayout.ts`),
+  `SequenceInspector`, and `PlaybackBar`, which plays one on the canvas (the
+  step's connection lit through `highlightedEdge`, others faded through
+  `spotlightNodes`). Flows, state machines, data models: `ViewCanvas` +
+  `ViewDiagrams` (geometry `lib/graphLayout.ts`: rank columns, flow lanes,
+  right-angled routes) and `ViewInspector`. Views are laid out
+  automatically; a dragged node of a flow, state machine or data model is
+  kept in the layout block as `view <id> { <node>: { at: [x, y] } }`
+  (`ArchDoc.viewLayout`, transforms `placeViewNode`/`clearViewLayout`; in a
+  flow only x counts, and dropping a node in another lane changes its
+  `in`). Flows play on the canvas too (`FlowPlaybackBar`, lighting the lanes'
+  components and the connection between them); a state machine has a
+  simulator in its own view (`StateSimulatorBar`). Outside the editor, views
+  draw through `lib/viewSvg.ts` (`renderViewSvg`, same geometry):
+  `/share/<slug>/image.svg?view=<id>`, MCP `render_project` with `view`, and
+  the editor's Export → Download SVG; the share viewer
+  (`DocumentViewer`) has the view switcher, read-only. "In sequences" / "In views" in the inspector
+  (`components/InSequences.tsx`) reach the editor through
+  `SequenceNavContext`, so they only show inside the editor.
 - Admin dashboard: `/admin-dashboard` (linked from nowhere) is for one person,
   hard-coded in `lib/admin.ts` (`isAdmin`: verified email
   tombyrne788@gmail.com or verified GitHub login tom-byrn — a code change, not

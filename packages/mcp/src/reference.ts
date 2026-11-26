@@ -207,6 +207,9 @@ const REVISION_CHANGES = {
   planesAdded: 0,
   planesRemoved: 0,
   planesChanged: 0,
+  viewsAdded: 0,
+  viewsRemoved: 0,
+  viewsChanged: 0,
 };
 
 // ---------------------------------------------------------------------------
@@ -592,6 +595,7 @@ api -> db @sql
     notes: [
       "The SVG markup itself, ready to save as a `.svg` file or put in a README. It's the picture a public share link's `image.svg` shows, but the project needs no share link: any member of the workspace, viewers included, can render it.",
       "It draws the top level: planes as regions, components with their shapes, icons, logos and colors, and the connections between them. A component with components nested in it is one box with a count. `theme` is `light` (the default) or `dark`.",
+      "`view` draws one of the project's views instead, by id: a sequence as a sequence diagram, a flow with a lane per component, a state machine, or a data model's entity tables. An id that isn't a view is an error that lists the project's views.",
     ],
   },
   auto_layout_project: {
@@ -674,11 +678,12 @@ api -> db @sql
             },
           },
         ],
+        views: [],
       },
     },
     notes: [
       "`from` and `to` are revision ids, `current` (the project as it is now) or `empty` (before the first revision). Only the newest 200 revisions can be named.",
-      "A changed component lists its changed `fields`: `name`, `type`, `shape`, `icon`, `color`, `desc`, `src`, `payloads` or `plane` (it sits on a different plane). `planes` lists planes added, removed and changed (`name`, `type`, `desc` or `plane`) the same way. A connection is `changed` when only its payloads differ, and `title` appears when the document was renamed.",
+      "A changed component lists its changed `fields`: `name`, `type`, `shape`, `icon`, `color`, `desc`, `src`, `payloads` or `plane` (it sits on a different plane). `planes` lists planes added, removed and changed (`name`, `type`, `desc` or `plane`) the same way. A connection is `changed` when only its payloads differ, a view (`view` is its kind: sequence, flow, states or entities; `id` its id) when anything in it does, and `title` appears when the document was renamed.",
     ],
   },
 

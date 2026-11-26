@@ -6,10 +6,13 @@ import {
   type LayoutEntry,
   type PayloadNode,
   type PlaneNode,
+  type ViewKind,
 } from "./types";
 import { findComponent, planeTree, scopeOf, type Scope } from "./scope";
 import { normalizeLayout } from "./validate";
 import { layoutMap } from "./layout";
+import { formatView } from "./format";
+import { allViews } from "./views";
 
 /**
  * Semantic diff between two documents. Layout is never a change — moving
@@ -43,6 +46,14 @@ export interface ConnectionChange {
   connection: ConnectionNode;
 }
 
+export interface ViewChange {
+  /** Which kind of view: sequence, flow, states or entities. */
+  view: ViewKind;
+  id: string;
+  /** "changed": anything in it (its name, steps, states, entities…), or its kind. */
+  kind: ChangeKind;
+}
+
 export interface DocDiff {
   title?: { from: string; to: string };
   /** Document order of `next`, then removed ones in `base` order. */
@@ -50,6 +61,8 @@ export interface DocDiff {
   /** Same order as components. */
   planes: PlaneChange[];
   connections: ConnectionChange[];
+  /** Views (sequences, flows, state machines, data models): `next`'s order, then removed ones in `base` order. */
+  views: ViewChange[];
 }
 
 export interface DiffSummary {
@@ -62,6 +75,9 @@ export interface DiffSummary {
   planesAdded: number;
   planesRemoved: number;
   planesChanged: number;
+  viewsAdded: number;
+  viewsRemoved: number;
+  viewsChanged: number;
 }
 
 /** Identity of a connection independent of position: source|arrow|target|type|label. */
@@ -174,11 +190,24 @@ export function diffDocs(base: ArchDoc, next: ArchDoc): DocDiff {
     if (!afterConns.has(key)) connections.push({ key, kind: "removed", connection });
   }
 
+  const textOf = (d: ArchDoc) =>
+    new Map(allViews(d).map((v) => [v.node.id, { view: v.kind, text: formatView(v.kind, v.node) }]));
+  const beforeViews = textOf(base);
+  const afterViews = textOf(next);
+  const views: ViewChange[] = [];
+  for (const [id, v] of afterViews) {
+    const prev = beforeViews.get(id);
+    if (prev === undefined) views.push({ view: v.view, id, kind: "added" });
+    else if (prev.text !== v.text) views.push({ view: v.view, id, kind: "changed" });
+  }
+  for (const [id, v] of beforeViews) if (!afterViews.has(id)) views.push({ view: v.view, id, kind: "removed" });
+
   return {
     ...(base.title !== next.title ? { title: { from: base.title, to: next.title } } : {}),
     components: diffMaps(before.components, after.components, changedFields),
     planes: diffMaps(before.planes, after.planes, changedPlaneFields),
     connections,
+    views,
   };
 }
 
@@ -193,6 +222,9 @@ export function summarizeDiff(diff: DocDiff): DiffSummary {
     planesAdded: 0,
     planesRemoved: 0,
     planesChanged: 0,
+    viewsAdded: 0,
+    viewsRemoved: 0,
+    viewsChanged: 0,
   };
   for (const c of diff.components) s[c.kind]++;
   for (const c of diff.connections) {
@@ -205,6 +237,11 @@ export function summarizeDiff(diff: DocDiff): DiffSummary {
     else if (p.kind === "removed") s.planesRemoved++;
     else s.planesChanged++;
   }
+  for (const v of diff.views) {
+    if (v.kind === "added") s.viewsAdded++;
+    else if (v.kind === "removed") s.viewsRemoved++;
+    else s.viewsChanged++;
+  }
   return s;
 }
 
@@ -212,7 +249,8 @@ export const isEmptyDiff = (d: DocDiff): boolean =>
   d.title === undefined &&
   d.components.length === 0 &&
   d.planes.length === 0 &&
-  d.connections.length === 0;
+  d.connections.length === 0 &&
+  d.views.length === 0;
 
 /**
  * Build a renderable "diff view": `next` plus every component, plane and

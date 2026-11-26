@@ -134,6 +134,185 @@ export interface LayoutEntry {
   span: Span;
 }
 
+/** A message arrow in a sequence: a call, the reply to one, or a call nobody waits on. */
+export type MessageArrow = "->" | "-->" | "~>";
+
+export const MESSAGE_KINDS = { "->": "call", "-->": "reply", "~>": "async" } as const;
+export type MessageKind = (typeof MESSAGE_KINDS)[MessageArrow];
+
+/** One message between two components (or a component and itself). */
+export interface MessageStep {
+  kind: "message";
+  from: string[];
+  to: string[];
+  arrow: MessageArrow;
+  /** Connection type tag without `@`, e.g. "http". */
+  type?: string;
+  label?: string;
+  span: Span;
+}
+
+export type FragmentKind = "alt" | "opt" | "loop" | "par";
+export const FRAGMENT_KINDS: readonly FragmentKind[] = ["alt", "opt", "loop", "par"];
+
+/** One branch of a fragment: its guard (`"slug is free"`) and its steps. */
+export interface FragmentBranch {
+  guard?: string;
+  steps: StepNode[];
+}
+
+/**
+ * `alt "a" { … } else "b" { … }`, `opt`, `loop`, `par`: a group of steps that
+ * runs conditionally, repeatedly or concurrently. Only alt and par have more
+ * than one branch.
+ */
+export interface FragmentStep {
+  kind: "fragment";
+  fragment: FragmentKind;
+  branches: FragmentBranch[];
+  span: Span;
+}
+
+/** `note over a, b "text"`: a remark spanning one or more lifelines. */
+export interface NoteStep {
+  kind: "note";
+  over: string[][];
+  text: string;
+  span: Span;
+}
+
+export type StepNode = MessageStep | FragmentStep | NoteStep;
+
+/**
+ * A sequence: the order in which components exchange messages for one
+ * scenario. Connections say who talks to whom; a sequence says when. Every
+ * participant is a declared component, so it can't drift from the
+ * architecture.
+ */
+export interface SequenceNode {
+  kind: "sequence";
+  id: string;
+  /** Display name; defaults to id when absent. */
+  name?: string;
+  steps: StepNode[];
+  span: Span;
+}
+
+/* ------------------------------------------------------------ Flows (§6.2) */
+
+export type FlowNodeKind = "start" | "step" | "decision" | "end";
+export const FLOW_NODE_KINDS: readonly FlowNodeKind[] = ["start", "step", "decision", "end"];
+
+/** A node of an activity flow, in the lane of the component that does it (`in api`). */
+export interface FlowNodeDecl {
+  kind: "flow-node";
+  node: FlowNodeKind;
+  id: string;
+  name?: string;
+  lane?: string[];
+  span: Span;
+}
+
+/** `a -> b : "yes"`: control passes from one node to the next. */
+export interface FlowEdgeDecl {
+  kind: "flow-edge";
+  from: string;
+  to: string;
+  label?: string;
+  span: Span;
+}
+
+/** An activity diagram: the steps and decisions of a process, one lane per component. */
+export interface FlowNode {
+  kind: "flow";
+  id: string;
+  name?: string;
+  nodes: FlowNodeDecl[];
+  edges: FlowEdgeDecl[];
+  span: Span;
+}
+
+/* ------------------------------------------------------- State machines (§6.3) */
+
+export interface StateDecl {
+  kind: "state";
+  id: string;
+  name?: string;
+  initial?: true;
+  final?: true;
+  span: Span;
+}
+
+/** `a -> b : "event"`: what moves the machine from one state to another. */
+export interface TransitionDecl {
+  kind: "transition";
+  from: string;
+  to: string;
+  label?: string;
+  span: Span;
+}
+
+/** The states one component (`of db`) moves through, and what moves it. */
+export interface MachineNode {
+  kind: "machine";
+  id: string;
+  name?: string;
+  of?: string[];
+  states: StateDecl[];
+  transitions: TransitionDecl[];
+  span: Span;
+}
+
+/* --------------------------------------------------------- Data models (§6.4) */
+
+export interface EntityField {
+  name: string;
+  /** As written: an identifier (`uuid`) or a quoted string (`"varchar(255)"`). */
+  type: string;
+  pk?: true;
+  unique?: true;
+  optional?: true;
+  /** `-> link` or `-> link.id`: a reference to another entity of the same model. */
+  ref?: { entity: string; field?: string };
+}
+
+export interface EntityDecl {
+  kind: "entity";
+  id: string;
+  name?: string;
+  fields: EntityField[];
+  span: Span;
+}
+
+/** The entities a store (`on db`) holds and how they relate. */
+export interface ModelNode {
+  kind: "model";
+  id: string;
+  name?: string;
+  on?: string[];
+  entities: EntityDecl[];
+  span: Span;
+}
+
+/** Every kind of view (diagram) a document can hold besides its architecture. */
+export type ViewKind = "sequence" | "flow" | "states" | "entities";
+export type ViewNode = SequenceNode | FlowNode | MachineNode | ModelNode;
+
+/**
+ * Where a node of a flow, state machine or data model sits in its view's
+ * diagram, when someone placed it (`view <id> { <node>: { at: [x, y] } }` in
+ * the layout block). Presentation only, like component layout; in a flow
+ * only `x` counts, since a node's lane is its row.
+ */
+export interface ViewLayoutEntry {
+  kind: "view-layout";
+  view: string;
+  node: string;
+  /** Grid cells of the view's diagram (40px, like the canvas). */
+  at: [number, number];
+  span: Span;
+}
+
 export interface ArchDoc {
   kind: "doc";
   title: string;
@@ -144,7 +323,17 @@ export interface ArchDoc {
   /** Top-level planes. */
   planes: PlaneNode[];
   connections: ConnectionNode[];
+  /** Sequences, in document order (the order the switcher lists them). */
+  sequences: SequenceNode[];
+  /** Activity flows, in document order. */
+  flows: FlowNode[];
+  /** State machines (`states` blocks), in document order. */
+  machines: MachineNode[];
+  /** Data models (`entities` blocks), in document order. */
+  models: ModelNode[];
   layout: LayoutEntry[];
+  /** Placed nodes of views (machine-managed, like `layout`). */
+  viewLayout: ViewLayoutEntry[];
 }
 
 export type Severity = "error" | "warning";

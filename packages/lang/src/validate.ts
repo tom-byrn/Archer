@@ -8,6 +8,8 @@ import {
 } from "./scope";
 import { SHAPES, isShape } from "./shapes";
 import { COLORS, isColor } from "./colors";
+import { messageConnection, sequenceRows } from "./sequence";
+import { VIEW_LABELS, allViews, placeableIds } from "./views";
 import {
   pathToString,
   type ArchDoc,
@@ -249,6 +251,147 @@ export function validate(doc: ArchDoc, opts: ValidateOptions = {}): Diagnostic[]
     }
   }
 
+  // E002 (unique sequence ids), E101 (participants resolve), W307 (every call
+  // travels on a connection), W301 for message types
+  // Views share one id namespace (E002).
+  const viewIds = new Map<string, string>();
+  for (const v of allViews(doc)) {
+    const first = viewIds.get(v.node.id);
+    if (first !== undefined) {
+      diagnostics.push({
+        code: "E002",
+        severity: "error",
+        message:
+          first === v.kind
+            ? `Duplicate ${VIEW_LABELS[v.kind].one} id '${v.node.id}'.`
+            : `Duplicate view id '${v.node.id}': a ${VIEW_LABELS[first as keyof typeof VIEW_LABELS].one} and a ${VIEW_LABELS[v.kind].one} need different ids.`,
+        span: v.node.span,
+      });
+    } else viewIds.set(v.node.id, v.kind);
+  }
+
+  /** E101 for a component a view names (a lane, what a machine or model is of). */
+  const component = (path: readonly string[], where: string, span: Diagnostic["span"]) => {
+    const key = pathToString(path);
+    if (paths.has(key)) return;
+    const meant = withoutPlanes(doc, path);
+    diagnostics.push({
+      code: "E101",
+      severity: "error",
+      message: planes.has(key)
+        ? `${where}: '${key}' is a plane, and views name components.`
+        : meant
+          ? `${where}: '${key}' does not resolve to a declared component. Planes aren't part of paths: did you mean '${pathToString(meant)}'?`
+          : `${where}: '${key}' does not resolve to a declared component.`,
+      ...(span ? { span } : {}),
+    });
+  };
+  /** E002 within a view: its nodes, states, entities or fields. */
+  const unique = <T>(items: readonly T[], idOf: (x: T) => string, spanOf: (x: T) => Diagnostic["span"], what: string) => {
+    const seen = new Set<string>();
+    for (const x of items) {
+      const id = idOf(x);
+      if (seen.has(id)) {
+        const span = spanOf(x);
+        diagnostics.push({ code: "E002", severity: "error", message: `Duplicate ${what} '${id}'.`, ...(span ? { span } : {}) });
+      }
+      seen.add(id);
+    }
+    return seen;
+  };
+  /** E102: a reference inside a view that names nothing in it. */
+  const dangling = (message: string, span: Diagnostic["span"]) =>
+    diagnostics.push({ code: "E102", severity: "error", message, ...(span ? { span } : {}) });
+
+  for (const f of doc.flows) {
+    const where = `Flow '${f.id}'`;
+    const ids = unique(f.nodes, (n) => n.id, (n) => n.span, `node id in flow '${f.id}'`);
+    for (const n of f.nodes) if (n.lane) component(n.lane, `${where}, node '${n.id}'`, n.span);
+    for (const e of f.edges)
+      for (const end of [e.from, e.to])
+        if (!ids.has(end)) dangling(`${where}: '${end}' is not a node of this flow.`, e.span);
+  }
+
+  for (const m of doc.machines) {
+    const where = `State machine '${m.id}'`;
+    if (m.of) component(m.of, where, m.span);
+    const ids = unique(m.states, (st) => st.id, (st) => st.span, `state id in '${m.id}'`);
+    for (const t of m.transitions)
+      for (const end of [t.from, t.to])
+        if (!ids.has(end)) dangling(`${where}: '${end}' is not a state of this machine.`, t.span);
+    if (m.states.length > 0 && !m.states.some((st) => st.initial)) {
+      diagnostics.push({
+        code: "W308",
+        severity: "warning",
+        message: `${where} has no initial state. Mark the one it starts in: state <id> initial.`,
+        span: m.span,
+      });
+    }
+  }
+
+  for (const m of doc.models) {
+    const where = `Data model '${m.id}'`;
+    if (m.on) component(m.on, where, m.span);
+    unique(m.entities, (e) => e.id, (e) => e.span, `entity id in '${m.id}'`);
+    for (const e of m.entities) {
+      unique(e.fields, (f) => f.name, () => e.span, `field name on '${m.id}.${e.id}'`);
+      for (const f of e.fields) {
+        if (!f.ref) continue;
+        const target = m.entities.find((x) => x.id === f.ref!.entity);
+        if (!target) dangling(`${where}: '${e.id}.${f.name}' refers to '${f.ref.entity}', which is not an entity of this model.`, e.span);
+        else if (f.ref.field !== undefined && !target.fields.some((x) => x.name === f.ref!.field))
+          dangling(`${where}: '${e.id}.${f.name}' refers to '${f.ref.entity}.${f.ref.field}', which is not a field of '${f.ref.entity}'.`, e.span);
+      }
+    }
+  }
+
+  for (const seq of doc.sequences) {
+    const resolves = (path: readonly string[], span: Diagnostic["span"]): boolean => {
+      const key = pathToString(path);
+      if (paths.has(key)) return true;
+      const meant = withoutPlanes(doc, path);
+      diagnostics.push({
+        code: "E101",
+        severity: "error",
+        message: planes.has(key)
+          ? `Sequence '${seq.id}': '${key}' is a plane, and only components take part in sequences.`
+          : meant
+            ? `Sequence '${seq.id}': '${key}' does not resolve to a declared component. Planes aren't part of paths: did you mean '${pathToString(meant)}'?`
+            : `Sequence '${seq.id}': '${key}' does not resolve to a declared component.`,
+        ...(span ? { span } : {}),
+      });
+      return false;
+    };
+    for (const row of sequenceRows(seq)) {
+      if (row.kind === "note") {
+        for (const p of row.step.over) resolves(p, row.step.span);
+        continue;
+      }
+      if (row.kind !== "message") continue;
+      const m = row.step;
+      const ok = [resolves(m.from, m.span), resolves(m.to, m.span)].every(Boolean);
+      if (m.type && connectionTypes && !connectionTypes.has(m.type)) {
+        diagnostics.push({
+          code: "W301",
+          severity: "warning",
+          message: `Unknown connection type '@${m.type}' in sequence '${seq.id}'.`,
+          span: m.span,
+        });
+      }
+      if (!ok || m.arrow === "-->" || pathToString(m.from) === pathToString(m.to)) continue;
+      if (messageConnection(doc.connections, m) === -1) {
+        const from = pathToString(m.from);
+        const to = pathToString(m.to);
+        diagnostics.push({
+          code: "W307",
+          severity: "warning",
+          message: `Sequence '${seq.id}', step ${row.number}: ${from} calls ${to}, but no connection joins them. Add one (${from} -> ${to}) so the architecture shows it.`,
+          span: m.span,
+        });
+      }
+    }
+  }
+
   // W303 (layout entries reference declared components and planes)
   for (const entry of doc.layout) {
     const key = pathToString(entry.path);
@@ -260,6 +403,17 @@ export function validate(doc: ArchDoc, opts: ValidateOptions = {}): Diagnostic[]
         span: entry.span,
       });
     }
+  }
+
+  // W303 for placed view nodes too.
+  for (const e of doc.viewLayout) {
+    if (placeableIds(doc, e.view).has(e.node)) continue;
+    diagnostics.push({
+      code: "W303",
+      severity: "warning",
+      message: `Layout entry for '${e.node}' in view '${e.view}' does not match a node of that view (it will be dropped).`,
+      span: e.span,
+    });
   }
 
   return diagnostics;
@@ -280,5 +434,7 @@ export function normalizeLayout(doc: ArchDoc): ArchDoc {
     const key = pathToString(entry.path);
     if (paths.has(key) || planes.has(key)) byPath.set(key, entry);
   }
-  return { ...doc, layout: [...byPath.values()] };
+  const byNode = new Map<string, (typeof doc.viewLayout)[number]>();
+  for (const e of doc.viewLayout) if (placeableIds(doc, e.view).has(e.node)) byNode.set(`${e.view} ${e.node}`, e);
+  return { ...doc, layout: [...byPath.values()], viewLayout: [...byNode.values()] };
 }

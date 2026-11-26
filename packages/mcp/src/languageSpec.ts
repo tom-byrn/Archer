@@ -35,7 +35,7 @@ reading guide, as an implementation spec.
 
 ## 2. File structure
 
-An \`.arch\` file has up to four sections, in this order:
+An \`.arch\` file has up to five sections, in this order:
 
 \`\`\`
 arch "Title" v0.2          # 1. header (required)
@@ -45,7 +45,12 @@ plane ...
 
 a -> b ...                 # 3. connection declarations
 
-layout { ... }             # 4. presentation (machine-managed, optional)
+sequence ... { ... }       # 4. views: sequences, flows, state machines,
+flow ... { ... }           #    data models (§6.1–6.4)
+states ... { ... }
+entities ... { ... }
+
+layout { ... }             # 5. presentation (machine-managed, optional)
 \`\`\`
 
 - Encoding is UTF-8. Comments run from \`#\` to end of line (outside strings and payload
@@ -446,9 +451,162 @@ Rules:
   nesting boundaries and between a parent and its own descendant. Planes don't affect
   them.
 - Canonical form sorts connections by source path, then target path — so compiled
-  output is deterministic and diffs are clean. Connections carry no sequence/ordering
-  semantics. A connection with payloads is written as a multi-line block separated from
+  output is deterministic and diffs are clean. Connections carry no ordering: the order
+  things happen in belongs to sequences (§6.1). A connection with payloads is written as a multi-line block separated from
   its neighbours by a blank line; the sort order is unaffected.
+
+### 6.1 Sequences
+
+Connections say who talks to whom. A **sequence** says in what order, for one scenario:
+the steps of a checkout, a sign-up, a cache miss. It is drawn as a sequence diagram (one
+lifeline per component, messages top to bottom) and can be played back on the canvas.
+
+\`\`\`\`
+sequence shorten "Shorten a link" {
+  browser -> app : "Paste long URL"
+  app -> api @http : "POST /links"
+  api -> cache : "GET slug"
+  cache --> api : "miss"
+  alt "slug is free" {
+    api -> db @sql : "INSERT link"
+    db --> api : "id"
+  } else "taken" {
+    api -> api : "pick another slug"
+  }
+  note over api, db "Slugs are unique per workspace"
+  api --> app : "201 Created"
+  app --> browser : "Short link"
+}
+\`\`\`\`
+
+- \`sequence <id> ["Name"] { <steps> }\`. Ids are snake_case and unique among the
+  document's sequences (\`E002\`); the name is what the editor shows.
+- Steps, in order:
+
+  | step                                   | meaning                                     |
+  | -------------------------------------- | ------------------------------------------- |
+  | \`a -> b [@type] [: "label"]\`           | a call: \`a\` sends, and waits for \`b\`        |
+  | \`b --> a [@type] [: "label"]\`          | a reply to an earlier call                  |
+  | \`a ~> b [@type] [: "label"]\`           | an async call: a message nobody waits on    |
+  | \`alt "guard" { … } else "guard" { … }\` | one of several branches runs                |
+  | \`opt "guard" { … }\`                    | runs only if the guard holds                |
+  | \`loop "guard" { … }\`                   | repeats                                     |
+  | \`par { … } else { … }\`                 | the branches run at the same time           |
+  | \`note over a, b "text"\`                | a remark across one or more lifelines       |
+
+  Guards are optional. Only \`alt\` and \`par\` take \`else\` branches.
+- **Participants are components.** Every path in a step resolves to a declared
+  component, like a connection's ends (\`E101\`); a plane never takes part. The lifelines
+  are the components in order of first appearance, drawn with their own type, shape,
+  icon and color.
+- **Calls travel on connections.** A call (or async call) from \`a\` to \`b\` should have a
+  connection that carries it: \`a -> b\`, or \`a <-> b\` / \`a -- b\` either way round. One
+  that doesn't is a warning (\`W307\`), so a sequence can't quietly add architecture the
+  diagram doesn't show. Replies travel back along the call's connection and a component
+  calling itself needs none, so neither is checked.
+- **Order is the meaning.** Canonical form keeps sequences in document order and their
+  steps exactly as written. Sequences have no layout: the diagram's spacing is computed.
+- Renaming, moving or removing a component on the canvas updates the sequences it takes
+  part in; a removed component's steps go with it.
+- \`sequence\`, \`alt\`, \`opt\`, \`loop\`, \`par\`, \`else\` and \`note\` are only keywords where a
+  step or a sequence can start, so they remain usable as component ids.
+
+### 6.2 Flows
+
+A **flow** is an activity diagram: the steps and decisions of a process, in one lane per
+component that does them.
+
+\`\`\`\`
+flow publish "Publish a link" {
+  start begin in browser
+  step paste "Paste URL" in browser
+  decision valid "Valid URL?" in api
+  step store "Store link" in api
+  step error "Show error" in app
+  end done
+  begin -> paste
+  paste -> valid
+  valid -> store : "yes"
+  valid -> error : "no"
+  store -> done
+}
+\`\`\`\`
+
+- \`flow <id> ["Name"] { <nodes and edges> }\`.
+- Nodes: \`start\`, \`step\`, \`decision\` and \`end\`, each \`<kind> <id> ["Name"] [in <path>]\`.
+  \`in\` puts the node in the lane of a declared component (\`E101\` otherwise); a node
+  without one sits in a lane of its own at the bottom. Node ids are unique in the flow
+  (\`E002\`).
+- Edges: \`a -> b [: "label"]\` between node ids (\`E102\` when one isn't a node). A
+  decision's labels are its outcomes.
+- Nodes, then edges, each in the order written.
+
+### 6.3 State machines
+
+A **states** block is a state machine: the states one component moves through, and what
+moves it between them.
+
+\`\`\`\`
+states lifecycle "Link lifecycle" of db {
+  state pending "Pending" initial
+  state live "Live"
+  state expired "Expired" final
+  pending -> live : "slug reserved"
+  live -> live : "clicked"
+  live -> expired : "TTL passed"
+}
+\`\`\`\`
+
+- \`states <id> ["Name"] [of <path>] { <states and transitions> }\`. \`of\` names the
+  component whose states these are (\`E101\` when it isn't one).
+- \`state <id> ["Name"] [initial] [final]\`. State ids are unique in the machine (\`E002\`).
+  A machine with states but no \`initial\` one is a warning (\`W308\`).
+- Transitions: \`a -> b [: "event"]\` between state ids (\`E102\` otherwise); \`a -> a\` is
+  allowed.
+
+### 6.4 Data models
+
+An **entities** block is a data model: the entities a store holds, their fields, and how
+they refer to each other.
+
+\`\`\`\`
+entities schema "Links schema" on db {
+  entity link "Link" {
+    id uuid pk
+    slug text unique
+    url "varchar(2048)"
+    expires_at timestamp optional
+  }
+  entity click "Click" {
+    id uuid pk
+    link_id uuid -> link.id
+    at timestamp
+  }
+}
+\`\`\`\`
+
+- \`entities <id> ["Name"] [on <path>] { <entities> }\`. \`on\` names the store it models
+  (\`E101\` when it isn't a component).
+- \`entity <id> ["Name"] [{ <fields> }]\`, entity ids unique in the model (\`E002\`).
+- A field is one line: \`<name> <type> [pk] [unique] [optional] [-> <entity>[.<field>]]\`.
+  The type is an identifier or, for anything else, a quoted string (\`"varchar(2048)"\`);
+  types aren't checked. \`-> link\` refers to another entity of the same model, \`-> link.id\`
+  to one of its fields (\`E102\` when either doesn't exist). Field names are unique per
+  entity (\`E002\`).
+- A model may describe the same tables as a component's \`schema\` payload; the payload is
+  free-form detail, the model is what the diagram draws.
+
+### 6.5 Views in general
+
+Sequences, flows, state machines and data models are **views**: diagrams over the same
+document. They share one id namespace (\`E002\`), so a view's id alone names it. Their
+diagrams are arranged automatically; nodes someone placed by hand keep their place in the
+\`layout\` block (§7). Canonical form keeps each kind in
+document order, sequences first, then flows, state machines and data models, with their
+contents as written. Renaming or moving a component on the canvas updates the views that
+name it; removing it drops a sequence's steps with it, takes a flow node out of its lane,
+and clears a state machine's \`of\` or a model's \`on\`. A three-way merge takes each view
+whole, by id.
 
 ## 7. The \`layout\` block
 
@@ -477,6 +635,21 @@ layout {
   computed position is then written back. A plane grows to hold what's on it.
 - Layout is always optional, never load-bearing: deleting the entire block yields the
   same architecture, auto-laid-out.
+- Views are laid out automatically, but a node of a flow, state machine or data model
+  that someone dragged keeps its place, in a group per view:
+
+  \`\`\`
+  layout {
+    api: { at: [6, 2], size: [4, 3] }
+    view lifecycle {
+      expired: { at: [20, 8] }
+    }
+  }
+  \`\`\`
+
+  \`at\` is in the view's own grid (40px cells, like the canvas). In a flow only the column
+  counts: a node's row is its lane. An entry for a node that isn't there is \`W303\` and is
+  dropped. Sequences have no placed nodes: their order is their layout.
 - Agent guidance (stated in docs and in the export header): read \`layout\` as the
   author's arrangement — context for how they see the system, never something to
   implement; leave it out when writing (surviving components keep their positions,
@@ -489,10 +662,11 @@ A document is **valid** when:
 | code   | rule                                                             | severity |
 | ------ | ---------------------------------------------------------------- | -------- |
 | \`E001\` | file parses (header, declarations, fences)                       | error    |
-| \`E002\` | ids unique within their scope, components and planes together    | error    |
+| \`E002\` | ids unique within their scope, components and planes together; view ids unique across all views; ids unique within a view | error    |
 | \`E003\` | payload names unique per component / per connection              | error    |
 | \`E004\` | at most one \`shape\`, one \`icon\` and one \`color\` per component    | error    |
-| \`E101\` | every connection endpoint resolves to a declared component       | error    |
+| \`E101\` | every connection endpoint, sequence participant, lane, \`of\` and \`on\` resolves to a declared component | error    |
+| \`E102\` | edges, transitions and entity references resolve inside their view | error    |
 | \`E201\` | \`json\` / \`yaml\` / \`table\` payloads parse in their format         | error    |
 | \`W301\` | type tag resolves in the catalog                                 | warning  |
 | \`W302\` | duplicate connection                                             | warning  |
@@ -500,6 +674,8 @@ A document is **valid** when:
 | \`W304\` | shape is one the language knows (§3.3)                           | warning (drawn as a box) |
 | \`W305\` | icon is one the tools know (§3.3)                                | warning (no icon drawn) |
 | \`W306\` | color is a palette name or \`#rrggbb\` (§3.3)                      | warning (type's color drawn) |
+| \`W307\` | every call in a sequence travels on a connection (§6.1)          | warning  |
+| \`W308\` | a state machine has an initial state (§6.3)                      | warning  |
 
 Errors block agent export ("copy as prompt") and mark the document invalid in the UI;
 the canvas still renders as much as it can. Warnings never block anything.
@@ -606,7 +782,8 @@ layout {
 ## 11. Grammar sketch (EBNF-ish)
 
 \`\`\`
-file        = header { declaration | connection } [ layout ] ;
+file        = header { declaration | connection | view } [ layout ] ;
+view        = sequence | flow | states | entities ;
 header      = "arch" string version ;
 declaration = component | plane ;
 component   = "component" id [ string ] [ type ] [ "{" { bodyitem } "}" ] ;
@@ -622,9 +799,24 @@ payload     = id format fence ;
 format      = "json" | "yaml" | "table" | "markdown" ;
 connection  = path arrow path [ type ] [ ":" string ] [ "{" { payload } "}" ] ;
 arrow       = "->" | "<->" | "--" ;
+sequence    = "sequence" id [ string ] "{" { step } "}" ;
+step        = message | fragment | note ;
+message     = path msgarrow path [ type ] [ ":" string ] ;
+msgarrow    = "->" | "-->" | "~>" ;
+fragment    = ( "alt" | "opt" | "loop" | "par" ) [ string ] "{" { step } "}"
+              { "else" [ string ] "{" { step } "}" } ;
+note        = "note" "over" path { "," path } ( string | tripleString ) ;
+flow        = "flow" id [ string ] "{" { flownode | edge } "}" ;
+flownode    = ( "start" | "step" | "decision" | "end" ) id [ string ] [ "in" path ] ;
+edge        = id "->" id [ ":" string ] ;
+states      = "states" id [ string ] [ "of" path ] "{" { state | edge } "}" ;
+state       = "state" id [ string ] [ "initial" ] [ "final" ] ;
+entities    = "entities" id [ string ] [ "on" path ] "{" { entity } "}" ;
+entity      = "entity" id [ string ] [ "{" { field } "}" ] ;
+field       = id ( id | string ) { "pk" | "unique" | "optional" } [ "->" id [ "." id ] ] ;
 type        = "@" id { "." id } ;
 path        = id { "." id } ;
-layout      = "layout" "{" { path ":" layoutval } "}" ;
+layout      = "layout" "{" { path ":" layoutval | "view" id "{" { id ":" layoutval } "}" } "}" ;
 \`\`\`
 
 ## 12. Open questions (deferred)
@@ -632,5 +824,5 @@ layout      = "layout" "{" { path ":" layoutval } "}" ;
 - Multi-file / import (\`use "./billing.arch"\`) — v1 is one file per document.
 - In-file custom type definitions for portability.
 - Per-technology payload validation (\`sql\`, \`openapi\`, \`terraform\` formats).
-- Views: multiple named layouts over one model (C4-style level switching).
+- Named layouts over one model (C4-style level switching).
 `;

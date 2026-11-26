@@ -60,7 +60,7 @@ export function conflictLine(c: MergeConflict): string {
 export function planSync({ base, draft, head }: { base: string | null; draft: string; head: string }): SyncPlan {
   if (sameArchitecture(head, draft)) return { action: "adopt" }; // e.g. our own pull request merged
   if (base !== null && sameArchitecture(head, base)) return { action: "adopt" }; // only formatting/comments changed
-  const baseDoc = base !== null ? parse(base).doc : { ...parse(draft).doc, components: [], planes: [], connections: [], layout: [] };
+  const baseDoc = base !== null ? parse(base).doc : { ...parse(draft).doc, components: [], planes: [], connections: [], sequences: [], flows: [], machines: [], models: [], layout: [], viewLayout: [] };
   const draftDoc = parse(draft).doc;
   if (base !== null && isEmptyDiff(diffDocs(baseDoc, draftDoc))) return { action: "fast-forward", source: head };
   const merged = mergeDocs(baseDoc, draftDoc, parse(head).doc);
@@ -85,7 +85,7 @@ export function resolveMerge({
 }): string {
   const draftDoc = parse(draft).doc;
   const headDoc = parse(head).doc;
-  const baseDoc = base !== null ? parse(base).doc : { ...draftDoc, components: [], planes: [], connections: [], layout: [] };
+  const baseDoc = base !== null ? parse(base).doc : { ...draftDoc, components: [], planes: [], connections: [], sequences: [], flows: [], machines: [], models: [], layout: [], viewLayout: [] };
   const merged = prefer === "draft" ? mergeDocs(baseDoc, draftDoc, headDoc) : mergeDocs(baseDoc, headDoc, draftDoc);
   return format(merged.doc);
 }
@@ -149,11 +149,18 @@ export function describeChanges(s: DiffSummary): string {
     const n = s.connectionsAdded + s.connectionsRemoved + s.connectionsChanged;
     parts.push(`${n === 1 ? "connection" : "connections"} ${conns.join(", ")}`);
   }
+  // Summaries stored before views existed have no view counts.
+  if (s.viewsAdded) parts.push(`${plural(s.viewsAdded, "view")} added`);
+  if (s.viewsRemoved) parts.push(`${plural(s.viewsRemoved, "view")} removed`);
+  if (s.viewsChanged) parts.push(`${plural(s.viewsChanged, "view")} changed`);
   return parts.length ? parts.join(", ") : "no architectural changes";
 }
 
-/** Total number of changed components, planes and connections. */
+/** Total number of changed components, planes, connections and sequences. */
 export const changeCount = (s: DiffSummary): number =>
+  (s.viewsAdded ?? 0) +
+  (s.viewsRemoved ?? 0) +
+  (s.viewsChanged ?? 0) +
   s.added +
   s.removed +
   s.changed +
@@ -211,6 +218,7 @@ export function publishBody(diff: DocDiff, editorUrl: string): string {
     const conn = c.connection;
     lines.push(`- \`${conn.source.join(".")} ${conn.arrow} ${conn.target.join(".")}\`: ${c.kind}`);
   }
+  for (const v of diff.views) lines.push(`- ${v.view === "sequence" ? "sequence" : v.view === "flow" ? "flow" : v.view === "states" ? "state machine" : "data model"} \`${v.id}\`: ${v.kind}`);
   return [
     "Architecture changes published from Archer.",
     "",

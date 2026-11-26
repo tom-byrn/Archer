@@ -2,10 +2,12 @@ import { ConvexHttpClient } from "convex/browser";
 import { LOGOS } from "@archer/catalog/logos";
 import { api } from "@/convex/_generated/api";
 import { renderArchSvg } from "@/lib/svg";
+import { renderViewSvg } from "@/lib/viewSvg";
 
 /**
  * Public embed image for a shared document:
  *   <img src="https://<app>/s/<slug>/image.svg?theme=dark">
+ *   <img src="https://<app>/s/<slug>/image.svg?view=checkout">  (one view)
  * Works in GitHub READMEs and docs. Only documents with "anyone with the
  * link can view" enabled resolve; everything else is a 404.
  */
@@ -35,6 +37,11 @@ export async function GET(
   const client = new ConvexHttpClient(url);
   const doc = await client.query(api.documents.getPublic, { slug });
   if (!doc) return svgResponse(NOT_SHARED, 404, false);
-  const theme = new URL(req.url).searchParams.get("theme") === "dark" ? "dark" : "light";
-  return svgResponse(renderArchSvg(doc.source, { theme, logos: LOGOS }));
+  const params2 = new URL(req.url).searchParams;
+  const theme = params2.get("theme") === "dark" ? "dark" : "light";
+  // ?view=<id>: one of the document's views (a sequence, flow, state machine or data model).
+  const view = params2.get("view");
+  return svgResponse(
+    view ? renderViewSvg(doc.source, view, { theme, logos: LOGOS }) : renderArchSvg(doc.source, { theme, logos: LOGOS }),
+  );
 }

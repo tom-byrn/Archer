@@ -1,5 +1,6 @@
 "use client";
 
+import { ComponentSequences, ConnectionSequences } from "./InSequences";
 import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   checkPayload,
@@ -102,7 +103,7 @@ const isHttpUrl = (v: string): boolean => /^https?:\/\//i.test(v.trim());
 
 /* ------------------------------------------------------------ Text fields */
 
-function CommitInput({
+export function CommitInput({
   defaultValue,
   placeholder,
   mono,
@@ -532,6 +533,7 @@ export function ComponentDetails({
         </dl>
       </Section>
       {connections && <ConnectionsReadout {...connections} library={library} />}
+      {connections && <ComponentSequences doc={connections.doc} path={connections.path} />}
       <PayloadReadouts payloads={node.payloads} />
     </>
   );
@@ -859,6 +861,7 @@ function ConnectionDetails({
         </dl>
       </Section>
       <PayloadReadouts payloads={conn.payloads} />
+      <ConnectionSequences doc={doc} conn={conn} />
     </>
   );
 }

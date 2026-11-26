@@ -59,12 +59,15 @@ export function ShareDialog({
   documentId,
   workspaceId,
   publicSlug,
+  view,
 }: {
   open: boolean;
   onClose: () => void;
   documentId: Id<"documents">;
   workspaceId: string;
   publicSlug: string | null | undefined;
+  /** The view open in the editor (a sequence, flow…): its image embeds too. */
+  view?: { id: string; name: string } | null;
 }) {
   const setPublic = useMutation(api.documents.setPublic);
   const [slug, setSlug] = useState<string | null>(publicSlug ?? null);
@@ -109,10 +112,19 @@ export function ShareDialog({
             <span className="eyebrow">Embed in a README</span>
           </div>
           <div className="divide-y divide-line rounded-md border border-line bg-surface-2">
-            {EMBED_THEMES.map(({ label, query }) => {
-              const embed = `![Architecture](${link}/image.svg${query})`;
+            {[
+              ...EMBED_THEMES.map((t) => ({ ...t, alt: "Architecture" })),
+              ...(view
+                ? EMBED_THEMES.map((t) => ({
+                    label: t.label,
+                    alt: view.name,
+                    query: `?view=${encodeURIComponent(view.id)}${t.query.replace("?", "&")}`,
+                  }))
+                : []),
+            ].map(({ label, query, alt }) => {
+              const embed = `![${alt}](${link}/image.svg${query})`;
               return (
-                <div key={label} className="flex items-start gap-2 px-2.5 py-1.5">
+                <div key={`${alt}-${label}`} className="flex items-start gap-2 px-2.5 py-1.5">
                   <span className="w-9 shrink-0 text-sm font-medium leading-relaxed text-ink-2">{label}</span>
                   <code className="mono min-w-0 flex-1 break-all text-sm leading-relaxed text-ink">{embed}</code>
                   <CopyButton text={embed} label={`Copy ${label.toLowerCase()} embed`} />

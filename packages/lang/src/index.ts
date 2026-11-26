@@ -26,7 +26,37 @@ export {
   hasErrors,
 } from "./validate";
 export type { ValidateOptions } from "./validate";
-export { format } from "./format";
+export { format, formatSequence, formatFlow, formatMachine, formatModel, formatView } from "./format";
+export {
+  VIEW_KINDS,
+  VIEW_LABELS,
+  allViews,
+  findView,
+  viewsOf,
+  viewName,
+  viewComponents,
+  viewsWith,
+  remapViewPaths,
+  placeableIds,
+  viewPositions,
+} from "./views";
+export type { ViewRef } from "./views";
+export {
+  sequenceRows,
+  sequenceMessages,
+  sequenceParticipants,
+  sequenceUses,
+  sequencesWith,
+  messageConnection,
+  messageKind,
+  remapSequencePaths,
+  stepAt,
+  stepList,
+  addressKey,
+  parseAddressKey,
+  MESSAGE_ARROWS,
+} from "./sequence";
+export type { SequenceRow, StepAddress, StepSlot } from "./sequence";
 export type { FormatOptions } from "./format";
 export { compileForAgent } from "./agentExport";
 export {
@@ -70,6 +100,37 @@ export {
   relayoutComponents,
   duplicateComponents,
   outermostItems,
+  addSequence,
+  removeSequence,
+  setSequenceMeta,
+  insertStep,
+  removeStep,
+  setMessageMeta,
+  setNoteText,
+  setFragmentMeta,
+  moveStep,
+  wrapInFragment,
+  addBranch,
+  removeBranch,
+  unwrapFragment,
+  stepsFromConnections,
+  addView,
+  removeView,
+  setViewMeta,
+  addFlowNode,
+  setFlowNode,
+  addState,
+  setState,
+  removeGraphNode,
+  addGraphEdgeTo,
+  setGraphEdge,
+  removeGraphEdge,
+  addEntity,
+  setEntity,
+  setEntityFields,
+  removeEntity,
+  placeViewNode,
+  clearViewLayout,
 } from "./transform";
 export type {
   AddComponentOptions,
@@ -80,6 +141,15 @@ export type {
   ConnectionOptions,
   ConnectionMeta,
   GroupOptions,
+  AddSequenceOptions,
+  SequenceMeta,
+  MessageMeta,
+  AddViewOptions,
+  ViewMeta,
+  FlowNodeOptions,
+  FlowNodeMeta,
+  StateOptions,
+  StateMeta,
 } from "./transform";
 export {
   diffDocs,
@@ -93,6 +163,7 @@ export type {
   ComponentChange,
   PlaneChange,
   ConnectionChange,
+  ViewChange,
   DocDiff,
   DiffSummary,
 } from "./diff";

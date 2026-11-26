@@ -330,6 +330,144 @@ orders.tracker -> orders.db @writes
 `,
   },
   {
+    slug: "sequences",
+    title: "Link Shortener",
+    summary:
+      "Connections say who talks to whom; a sequence says in what order, for one scenario. Its participants are the document's own components, so it can't drift from the architecture, and every call travels on a connection (W307 warns when one doesn't). `->` is a call, `-->` its reply and `~>` a message nobody waits on; `alt`/`else`, `opt`, `loop` and `par` group steps, and a note sits over the lifelines it names. The editor opens each sequence as a diagram and plays it back on the canvas.",
+    features: ["sequences", "messages", "fragments", "notes"],
+    source: `arch "Link Shortener" v0.2
+
+component browser "Browser" @browser {
+  shape browser
+}
+
+component app "Web App" @vercel.nextjs
+
+component api "API" @vercel.functions
+
+component db "Links" @postgres {
+  shape cylinder
+}
+
+component cache "Hot Links" @redis {
+  shape cylinder
+  color orange
+}
+
+component clicks "Click Events" @queue
+
+api -> cache @reads : "resolve"
+api -> clicks @queue : "clicked"
+api -> db @sql
+app -> api @http : "shorten"
+browser -> app @http
+
+sequence shorten "Shorten a link" {
+  browser -> app : "Paste long URL"
+  app -> api @http : "POST /links"
+  api -> cache : "GET slug"
+  cache --> api : "miss"
+  alt "slug is free" {
+    api -> db @sql : "INSERT link"
+    db --> api : "id"
+  } else "taken" {
+    api -> api : "pick another slug"
+  }
+  api --> app : "201 Created"
+  app --> browser : "Short link"
+}
+
+sequence resolve "Resolve a link" {
+  browser -> app : "GET /:slug"
+  app -> api @http : "resolve slug"
+  api -> cache : "GET slug"
+  opt "cache miss" {
+    api -> db @sql : "SELECT url"
+    api -> cache : "SET slug"
+  }
+  api ~> clicks @queue : "clicked"
+  api --> app : "url"
+  app --> browser : "302 redirect"
+}
+`,
+  },
+  {
+    slug: "flows-states-and-data",
+    title: "Link Shortener",
+    summary:
+      "Three more views over the same components. A `flow` is an activity diagram: `start`, `step`, `decision` and `end` nodes, each `in` the lane of the component that does it. A `states` block is one component's state machine, with an `initial` state, `final` ones and the events between them. An `entities` block is a store's data model: entities, one field per line, with `pk`, `unique`, `optional` and `-> entity.field` references. Like sequences, they name components by path and follow them when they're renamed.",
+    features: ["flows", "state machines", "data models"],
+    source: `arch "Link Shortener" v0.2
+
+component browser "Browser" @browser {
+  shape browser
+}
+
+component app "Web App" @vercel.nextjs
+
+component api "API" @vercel.functions
+
+component db "Links" @postgres {
+  shape cylinder
+}
+
+api -> db @sql
+app -> api @http : "shorten"
+browser -> app @http
+
+flow publish "Publish a link" {
+  start begin in browser
+  step paste "Paste a long URL" in browser
+  step submit "Submit" in app
+  decision valid "Valid URL?" in api
+  step store "Store the link" in api
+  step error "Show an error" in app
+  step show "Show the short link" in app
+  end done in browser
+  begin -> paste
+  paste -> submit
+  submit -> valid
+  valid -> store : "yes"
+  valid -> error : "no"
+  error -> paste
+  store -> show
+  show -> done
+}
+
+states lifecycle "Link lifecycle" of db {
+  state pending "Pending" initial
+  state live "Live"
+  state disabled "Disabled"
+  state expired "Expired" final
+  pending -> live : "slug reserved"
+  live -> live : "clicked"
+  live -> disabled : "reported"
+  disabled -> live : "reviewed"
+  live -> expired : "TTL passed"
+}
+
+entities schema "Links schema" on db {
+  entity owner "Owner" {
+    id uuid pk
+    email text unique
+  }
+  entity link "Link" {
+    id uuid pk
+    owner_id uuid -> owner.id
+    slug text unique
+    url "varchar(2048)"
+    expires_at timestamp optional
+  }
+  entity click "Click" {
+    id uuid pk
+    link_id uuid -> link.id
+    at timestamp
+    referrer text optional
+  }
+}
+`,
+  },
+  {
     slug: "music-streaming",
     title: "Music Streaming",
     summary:
