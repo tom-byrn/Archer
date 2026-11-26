@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Landing } from "@/components/landing/Landing";
 import { LEDE } from "@/lib/landingCopy";
-import { landingViews } from "@/lib/landingViews";
 import { SITE_URL } from "@/lib/site";
 
 // The landing's headline and lede, so the link preview reads like the page.
@@ -20,5 +19,5 @@ export const metadata: Metadata = {
 };
 
 export default function WelcomePage() {
-  return <Landing views={landingViews()} />;
+  return <Landing />;
 }

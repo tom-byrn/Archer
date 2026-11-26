@@ -79,9 +79,6 @@ Router + React Flow + Convex).
   `embedded` mode on a local `useArchDoc` (no Convex), lazy-loaded so React
   Flow stays out of the first paint. Absolute URLs come from `lib/site.ts`
   (`NEXT_PUBLIC_SITE_URL`, default `https://tryarcher.dev`).
-  Its views showcase (`components/landing/Views.tsx`, `#views`) is built on
-  the server by `lib/landingViews.ts` from the docs examples' views, drawn
-  without logos.
 - Docs: `/language` (the spec) and `/language/examples` (worked examples from
   `packages/mcp/src/examples.ts`, which agents also read through the MCP
   tools `list_examples`/`get_example`). Example sources must stay canonical

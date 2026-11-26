@@ -71,16 +71,8 @@ agent** (canonical code with its layout, spec header prepended) and **Export PNG
    description editor, payload editors with format tabs and live validation state.
 4. **Code view** — toggleable split pane; read/write; parse errors and validation
    diagnostics inline with codes (`E101` …); document-level valid/invalid badge.
-5. **Views** — sequences, flows, state machines and data models over the same
-   components (spec §6). The header's view switcher, after the title, moves between
-   the architecture and every view; "New view…" makes one. Each opens as its own
-   diagram with a toolbar and an inspector: sequences as lifelines and messages,
-   played back on the canvas step by step; flows in one lane per component, also
-   playable; state machines with a simulator; data models as entity tables joined by
-   crow's-foot references. Views are laid out automatically, and dragged nodes keep
-   their place. Share links and Export draw the open view as SVG.
-6. **Export bar** — Copy code · Copy for agent · Export PNG.
-7. **Home** — document list (Convex), new/rename/delete.
+5. **Export bar** — Copy code · Copy for agent · Export PNG.
+6. **Home** — document list (Convex), new/rename/delete.
 
 ## Editing model
 

@@ -76,7 +76,3 @@ criterion; README rewritten for the repo. Tag `v1.0`.
 ## Deliberately after v1.0
 Sharing/multiplayer, app MCP server, codebase sync, per-technology payload
 validation, multi-file imports, named views.
-
-Shipped since: sharing, team workspaces, the MCP server, repository sync, and
-views (language v0.2 §6): sequences, flows, state machines and data models
-over the same components, each drawn, editable and exportable in the app.

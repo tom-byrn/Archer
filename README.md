@@ -56,13 +56,6 @@ not systems. An Archer document is a semantic model:
   store, a person for a user, a robot for an agent) and an `icon`, and any
   component can hold components: it's one box on the canvas, and opening it
   shows its parts.
-- **Behaviour, not just boxes** — views sit in the same file, over the same
-  components: a `sequence` says who calls whom and in what order, a `flow` is
-  an activity diagram with a lane per component, `states` is a component's
-  state machine and `entities` a store's data model. They name components by
-  path, so renames carry through, and a sequence's calls must travel on real
-  connections (`W307`). The editor draws each one, plays sequences and flows
-  back on the canvas, and simulates state machines.
 - **Agent-first** — "Copy for agent" emits the canonical document, with its
   layout and a short guide prepended. Paste it into Claude Code / Cursor and
   say "build this".
@@ -93,17 +86,7 @@ plane backend "Backend" @vercel {
 
 api.projects -> db @sql
 web -> api @http
-
-sequence new_project "Create a project" {
-  web -> api @http : "POST /projects"
-  api.projects -> db @sql : "INSERT project"
-  db --> api.projects : "id"
-  api --> web : "201 Created"
-}
 ````
-
-More, including flows, state machines and data models, in the
-[worked examples](https://tryarcher.dev/language/examples).
 
 ## Monorepo
 

@@ -85,13 +85,7 @@ on stderr. Only errors fail the check: it exits `1` when any file has one, and
 
 Signed in, `check` first fetches the custom types of your current workspace,
 so `@custom.*` tags validate cleanly. Signed out, with `--offline`, or when
-the request fails, it checks against the built-in catalog only.
-
-Views are checked with the rest of the document: a sequence or flow that names
-a component that doesn't exist fails (`E101`), as does a flow edge, transition
-or entity reference to a node that isn't there (`E102`); a sequence call with
-no connection to carry it (`W307`) and a state machine with no initial state
-(`W308`) are warnings. An unknown
+the request fails, it checks against the built-in catalog only. An unknown
 type is just a warning (`W301`), so this never turns a passing file into a
 failing one.
 
