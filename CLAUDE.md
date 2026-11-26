@@ -79,12 +79,16 @@ Router + React Flow + Convex).
   `embedded` mode on a local `useArchDoc` (no Convex), lazy-loaded so React
   Flow stays out of the first paint. Absolute URLs come from `lib/site.ts`
   (`NEXT_PUBLIC_SITE_URL`, default `https://tryarcher.dev`).
+  Its views showcase (`components/landing/Views.tsx`, `#views`) is built on
+  the server by `lib/landingViews.ts` from the docs examples' views, drawn
+  without logos.
 - Docs: `/language` (the spec) and `/language/examples` (worked examples from
   `packages/mcp/src/examples.ts`, which agents also read through the MCP
   tools `list_examples`/`get_example`). Example sources must stay canonical
   and validate clean — `apps/web/test/examples.test.ts` enforces it, so the
   code shown, the diagram (`lib/svg.ts`, prerendered at
-  `/language/examples/<slug>/{light,dark}.svg`), the editor copy and what
+  `/language/examples/<slug>/{light,dark}.svg`, and each view below it at
+`/language/examples/<slug>/views/<id>/{light,dark}.svg`), the editor copy and what
   agents read always agree. "Open in sandbox" goes to
   `/sandbox/<slug>` (see Editor sessions). "View code" opens the source in
   the editor's code popout (`components/CodeDialog.tsx`, shared with

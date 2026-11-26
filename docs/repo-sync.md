@@ -30,7 +30,11 @@ three versions of its architecture:
 **The file holds architecture only**: canonical form, no `layout` block.
 Canvas positions stay in Archer, so moving boxes never needs a commit, and
 the repository only sees architecture changes. A layout block in the file is
-honored on import and dropped on the next publish. Publishing writes
+honored on import and dropped on the next publish. Views (sequences, flows,
+state machines and data models, [spec §6.5](language-spec.md#65-views-in-general))
+are architecture, so they live in the file and travel with it; where someone
+dragged a view's node by hand is layout, and stays in Archer with the canvas
+positions. Publishing writes
 canonical form, so, as with `archer fmt`, `#` comments in the file don't
 survive a publish from Archer; keep notes in `desc` and payloads instead.
 

@@ -1,10 +1,12 @@
 import { Fragment } from "react";
+import { VIEW_LABELS, allViews, parse, viewName, type ViewRef } from "@archer/lang";
 import { EXAMPLES, type Example } from "@archer/mcp/examples";
 import { DocsNav } from "@/components/docs/DocsNav";
 import { OpenExampleLink, ViewCodeButton } from "@/components/docs/ExampleActions";
 import { SiteFrame } from "@/components/landing/SiteFrame";
 import { highlightArch } from "@/lib/highlightArch";
 import { renderArchSvg } from "@/lib/svg";
+import { renderViewSvg } from "@/lib/viewSvg";
 
 export const metadata = { title: "Examples · Archer" };
 
@@ -22,9 +24,9 @@ const withCode = (text: string) =>
     ),
   );
 
-/** The diagram's natural size, so the page doesn't shift while it loads. */
-const imageSize = (source: string): { width: number; height: number } => {
-  const m = /width="(\d+)" height="(\d+)"/.exec(renderArchSvg(source, { showTitle: false }));
+/** An SVG's natural size, so the page doesn't shift while it loads. */
+const svgSize = (svg: string): { width: number; height: number } => {
+  const m = /width="(\d+)" height="(\d+)"/.exec(svg);
   return m ? { width: Number(m[1]), height: Number(m[2]) } : { width: 800, height: 400 };
 };
 
@@ -35,8 +37,18 @@ const DIAGRAM_THEMES = [
 ] as const;
 
 function Diagram({ example }: { example: Example }) {
-  const { width, height } = imageSize(example.source);
-  const base = `/language/examples/${example.slug}`;
+  return (
+    <Figure
+      base={`/language/examples/${example.slug}`}
+      size={svgSize(renderArchSvg(example.source, { showTitle: false }))}
+      alt={`The ${example.title} document as Archer draws it`}
+    />
+  );
+}
+
+/** One image per theme, of which globals.css shows the page's. */
+function Figure({ base, size, alt }: { base: string; size: { width: number; height: number }; alt: string }) {
+  const { width, height } = size;
   return (
     <figure className="overflow-x-auto border border-line bg-ground">
       {DIAGRAM_THEMES.map(({ theme, only }) => (
@@ -44,7 +56,7 @@ function Diagram({ example }: { example: Example }) {
         <img
           key={theme}
           src={`${base}/${theme}.svg`}
-          alt={`The ${example.title} document as Archer draws it`}
+          alt={alt}
           width={width}
           height={height}
           // Lazy, so the other theme's image (display: none) is never fetched.
@@ -55,6 +67,31 @@ function Diagram({ example }: { example: Example }) {
         />
       ))}
     </figure>
+  );
+}
+
+/** Each of the example's views (spec §6), drawn below its architecture. */
+function Views({ example }: { example: Example }) {
+  const views: ViewRef[] = allViews(parse(example.source).doc);
+  if (views.length === 0) return null;
+  return (
+    <div className="flex flex-col gap-6 pt-8">
+      {views.map((v) => (
+        <div key={v.node.id}>
+          <p className="flex items-baseline gap-2 pb-2 text-[14px]">
+            <span className="font-semibold text-ink">{viewName(v.node)}</span>
+            <span className="mono text-xs uppercase tracking-[0.08em] text-ink-3">
+              {VIEW_LABELS[v.kind].one} · {v.node.id}
+            </span>
+          </p>
+          <Figure
+            base={`/language/examples/${example.slug}/views/${v.node.id}`}
+            size={svgSize(renderViewSvg(example.source, v.node.id, { showTitle: false }))}
+            alt={`The ${viewName(v.node)} ${VIEW_LABELS[v.kind].one} of the ${example.title} document`}
+          />
+        </div>
+      ))}
+    </div>
   );
 }
 
@@ -116,10 +153,14 @@ export default function ExamplesPage() {
             change however you like, no account needed. Nothing there is saved.
           </p>
           <p className="pb-3 text-[14px] leading-relaxed text-ink-2">
-            The first three have no <code className={inlineCode}>layout</code> block. That is how
-            agents write Archer, and those diagrams are the app&apos;s auto-layout. The last one is
-            a whole product laid out by hand, so it shows what the canvas writes once you arrange
-            things yourself.
+            Most have no <code className={inlineCode}>layout</code> block. That is how agents
+            write Archer, and those diagrams are the app&apos;s auto-layout. Examples with{" "}
+            <a href="#sequences" className="font-medium text-ink hover:underline">
+              views
+            </a>{" "}
+            (sequences, flows, state machines and data models) show each one below the
+            architecture, drawn from the same file. The last example is a whole product laid out
+            by hand, so it shows what the canvas writes once you arrange things yourself.
           </p>
           <ol className="pt-3">
             {EXAMPLES.map((e, i) => (
@@ -162,6 +203,7 @@ export default function ExamplesPage() {
             </div>
           </div>
           <Diagram example={e} />
+          <Views example={e} />
         </section>
       ))}
     </SiteFrame>

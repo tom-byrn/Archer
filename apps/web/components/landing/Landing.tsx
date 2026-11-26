@@ -13,6 +13,8 @@ import { Features } from "./Features";
 import { GlyphCarousel } from "./GlyphCarousel";
 import { SandboxLoader } from "./SandboxLoader";
 import { SiteFrame, siteNavLinkCls } from "./SiteFrame";
+import { Views } from "./Views";
+import type { LandingView } from "@/lib/landingViews";
 
 const FOOTER_COLUMNS: { title: string; links: [label: string, href: string][] }[] = [
   {
@@ -20,6 +22,7 @@ const FOOTER_COLUMNS: { title: string; links: [label: string, href: string][] }[
     links: [
       ["Try the sandbox", "#sandbox"],
       ["Features", "#features"],
+      ["Views", "#views"],
       ["FAQ", "#faq"],
     ],
   },
@@ -27,6 +30,7 @@ const FOOTER_COLUMNS: { title: string; links: [label: string, href: string][] }[
     title: "Docs",
     links: [
       ["Language reference", "/language"],
+      ["Examples", "/language/examples"],
       ["MCP server", "/docs/mcp"],
       ["CLI", "/docs/cli"],
     ],
@@ -55,6 +59,9 @@ const header = (
     <nav className="hidden items-center gap-6 pl-4 sm:flex">
       <Link href="#features" className={siteNavLinkCls}>
         Features
+      </Link>
+      <Link href="#views" className={siteNavLinkCls}>
+        Views
       </Link>
       <Link href="#faq" className={siteNavLinkCls}>
         FAQ
@@ -98,7 +105,7 @@ const footerNav = (
   </div>
 );
 
-export function Landing() {
+export function Landing({ views }: { views: LandingView[] }) {
   return (
     <SiteFrame
       className={cx(newsreader.variable, "landing-page")}
@@ -150,6 +157,8 @@ export function Landing() {
       </section>
 
       <Features />
+
+      <Views views={views} />
 
       {/* Features and FAQ are both ruled grids; a band keeps them apart, with the catalog's
           glyph tiles running across it. */}

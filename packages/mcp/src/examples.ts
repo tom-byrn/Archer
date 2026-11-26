@@ -468,6 +468,216 @@ entities schema "Links schema" on db {
 `,
   },
   {
+    slug: "ride-hailing",
+    title: "Ride Hailing",
+    summary:
+      "Sequences for a real scenario, with every kind of step. Requesting a ride is a `loop` of offers until a driver accepts, with an `opt` for the acceptance inside it, a `note over` the two lifelines that share the timeout, and a `par` that tells the rider while the trip is saved. Finishing a ride is an `alt` on whether the card goes through. Push notifications are `~>`: nobody waits on them. The trip itself is a state machine `of trips`: one `initial` state, two `final` ones, and a self-transition for an offer that times out. Every call travels on a connection, so the sequences stay true to the diagram.",
+    features: ["loop, opt, alt and par", "notes", "async messages", "state machines"],
+    source: `arch "Ride Hailing" v0.2
+
+component rider "Rider App" @mobile {
+  color sky
+}
+
+component driver "Driver App" @mobile {
+  color sky
+}
+
+component gateway "API Gateway" @api_gateway {
+  color blue
+}
+
+component trips "Trips" @service {
+  color blue
+  desc "Owns a trip from request to receipt."
+}
+
+component matching "Matching" @service {
+  color blue
+}
+
+component geo "Driver Locations" @geo_index {
+  color teal
+}
+
+component push "Push" @push {
+  color violet
+}
+
+component payments "Payments" @stripe
+
+component db "Trips DB" @postgres {
+  shape cylinder
+  color teal
+}
+
+driver -> gateway @ws
+gateway -> geo @writes : "positions"
+gateway -> trips @grpc
+matching -> geo @reads : "nearby drivers"
+push -> driver
+push -> rider
+rider -> gateway @http
+trips -> db @sql
+trips -> matching @grpc : "find a driver"
+trips -> payments @http : "charge"
+trips -> push @event
+
+sequence request "Request a ride" {
+  rider -> gateway @http : "POST /trips"
+  gateway -> trips @grpc : "create trip"
+  trips -> db @sql : "INSERT trip"
+  loop "until a driver accepts" {
+    trips -> matching @grpc : "find a driver"
+    matching -> geo : "drivers within 2 km"
+    geo --> matching : "candidates"
+    matching --> trips : "best match"
+    trips ~> push : "offer"
+    push ~> driver : "New ride request"
+    opt "driver accepts" {
+      driver -> gateway @ws : "accept"
+      gateway -> trips : "assign driver"
+    }
+  }
+  note over trips, matching "Each offer times out after 15 s"
+  par {
+    trips ~> push : "driver assigned"
+    push ~> rider : "Your driver is on the way"
+  } else {
+    trips -> db @sql : "UPDATE trip SET driver"
+  }
+  trips --> gateway : "trip"
+  gateway --> rider : "201 Created"
+}
+
+sequence finish "Finish a ride" {
+  driver -> gateway @ws : "end trip"
+  gateway -> trips @grpc : "complete"
+  trips -> payments @http : "charge fare"
+  alt "card ok" {
+    payments --> trips : "paid"
+    trips ~> push : "receipt"
+    push ~> rider : "Thanks for riding"
+  } else "declined" {
+    payments --> trips : "declined"
+    trips ~> push : "update payment method"
+    push ~> rider : "Payment failed"
+  }
+  trips -> db @sql : "UPDATE trip"
+  trips --> gateway : "fare"
+  gateway --> driver : "Trip complete"
+}
+
+states trip "Trip lifecycle" of trips {
+  state requested "Requested" initial
+  state searching "Finding a driver"
+  state assigned "Driver assigned"
+  state riding "On the way"
+  state completed "Completed" final
+  state cancelled "Cancelled" final
+  requested -> searching : "trip created"
+  searching -> searching : "offer timed out"
+  searching -> assigned : "driver accepts"
+  searching -> cancelled : "no drivers nearby"
+  assigned -> riding : "rider picked up"
+  assigned -> cancelled : "rider cancels"
+  riding -> completed : "trip ended"
+}
+`,
+  },
+  {
+    slug: "online-store",
+    title: "Online Store",
+    summary:
+      "A checkout as a `flow`, one lane per component: the storefront, Checkout, Inventory, Stripe and Email. Two `decision` nodes branch on stock and payment, their edge labels are the outcomes, and the flow has two `end`s, one for each way it can finish. A dead end loops back to review the cart. The orders database's tables are an `entities` block `on db`: five entities whose `-> order.id` references draw as crow's-foot lines, with `pk`, `unique` and `optional` fields.",
+    features: ["flows with lanes", "decisions", "data models", "references"],
+    source: `arch "Online Store" v0.2
+
+component web "Storefront" @vercel.nextjs
+
+component checkout "Checkout" @service
+
+component inventory "Inventory" @service
+
+component stripe "Stripe" @stripe
+
+component db "Orders DB" @postgres {
+  shape cylinder
+}
+
+component email "Email" @resend
+
+checkout -> db @sql
+checkout -> email @http : "confirmation"
+checkout -> inventory @grpc : "reserve"
+checkout -> stripe @http : "charge"
+inventory -> db @sql
+web -> checkout @http : "place order"
+
+flow place_order "Place an order" {
+  start begin in web
+  step review "Review cart" in web
+  step submit "Place order" in checkout
+  decision in_stock "All in stock?" in inventory
+  step reserve "Reserve items" in inventory
+  step charge "Charge the card" in stripe
+  decision paid "Payment ok?" in stripe
+  step release "Release items" in inventory
+  step record "Record the order" in checkout
+  step confirm "Send confirmation" in email
+  step sorry "Suggest alternatives" in web
+  end placed "Order placed" in web
+  end failed "Checkout failed" in web
+  begin -> review
+  review -> submit
+  submit -> in_stock
+  in_stock -> reserve : "yes"
+  in_stock -> sorry : "no"
+  sorry -> review
+  reserve -> charge
+  charge -> paid
+  paid -> record : "yes"
+  paid -> release : "no"
+  release -> failed
+  record -> confirm
+  confirm -> placed
+}
+
+entities schema "Store schema" on db {
+  entity customer "Customer" {
+    id uuid pk
+    email text unique
+    name text
+  }
+  entity product "Product" {
+    id uuid pk
+    sku text unique
+    name text
+    price_cents int
+  }
+  entity order "Order" {
+    id uuid pk
+    customer_id uuid -> customer.id
+    status text
+    total_cents int
+    placed_at timestamp
+  }
+  entity line "Order line" {
+    id uuid pk
+    order_id uuid -> order.id
+    product_id uuid -> product.id
+    quantity int
+  }
+  entity payment "Payment" {
+    id uuid pk
+    order_id uuid unique -> order.id
+    stripe_ref text unique
+    refunded_at timestamp optional
+  }
+}
+`,
+  },
+  {
     slug: "music-streaming",
     title: "Music Streaming",
     summary:

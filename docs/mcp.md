@@ -226,6 +226,14 @@ update at once. The main things agents do:
   repository to edit the file and commit it with the code. `update_project`
   still works, but only changes the project's unpublished draft (the result
   says so), which a person publishes back to the repository as a pull request.
+- **Describe behaviour.** Besides components and connections, a project can
+  hold views over them, written in the same source: sequences (who calls whom,
+  in order, for one scenario), flows (activity diagrams with a lane per
+  component), state machines and data models. The agent adds them with
+  `update_project` like any other change; `validate` warns when a sequence's
+  call has no connection to travel on (`W307`) or a state machine has no
+  initial state (`W308`). `render_project` with `view` draws one as SVG, the
+  same picture as the editor and a share link's `image.svg?view=<id>`.
 - **Explain what changed.** `get_history` and `diff_project` show who changed
   what, and when. `get_revision` returns any past version, to compare or
   restore.
@@ -241,6 +249,10 @@ Things to ask your agent:
 
 - "Map this repository into a new Archer project."
 - "Add a Redis cache in front of the orders database in the Shop project."
+- "Add a sequence to the Shop project for checkout, from the cart to the
+  confirmation email."
+- "Model the orders table and its relations as a data model in the Shop
+  project."
 - "What changed in the Shop architecture since yesterday?"
 - "Check the Shop project against this repository and report drift."
 - "Implement the Shop project's API, following its spec."

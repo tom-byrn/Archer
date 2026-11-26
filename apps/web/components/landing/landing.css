@@ -250,3 +250,19 @@
 :root[data-theme="dark"] .landing-glyph-tile {
   --type: var(--type-dark);
 }
+
+/* The views showcase's diagram (Views.tsx): scale the inline SVG down to fit,
+   never up past its natural size, and scroll sideways rather than shrink past
+   legibility on a phone. */
+.landing-view-diagram svg {
+  display: block;
+  margin: 0 auto;
+  max-width: 100%;
+  min-width: 600px;
+  height: auto;
+}
+@media (min-width: 1024px) {
+  .landing-view-diagram svg {
+    min-width: 0;
+  }
+}
