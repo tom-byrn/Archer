@@ -1660,20 +1660,6 @@ function EditorView({ initialSource, library, session, tour }: EditorProps) {
     <SequenceNavContext.Provider value={sequenceNav}>
     <div className="flex h-dvh flex-col overscroll-none bg-bg">
       <header className="flex h-10 shrink-0 items-center gap-1 border-b border-line bg-surface px-2">
-        {/* The component palette is desktop only, and edit mode only; phones add with the + button. */}
-        {editable && (
-          <span className="hidden md:contents">
-            <IconButton
-              data-tour="add-component"
-              label="Components"
-              onClick={toggleComponents}
-              active={componentsOpen}
-              aria-expanded={componentsOpen}
-            >
-              <Icon.Sidebar />
-            </IconButton>
-          </span>
-        )}
         <Link
           href={back.href}
           className="flex h-7 shrink-0 items-center gap-2 rounded-md px-1.5 transition-colors hover:bg-surface-2"
@@ -1866,6 +1852,7 @@ function EditorView({ initialSource, library, session, tour }: EditorProps) {
           onAddPlane={() => addPlaneHere()}
           library={library}
           onFeedback={stored ? () => setFeedbackOpen(true) : undefined}
+          onClose={() => setComponentsOpen(false)}
         />
         <CodePane
           source={source}
@@ -1954,6 +1941,20 @@ function EditorView({ initialSource, library, session, tour }: EditorProps) {
             </nav>
           )}
           <div data-tour="canvas" className="relative min-h-0 flex-1 bg-ground">
+            {/* The components sidebar hides itself; this brings it back (desktop, edit mode). */}
+            {editable && !componentsOpen && (
+              <div className="absolute left-2 top-2 z-10 hidden md:block md:left-3 md:top-3">
+                <Button
+                  size="sm"
+                  icon={<Icon.Sidebar />}
+                  onClick={toggleComponents}
+                  aria-expanded={false}
+                  data-tour="add-component"
+                >
+                  Components
+                </Button>
+              </div>
+            )}
             {diff ? (
               <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex justify-center p-2 md:p-3">
                 <div className="pointer-events-auto flex min-h-9 max-w-full flex-wrap items-center gap-2 rounded-lg border border-line bg-surface py-1 pl-3 pr-1.5 shadow-md">

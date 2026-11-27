@@ -115,7 +115,9 @@ Router + React Flow + Convex).
   sandbox never gets it; everything else reaches the sandbox automatically.
   The editor opens in view mode: read-only canvas, code and inspector, no
   components sidebar, add, re-layout or undo. The header's Edit button (or
-  `E`) enters edit mode, where everything edits and selecting opens the
+  `E`) enters edit mode and opens the components sidebar (it hides itself;
+  a "Components" button on the canvas brings it back; the header never
+  changes width on the left), where everything edits and selecting opens the
   inspector's form directly; Done leaves it. Empty documents and the
   walkthrough open in edit mode. Gate new editing affordances on `editable`.
   The editor owns the canvas selection (component and plane paths + connection
