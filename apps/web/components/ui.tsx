@@ -98,12 +98,14 @@ export const cx = (...parts: Array<string | false | null | undefined>): string =
 
 /* ------------------------------------------------------------------ Buttons */
 
-type Variant = "primary" | "secondary" | "ghost" | "danger";
+type Variant = "primary" | "accent" | "secondary" | "ghost" | "danger";
 type Size = "sm" | "md" | "lg";
 
 const VARIANT: Record<Variant, string> = {
   primary:
     "bg-ink text-bg hover:opacity-90 border border-transparent shadow-sm",
+  /** A mode that's on (the editor's Done editing). */
+  accent: "bg-accent text-accent-ink hover:bg-accent-hover border border-transparent shadow-sm",
   secondary:
     "bg-surface text-ink border border-line hover:bg-surface-2 hover:border-line-2 shadow-sm",
   ghost: "bg-transparent text-ink-2 border border-transparent hover:bg-surface-2 hover:text-ink",

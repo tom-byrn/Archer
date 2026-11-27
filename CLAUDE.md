@@ -113,6 +113,11 @@ Router + React Flow + Convex).
   `useLocalLibrary`, and leaving the page discards every edit. Anything new
   that saves, shares or exports goes behind `stored` in the editor so the
   sandbox never gets it; everything else reaches the sandbox automatically.
+  The editor opens in view mode: read-only canvas, code and inspector, no
+  components sidebar, add, re-layout or undo. The header's Edit button (or
+  `E`) enters edit mode, where everything edits and selecting opens the
+  inspector's form directly; Done leaves it. Empty documents and the
+  walkthrough open in edit mode. Gate new editing affordances on `editable`.
   The editor owns the canvas selection (component and plane paths + connection
   keys) and `ArchCanvas` mirrors it onto React Flow's `selected` flags; edits
   that span several components (copy/paste fragments, duplicate, group on a

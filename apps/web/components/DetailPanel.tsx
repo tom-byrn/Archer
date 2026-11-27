@@ -66,7 +66,6 @@ import {
   Segmented,
   FloatingPanel,
   SidePanel,
-  SwapIcon,
   TextArea,
   cx,
   type MenuItem,
@@ -427,7 +426,7 @@ const sourceHref = (src: string, repo: RepoLink | null): string | null =>
 
 /**
  * A component as it reads: what it is, what it's for, where its code lives
- * and its payloads. The inspector shows this until "Edit"; the read-only
+ * and its payloads. The inspector shows this out of edit mode; the read-only
  * viewer (share links, viewers) shows only this.
  */
 export function ComponentDetails({
@@ -704,7 +703,7 @@ function ConnectionsReadout({
 
 /**
  * A plane as it reads: what it's called and for, and what's on it. The
- * inspector shows this until "Edit"; the read-only viewer shows only this.
+ * inspector shows this out of edit mode; the read-only viewer shows only this.
  */
 export function PlaneDetails({
   doc,
@@ -866,39 +865,12 @@ function ConnectionDetails({
   );
 }
 
-/**
- * Switches the inspector between reading and the form. "Edit" and "Done"
- * share one width, so the header holds still.
- */
-function EditToggle({
-  editing,
-  onChange,
-}: {
-  editing: boolean;
-  onChange: (editing: boolean) => void;
-}) {
-  return (
-    <Button
-      size="sm"
-      icon={<SwapIcon swapped={editing} from={<Icon.Pencil />} to={<Icon.Check />} />}
-      title={editing ? "Done editing (esc)" : undefined}
-      onClick={() => onChange(!editing)}
-    >
-      <span className="grid *:col-start-1 *:row-start-1">
-        <span className={cx(editing && "invisible")}>Edit</span>
-        <span className={cx(!editing && "invisible")}>Done</span>
-      </span>
-    </Button>
-  );
-}
-
 /* ------------------------------------------------------------- Component */
 
 function ComponentInspector({
   doc,
   path,
   editing,
-  onEditingChange,
   readOnly,
   mutate,
   onSelect,
@@ -914,7 +886,6 @@ function ComponentInspector({
   doc: ArchDoc;
   path: string;
   editing: boolean;
-  onEditingChange: (editing: boolean) => void;
   readOnly: boolean;
   mutate: (fn: (d: ArchDoc) => ArchDoc) => void;
   onSelect: (s: Selection) => void;
@@ -1009,7 +980,6 @@ function ComponentInspector({
           <div className="truncate text-base font-semibold">{node.name ?? node.id}</div>
           <div className="mono truncate text-xs text-ink-3">{path}</div>
         </div>
-        {!readOnly && <EditToggle editing={editing} onChange={onEditingChange} />}
         {actions.length > 0 && (
           <Menu
             trigger={({ open, toggle }) => (
@@ -1188,7 +1158,6 @@ function PlaneInspector({
   doc,
   path,
   editing,
-  onEditingChange,
   readOnly,
   mutate,
   onSelect,
@@ -1198,7 +1167,6 @@ function PlaneInspector({
   doc: ArchDoc;
   path: string;
   editing: boolean;
-  onEditingChange: (editing: boolean) => void;
   readOnly: boolean;
   mutate: (fn: (d: ArchDoc) => ArchDoc) => void;
   onSelect: (s: Selection) => void;
@@ -1257,7 +1225,6 @@ function PlaneInspector({
           <div className="truncate text-base font-semibold">{plane.name ?? plane.id}</div>
           <div className="mono truncate text-xs text-ink-3">plane · {path}</div>
         </div>
-        {!readOnly && <EditToggle editing={editing} onChange={onEditingChange} />}
         {actions.length > 0 && (
           <Menu
             trigger={({ open, toggle }) => (
@@ -1365,7 +1332,6 @@ function ConnectionInspector({
   doc,
   connKey,
   editing,
-  onEditingChange,
   readOnly,
   mutate,
   onSelect,
@@ -1375,7 +1341,6 @@ function ConnectionInspector({
   doc: ArchDoc;
   connKey: string;
   editing: boolean;
-  onEditingChange: (editing: boolean) => void;
   readOnly: boolean;
   mutate: (fn: (d: ArchDoc) => ArchDoc) => void;
   onSelect: (s: Selection) => void;
@@ -1396,7 +1361,6 @@ function ConnectionInspector({
         </span>
         {!readOnly && (
           <>
-            <EditToggle editing={editing} onChange={onEditingChange} />
             <Menu
               trigger={({ open, toggle }) => (
                 <IconButton label="More" active={open} onClick={toggle}>
@@ -1651,7 +1615,6 @@ export function DetailPanel({
   selection,
   multi = null,
   editing,
-  onEditingChange,
   readOnly = false,
   mutate,
   onSelect,
@@ -1667,10 +1630,9 @@ export function DetailPanel({
   selection: Selection;
   /** Several things selected (selection is then null). */
   multi?: MultiSelection | null;
-  /** The selection shows its form. Otherwise it reads, with an Edit button. */
+  /** The selection shows its form (the editor's edit mode). Otherwise it reads. */
   editing: boolean;
-  onEditingChange: (editing: boolean) => void;
-  /** Nothing can change (diff mode): no Edit button, no deleting. */
+  /** Nothing can change (view mode, diff mode): no form, no deleting. */
   readOnly?: boolean;
   mutate: (fn: (d: ArchDoc) => ArchDoc) => void;
   onSelect: (s: Selection) => void;
@@ -1705,7 +1667,6 @@ export function DetailPanel({
           doc={doc}
           path={selection.path}
           editing={form}
-          onEditingChange={onEditingChange}
           readOnly={readOnly}
           mutate={mutate}
           onSelect={onSelect}
@@ -1718,7 +1679,6 @@ export function DetailPanel({
           doc={doc}
           path={selection.path}
           editing={form}
-          onEditingChange={onEditingChange}
           readOnly={readOnly}
           mutate={mutate}
           onSelect={onSelect}
@@ -1737,7 +1697,6 @@ export function DetailPanel({
           doc={doc}
           connKey={selection.key}
           editing={form}
-          onEditingChange={onEditingChange}
           readOnly={readOnly}
           mutate={mutate}
           onSelect={onSelect}
