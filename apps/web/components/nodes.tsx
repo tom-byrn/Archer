@@ -1,6 +1,14 @@
 "use client";
 
-import { createContext, useContext, useEffect, useMemo, useRef, type CSSProperties } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  type CSSProperties,
+} from "react";
 import {
   BaseEdge,
   EdgeLabelRenderer,
@@ -494,6 +502,43 @@ function arrowhead(x: number, y: number, side: Position): string {
   }
 }
 
+/** How long a playback packet takes along its connection (canvas.css waits for it too). */
+const TRAVEL_MS = 700;
+
+/**
+ * A playback step on its connection: the line draws itself in from the
+ * sender while a packet runs ahead of it to the receiver. Remounted (keyed on
+ * the step) to replay.
+ */
+function EdgeTravel({ path, reverse }: { path: string; reverse: boolean }) {
+  const motion = useRef<SVGAnimateMotionElement>(null);
+  // An animation added after the SVG's timeline started would count as long
+  // finished, so it waits (`indefinite`) and starts now, before first paint.
+  useLayoutEffect(() => {
+    motion.current?.beginElement?.();
+  }, []);
+  return (
+    <g className={cx("arch-edge-travel", reverse && "arch-edge-travel-reverse")} aria-hidden>
+      <path className="arch-edge-trail" d={path} pathLength={1} />
+      <g className="arch-edge-packet">
+        <circle className="arch-edge-packet-halo" r={8} />
+        <circle className="arch-edge-packet-core" r={4} />
+        <animateMotion
+          ref={motion}
+          begin="indefinite"
+          dur={`${TRAVEL_MS}ms`}
+          fill="freeze"
+          path={path}
+          calcMode="spline"
+          keyTimes="0;1"
+          keyPoints={reverse ? "1;0" : "0;1"}
+          keySplines="0.45 0 0.25 1"
+        />
+      </g>
+    </g>
+  );
+}
+
 export function ArchEdgeComponent({
   id,
   sourceX,
@@ -532,13 +577,15 @@ export function ArchEdgeComponent({
   // The chip stays hidden (and out of the pointer's way) until the edge, or a
   // component it connects, is hovered or selected.
   const highlighted = data?.highlighted === true;
-  const showLabel = selected || highlighted || data?.endSelected === true || data?.lit === true;
+  const travel = data?.travel;
+  const showLabel =
+    selected || highlighted || !!travel || data?.endSelected === true || data?.lit === true;
   // Chips of connections sharing this path stack, one row each.
   const [slot, of] = data?.stack ?? [0, 1];
   const chipY = labelY + (slot - (of - 1) / 2) * 22;
   const diff = data?.diff;
   const diffCls = diff ? `arch-edge-diff-${diff}` : "";
-  const litCls = highlighted && "arch-edge-highlighted";
+  const litCls = highlighted ? "arch-edge-highlighted" : travel && "arch-edge-travelled";
   return (
     <>
       <BaseEdge
@@ -547,6 +594,7 @@ export function ArchEdgeComponent({
         className={cx("arch-edge-path", litCls, diffCls)}
         interactionWidth={16}
       />
+      {travel && <EdgeTravel key={travel.token} path={path} reverse={travel.reverse} />}
       {/* fill attr: fallback so heads are never SVG-default black if canvas.css is late. */}
       {arrow !== "--" && (
         <polygon
@@ -576,7 +624,7 @@ export function ArchEdgeComponent({
               "arch-edge-chip nodrag nopan absolute flex h-[18px] items-center gap-1 rounded-sm border bg-surface px-1.5 text-xs leading-none",
               showLabel && "arch-edge-chip-shown",
               data?.lit === false && "dim",
-              diff === "added" || selected || highlighted ? "border-accent" : "border-line",
+              diff === "added" || selected || highlighted || travel ? "border-accent" : "border-line",
               diffCls,
             )}
           >

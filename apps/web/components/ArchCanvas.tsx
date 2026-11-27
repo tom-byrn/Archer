@@ -33,7 +33,7 @@ import {
 } from "@xyflow/react";
 import { toPng } from "html-to-image";
 import { isShape, type Shape } from "@archer/lang";
-import { CELL, type ArchEdge, type ArchNode } from "@/lib/toFlow";
+import { CELL, CONTEXT_PREFIX, type ArchEdge, type ArchNode } from "@/lib/toFlow";
 import { DND_MIME, DND_PLANE_MIME, DND_SHAPE_MIME } from "./Palette";
 import { OpenContext, ResizeContext, edgeTypes, nodeTypes } from "./nodes";
 import { Icon } from "./ui";
@@ -108,6 +108,20 @@ export interface CanvasApi {
   fitView: () => void;
 }
 
+/**
+ * One step of a sequence or flow playing on the canvas: a packet travels from
+ * `from` to `to` (component paths) along the connection `edge` (its key; null
+ * when no connection carries it), against the connection's direction when
+ * `reverse`. A new `token` replays the animation.
+ */
+export interface CanvasPlayback {
+  token: string;
+  from: string;
+  to: string;
+  edge: string | null;
+  reverse: boolean;
+}
+
 export interface ArchCanvasProps {
   nodes: ArchNode[];
   edges: ArchEdge[];
@@ -129,6 +143,8 @@ export interface ArchCanvasProps {
    * its participants.
    */
   spotlightNodes?: ReadonlySet<string> | null;
+  /** A playback step to animate: a packet travelling from sender to receiver. */
+  playback?: CanvasPlayback | null;
   /** Pan and zoom to this node once it's on the canvas (bump `nonce` to repeat). */
   reveal?: { path: string; nonce: number } | null;
   /** The reveal happened; the caller clears it so a later remount doesn't repeat it. */
@@ -202,6 +218,7 @@ function CanvasInner({
   selection,
   highlightedEdge = null,
   spotlightNodes = null,
+  playback = null,
   reveal,
   onRevealed,
   exportRef,
@@ -386,6 +403,35 @@ function CanvasInner({
     [selNodeSet, selectedPath],
   );
 
+  // The nodes standing for the sender and the receiver on this canvas: the
+  // component itself, its context node, or the box it's nested in.
+  const playEnds = useMemo(() => {
+    if (!playback) return null;
+    const visible = (path: string) => {
+      let best: string | undefined;
+      let len = -1;
+      for (const n of nodes) {
+        const p = n.id.startsWith(CONTEXT_PREFIX) ? n.id.slice(CONTEXT_PREFIX.length) : n.id;
+        if ((path === p || path.startsWith(p + ".")) && p.length > len) {
+          best = n.id;
+          len = p.length;
+        }
+      }
+      return best;
+    };
+    return { from: visible(playback.from), to: visible(playback.to) };
+  }, [playback, nodes]);
+  // Flips on every new step: the node animations alternate between two
+  // identical keyframes so a component that receives twice in a row replays.
+  const playToken = playback?.token;
+  const [playFlip, setPlayFlip] = useState(false);
+  const [flippedFor, setFlippedFor] = useState(playToken);
+  if (playToken !== flippedFor) {
+    setFlippedFor(playToken);
+    setPlayFlip(!playFlip);
+  }
+  const travels = !!playback?.edge && edges.some((e) => e.data?.key === playback.edge);
+
   const styledNodes = useMemo(
     () =>
       nodes.map((n) => {
@@ -398,10 +444,13 @@ function CanvasInner({
           className: joinCls(
             lit !== null && !lit.nodes.has(n.id) && "dim",
             selectedPath === n.id && "arch-selected",
+            playEnds?.from === n.id && playEnds.to !== n.id && "arch-play-send",
+            playEnds?.to === n.id && (travels ? "arch-play-receive" : "arch-play-receive-now"),
+            !!playEnds && playFlip && "arch-play-flip",
           ),
         };
       }),
-    [nodes, lit, selectedPath, soleSelected, dropTarget],
+    [nodes, lit, selectedPath, soleSelected, dropTarget, playEnds, playFlip, travels],
   );
   // React Flow stacks edges by z-index, then in array order, and lifts an edge
   // touching a component on a plane one level per plane. Selected, highlighted
@@ -421,12 +470,20 @@ function CanvasInner({
       const on = lit === null ? undefined : lit.edges.has(e.id);
       const ends = selectedEnds.has(e.source) || selectedEnds.has(e.target);
       const spot = highlightedEdge !== null && e.data?.key === highlightedEdge;
-      const raised = !!e.selected || spot || on === true;
+      const travel =
+        playback?.edge != null && e.data?.key === playback.edge
+          ? { token: playback.token, reverse: playback.reverse }
+          : undefined;
+      const raised = !!e.selected || spot || on === true || travel !== undefined;
       return {
         ...e,
         ...(e.data &&
-        (on !== e.data.lit || ends !== !!e.data.endSelected || spot !== !!e.data.highlighted)
-          ? { data: { ...e.data, lit: on, endSelected: ends, highlighted: spot } }
+        (on !== e.data.lit ||
+          ends !== !!e.data.endSelected ||
+          spot !== !!e.data.highlighted ||
+          travel?.token !== e.data.travel?.token ||
+          travel?.reverse !== e.data.travel?.reverse)
+          ? { data: { ...e.data, lit: on, endSelected: ends, highlighted: spot, travel } }
           : {}),
         ...(raised ? { zIndex: nodeDepth } : {}),
         className: joinCls(on === false && "dim"),
@@ -434,7 +491,7 @@ function CanvasInner({
     });
     const top = styled.filter((e) => e.zIndex !== undefined);
     return top.length === 0 ? styled : [...styled.filter((e) => e.zIndex === undefined), ...top];
-  }, [edges, lit, selectedEnds, highlightedEdge, nodeDepth]);
+  }, [edges, lit, selectedEnds, highlightedEdge, nodeDepth, playback]);
 
   /** Report where dragged nodes landed: absolute position in this view, center, and grid size. */
   /** Top-left of a node in the canvas's own coordinates (positions are relative to its plane). */
@@ -583,6 +640,7 @@ function CanvasInner({
       <OpenContext.Provider value={embedded ? null : callbacks.onDrillIn}>
         <ReactFlow
           ref={wrapper}
+          className={playback ? "arch-playing" : undefined}
           nodes={styledNodes}
           edges={styledEdges}
           nodeTypes={nodeTypes}
