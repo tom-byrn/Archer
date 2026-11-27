@@ -84,7 +84,8 @@ Router + React Flow + Convex).
   tools `list_examples`/`get_example`). Example sources must stay canonical
   and validate clean — `apps/web/test/examples.test.ts` enforces it, so the
   code shown, the diagram (`lib/svg.ts`, prerendered at
-  `/language/examples/<slug>/{light,dark}.svg`), the editor copy and what
+  `/language/examples/<slug>/{light,dark}.svg`, and each view below it at
+`/language/examples/<slug>/views/<id>/{light,dark}.svg`), the editor copy and what
   agents read always agree. "Open in sandbox" goes to
   `/sandbox/<slug>` (see Editor sessions). "View code" opens the source in
   the editor's code popout (`components/CodeDialog.tsx`, shared with
