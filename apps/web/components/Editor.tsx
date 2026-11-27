@@ -89,6 +89,7 @@ import {
   ArchCanvas,
   type CanvasApi,
   type CanvasCallbacks,
+  type CanvasPlayback,
   type ContextTarget,
 } from "./ArchCanvas";
 import { CodePane } from "./CodePane";
@@ -487,19 +488,39 @@ function EditorView({ initialSource, library, session, tour }: EditorProps) {
     const laneOf = (id: string | undefined) => playingFlow.nodes.find((n) => n.id === id)?.lane;
     return { now: laneOf(flowPlay.path[flowPlay.path.length - 1]), before: laneOf(flowPlay.path[flowPlay.path.length - 2]) };
   }, [playingFlow, flowPlay]);
-  /** The connection the message playback is on travels on: lit on the canvas. */
-  const playEdge = useMemo(() => {
-    if (flowLanes) {
+  /**
+   * What the canvas shows for the current playback step: who sends, who
+   * receives, and the connection (key) it travels on, with `reverse` when it
+   * runs against the connection's direction (a reply). The token changes on
+   * every step so the connection refills.
+   */
+  const playMotion = useMemo((): CanvasPlayback | null => {
+    let from: string[] | undefined;
+    let to: string[] | undefined;
+    let token: string;
+    let i = -1;
+    if (flowLanes && flowPlay) {
       // Control crossing from one lane to another goes along their connection, if there is one.
-      const { now, before } = flowLanes;
-      if (!now || !before || now.join(".") === before.join(".")) return null;
-      const i = messageConnection(derived.doc.connections, { from: before, to: now, arrow: "->" });
-      return i >= 0 ? connectionKey(derived.doc.connections[i]!) : null;
-    }
-    if (!playMessage) return null;
-    const i = messageConnection(derived.doc.connections, playMessage.step);
-    return i >= 0 ? connectionKey(derived.doc.connections[i]!) : null;
-  }, [playMessage, flowLanes, derived.doc.connections]);
+      ({ before: from, now: to } = flowLanes);
+      token = `flow:${flowPlay.id}:${flowPlay.path.length}`;
+      if (!to) return null;
+      if (!from) from = to;
+      else if (from.join(".") !== to.join("."))
+        i = messageConnection(derived.doc.connections, { from, to, arrow: "->" });
+    } else if (playMessage && playback) {
+      ({ from, to } = playMessage.step);
+      token = `seq:${playback.id}:${playback.step}`;
+      i = messageConnection(derived.doc.connections, playMessage.step);
+    } else return null;
+    const c = i >= 0 ? derived.doc.connections[i]! : undefined;
+    return {
+      token,
+      from: from.join("."),
+      to: to.join("."),
+      edge: c ? connectionKey(c) : null,
+      reverse: c ? pathToString(c.source) !== from.join(".") : false,
+    };
+  }, [playMessage, playback, flowLanes, flowPlay, derived.doc.connections]);
   /** While playing: the participants and everything they sit in, so the rest fades. */
   const playNodes = useMemo(() => {
     const paths = flowLanes
@@ -2086,8 +2107,9 @@ function EditorView({ initialSource, library, session, tour }: EditorProps) {
               exportRef={exportRef}
               apiRef={canvasApi}
               readOnly={!editable}
-              highlightedEdge={playEdge ?? spotlit}
+              highlightedEdge={playMotion ? null : spotlit}
               spotlightNodes={playNodes}
+              playback={playMotion}
             />
             {playingFlow && flowPlay && (
               <FlowPlaybackBar

@@ -494,6 +494,30 @@ function arrowhead(x: number, y: number, side: Position): string {
   }
 }
 
+/**
+ * A playback step on its connection: the line fills with colour from the
+ * sender's end (canvas.css), then its arrowheads take the colour. Keyed on
+ * the step, so it refills each time.
+ */
+function EdgeTravel({
+  path,
+  reverse,
+  heads,
+}: {
+  path: string;
+  reverse: boolean;
+  heads: string[];
+}) {
+  return (
+    <g className={cx("arch-edge-travel", reverse && "arch-edge-travel-reverse")} aria-hidden>
+      <path className="arch-edge-trail" d={path} pathLength={1} />
+      {heads.map((points, i) => (
+        <polygon key={i} className="arch-edge-trail-head" points={points} />
+      ))}
+    </g>
+  );
+}
+
 export function ArchEdgeComponent({
   id,
   sourceX,
@@ -532,7 +556,9 @@ export function ArchEdgeComponent({
   // The chip stays hidden (and out of the pointer's way) until the edge, or a
   // component it connects, is hovered or selected.
   const highlighted = data?.highlighted === true;
-  const showLabel = selected || highlighted || data?.endSelected === true || data?.lit === true;
+  const travel = data?.travel;
+  const showLabel =
+    selected || highlighted || !!travel || data?.endSelected === true || data?.lit === true;
   // Chips of connections sharing this path stack, one row each.
   const [slot, of] = data?.stack ?? [0, 1];
   const chipY = labelY + (slot - (of - 1) / 2) * 22;
@@ -562,6 +588,17 @@ export function ArchEdgeComponent({
           points={arrowhead(sourceX, sourceY, sourcePosition)}
         />
       )}
+      {travel && (
+        <EdgeTravel
+          key={travel.token}
+          path={path}
+          reverse={travel.reverse}
+          heads={[
+            ...(arrow !== "--" ? [arrowhead(targetX, targetY, targetPosition)] : []),
+            ...(arrow === "<->" ? [arrowhead(sourceX, sourceY, sourcePosition)] : []),
+          ]}
+        />
+      )}
       {selected && (
         <>
           <circle className="arch-edge-end" cx={sourceX} cy={sourceY} r={4} />
@@ -576,7 +613,7 @@ export function ArchEdgeComponent({
               "arch-edge-chip nodrag nopan absolute flex h-[18px] items-center gap-1 rounded-sm border bg-surface px-1.5 text-xs leading-none",
               showLabel && "arch-edge-chip-shown",
               data?.lit === false && "dim",
-              diff === "added" || selected || highlighted ? "border-accent" : "border-line",
+              diff === "added" || selected || highlighted || travel ? "border-accent" : "border-line",
               diffCls,
             )}
           >
