@@ -896,6 +896,13 @@ export function extractFragment(doc: ArchDoc, paths: Paths): ArchDoc {
  * arrangement with the top-left one at `at` (default: where the fragment's
  * own layout has it). Returns the pasted top-level items' paths.
  */
+/** Drop `use` (and `import`) from a component and everything in it. */
+function forgetFiles(c: ComponentNode): void {
+  delete c.use;
+  delete c.imported;
+  c.children.forEach(forgetFiles);
+}
+
 export function insertFragment(
   doc: ArchDoc,
   fragment: ArchDoc,
@@ -929,6 +936,8 @@ export function insertFragment(
   const top = new Set<string>(tops.map((x) => x.id));
   for (const x of [...frag.components, ...frag.planes]) {
     const copy = clone(x);
+    // A pasted copy is new: the file its original lives in stays the original's.
+    if (copy.kind === "component") forgetFiles(copy);
     copy.id = ids.get(x)!;
     const on = tree.planeOf(x);
     if (on) copy.plane = ids.get(on)!;

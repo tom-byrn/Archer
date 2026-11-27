@@ -67,6 +67,21 @@ export interface ComponentNode {
   src?: string[];
   payloads: PayloadNode[];
   /**
+   * The file its inside lives in (`use "./billing/billing.arch"`, relative to
+   * the file that says so): its components, planes, the connections between
+   * them and the views about them are that file's (spec §2.2). In a file on
+   * disk such a component declares nothing inside itself; in a document put
+   * together from its files (files.ts) the contents are filled in and `use`
+   * remembers where they go back to.
+   */
+  use?: string;
+  /**
+   * Written `import "<file>" as <id>`: the shorthand for a component whose
+   * whole definition, its display name included, comes from the file. Only
+   * meaningful with `use`.
+   */
+  imported?: boolean;
+  /**
    * The plane it sits on: the id of one of its scope's planes (the document's
    * top-level `planes`, or its parent component's). Absent when it sits on no
    * plane. Planes aren't part of paths, so this never changes its path.

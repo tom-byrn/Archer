@@ -1,8 +1,8 @@
 import "server-only";
 import { ConvexHttpClient } from "convex/browser";
 import type { FunctionArgs } from "convex/server";
-import { CURRENT_VERSION, format, isEmptyDiff } from "@archer/lang";
-import { analyzeSource, formatDiagnostic, prepareSource, typeTags } from "@archer/mcp/analysis";
+import { CURRENT_VERSION, format, isEmptyDiff, mountsOf, parse, splitFiles, type FileDiagnostic } from "@archer/lang";
+import { analyzeFiles, analyzeSource, formatDiagnostic, prepareSource, typeTags } from "@archer/mcp/analysis";
 import { api } from "@/convex/_generated/api";
 import type { Doc, Id } from "@/convex/_generated/dataModel";
 import {
@@ -18,6 +18,7 @@ import { SITE_URL } from "@/lib/site";
 import {
   GitHubError,
   appTokenForRepo,
+  commitFiles,
   createBranch,
   createPullRequest,
   getBranchHead,
@@ -29,6 +30,7 @@ import {
   listArchFiles,
   putFile,
   type GitHubCommit,
+  type GitHubFile,
 } from "@/lib/server/github";
 
 /**
@@ -183,6 +185,79 @@ async function branchHeadOrThrow(actor: Actor, owner: string, name: string, bran
   }
 }
 
+/* ------------------------------------------------------ Several files */
+
+/**
+ * A document read from the branch: its root file and every file it uses
+ * (`use`, `import`; spec §2.2), put together. `sha` identifies the whole
+ * set: the root's blob sha when it uses no other file (so single-file
+ * documents look as they always did), else every file's path and blob sha.
+ * `content` is what the sync rules compare: the root's text, or the document
+ * put together. `errors` are the files' errors, each in its file.
+ */
+interface DocFiles {
+  path: string;
+  sha: string;
+  content: string;
+  files: Map<string, GitHubFile>;
+  errors: FileDiagnostic[];
+}
+
+/** The identity of a set of files (see DocFiles.sha). */
+const fingerprint = (root: string, shas: Map<string, string>): string =>
+  shas.size === 1 && shas.has(root)
+    ? shas.get(root)!
+    : [...shas].sort(([a], [b]) => (a < b ? -1 : 1)).map(([p, sha]) => `${p}=${sha}`).join(";");
+
+/** Each file's blob sha in a fingerprint made by `fingerprint`. */
+const shasIn = (root: string, sha: string | undefined): Map<string, string> =>
+  sha === undefined
+    ? new Map()
+    : sha.includes("=")
+      ? new Map(sha.split(";").map((e) => [e.slice(0, e.indexOf("=")), e.slice(e.indexOf("=") + 1)]))
+      : new Map([[root, sha]]);
+
+async function readDocFiles(
+  token: string | null,
+  owner: string,
+  name: string,
+  root: string,
+  ref: string,
+  types: Set<string>,
+): Promise<DocFiles | null> {
+  const files = new Map<string, GitHubFile>();
+  const missing = new Set<string>();
+  const fetchOne = async (path: string) => {
+    if (files.has(path) || missing.has(path)) return;
+    const f = await getFile(token, owner, name, path, ref);
+    if (f) files.set(path, f);
+    else missing.add(path);
+  };
+  await fetchOne(root);
+  if (!files.has(root)) return null;
+  // Follow `use` until every file the document reaches has been fetched.
+  for (let round = 0; round < 32; round++) {
+    const before = files.size + missing.size;
+    const a = analyzeFiles(root, (p) => files.get(p)?.content, types);
+    await Promise.all(mountsOf(a.doc, root).map((m) => fetchOne(m.file)));
+    if (files.size + missing.size === before) {
+      const shas = new Map([...files].filter(([p]) => a.files.includes(p)).map(([p, f]) => [p, f.sha]));
+      return {
+        path: root,
+        sha: fingerprint(root, shas),
+        content: a.files.length > 1 ? format(a.doc) : files.get(root)!.content,
+        files: new Map([...files].filter(([p]) => a.files.includes(p))),
+        errors: a.errors,
+      };
+    }
+  }
+  throw new SyncError(`${root} uses too many files in a chain.`, 422, "invalid");
+}
+
+/** "services/billing/billing.arch line 3: …" */
+const fileError = (root: string, d: FileDiagnostic) =>
+  `${d.code}${d.file !== root ? ` in ${d.file}` : ""}${d.span ? ` on line ${d.span.start.line}` : ""}: ${d.message.replace(/\.$/, "")}`;
+
 /* ---------------------------------------------------------------- Sync */
 
 export type SyncOutcome =
@@ -216,7 +291,8 @@ export async function syncDocument(actor: Actor, workspaceId: string, documentId
       if (prDone || f.problem) await setState(actor, doc, { ...clearPr, problem: null, checked: true });
       return { status: "unchanged" };
     }
-    const file = await getFile(head.token, f.owner, f.name, f.path, head.sha);
+    const types = await knownTypes(actor, workspaceId);
+    const file = await readDocFiles(head.token, f.owner, f.name, f.path, head.sha, types);
     if (!file) {
       if (!f.base) {
         if (prDone) await setState(actor, doc, clearPr);
@@ -233,13 +309,11 @@ export async function syncDocument(actor: Actor, workspaceId: string, documentId
       return { status: "unchanged" };
     }
 
-    const types = await knownTypes(actor, workspaceId);
-    const analysis = analyzeSource(file.content, types);
-    if (analysis.errors.length > 0) {
-      const n = analysis.errors.length;
-      const which = analysis.errors
+    if (file.errors.length > 0) {
+      const n = file.errors.length;
+      const which = file.errors
         .slice(0, 2)
-        .map((d) => `${d.code}${d.span ? ` on line ${d.span.start.line}` : ""}: ${d.message.replace(/\.$/, "")}`)
+        .map((d) => fileError(f.path, d))
         .join("; ");
       const message = `${f.path} at ${short(head.sha)} has ${n === 1 ? "an error" : `${n} errors`} (${which}). Archer keeps the last good version until it's fixed.`;
       if (f.problem?.commit !== head.sha)
@@ -247,12 +321,14 @@ export async function syncDocument(actor: Actor, workspaceId: string, documentId
       return { status: "problem", message };
     }
 
-    const commit = commitInfo(
-      await lastCommitForPath(head.token, f.owner, f.name, head.sha, f.path).catch(() => null),
-      head.sha,
-      f.owner,
-      f.name,
+    // Who changed it: the newest commit among the files that changed.
+    const was = shasIn(f.path, f.base?.blob);
+    const changed = [...file.files].filter(([p, g]) => was.get(p) !== g.sha).map(([p]) => p);
+    const commits = await Promise.all(
+      (changed.length ? changed : [f.path]).map((p) => lastCommitForPath(head.token, f.owner, f.name, head.sha, p).catch(() => null)),
     );
+    const newest = commits.filter((c): c is GitHubCommit => c !== null).sort((a, b) => (a.date < b.date ? 1 : -1))[0] ?? null;
+    const commit = commitInfo(newest, head.sha, f.owner, f.name);
     const base = { commit: head.sha, blob: file.sha, source: fileSource(file.content), at: now };
     const plan = planSync({ base: f.base?.source ?? null, draft: doc.source, head: file.content });
 
@@ -398,24 +474,49 @@ export async function publishDocument(
       "invalid",
     );
   const content = fileSource(doc.source);
+  // What goes to the repository: one file, or the files the document is kept in.
+  const draftDoc = parse(doc.source).doc;
+  const split = mountsOf(draftDoc, f.path).length > 0 ? splitFiles(draftDoc, f.path) : null;
   const empty = format({ kind: "doc", title: doc.title, version: CURRENT_VERSION, components: [], planes: [], connections: [], sequences: [], flows: [], machines: [], models: [], layout: [], viewLayout: [] });
   const diff = draftDiff(f.base?.source ?? empty, doc.source);
   if (f.base && isEmptyDiff(diff))
     throw new SyncError(`Nothing to publish: ${f.path} already has this architecture.`, 409, "nothing");
 
   const head = await readHead(actor, f);
-  const current = await getFile(head.token, f.owner, f.name, f.path, head.sha);
+  const types = await knownTypes(actor, workspaceId);
+  const currentSet = await readDocFiles(head.token, f.owner, f.name, f.path, head.sha, types);
+  const current = currentSet?.files.get(f.path) ?? null;
   // Publishing over a file that moved since the last sync would drop that
   // change, so sync first. Except when the sync already found this very
   // version unusable (errors, deleted): replacing it is how it gets fixed.
-  const moved = f.base ? current?.sha !== f.base.blob : current !== null;
+  const moved = f.base ? currentSet?.sha !== f.base.blob : currentSet !== null;
   if (moved && f.problem?.commit !== head.sha)
     throw new SyncError(`${f.path} changed on ${f.branch} since the last sync.`, 409, "stale");
 
   const title = opts.message?.trim() || publishTitle(diff, f.path);
   const now = Date.now();
 
+  /**
+   * Several files: one commit on `branch` writing each file that differs from
+   * what `on` (the files there now) has, and deleting the files the document
+   * no longer uses. Returns the commit and the new set's fingerprint.
+   */
+  const writeFiles = async (token: string | null, branch: string, parent: string, on: DocFiles | null) => {
+    const changes = [...split!]
+      .filter(([p, text]) => on?.files.get(p)?.content !== text)
+      .map(([path, text]) => ({ path, content: text as string | null }));
+    for (const p of on?.files.keys() ?? []) if (!split!.has(p)) changes.push({ path: p, content: null });
+    const res = await commitFiles(token, f.owner, f.name, { branch, parent, message: title, files: changes });
+    const shas = new Map([...split!.keys()].map((p) => [p, res.blobs[p] ?? on!.files.get(p)!.sha]));
+    return { commit: res.commit, url: res.url, blob: fingerprint(f.path, shas) };
+  };
+
   const commitDirectly = async (token: string | null): Promise<PublishResult> => {
+    if (split) {
+      const res = await writeFiles(token, f.branch, head.sha, currentSet);
+      await setState(actor, doc, { base: { commit: res.commit, blob: res.blob, source: content, at: now }, problem: null });
+      return { mode: "commit", commit: res.commit, url: res.url };
+    }
     const res = await putFile(token, f.owner, f.name, {
       path: f.path,
       branch: f.branch,
@@ -434,6 +535,11 @@ export async function publishDocument(
     if (f.pr) {
       const open = await getPullRequest(token, f.owner, f.name, f.pr.number).catch(() => null);
       if (open?.state === "open") {
+        if (split) {
+          const prHead = await getBranchHead(token, f.owner, f.name, f.pr.branch);
+          await writeFiles(token, f.pr.branch, prHead, await readDocFiles(token, f.owner, f.name, f.path, prHead, types));
+          return { mode: "pr", number: open.number, url: open.url, updated: true };
+        }
         const onBranch = await getFile(token, f.owner, f.name, f.path, f.pr.branch);
         await putFile(token, f.owner, f.name, {
           path: f.path,
@@ -447,13 +553,15 @@ export async function publishDocument(
     }
     const branch = `archer/${slug(doc.title)}-${now.toString(36)}`;
     await createBranch(token, f.owner, f.name, branch, head.sha);
-    await putFile(token, f.owner, f.name, {
-      path: f.path,
-      branch,
-      content,
-      message: title,
-      ...(current ? { sha: current.sha } : {}),
-    });
+    if (split) await writeFiles(token, branch, head.sha, currentSet);
+    else
+      await putFile(token, f.owner, f.name, {
+        path: f.path,
+        branch,
+        content,
+        message: title,
+        ...(current ? { sha: current.sha } : {}),
+      });
     const pr = await createPullRequest(token, f.owner, f.name, {
       title,
       body: publishBody(diff, `${SITE_URL}/documents/${documentId}`),
@@ -506,13 +614,13 @@ export async function createFromRepo(
 ): Promise<{ id: string; imported: boolean }> {
   await requireUserCanRead(actor, ref.owner, ref.name);
   const sha = await branchHeadOrThrow(actor, ref.owner, ref.name, ref.branch);
-  const file = await getFile(actor.token, ref.owner, ref.name, ref.path, sha);
   const types = await knownTypes(actor, workspaceId);
+  const file = await readDocFiles(actor.token, ref.owner, ref.name, ref.path, sha, types);
   if (file) {
     const prep = prepareSource(file.content, types);
-    if (!prep.ok)
+    if (file.errors.length > 0 || !prep.ok)
       throw new SyncError(`${ref.path} has errors, so it can't be imported yet.`, 422, "invalid", {
-        errors: prep.errors.map(formatDiagnostic),
+        errors: file.errors.length > 0 ? file.errors.map((d) => fileError(ref.path, d)) : prep.ok ? [] : prep.errors.map(formatDiagnostic),
       });
     const commit = commitInfo(
       await lastCommitForPath(actor.token, ref.owner, ref.name, sha, ref.path).catch(() => null),
@@ -556,7 +664,7 @@ export async function linkFile(
 ): Promise<{ existed: boolean }> {
   await requireUserCanRead(actor, ref.owner, ref.name);
   const sha = await branchHeadOrThrow(actor, ref.owner, ref.name, ref.branch);
-  const file = await getFile(actor.token, ref.owner, ref.name, ref.path, sha);
+  const file = await readDocFiles(actor.token, ref.owner, ref.name, ref.path, sha, await knownTypes(actor, workspaceId));
   await convex().mutation(api.repoSync.link, {
     id: documentId as Id<"documents">,
     workspaceId,
@@ -644,7 +752,8 @@ export async function handleWebhook(event: string, payload: PushPayload): Promis
         out.documents.push({ id: d.id, status: "pr_closed" });
         continue;
       }
-      if (touched && !touched.has(d.path)) {
+      // A document can keep parts in other files (`use`): any .arch change may be one of them.
+      if (touched && !touched.has(d.path) && ![...touched].some((p) => p.endsWith(".arch"))) {
         out.documents.push({ id: d.id, status: "untouched" });
         continue;
       }

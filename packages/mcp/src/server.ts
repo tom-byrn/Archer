@@ -16,7 +16,14 @@ import {
   type ArchDoc,
   type DiffSummary,
   allViews,
+  findComponent,
   findView,
+  outline,
+  readComponentPart,
+  readViewPart,
+  writeComponentPart,
+  writeViewPart,
+  PartError,
 } from "@archer/lang";
 import { CATALOG, CONNECTION_TYPES } from "@archer/catalog";
 import { ICON_GROUPS, isIcon } from "@archer/catalog/icons";
@@ -125,6 +132,16 @@ const wrap =
 
 const diagnosticsReport = (ds: { severity: string }[] & Parameters<typeof formatDiagnostic>[0][]) =>
   ds.map(formatDiagnostic);
+
+/**
+ * A part's version: a short hash of its canonical text, so update_part can
+ * tell whether the part changed since get_part without storing anything.
+ */
+const partVersion = (source: string): string => {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < source.length; i++) h = Math.imul(h ^ source.charCodeAt(i), 0x01000193);
+  return (h >>> 0).toString(16).padStart(8, "0");
+};
 
 const iso = (ms: number) => new Date(ms).toISOString();
 
@@ -620,6 +637,175 @@ export function registerArcherTools(server: McpServer, options: ArcherToolOption
             }
           : {}),
       } satisfies ProjectUpdated);
+    }),
+  );
+
+  // --- parts: one component or one view at a time --------------------------------
+
+  server.registerTool(
+    "get_outline",
+    {
+      title: "Map a project",
+      description:
+        "A project's components as a short indented list — one line each, with its full dot-path, name, type, the plane it's on, how many parts are nested in it and how many connections touch it — then its views. Use it instead of get_project on a large document to find what you need, then read just that with get_part. `depth` limits the levels shown (1 = the top level).",
+      inputSchema: {
+        project_id: z.string(),
+        depth: z.number().int().min(1).optional().describe("Levels of nesting to show; default all"),
+      },
+    },
+    wrap(async ({ project_id, depth }) => {
+      const ws = await requireWorkspace();
+      const doc = await requireProject(ws, project_id);
+      const a = await analyze(doc.source, ws);
+      return text({
+        id: project_id,
+        title: doc.title,
+        editor_url: `${APP_URL}/documents/${project_id}`,
+        valid: a.errors.length === 0,
+        errors: a.errors.length,
+        warnings: a.warnings.length,
+        outline: outline(a.doc, depth !== undefined ? { depth } : {}),
+      });
+    }),
+  );
+
+  const partTarget = (path: string | undefined, view: string | undefined) => {
+    if ((path === undefined) === (view === undefined))
+      throw new Error("Give exactly one of `path` (a component's dot-path, e.g. backend.api) or `view` (a view id).");
+    return path !== undefined
+      ? { kind: "component" as const, path: path.split(".").filter((s) => s !== "") }
+      : { kind: "view" as const, id: view! };
+  };
+
+  server.registerTool(
+    "get_part",
+    {
+      title: "Read one component or view",
+      description:
+        "Read one part of a project instead of the whole document: a component (by `path`) — its declaration with everything nested in it, then every connection with an end in it, including the ones to the rest of the document — or a view (by `view` id). Paths are full dot-paths from the root, as everywhere in the language. Edit the text and send it back with update_part, passing `version` so a concurrent change to the same part is caught. Find paths with get_outline.",
+      inputSchema: {
+        project_id: z.string(),
+        path: z.string().optional().describe("A component's dot-path, e.g. backend.api"),
+        view: z.string().optional().describe("A view id (sequence, flow, states or entities)"),
+      },
+    },
+    wrap(async ({ project_id, path, view }) => {
+      const ws = await requireWorkspace();
+      const target = partTarget(path, view);
+      const doc = await requireProject(ws, project_id);
+      const parsed = parse(doc.source).doc;
+      if (target.kind === "component") {
+        const part = readComponentPart(parsed, target.path);
+        return text({
+          id: project_id,
+          path: part.path.join("."),
+          version: partVersion(part.source),
+          connections_leaving: part.boundary,
+          views: part.views,
+          repository: repositoryView(doc),
+          source: part.source,
+        });
+      }
+      const part = readViewPart(parsed, target.id);
+      return text({
+        id: project_id,
+        view: part.id,
+        kind: part.kind,
+        version: partVersion(part.source),
+        repository: repositoryView(doc),
+        source: part.source,
+      });
+    }),
+  );
+
+  server.registerTool(
+    "update_part",
+    {
+      title: "Update one component or view",
+      description:
+        "Replace one part of a project and leave the rest as it is — the partial counterpart of update_project. For a component (`path`), send its declaration (one `component`, with what's nested in it) and every connection with an end in it, in full dot-paths, as get_part returned them: those replace the component where it is and every connection touching it. A different id at the top renames it; a path that names nothing yet adds it to its parent; an empty source deletes it with its connections. For a view (`view`), send the one view; a new id adds it, an empty source deletes it. No header or layout block. The whole document then passes the same validation as update_project: errors reject the write and nothing is saved. Pass the `version` get_part gave you: if the part has changed since, the write is refused so you can re-read it.",
+      inputSchema: {
+        project_id: z.string(),
+        path: z.string().optional().describe("The component's dot-path (its current one, when renaming)"),
+        view: z.string().optional().describe("The view id"),
+        source: z.string().describe("The part's new text; empty to delete it"),
+        version: z.string().optional().describe("The `version` from get_part; omit to write regardless"),
+        summary: z.string().max(200).optional().describe("One line describing what you changed, shown in the human's activity feed next to your name. Always provide it."),
+      },
+    },
+    wrap(async ({ project_id, path, view, source, version, summary }) => {
+      const ws = await requireWorkspace();
+      const target = partTarget(path, view);
+      const existing = await requireProject(ws, project_id);
+      const current = parse(existing.source).doc;
+      const label = target.kind === "component" ? target.path.join(".") : target.id;
+      if (version !== undefined) {
+        const now =
+          target.kind === "component"
+            ? findComponent(current, target.path) && readComponentPart(current, target.path).source
+            : findView(current, target.id) && readViewPart(current, target.id).source;
+        if (partVersion(now || "") !== version)
+          return fail({
+            message: `REJECTED — nothing was saved. ${label} has changed since you read it: get_part it again and redo your edit on what it is now.`,
+            errors: [],
+            warnings: [],
+          } satisfies WriteRejected);
+      }
+      let merged: ArchDoc;
+      let at: string[] | null = null;
+      try {
+        if (target.kind === "component") {
+          const w = writeComponentPart(current, target.path, source);
+          merged = w.doc;
+          at = w.path;
+        } else merged = writeViewPart(current, target.id, source);
+      } catch (e) {
+        if (e instanceof PartError)
+          return fail({
+            message: "REJECTED — nothing was saved. The part doesn't parse (line numbers are the part's own).",
+            errors: diagnosticsReport(e.diagnostics),
+            warnings: [],
+          } satisfies WriteRejected);
+        throw e;
+      }
+      // The merged document carries the stored positions, moved with a rename
+      // and minus what's gone; prepareWrite places whatever is new.
+      const prep = await prepareWrite(format(merged), ws, existing.source);
+      if (!prep.ok)
+        return fail({
+          message: "REJECTED — nothing was saved. With your part in place the document has these errors (they name paths; lines are of the whole document). Fix the part and retry.",
+          errors: diagnosticsReport(prep.errors),
+          warnings: diagnosticsReport(prep.warnings),
+        } satisfies WriteRejected);
+      await db.updateProject(ws, project_id, prep.title, prep.text, summary);
+      const saved = parse(prep.text).doc;
+      const after =
+        target.kind === "component"
+          ? at && readComponentPart(saved, at).source
+          : findView(saved, target.id) && readViewPart(saved, target.id).source;
+      // Views the write changed besides the one sent: a rename or a delete reaches into them.
+      const viewText = (d: ArchDoc, id: string) => (findView(d, id) ? readViewPart(d, id).source : null);
+      const viewsChanged = allViews(current)
+        .map((v) => v.node.id)
+        .filter((v) => !(target.kind === "view" && v === target.id) && viewText(current, v) !== viewText(saved, v));
+      const file = existing.repo?.path ? existing.repo : null;
+      return text({
+        id: project_id,
+        ...(target.kind === "component" ? { path: at ? at.join(".") : null } : { view: target.id }),
+        ...(viewsChanged.length > 0 ? { views_changed: viewsChanged } : {}),
+        saved: true,
+        deleted: !after,
+        version: after ? partVersion(after) : null,
+        attributed_to: agentName(),
+        editor_url: `${APP_URL}/documents/${project_id}`,
+        warnings: diagnosticsReport(prep.warnings),
+        ...hintsField(prep.hints),
+        ...(file
+          ? {
+              note: `Saved to the unpublished draft. This project is stored in ${file.path} in ${file.owner}/${file.name} (${file.branch}); a human publishes the draft there as a pull request. If you are working in that repository, edit ${file.path} directly instead.`,
+            }
+          : {}),
+      });
     }),
   );
 

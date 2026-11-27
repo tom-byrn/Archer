@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import { mkdtempSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -194,6 +194,33 @@ describe("signed in", () => {
     expect((await run(["pull", "x.arch", "--project", "not-an-id"])).err).toContain("No project with id not-an-id");
   });
 
+  it("pushes a document kept in several files as one project, and pulls it back into them", async () => {
+    mkdirSync(join(dir, "billing"), { recursive: true });
+    write("shop.arch", `arch "Shop" v0.2\n\ncomponent web "Web"\n\nimport "./billing/billing.arch" as billing\n\nweb -> billing.checkout\n`);
+    write("billing/billing.arch", `arch "Billing" v0.2\n\ncomponent checkout "Checkout"\n\ncomponent ledger "Ledger"\n\ncheckout -> ledger\n`);
+    expect((await run(["check", "shop.arch"])).code).toBe(0);
+    let r = await run(["push", "shop.arch"]);
+    expect(r.code, r.err).toBe(0);
+    const id = JSON.parse(read("archer.json")).projects["shop.arch"] as string;
+    const stored = host.convex.docs.get(id)!.source;
+    expect(stored).toContain(`import "./billing/billing.arch" as billing "Billing" {`);
+    expect(stored).toContain("billing.checkout -> billing.ledger");
+
+    // A broken sub-file is reported where it is, and nothing is saved.
+    write("billing/billing.arch", `arch "Billing" v0.2\ncomponent checkout\ncheckout -> nope\n`);
+    r = await run(["push", "shop.arch"]);
+    expect(r.code).toBe(1);
+    expect(r.out).toContain("billing/billing.arch:3:1: error E101:");
+    expect(host.convex.docs.get(id)!.source).toBe(stored);
+
+    r = await run(["pull", "shop.arch", "--force"]);
+    expect(r.code, r.err).toBe(0);
+    expect(read("billing/billing.arch")).toBe(`arch "Billing" v0.2\n\ncomponent checkout "Checkout"\n\ncomponent ledger "Ledger"\n\ncheckout -> ledger\n`);
+    expect(read("shop.arch")).toContain(`import "./billing/billing.arch" as billing\n`);
+    expect(read("shop.arch")).toContain("layout {");
+    expect((await run(["check", "shop.arch"])).code).toBe(0);
+  });
+
   it("lists and switches workspaces; projects follow the current one", async () => {
     write("shop.arch", SHOP);
     await run(["push", "shop.arch"]);
@@ -266,7 +293,7 @@ describe("signed in", () => {
     await client.connect(transport);
     try {
       const names = (await client.listTools()).tools.map((t) => t.name);
-      expect(names).toHaveLength(27);
+      expect(names).toHaveLength(30);
       expect(names).toContain("use_workspace");
       const res = await client.callTool({ name: "get_workspace_info", arguments: {} });
       const info = JSON.parse((res.content as { text: string }[])[0]!.text);

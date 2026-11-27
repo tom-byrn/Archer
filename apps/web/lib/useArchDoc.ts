@@ -8,6 +8,7 @@ import {
   validate,
   type ArchDoc,
   type Diagnostic,
+  type ValidateOptions,
 } from "@archer/lang";
 import { knownConnectionTypes, knownTypes } from "@archer/catalog";
 import { ICON_NAMES } from "@archer/catalog/icons";
@@ -118,20 +119,18 @@ export interface DerivedDoc {
   valid: boolean;
 }
 
+/** What the editor validates with: the catalog's types plus the workspace's own. */
+export function validateOptions(extraTypes?: ReadonlySet<string>): ValidateOptions {
+  return {
+    knownTypes: extraTypes && extraTypes.size > 0 ? new Set([...KNOWN_TYPES, ...extraTypes]) : KNOWN_TYPES,
+    knownConnectionTypes: KNOWN_CONNECTION_TYPES,
+    knownIcons: ICON_NAMES,
+  };
+}
+
 export function deriveDoc(source: string, extraTypes?: ReadonlySet<string>): DerivedDoc {
   const parsed = parse(source);
-  const knownTypes =
-    extraTypes && extraTypes.size > 0
-      ? new Set([...KNOWN_TYPES, ...extraTypes])
-      : KNOWN_TYPES;
-  const diagnostics = [
-    ...parsed.diagnostics,
-    ...validate(parsed.doc, {
-      knownTypes,
-      knownConnectionTypes: KNOWN_CONNECTION_TYPES,
-      knownIcons: ICON_NAMES,
-    }),
-  ];
+  const diagnostics = [...parsed.diagnostics, ...validate(parsed.doc, validateOptions(extraTypes))];
   return {
     doc: parsed.doc,
     laidOut: autoLayout(parsed.doc),

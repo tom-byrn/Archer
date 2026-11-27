@@ -76,6 +76,11 @@ export interface ArchNodeData extends Record<string, unknown> {
   shape?: Exclude<Shape, "box">;
   /** Components nested in it, shown when it's opened; components only. */
   childCount: number;
+  /**
+   * The file its inside is kept in (`use`, `import`: spec §2.2), as written;
+   * components only.
+   */
+  file?: string;
   payloadCount: number;
   /** Its type's color. */
   accent?: string;
@@ -275,6 +280,7 @@ export function toFlow(
             ...(shape !== "box" ? { shape } : {}),
             ...(isIcon(item.icon) ? { icon: item.icon } : {}),
             childCount: item.children.length,
+            ...(item.use !== undefined ? { file: item.use } : {}),
             payloadCount: item.payloads.length,
             minSize: [...MIN_LEAF_SIZE],
             ...style(item, path),

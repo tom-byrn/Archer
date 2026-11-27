@@ -64,6 +64,16 @@ Validates documents and prints every problem. With no paths it checks every
 `dist` and `.next`. A directory is searched the same way, and a file is
 checked whatever its extension. `-` reads a document from stdin.
 
+A document can keep parts of itself in other files (`use "./billing/billing.arch"`
+or `import "./billing/billing.arch" as billing`, see the language spec §2.2).
+Checking a file checks every file it reaches, and each problem is reported in
+the file it is in:
+
+```console
+$ archer check architecture.arch
+services/billing/billing.arch:7:1: error E101: Connection target 'nowhere' does not resolve to a declared component.
+```
+
 ```console
 $ archer check
 bad.arch:2:1: warning W301: Unknown type '@my.thing' on 'a' — rendering as a generic component.
@@ -276,6 +286,9 @@ canvas, and new ones are placed automatically. If the file has a `layout`
 block, its positions win over the canvas's: see
 [Round trips with the canvas](#round-trips-with-the-canvas).
 
+When the file uses other files, they go up with it, put together into one
+project; a problem in any of them stops the push.
+
 A project stored in a repository file is different: the file in the
 repository is the source of truth, and `push` only updates the project's
 unpublished draft (it says so). See
@@ -300,6 +313,10 @@ changing it. `--force` overwrites it. The pulled document is canonical and
 ends with the `layout` block from the canvas, except for a project stored in a
 repository file: that one is pulled without its `layout` block, exactly as the
 app publishes it, so the result is ready to commit.
+
+A project that keeps parts in other files is pulled back into them: each
+file is written where its `use` line says, relative to the pulled file (the
+`layout` block, when there is one, stays in the pulled file).
 
 ```console
 $ archer pull shop.arch

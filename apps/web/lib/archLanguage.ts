@@ -24,7 +24,7 @@ interface ArchState {
 }
 
 const KEYWORDS = new Set([
-  "arch", "component", "plane", "desc", "src", "shape", "icon", "color", "layout",
+  "arch", "component", "plane", "desc", "src", "shape", "icon", "color", "layout", "use", "import", "as",
   "sequence", "alt", "opt", "loop", "par", "else", "note", "over",
   "flow", "start", "step", "decision", "end", "in",
   "states", "state", "initial", "final", "of",

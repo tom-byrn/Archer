@@ -169,3 +169,26 @@ export type {
 } from "./diff";
 export { mergeDocs } from "./merge";
 export type { MergeConflict, MergeResult } from "./merge";
+export {
+  readComponentPart,
+  readViewPart,
+  writeComponentPart,
+  writeViewPart,
+  parsePart,
+  outline,
+  PartError,
+} from "./part";
+export type { ComponentPart, ViewPart, PartWrite, OutlineOptions } from "./part";
+export {
+  expandFiles,
+  splitFiles,
+  checkFiles,
+  mountsOf,
+  fileOf,
+  moveToFile,
+  moveInline,
+  resolveFile,
+  relativeFile,
+  dirOf,
+} from "./files";
+export type { FileDiagnostic, ReadFile, Expanded, Mount } from "./files";

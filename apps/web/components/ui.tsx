@@ -22,6 +22,7 @@ import {
 } from "react";
 import {
   ArrowCounterClockwiseIcon,
+  FileTextIcon,
   ArrowDownIcon,
   ArrowElbowDownRightIcon,
   ArrowLeftIcon,
@@ -984,6 +985,8 @@ export const Icon = {
   Diagram: (p: IconProps) => <NetworkIcon {...UI} {...p} />,
   FitView: (p: IconProps) => <FrameCornersIcon {...UI} {...p} />,
   Code: (p: IconProps) => <CodeIcon {...UI} {...p} />,
+  /** A file of the document's own (`use`): tabs, chips, "Stored in". */
+  File: (p: IconProps) => <FileTextIcon {...UI} {...p} />,
   Copy: (p: IconProps) => <CopyIcon {...UI} {...p} />,
   Download: (p: IconProps) => <DownloadSimpleIcon {...UI} {...p} />,
   Sparkle: (p: IconProps) => <SparkleIcon {...UI} {...p} />,

@@ -88,6 +88,8 @@ const REV_EDITED = "kd7e1q8vd2m3p5sz0b6tyhc9w4xnrj8a";
 const APP = "https://tryarcher.dev";
 const EDITOR_URL = `${APP}/documents/${PROJECT}`;
 const FENCE = "```";
+/** Stands for any value in a documented result (see ToolDoc.result). */
+const ANY = "…";
 
 /** "Shop" as Claude Code created it. */
 const SHOP_CREATED = `arch "Shop" v0.2
@@ -236,8 +238,14 @@ export const TOOL_GROUPS: readonly ToolGroup[] = [
   {
     title: "Projects",
     intro:
-      "A project is one Archer document. Reads return the full source. Writes replace it whole, pass the same validation as the canvas, and are saved as revisions under the agent's name.",
+      "A project is one Archer document. `get_project` returns the full source and `update_project` replaces it whole. Writes pass the same validation as the canvas, and are saved as revisions under the agent's name.",
     tools: ["list_projects", "get_project", "create_project", "update_project", "delete_project"],
+  },
+  {
+    title: "Parts",
+    intro:
+      "Work on a large document a piece at a time instead of reading and resending all of it. `get_outline` maps it, `get_part` reads one component (with everything nested in it and every connection that touches it) or one view, and `update_part` writes that piece back and leaves the rest alone. The whole document still passes the same validation, and the write is saved as a revision like any other.",
+    tools: ["get_outline", "get_part", "update_part"],
   },
   {
     title: "Canvas",
@@ -585,6 +593,93 @@ api -> db @sql
     args: { project_id: PROJECT, confirm: true },
     result: { deleted: PROJECT, title: "Shop" },
     notes: ["The project's history and drift report go with it. There is no undo."],
+  },
+
+  // --- parts -------------------------------------------------------------------
+  get_outline: {
+    access: "read",
+    args: { project_id: PROJECT },
+    result: {
+      id: PROJECT,
+      title: "Shop",
+      editor_url: EDITOR_URL,
+      valid: true,
+      errors: 0,
+      warnings: 0,
+      outline: `web "Storefront" @vercel.nextjs — 1 connection
+api "API" @vercel.functions — on Backend, 3 connections
+db "Orders DB" @postgres — on Backend, 1 connection
+stripe "Stripe" @stripe — 1 connection`,
+    },
+    notes: [
+      "One line per component, indented by nesting, each starting with its full dot-path: the `path` to give `get_part`. A component with components nested in it says how many; with `depth`, the ones below the cut say `(not shown)`.",
+      "After a blank line, one line per view (`sequence checkout \"Checkout\"`, `flow …`, `states …`, `entities …`): the `view` to give `get_part`.",
+      "`errors` and `warnings` are counts; `get_project` or `validate_source` lists them.",
+    ],
+  },
+  get_part: {
+    access: "read",
+    args: { project_id: PROJECT, path: "api" },
+    result: {
+      id: PROJECT,
+      path: "api",
+      version: "b1d75d5a",
+      connections_leaving: 3,
+      views: [],
+      repository: ANY,
+      source: `component api "API" @vercel.functions {
+  src "apps/api"
+}
+
+api -> db @sql
+api -> stripe @http : "charges"
+web -> api @http
+`,
+    },
+    notes: [
+      "`source` is the component's declaration, with everything nested in it, then every connection with an end in it, the ones that leave it included (`connections_leaving` counts those). Paths are full dot-paths from the root. No header, no plane (it stays on its plane), no layout.",
+      "`views` lists the views that name the component or anything in it; read each with `view`.",
+      "With `view` instead of `path`, the result has `view`, `kind` and the view's text as `source`.",
+      "`version` identifies this text. Pass it to `update_part` so a change someone else made to the same part since is caught rather than overwritten.",
+    ],
+  },
+  update_part: {
+    access: "write",
+    args: {
+      project_id: PROJECT,
+      path: "api",
+      version: "b1d75d5a",
+      source: `component api "API" @vercel.functions {
+  src "apps/api"
+  component checkout "Checkout"
+  component webhooks "Stripe Webhooks"
+}
+
+api.checkout -> db @sql
+api.checkout -> stripe @http : "charges"
+stripe -> api.webhooks @http : "payment events"
+web -> api.checkout @http
+`,
+      summary: "Split the API into checkout and Stripe webhooks",
+    },
+    result: {
+      id: PROJECT,
+      path: "api",
+      saved: true,
+      deleted: false,
+      version: ANY,
+      attributed_to: "Claude Code",
+      editor_url: EDITOR_URL,
+      warnings: [],
+    },
+    notes: [
+      "The component is replaced where it is, on the same plane, and so is every connection with an end in it; nothing else in the document changes. Positions are kept for whatever still exists, and new parts are placed.",
+      "A different id at the top renames the component, and connections elsewhere and views follow. A `path` that names nothing yet adds the component to its parent (the parent must exist). An empty `source` deletes it with its connections, as the canvas does. Every connection in the part needs an end in it.",
+      "With `view`, `source` is one view: it replaces the view with that id, or adds it; an empty `source` deletes it. A view keeps its id and kind.",
+      "Errors in the part itself come back with the part's own line numbers. Otherwise the whole document is validated with the part in place, and errors (a connection elsewhere that named a part you removed, say) reject the write and name the paths involved.",
+      "`views_changed` (only when there are any) lists the views the write changed besides the one you sent: a rename renames the component in them, and a component you delete or leave out of the part leaves them (a sequence loses the steps it took part in), as on the canvas.",
+      "A stale `version` saves nothing: read the part again. The result's `version` is the part's new one, for the next edit.",
+    ],
   },
 
   // --- canvas ------------------------------------------------------------------

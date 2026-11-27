@@ -219,6 +219,11 @@ update at once. The main things agents do:
 - **Change a design.** The agent reads the project (`get_project`), edits the
   source and saves the whole document (`update_project`). Your arrangement of
   the canvas is kept.
+- **Work on part of a large document.** The agent doesn't have to read or
+  resend the whole thing. `get_outline` lists every component by path,
+  `get_part` reads one component (with everything nested in it and the
+  connections that touch it) or one view, and `update_part` writes that piece
+  back and leaves the rest alone. The whole document is still validated.
 - **Work in a repository-stored project.** A project can live in a `.arch`
   file in its GitHub repository (created *From GitHub* in the app, or moved
   there with *Move to GitHub*). `get_project` then returns the file as
@@ -385,12 +390,16 @@ CLI calls it like any other client.
    `apps/web/convex/access.ts` (`effectiveUser`) turns it back into the user, and
    `requireWorkspace` checks their role: viewer for queries, editor for
    document writes.
-5. `create_project` and `update_project` save through `prepareWrite`
+5. `create_project`, `update_project` and `update_part` save through `prepareWrite`
    (`src/backend.ts`). It validates with `src/analysis.ts`, the same code the
    CLI runs, against the catalog plus the workspace's custom types. Then it
    merges the layout (the sent `layout` entries first, stored positions for
    the components that survive, auto-layout for the rest) and formats the
-   document canonically.
+   document canonically. `update_part` first puts the part into the stored
+   document with the pure helpers in `packages/lang/src/part.ts`
+   (`writeComponentPart`, `writeViewPart`), then saves the whole result the
+   same way. A part's `version` is a hash of its canonical text, so nothing
+   extra is stored.
 
 The current workspace lives in the `agentPrefs` table, keyed by user, so the
 CLI and every agent share it.

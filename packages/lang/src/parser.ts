@@ -131,8 +131,18 @@ export function parse(source: string): ParseResult {
     return path.join(".");
   };
 
+  /** `import "<file>" as <id>` ahead (a connection from a component named `import` has an arrow next). */
+  const startsImport = (): boolean => at("ident", "import") && peek(1).type === "string";
+
   const parseComponent = (): ComponentNode => {
-    const kw = expect("ident", "'component'"); // caller guarantees value
+    const imported = at("ident", "import");
+    const kw = next(); // caller guarantees 'component' or 'import'
+    let use: string | undefined;
+    if (imported) {
+      use = expect("string", "the file to import, as a quoted path").value;
+      if (!at("ident", "as")) fail(`Expected 'as <id>' after the imported file, got ${describe(peek())}.`, peek().span);
+      next();
+    }
     const idTok = expect("ident", "a component id");
     const node: ComponentNode = {
       kind: "component",
@@ -140,6 +150,7 @@ export function parse(source: string): ParseResult {
       payloads: [],
       children: [],
       planes: [],
+      ...(imported ? { use, imported: true } : {}),
       span: { start: kw.span.start, end: idTok.span.end },
     };
     if (at("string")) node.name = next().value;
@@ -151,10 +162,22 @@ export function parse(source: string): ParseResult {
       const inside: Target = { components: node.children, planes: node.planes };
       while (!at("rbrace") && !at("eof")) {
         try {
-          if (at("ident", "component")) {
+          if (at("ident", "component") || startsImport()) {
             node.children.push(parseComponent());
           } else if (startsPlane()) {
             parsePlane(inside);
+          } else if (at("ident", "use") && peek(1).type === "string") {
+            const kwTok = next();
+            const t = next();
+            if (node.use !== undefined) {
+              diagnostics.push({
+                code: "E004",
+                severity: "error",
+                message: `Component '${node.id}' names more than one file to use.`,
+                span: { start: kwTok.span.start, end: t.span.end },
+              });
+            }
+            node.use = t.value;
           } else if (at("ident", "desc")) {
             next();
             const t = peek();
@@ -229,7 +252,7 @@ export function parse(source: string): ParseResult {
             node.payloads.push(parsePayload());
           } else {
             fail(
-              `Expected 'desc', 'src', 'shape', 'icon', 'color', 'component', 'plane', or a payload inside a component body, got ${describe(peek())}.`,
+              `Expected 'desc', 'src', 'shape', 'icon', 'color', 'use', 'component', 'import', 'plane', or a payload inside a component body, got ${describe(peek())}.`,
               peek().span,
             );
           }
@@ -277,7 +300,7 @@ export function parse(source: string): ParseResult {
     while (!at("rbrace") && !at("eof")) {
       const start = i;
       try {
-        if (at("ident", "component")) {
+        if (at("ident", "component") || startsImport()) {
           const c = parseComponent();
           c.plane = node.id;
           into.components.push(c);
@@ -358,7 +381,7 @@ export function parse(source: string): ParseResult {
       while (!at("rbrace") && !at("eof")) {
         // A statement keyword here means the body was never closed: report it
         // and hand the token back to the top-level loop instead of eating it.
-        if (["component", "layout", "desc", "src"].some((kw) => at("ident", kw)) || startsPlane()) {
+        if (["component", "layout", "desc", "src"].some((kw) => at("ident", kw)) || startsPlane() || startsImport()) {
           diagnostics.push({
             code: "E001",
             severity: "error",
@@ -494,7 +517,7 @@ export function parse(source: string): ParseResult {
     const steps: StepNode[] = [];
     while (!at("rbrace") && !at("eof")) {
       // A top-level keyword means a body was never closed: leave it to the top level.
-      if (at("ident", "component") || at("ident", "layout") || startsPlane() || startsSequence() || startsView("flow") || startsView("states") || startsView("entities")) {
+      if (at("ident", "component") || startsImport() || at("ident", "layout") || startsPlane() || startsSequence() || startsView("flow") || startsView("states") || startsView("entities")) {
         diagnostics.push({
           code: "E001",
           severity: "error",
@@ -544,7 +567,7 @@ export function parse(source: string): ParseResult {
   const parseViewBody = (what: string, statement: () => void) => {
     expect("lbrace", `'{' opening the ${what}`);
     while (!at("rbrace") && !at("eof")) {
-      if (at("ident", "component") || at("ident", "layout") || startsPlane() || startsSequence() || startsView("flow") || startsView("states") || startsView("entities")) {
+      if (at("ident", "component") || startsImport() || at("ident", "layout") || startsPlane() || startsSequence() || startsView("flow") || startsView("states") || startsView("entities")) {
         diagnostics.push({
           code: "E001",
           severity: "error",
@@ -788,6 +811,8 @@ export function parse(source: string): ParseResult {
       !at("eof") &&
       !at("rbrace") &&
       !at("ident", "component") &&
+      !at("ident", "import") &&
+      !at("ident", "use") &&
       !at("ident", "desc") &&
       !at("ident", "src") &&
       !at("ident", "shape") &&
@@ -804,7 +829,7 @@ export function parse(source: string): ParseResult {
   const top: Target = { components: doc.components, planes: doc.planes };
   while (!at("eof")) {
     try {
-      if (at("ident", "component")) {
+      if (at("ident", "component") || startsImport()) {
         doc.components.push(parseComponent());
       } else if (startsPlane()) {
         parsePlane(top);
@@ -822,7 +847,7 @@ export function parse(source: string): ParseResult {
         doc.connections.push(parseConnection());
       } else {
         fail(
-          `Expected 'component', 'plane', 'sequence', 'flow', 'states', 'entities', 'layout', or a connection, got ${describe(peek())}.`,
+          `Expected 'component', 'import', 'plane', 'sequence', 'flow', 'states', 'entities', 'layout', or a connection, got ${describe(peek())}.`,
           peek().span,
         );
       }

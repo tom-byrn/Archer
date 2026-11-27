@@ -56,10 +56,12 @@ import { TypeCombobox } from "./TypeCombobox";
 import {
   Button,
   Chip,
+  GitHubMark,
   Icon,
   IconButton,
   Input,
   Kbd,
+  buttonCls,
   Menu,
   PropertyRow,
   Section,
@@ -867,6 +869,20 @@ function ConnectionDetails({
 
 /* ------------------------------------------------------------- Component */
 
+/** What the inspector can do with the files a document is kept in (spec §2.2). */
+export interface FileActions {
+  /** The file a component's inside is kept in. */
+  fileOf: (path: readonly string[]) => string;
+  /** The file that declares a component (and says where its inside is). */
+  declaredIn: (path: readonly string[]) => string;
+  open: (file: string) => void;
+  /** Ask where to keep a component's inside ("Move to its own file…"). */
+  moveTo: (path: string) => void;
+  inline: (path: string) => void;
+  /** The file on GitHub, for a document stored in a repository. */
+  githubUrl?: (file: string) => string;
+}
+
 function ComponentInspector({
   doc,
   path,
@@ -882,6 +898,7 @@ function ComponentInspector({
   onPickerOpened,
   spotlight,
   onSpotlight,
+  files,
 }: {
   doc: ArchDoc;
   path: string;
@@ -898,6 +915,7 @@ function ComponentInspector({
   onPickerOpened?: () => void;
   spotlight?: string | null;
   onSpotlight?: (key: string | null) => void;
+  files?: FileActions;
 }) {
   const isDark = useIsDark();
   const segments = path.split(".");
@@ -931,6 +949,11 @@ function ComponentInspector({
           },
         ]
       : []),
+    ...(readOnly || !files
+      ? []
+      : node.use !== undefined
+        ? [{ label: "Move back inline", hint: `Into ${files.declaredIn(segments)}`, icon: <Icon.Code />, onSelect: () => files.inline(path) }]
+        : [{ label: "Move to its own file…", icon: <Icon.File />, onSelect: () => files.moveTo(path) }]),
     ...(readOnly
       ? []
       : [
@@ -997,6 +1020,34 @@ function ComponentInspector({
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto">
+        {node.use !== undefined && files && (
+          <div className="m-3 mb-0 rounded-md border border-line bg-surface-2 p-2.5">
+            <div className="text-xs font-medium uppercase tracking-wide text-ink-3">Stored in</div>
+            <div className="mono mt-1 flex items-center gap-1.5 break-all text-sm text-ink">
+              <Icon.File className="h-3.5 w-3.5 shrink-0 text-accent" />
+              {files.fileOf(segments)}
+            </div>
+            <div className="mt-0.5 text-xs text-ink-3">
+              {node.imported ? "Imported" : "Used"} by {files.declaredIn(segments)}
+            </div>
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              <Button size="sm" icon={<Icon.Code />} onClick={() => files.open(files.fileOf(segments))}>
+                Open file
+              </Button>
+              {files.githubUrl && (
+                <a
+                  href={files.githubUrl(files.fileOf(segments))}
+                  target="_blank"
+                  rel="noreferrer"
+                  className={buttonCls("secondary", "sm")}
+                >
+                  <GitHubMark className="h-3.5 w-3.5" />
+                  View on GitHub
+                </a>
+              )}
+            </div>
+          </div>
+        )}
         {editing ? (
           <ComponentForm
             node={node}
@@ -1625,6 +1676,7 @@ export function DetailPanel({
   onPickerOpened,
   spotlight = null,
   onSpotlight,
+  files,
 }: {
   doc: ArchDoc;
   selection: Selection;
@@ -1650,6 +1702,8 @@ export function DetailPanel({
    */
   spotlight?: string | null;
   onSpotlight?: (key: string | null) => void;
+  /** The files the document is kept in (spec §2.2): where a component's inside is, and moving it. */
+  files?: FileActions;
 }) {
   const dock = useFloating();
   if (selection === null && multi === null) return null;
@@ -1690,6 +1744,7 @@ export function DetailPanel({
           onPickerOpened={onPickerOpened}
           spotlight={spotlight}
           onSpotlight={onSpotlight}
+          files={files}
         />
       ) : (
         <ConnectionInspector
