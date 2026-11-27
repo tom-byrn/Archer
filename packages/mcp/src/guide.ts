@@ -160,6 +160,21 @@ fails, call \`get_workspace_info\` and relay what it reports.
 3. If the result reports errors, the write was REJECTED — nothing was saved.
    Fix the diagnostics and resend. Warnings do not block.
 
+### Work on part of a large document
+You don't need the whole source to change one piece of it.
+1. \`get_outline\` → one line per component with its full dot-path (and the
+   views), small enough to read whole.
+2. \`get_part\` with \`path\` (a component) or \`view\` (a view id) → just that
+   piece: the component with everything nested in it and every connection
+   with an end in it (full paths from the root), or the one view, plus a
+   \`version\`.
+3. Edit that text and send it to \`update_part\` with the \`version\`. It
+   replaces the component and the connections touching it (or the view) and
+   leaves everything else as it is. A new path adds a component, an empty
+   source deletes it. The whole document is still validated, and a stale
+   \`version\` is refused: read the part again.
+For a change that spans many components, use \`get_project\`/\`update_project\`.
+
 ### Create a new architecture
 1. Optionally \`list_types\` to use component types that render with real icons:
    vendor-neutral building blocks for system designs (\`@load_balancer\`,

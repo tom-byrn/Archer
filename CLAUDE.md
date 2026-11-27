@@ -45,7 +45,7 @@ Router + React Flow + Convex).
   server-only service credential `svc_<ARCHER_SERVICE_SECRET>.<userId>` passed
   in the functions' `apiKey` argument (legacy name; `convex/access.ts` →
   `effectiveUser`); the same secret must be set on the Convex deployment and
-  in the web env. `registerArcherTools(server)` registers 27 tools; `render_project` draws
+  in the web env. `registerArcherTools(server)` registers 30 tools (`get_outline`/`get_part`/`update_part` read and write one component or view: `packages/lang/src/part.ts`); `render_project` draws
   with `lib/svg.ts`, which the route passes in (`handleRemoteRequest(…, {
   renderSvg })`), since the renderer lives in the web app. The CLI
   (`archer login`) runs the same OAuth flow as any MCP client (DCR + PKCE +
