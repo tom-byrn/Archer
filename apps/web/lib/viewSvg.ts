@@ -40,8 +40,8 @@ export interface ViewRenderOptions {
   logos?: Readonly<Record<string, Logo>>;
 }
 
-const ACCENT = { light: "#2f5bd3", dark: "#7096ff" } as const;
-const ACCENT_INK = { light: "#ffffff", dark: "#0b1020" } as const;
+const ACCENT = { light: "#1a1916", dark: "#ecebe7" } as const;
+const ACCENT_INK = { light: "#fbfaf8", dark: "#0f1012" } as const;
 const NOTE = { light: "#fbf3ea", dark: "#2a2219" } as const;
 const TITLE_H = 44;
 const PAD = 16;

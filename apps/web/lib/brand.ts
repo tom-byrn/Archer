@@ -120,7 +120,7 @@ export const COLOR_GROUPS: TokenGroup[] = [
   },
   {
     title: "Accent",
-    note: "The one brand color: focus, selection and anything an agent touched.",
+    note: "The ink itself, so the brand stays monochrome: focus, selection and anything an agent touched.",
     prefix: "bg",
     tokens: [
       { token: "accent", role: "Focus ring, toggles, agent marks" },

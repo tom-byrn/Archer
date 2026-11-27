@@ -23,11 +23,12 @@
   --line: #e7e3dc;
   --line-2: #d2ccc3;
 
-  /* Accent: blueprint blue, the one cool note against the warm neutrals. */
-  --accent: #2f5bd3;
-  --accent-hover: #2649b0;
-  --accent-ink: #ffffff;
-  --accent-soft: rgba(47, 91, 211, 0.12);
+  /* Accent: the ink itself. Archer is monochrome, like its mark, so focus,
+     selection and a mode that's on are the strongest ink on the page. */
+  --accent: #1a1916;
+  --accent-hover: #3a3732;
+  --accent-ink: #fbfaf8;
+  --accent-soft: rgba(26, 25, 22, 0.1);
 
   --danger: #b42318;
   --danger-soft: rgba(180, 35, 24, 0.1);
@@ -50,7 +51,7 @@
   --code-gutter: #b5afa5;
   --code-line: rgba(26, 25, 22, 0.05);
   --code-caret: #1a1916;
-  --code-selection: rgba(47, 91, 211, 0.16);
+  --code-selection: rgba(26, 25, 22, 0.1);
   --tok-kw: #6d3fd6;
   --tok-string: #0b7a52;
   --tok-type: #a85a0a;
@@ -91,10 +92,10 @@
   --line: #26292d;
   --line-2: #383c42;
 
-  --accent: #7096ff;
-  --accent-hover: #8aaaff;
-  --accent-ink: #0b1020;
-  --accent-soft: rgba(112, 150, 255, 0.16);
+  --accent: #ecebe7;
+  --accent-hover: #ffffff;
+  --accent-ink: #0f1012;
+  --accent-soft: rgba(236, 235, 231, 0.14);
 
   --danger: #f0655a;
   --danger-soft: rgba(240, 101, 90, 0.14);
@@ -114,7 +115,7 @@
   --code-gutter: #4d5057;
   --code-line: rgba(255, 255, 255, 0.04);
   --code-caret: #f5f4f1;
-  --code-selection: rgba(112, 150, 255, 0.25);
+  --code-selection: rgba(236, 235, 231, 0.16);
   --tok-kw: #b69cff;
   --tok-string: #a5d6ff;
   --tok-type: #7dd3fc;

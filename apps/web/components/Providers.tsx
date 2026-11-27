@@ -13,13 +13,13 @@ import { UsageBeacon } from "./UsageBeacon";
 /** Token values from globals.css — Clerk needs literal colors, not CSS vars. */
 const PALETTE = {
   light: {
-    primary: "#2f5bd3", primaryInk: "#ffffff",
+    primary: "#1a1916", primaryInk: "#fbfaf8",
     surface: "#ffffff", surface2: "#f4f2ee",
     ink: "#1a1916", ink2: "#5f5a52", line: "#e7e3dc", line2: "#d2ccc3", neutral: "#1a1916",
     danger: "#b42318",
   },
   dark: {
-    primary: "#7096ff", primaryInk: "#0b1020",
+    primary: "#ecebe7", primaryInk: "#0f1012",
     surface: "#161719", surface2: "#1c1e21",
     ink: "#ecebe7", ink2: "#a5a19a", line: "#26292d", line2: "#383c42", neutral: "#ecebe7",
     danger: "#f0655a",
