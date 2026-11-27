@@ -109,10 +109,11 @@ export interface CanvasApi {
 }
 
 /**
- * One step of a sequence or flow playing on the canvas: a packet travels from
- * `from` to `to` (component paths) along the connection `edge` (its key; null
- * when no connection carries it), against the connection's direction when
- * `reverse`. A new `token` replays the animation.
+ * One step of a sequence or flow playing on the canvas, from `from` to `to`
+ * (component paths) along the connection `edge` (its key; null when no
+ * connection carries it), against the connection's direction when `reverse`.
+ * The connection fills with colour from the sender's end, then the receiver
+ * is outlined. A new `token` refills it.
  */
 export interface CanvasPlayback {
   token: string;
@@ -143,7 +144,7 @@ export interface ArchCanvasProps {
    * its participants.
    */
   spotlightNodes?: ReadonlySet<string> | null;
-  /** A playback step to animate: a packet travelling from sender to receiver. */
+  /** A playback step to show: its connection fills in, then the receiver is outlined. */
   playback?: CanvasPlayback | null;
   /** Pan and zoom to this node once it's on the canvas (bump `nonce` to repeat). */
   reveal?: { path: string; nonce: number } | null;
@@ -403,33 +404,21 @@ function CanvasInner({
     [selNodeSet, selectedPath],
   );
 
-  // The nodes standing for the sender and the receiver on this canvas: the
-  // component itself, its context node, or the box it's nested in.
-  const playEnds = useMemo(() => {
-    if (!playback) return null;
-    const visible = (path: string) => {
-      let best: string | undefined;
-      let len = -1;
-      for (const n of nodes) {
-        const p = n.id.startsWith(CONTEXT_PREFIX) ? n.id.slice(CONTEXT_PREFIX.length) : n.id;
-        if ((path === p || path.startsWith(p + ".")) && p.length > len) {
-          best = n.id;
-          len = p.length;
-        }
+  // The node standing for the receiver on this canvas: the component itself,
+  // its context node, or the box it's nested in.
+  const playTo = useMemo(() => {
+    if (!playback) return undefined;
+    let best: string | undefined;
+    let len = -1;
+    for (const n of nodes) {
+      const p = n.id.startsWith(CONTEXT_PREFIX) ? n.id.slice(CONTEXT_PREFIX.length) : n.id;
+      if ((playback.to === p || playback.to.startsWith(p + ".")) && p.length > len) {
+        best = n.id;
+        len = p.length;
       }
-      return best;
-    };
-    return { from: visible(playback.from), to: visible(playback.to) };
+    }
+    return best;
   }, [playback, nodes]);
-  // Flips on every new step: the node animations alternate between two
-  // identical keyframes so a component that receives twice in a row replays.
-  const playToken = playback?.token;
-  const [playFlip, setPlayFlip] = useState(false);
-  const [flippedFor, setFlippedFor] = useState(playToken);
-  if (playToken !== flippedFor) {
-    setFlippedFor(playToken);
-    setPlayFlip(!playFlip);
-  }
   const travels = !!playback?.edge && edges.some((e) => e.data?.key === playback.edge);
 
   const styledNodes = useMemo(
@@ -444,13 +433,11 @@ function CanvasInner({
           className: joinCls(
             lit !== null && !lit.nodes.has(n.id) && "dim",
             selectedPath === n.id && "arch-selected",
-            playEnds?.from === n.id && playEnds.to !== n.id && "arch-play-send",
-            playEnds?.to === n.id && (travels ? "arch-play-receive" : "arch-play-receive-now"),
-            !!playEnds && playFlip && "arch-play-flip",
+            playTo === n.id && (travels ? "arch-play-receive" : "arch-play-receive-now"),
           ),
         };
       }),
-    [nodes, lit, selectedPath, soleSelected, dropTarget, playEnds, playFlip, travels],
+    [nodes, lit, selectedPath, soleSelected, dropTarget, playTo, travels],
   );
   // React Flow stacks edges by z-index, then in array order, and lifts an edge
   // touching a component on a plane one level per plane. Selected, highlighted

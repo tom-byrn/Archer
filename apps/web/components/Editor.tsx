@@ -458,10 +458,10 @@ function EditorView({ initialSource, library, session, tour }: EditorProps) {
     return { now: laneOf(flowPlay.path[flowPlay.path.length - 1]), before: laneOf(flowPlay.path[flowPlay.path.length - 2]) };
   }, [playingFlow, flowPlay]);
   /**
-   * What the canvas animates for the current playback step: who sends, who
+   * What the canvas shows for the current playback step: who sends, who
    * receives, and the connection (key) it travels on, with `reverse` when it
    * runs against the connection's direction (a reply). The token changes on
-   * every step so the animation replays.
+   * every step so the connection refills.
    */
   const playMotion = useMemo((): CanvasPlayback | null => {
     let from: string[] | undefined;

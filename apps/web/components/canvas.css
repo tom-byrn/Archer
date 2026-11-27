@@ -348,12 +348,10 @@ button.arch-nested:hover {
 
 /* ---- Playback ----
    A sequence or flow playing on the canvas (ArchCanvas `playback`): the rest
-   fades further back, the step's connection draws itself in from the sender
-   while a packet runs ahead to the receiver (EdgeTravel, 700ms), the sender
-   gives off a pulse as it sends and the receiver one as the packet lands,
-   then stays softly lit. Each animation exists twice (…-b under
-   .arch-play-flip) so a component that sends or receives twice in a row
-   replays. */
+   fades further back, the step's connection fills with colour from the
+   sender's end, its arrowheads follow, and once it's full the receiver is
+   outlined. Colour only: nothing moves or grows. Steps with no connection
+   (a self-call) outline the receiver at once. */
 .arch-playing .react-flow__node,
 .arch-playing .react-flow__edge {
   transition: opacity 240ms ease;
@@ -366,72 +364,48 @@ button.arch-nested:hover {
 .arch-edge-trail {
   fill: none;
   stroke: var(--accent);
-  stroke-width: 2.5;
-  stroke-linecap: round;
+  stroke-width: 2;
   stroke-dasharray: 1 1;
   stroke-dashoffset: 0;
   pointer-events: none;
 }
-.arch-edge-packet {
+.arch-edge-trail-head {
+  fill: var(--accent);
   pointer-events: none;
-  opacity: 0;
 }
-.arch-edge-packet-core {
-  fill: var(--accent);
-  stroke: var(--surface);
-  stroke-width: 1.5;
+.react-flow__node.arch-play-receive .arch-node,
+.react-flow__node.arch-play-receive-now .arch-node {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
 }
-.arch-edge-packet-halo {
-  fill: var(--accent);
-  opacity: 0.25;
+.react-flow__node.arch-play-receive .arch-node.arch-node-shape,
+.react-flow__node.arch-play-receive-now .arch-node.arch-node-shape {
+  --shape-stroke: var(--accent);
+  box-shadow: none;
 }
-/* Arrowheads join in once the packet has landed. */
-.react-flow__edge .arch-edge-arrow.arch-edge-travelled {
-  fill: var(--accent);
+.react-flow__node.arch-play-receive .arch-shape-part,
+.react-flow__node.arch-play-receive-now .arch-shape-part {
+  stroke-width: 2;
 }
 @media (prefers-reduced-motion: no-preference) {
   .arch-edge-trail {
-    animation: arch-trail 700ms cubic-bezier(0.45, 0, 0.25, 1) both;
+    animation: arch-trail 600ms ease-in-out both;
   }
   .arch-edge-travel-reverse .arch-edge-trail {
     animation-name: arch-trail-reverse;
   }
-  .arch-edge-packet {
-    animation: arch-packet 900ms linear both;
+  .arch-edge-trail-head {
+    animation: arch-trail-head 150ms ease 550ms both;
   }
-  .arch-edge-packet-halo {
-    transform-box: fill-box;
-    transform-origin: center;
-    animation: arch-halo 700ms ease-in-out infinite alternate;
+  /* The outline waits for the line to fill. */
+  .react-flow__node.arch-play-receive .arch-node {
+    transition-delay: 600ms;
   }
-  .react-flow__edge .arch-edge-arrow.arch-edge-travelled {
-    animation: arch-arrow-in 200ms ease 600ms both;
-  }
-  .react-flow__node.arch-play-send {
-    animation: arch-send 650ms ease-out both;
-  }
-  .react-flow__node.arch-play-send.arch-play-flip {
-    animation-name: arch-send-b;
-  }
-  .react-flow__node.arch-play-receive,
-  .react-flow__node.arch-play-receive-now {
-    animation: arch-receive 700ms cubic-bezier(0.3, 0.7, 0.4, 1) 650ms both;
-  }
-  .react-flow__node.arch-play-receive-now {
-    animation-delay: 0ms;
-  }
-  .react-flow__node.arch-play-receive.arch-play-flip,
-  .react-flow__node.arch-play-receive-now.arch-play-flip {
-    animation-name: arch-receive-b;
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .arch-edge-packet {
-    display: none;
-  }
-  .react-flow__node.arch-play-receive,
-  .react-flow__node.arch-play-receive-now {
-    filter: drop-shadow(0 0 6px color-mix(in srgb, var(--accent) 45%, transparent));
+  .react-flow__node.arch-play-receive .arch-shape-part {
+    transition:
+      stroke 120ms ease 600ms,
+      stroke-width 120ms ease 600ms,
+      fill 120ms ease;
   }
 }
 @keyframes arch-trail {
@@ -450,82 +424,12 @@ button.arch-nested:hover {
     stroke-dashoffset: 0;
   }
 }
-@keyframes arch-packet {
-  0% {
+@keyframes arch-trail-head {
+  from {
     opacity: 0;
   }
-  8%,
-  72% {
+  to {
     opacity: 1;
-  }
-  100% {
-    opacity: 0;
-  }
-}
-@keyframes arch-halo {
-  from {
-    transform: scale(0.7);
-  }
-  to {
-    transform: scale(1.25);
-  }
-}
-@keyframes arch-arrow-in {
-  from {
-    fill: var(--edge);
-  }
-  to {
-    fill: var(--accent);
-  }
-}
-@keyframes arch-send {
-  0% {
-    filter: drop-shadow(0 0 0 color-mix(in srgb, var(--accent) 60%, transparent));
-  }
-  35% {
-    filter: drop-shadow(0 0 10px color-mix(in srgb, var(--accent) 50%, transparent));
-  }
-  100% {
-    filter: drop-shadow(0 0 0 color-mix(in srgb, var(--accent) 0%, transparent));
-  }
-}
-@keyframes arch-send-b {
-  0% {
-    filter: drop-shadow(0 0 0 color-mix(in srgb, var(--accent) 60%, transparent));
-  }
-  35% {
-    filter: drop-shadow(0 0 10px color-mix(in srgb, var(--accent) 50%, transparent));
-  }
-  100% {
-    filter: drop-shadow(0 0 0 color-mix(in srgb, var(--accent) 0%, transparent));
-  }
-}
-@keyframes arch-receive {
-  0% {
-    scale: 1;
-    filter: drop-shadow(0 0 0 color-mix(in srgb, var(--accent) 0%, transparent));
-  }
-  30% {
-    scale: 1.04;
-    filter: drop-shadow(0 0 14px color-mix(in srgb, var(--accent) 65%, transparent));
-  }
-  100% {
-    scale: 1;
-    filter: drop-shadow(0 0 6px color-mix(in srgb, var(--accent) 45%, transparent));
-  }
-}
-@keyframes arch-receive-b {
-  0% {
-    scale: 1;
-    filter: drop-shadow(0 0 0 color-mix(in srgb, var(--accent) 0%, transparent));
-  }
-  30% {
-    scale: 1.04;
-    filter: drop-shadow(0 0 14px color-mix(in srgb, var(--accent) 65%, transparent));
-  }
-  100% {
-    scale: 1;
-    filter: drop-shadow(0 0 6px color-mix(in srgb, var(--accent) 45%, transparent));
   }
 }
 

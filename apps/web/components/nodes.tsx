@@ -1,14 +1,6 @@
 "use client";
 
-import {
-  createContext,
-  useContext,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  type CSSProperties,
-} from "react";
+import { createContext, useContext, useEffect, useMemo, useRef, type CSSProperties } from "react";
 import {
   BaseEdge,
   EdgeLabelRenderer,
@@ -502,39 +494,26 @@ function arrowhead(x: number, y: number, side: Position): string {
   }
 }
 
-/** How long a playback packet takes along its connection (canvas.css waits for it too). */
-const TRAVEL_MS = 700;
-
 /**
- * A playback step on its connection: the line draws itself in from the
- * sender while a packet runs ahead of it to the receiver. Remounted (keyed on
- * the step) to replay.
+ * A playback step on its connection: the line fills with colour from the
+ * sender's end (canvas.css), then its arrowheads take the colour. Keyed on
+ * the step, so it refills each time.
  */
-function EdgeTravel({ path, reverse }: { path: string; reverse: boolean }) {
-  const motion = useRef<SVGAnimateMotionElement>(null);
-  // An animation added after the SVG's timeline started would count as long
-  // finished, so it waits (`indefinite`) and starts now, before first paint.
-  useLayoutEffect(() => {
-    motion.current?.beginElement?.();
-  }, []);
+function EdgeTravel({
+  path,
+  reverse,
+  heads,
+}: {
+  path: string;
+  reverse: boolean;
+  heads: string[];
+}) {
   return (
     <g className={cx("arch-edge-travel", reverse && "arch-edge-travel-reverse")} aria-hidden>
       <path className="arch-edge-trail" d={path} pathLength={1} />
-      <g className="arch-edge-packet">
-        <circle className="arch-edge-packet-halo" r={8} />
-        <circle className="arch-edge-packet-core" r={4} />
-        <animateMotion
-          ref={motion}
-          begin="indefinite"
-          dur={`${TRAVEL_MS}ms`}
-          fill="freeze"
-          path={path}
-          calcMode="spline"
-          keyTimes="0;1"
-          keyPoints={reverse ? "1;0" : "0;1"}
-          keySplines="0.45 0 0.25 1"
-        />
-      </g>
+      {heads.map((points, i) => (
+        <polygon key={i} className="arch-edge-trail-head" points={points} />
+      ))}
     </g>
   );
 }
@@ -585,7 +564,7 @@ export function ArchEdgeComponent({
   const chipY = labelY + (slot - (of - 1) / 2) * 22;
   const diff = data?.diff;
   const diffCls = diff ? `arch-edge-diff-${diff}` : "";
-  const litCls = highlighted ? "arch-edge-highlighted" : travel && "arch-edge-travelled";
+  const litCls = highlighted && "arch-edge-highlighted";
   return (
     <>
       <BaseEdge
@@ -594,7 +573,6 @@ export function ArchEdgeComponent({
         className={cx("arch-edge-path", litCls, diffCls)}
         interactionWidth={16}
       />
-      {travel && <EdgeTravel key={travel.token} path={path} reverse={travel.reverse} />}
       {/* fill attr: fallback so heads are never SVG-default black if canvas.css is late. */}
       {arrow !== "--" && (
         <polygon
@@ -608,6 +586,17 @@ export function ArchEdgeComponent({
           fill="var(--edge)"
           className={cx("arch-edge-arrow", litCls, diffCls)}
           points={arrowhead(sourceX, sourceY, sourcePosition)}
+        />
+      )}
+      {travel && (
+        <EdgeTravel
+          key={travel.token}
+          path={path}
+          reverse={travel.reverse}
+          heads={[
+            ...(arrow !== "--" ? [arrowhead(targetX, targetY, targetPosition)] : []),
+            ...(arrow === "<->" ? [arrowhead(sourceX, sourceY, sourcePosition)] : []),
+          ]}
         />
       )}
       {selected && (
