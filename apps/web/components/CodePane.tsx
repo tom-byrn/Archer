@@ -91,6 +91,8 @@ export interface CodePaneProps {
   onFileChange: (file: string | null) => void;
   /** What files are checked with (the editor's types). */
   validateOptions: ValidateOptions;
+  /** The code shows but can't be typed in (the editor in view mode). */
+  readOnly?: boolean;
 }
 
 /** A file's name and the folder it's in, for its tab. */
@@ -119,6 +121,7 @@ export function CodePane({
   file: fileProp,
   onFileChange,
   validateOptions,
+  readOnly = false,
 }: CodePaneProps) {
   const viewRef = useRef<EditorView | null>(null);
 
@@ -381,6 +384,7 @@ export function CodePane({
           key={tabbed ? file : "doc"}
           value={shown}
           onChange={edit}
+          readOnly={readOnly}
           onViewReady={onViewReady}
           extensions={allExtensions}
           className="h-full"

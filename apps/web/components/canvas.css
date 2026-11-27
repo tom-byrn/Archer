@@ -375,6 +375,93 @@ button.arch-nested:hover {
   transition: opacity 120ms ease;
 }
 
+/* ---- Playback ----
+   A sequence or flow playing on the canvas (ArchCanvas `playback`): the rest
+   fades further back, the step's connection fills with colour from the
+   sender's end, its arrowheads follow, and once it's full the receiver is
+   outlined. Colour only: nothing moves or grows. Steps with no connection
+   (a self-call) outline the receiver at once. */
+.arch-playing .react-flow__node,
+.arch-playing .react-flow__edge {
+  transition: opacity 240ms ease;
+}
+.arch-playing .react-flow__node.dim,
+.arch-playing .react-flow__edge.dim,
+.arch-playing .arch-edge-chip.dim {
+  opacity: 0.35;
+}
+.arch-edge-trail {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 2;
+  stroke-dasharray: 1 1;
+  stroke-dashoffset: 0;
+  pointer-events: none;
+}
+.arch-edge-trail-head {
+  fill: var(--accent);
+  pointer-events: none;
+}
+.react-flow__node.arch-play-receive .arch-node,
+.react-flow__node.arch-play-receive-now .arch-node {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+.react-flow__node.arch-play-receive .arch-node.arch-node-shape,
+.react-flow__node.arch-play-receive-now .arch-node.arch-node-shape {
+  --shape-stroke: var(--accent);
+  box-shadow: none;
+}
+.react-flow__node.arch-play-receive .arch-shape-part,
+.react-flow__node.arch-play-receive-now .arch-shape-part {
+  stroke-width: 2;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .arch-edge-trail {
+    animation: arch-trail 600ms ease-in-out both;
+  }
+  .arch-edge-travel-reverse .arch-edge-trail {
+    animation-name: arch-trail-reverse;
+  }
+  .arch-edge-trail-head {
+    animation: arch-trail-head 150ms ease 550ms both;
+  }
+  /* The outline waits for the line to fill. */
+  .react-flow__node.arch-play-receive .arch-node {
+    transition-delay: 600ms;
+  }
+  .react-flow__node.arch-play-receive .arch-shape-part {
+    transition:
+      stroke 120ms ease 600ms,
+      stroke-width 120ms ease 600ms,
+      fill 120ms ease;
+  }
+}
+@keyframes arch-trail {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@keyframes arch-trail-reverse {
+  from {
+    stroke-dashoffset: -1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@keyframes arch-trail-head {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
 /* ---- Handles ---- */
 .arch-handle {
   width: 8px !important;

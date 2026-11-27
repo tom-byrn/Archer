@@ -147,6 +147,12 @@ export interface ArchEdgeData extends Record<string, unknown> {
   endSelected?: boolean;
   /** Set by the canvas while it's picked out in the inspector's list: drawn like a selected one. */
   highlighted?: boolean;
+  /**
+   * Set by the canvas while a playback step travels on it: it fills with
+   * colour from the sender's end (the target when `reverse`); a new token
+   * refills it.
+   */
+  travel?: { token: string; reverse: boolean };
 }
 
 export type ArchEdge = Edge<ArchEdgeData>;
