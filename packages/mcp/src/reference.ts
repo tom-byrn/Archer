@@ -677,6 +677,7 @@ web -> api.checkout @http
       "A different id at the top renames the component, and connections elsewhere and views follow. A `path` that names nothing yet adds the component to its parent (the parent must exist). An empty `source` deletes it with its connections, as the canvas does. Every connection in the part needs an end in it.",
       "With `view`, `source` is one view: it replaces the view with that id, or adds it; an empty `source` deletes it. A view keeps its id and kind.",
       "Errors in the part itself come back with the part's own line numbers. Otherwise the whole document is validated with the part in place, and errors (a connection elsewhere that named a part you removed, say) reject the write and name the paths involved.",
+      "`views_changed` (only when there are any) lists the views the write changed besides the one you sent: a rename renames the component in them, and a component you delete or leave out of the part leaves them (a sequence loses the steps it took part in), as on the canvas.",
       "A stale `version` saves nothing: read the part again. The result's `version` is the part's new one, for the next edit.",
     ],
   },

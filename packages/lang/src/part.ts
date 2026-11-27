@@ -11,7 +11,7 @@ import {
   type ViewKind,
   type ViewNode,
 } from "./types";
-import { allViews, findView, viewName, viewsOf, viewsWith } from "./views";
+import { allViews, findView, remapViewPaths, viewName, viewsOf, viewsWith } from "./views";
 
 /**
  * Parts: one component (with everything nested in it) or one view, read and
@@ -118,7 +118,8 @@ export interface PartWrite {
  * It replaces the component where it is (on the same plane) and every
  * connection that touches it; the rest of the document is left as it is.
  * A different id at the top renames the component (connections elsewhere,
- * views and positions follow). A path that names nothing yet adds the
+ * views and positions follow). What it no longer declares leaves the views
+ * that named it, as on the canvas. A path that names nothing yet adds the
  * component to its parent's canvas. An empty source deletes it, as the
  * canvas does: with its connections, and out of the views that name it.
  *
@@ -182,8 +183,11 @@ export function writeComponentPart(doc: ArchDoc, path: readonly string[], source
   }
   next.connections = [...next.connections.filter((c) => !touches(c, target)), ...frag.connections];
 
-  // Positions inside the component that's gone stay only for paths that remain.
+  // What the part no longer declares leaves the views too, as a delete does.
   const paths = componentPaths(next);
+  remapViewPaths(next, (p) => (under(p, target) && !paths.has(pathToString(p)) ? null : p));
+
+  // Positions inside the component that's gone stay only for paths that remain.
   const planes = planePaths(next);
   next.layout = next.layout.filter((e) => paths.has(pathToString(e.path)) || planes.has(pathToString(e.path)));
   return { doc: next, path: target };

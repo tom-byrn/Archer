@@ -141,6 +141,12 @@ web -> api.checkout : "pay"`,
     expect(errors(bad).map((e) => e.code)).toContain("E101");
   });
 
+  it("takes what the part drops out of the views", () => {
+    const { doc: out } = writeComponentPart(doc(), ["api"], `component api "API" { component ledger "Ledger" }\nweb -> api.ledger`);
+    expect(errors(out)).toEqual([]);
+    expect(out.sequences[0]!.steps).toEqual([]);
+  });
+
   it("refuses connections with no end in the part", () => {
     expect(() => writeComponentPart(doc(), ["stripe"], `component stripe "Stripe"\nweb -> api.checkout`)).toThrow(
       /needs an end in stripe/,

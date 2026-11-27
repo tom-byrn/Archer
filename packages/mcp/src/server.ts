@@ -768,8 +768,9 @@ export function registerArcherTools(server: McpServer, options: ArcherToolOption
           } satisfies WriteRejected);
         throw e;
       }
-      // Positions come from the stored document, as with update_project.
-      const prep = await prepareWrite(format({ ...merged, layout: [], viewLayout: [] }, { stripLayout: true }), ws, existing.source);
+      // The merged document carries the stored positions, moved with a rename
+      // and minus what's gone; prepareWrite places whatever is new.
+      const prep = await prepareWrite(format(merged), ws, existing.source);
       if (!prep.ok)
         return fail({
           message: "REJECTED — nothing was saved. With your part in place the document has these errors (they name paths; lines are of the whole document). Fix the part and retry.",
@@ -782,10 +783,16 @@ export function registerArcherTools(server: McpServer, options: ArcherToolOption
         target.kind === "component"
           ? at && readComponentPart(saved, at).source
           : findView(saved, target.id) && readViewPart(saved, target.id).source;
+      // Views the write changed besides the one sent: a rename or a delete reaches into them.
+      const viewText = (d: ArchDoc, id: string) => (findView(d, id) ? readViewPart(d, id).source : null);
+      const viewsChanged = allViews(current)
+        .map((v) => v.node.id)
+        .filter((v) => !(target.kind === "view" && v === target.id) && viewText(current, v) !== viewText(saved, v));
       const file = existing.repo?.path ? existing.repo : null;
       return text({
         id: project_id,
         ...(target.kind === "component" ? { path: at ? at.join(".") : null } : { view: target.id }),
+        ...(viewsChanged.length > 0 ? { views_changed: viewsChanged } : {}),
         saved: true,
         deleted: !after,
         version: after ? partVersion(after) : null,
