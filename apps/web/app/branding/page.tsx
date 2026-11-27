@@ -311,7 +311,7 @@ function ColorSection({ tokens }: { tokens: BrandTokens }) {
     <Section
       id="color"
       title="Color"
-      lede="One warm-neutral gray ramp and one green accent, in a light and a dark theme that follow the system setting unless the viewer picks one. Each swatch shows the light theme on the left and the dark theme on the right."
+      lede="One warm-neutral gray ramp and one blue accent, in a light and a dark theme that follow the system setting unless the viewer picks one. Each swatch shows the light theme on the left and the dark theme on the right."
     >
       <Block title="Core">
         <ul className="grid grid-cols-2 gap-4 lg:grid-cols-5">
