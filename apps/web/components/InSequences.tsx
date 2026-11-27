@@ -52,7 +52,7 @@ export function ConnectionSequences({ doc, conn }: { doc: ArchDoc; conn: Connect
                   title="Open the sequence on this step"
                   className="flex h-6 max-w-full items-center gap-1 rounded-full bg-accent-soft px-2 text-sm text-ink hover:bg-surface-3"
                 >
-                  <b className="text-accent">{m.number}</b>
+                  <span className="mono text-xs tabular-nums text-ink-3">{m.number}</span>
                   <span className="truncate">{m.step.label ?? (m.step.arrow === "-->" ? "reply" : "call")}</span>
                 </button>
               ))}

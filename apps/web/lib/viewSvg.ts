@@ -41,7 +41,6 @@ export interface ViewRenderOptions {
 }
 
 const ACCENT = { light: "#1a1916", dark: "#ecebe7" } as const;
-const ACCENT_INK = { light: "#fbfaf8", dark: "#0f1012" } as const;
 const NOTE = { light: "#fbf3ea", dark: "#2a2219" } as const;
 const TITLE_H = 44;
 const PAD = 16;
@@ -50,7 +49,6 @@ interface Ctx {
   P: Palette;
   dark: boolean;
   accent: string;
-  accentInk: string;
   doc: ArchDoc;
   logos?: Readonly<Record<string, Logo>>;
 }
@@ -98,12 +96,13 @@ function sequenceSvg(c: Ctx, seq: SequenceNode): { body: string; w: number; h: n
       ? `M${m.x1} ${m.y} H${m.x1 + 36} V${m.y2} H${m.x1 + 2}`
       : `M${m.x1} ${m.y} H${m.x2 - (m.x2 >= m.x1 ? 2 : -2)}`;
     s += `<path d="${d}" fill="none" stroke="${P.ink2}" stroke-width="1.5"${dash} marker-end="url(#${marker})"/>`;
-    const bx = m.labelX + 9;
-    const by = m.labelY - 4;
-    s += `<circle cx="${bx}" cy="${by}" r="9" fill="${c.accent}"/>` + text(bx, by + 3.5, String(m.number), 10, c.accentInk, ` text-anchor="middle" font-weight="700"`);
+    // The step number, then the label: plain text, like the editor's diagram.
+    const num = String(m.number);
+    s += `<text x="${m.labelX}" y="${m.labelY}" font-family='${MONO_FONT}' font-size="11" fill="${P.ink3}">${num}</text>`;
+    const lx = m.labelX + num.length * 6.6 + 6;
     const label = m.label ?? (reply ? "reply" : "call");
-    s += text(m.labelX + 24, m.labelY, label, 12, m.label ? P.ink : P.ink3);
-    if (m.type) s += `<text x="${m.labelX + 30 + label.length * 6.6}" y="${m.labelY}" font-family='${MONO_FONT}' font-size="11" fill="${P.ink3}">@${esc(m.type)}</text>`;
+    s += text(lx, m.labelY, label, 12, m.label ? P.ink : P.ink3);
+    if (m.type) s += `<text x="${lx + 6 + label.length * 6.6}" y="${m.labelY}" font-family='${MONO_FONT}' font-size="11" fill="${P.ink3}">@${esc(m.type)}</text>`;
   }
   for (const n of L.notes) {
     s += `<rect x="${n.x}" y="${n.y}" width="${n.w}" height="${n.h}" rx="3" fill="${NOTE[c.dark ? "dark" : "light"]}" stroke="${P.line2}"/>`;
@@ -239,7 +238,7 @@ export function renderViewSvg(source: string, viewId: string, opts: ViewRenderOp
   }
   const ref = findView(doc, viewId);
   if (!ref) return notice(`No view '${viewId}' in this document`);
-  const c: Ctx = { P, dark: theme === "dark", accent: ACCENT[theme], accentInk: ACCENT_INK[theme], doc, ...(opts.logos ? { logos: opts.logos } : {}) };
+  const c: Ctx = { P, dark: theme === "dark", accent: ACCENT[theme], doc, ...(opts.logos ? { logos: opts.logos } : {}) };
   const drawn =
     ref.kind === "sequence"
       ? sequenceSvg(c, ref.node as SequenceNode)

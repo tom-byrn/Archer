@@ -204,14 +204,14 @@ export function SequenceDiagram({
             key={`label-${m.key}`}
             type="button"
             onClick={() => onSelect?.(m.key)}
-            className="absolute flex h-5 items-center gap-1.5 whitespace-nowrap text-left text-xs"
+            className="absolute flex h-5 items-baseline gap-1.5 whitespace-nowrap pt-0.5 text-left text-xs"
             style={{ left: m.labelX, top: m.labelY - 14 }}
             title={warnedTitle(warned?.has(m.key))}
           >
             <span
               className={cx(
-                "flex h-[18px] min-w-[18px] items-center justify-center rounded-full px-1 text-xs font-bold",
-                warned?.has(m.key) && !on ? "bg-warn text-accent-ink" : "bg-accent text-accent-ink",
+                "mono tabular-nums",
+                on ? "font-semibold text-ink" : warned?.has(m.key) ? "text-warn" : "text-ink-3",
               )}
             >
               {m.number}

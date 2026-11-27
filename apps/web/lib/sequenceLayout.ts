@@ -21,7 +21,7 @@ export const HEAD_H = 52;
 const MARGIN = 24;
 const MIN_GAP = 184;
 const ROW = { message: 46, self: 64, note: 40, branch: 34, end: 16 } as const;
-/** Room a message label takes beside its number badge. */
+/** Room a message label takes beside its step number. */
 const LABEL_PAD = 64;
 /** How far a self-call's loop reaches right of its lifeline. */
 const SELF_W = 36;
@@ -53,7 +53,7 @@ export interface SeqMessage {
   /** Self-call: the loop's bottom. */
   y2: number;
   self: boolean;
-  /** Where the number badge and label start, and the label's baseline. */
+  /** Where the step number and label start, and the label's baseline. */
   labelX: number;
   labelY: number;
 }

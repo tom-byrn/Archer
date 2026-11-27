@@ -115,9 +115,7 @@ export function SequenceInspector({
       <div className="flex h-full flex-col">
         <div className="flex h-11 shrink-0 items-center gap-2 border-b border-line px-3">
           {step?.kind === "message" ? (
-            <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-accent px-1 text-xs font-bold text-accent-ink">
-              {number}
-            </span>
+            <Icon.ArrowRight className="h-4 w-4 text-ink-2" />
           ) : step?.kind === "note" ? (
             <Icon.Note className="h-4 w-4 text-ink-2" />
           ) : (
@@ -550,9 +548,7 @@ function SequenceDetails({
                   className="flex w-full items-center gap-2 rounded-md px-1.5 py-1 text-left text-sm hover:bg-surface-2"
                   style={{ paddingLeft: 6 + m.depth * 14 }}
                 >
-                  <span className="flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-surface-3 px-1 text-xs font-semibold">
-                    {m.number}
-                  </span>
+                  <span className="mono w-4 shrink-0 text-right text-xs tabular-nums text-ink-3">{m.number}</span>
                   <span className="min-w-0 flex-1 truncate">
                     {nameOf(doc, m.step.from)} {m.step.arrow === "-->" ? "⇢" : m.step.arrow === "~>" ? "↝" : "→"}{" "}
                     {nameOf(doc, m.step.to)}
