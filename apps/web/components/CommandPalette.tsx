@@ -121,7 +121,8 @@ export function CommandPalette({
   open: boolean;
   mode?: PaletteMode;
   onClose: () => void;
-  onAdd: (tag: string | undefined, shape?: Shape) => void;
+  /** Add a component; without it (the editor in view mode) the palette only runs commands and finds. */
+  onAdd?: (tag: string | undefined, shape?: Shape) => void;
   /** Add a plane; without it the palette offers none. */
   onAddPlane?: () => void;
   library: UserLibrary;
@@ -177,7 +178,7 @@ export function CommandPalette({
         });
     }
 
-    if (mode === "all" || mode === "add") {
+    if ((mode === "all" || mode === "add") && onAdd) {
       const entries: Entry[] = [
         ...SHAPE_ENTRIES,
         PLAIN,
@@ -214,7 +215,7 @@ export function CommandPalette({
 
     // With a query, the best match leads whichever kind it is; ties keep the order above.
     return out.sort((a, b) => a.rank - b.rank || a.order - b.order);
-  }, [mode, commands, components, library.items, q, onAddPlane]);
+  }, [mode, commands, components, library.items, q, onAdd, onAddPlane]);
 
   const flat = useMemo(() => groups.flatMap((g) => g.rows), [groups]);
 
@@ -233,7 +234,7 @@ export function CommandPalette({
     if (row.kind === "command") row.command.run();
     else if (row.kind === "goto") onGoTo?.(row.component.path);
     else if (row.entry.plane) onAddPlane?.();
-    else onAdd(row.entry.tag, row.entry.shape);
+    else onAdd?.(row.entry.tag, row.entry.shape);
   };
 
   let index = -1;

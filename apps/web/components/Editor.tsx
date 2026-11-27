@@ -127,6 +127,7 @@ import {
   Input,
   Kbd,
   Menu,
+  SwapIcon,
   buttonCls,
   cx,
   relativeTime,
@@ -252,6 +253,7 @@ const ARROWS: Record<string, [number, number]> = {
 /** What shortcuts and clipboard events can do; refreshed on every render. */
 interface EditorActions {
   editable: boolean;
+  toggleEditMode: () => void;
   paletteOpen: boolean;
   hasSelection: boolean;
   togglePalette: () => void;
@@ -315,6 +317,30 @@ function TitleField({ value, onCommit }: { value: string; onCommit: (v: string) 
   );
 }
 
+/**
+ * In and out of edit mode. "Edit" and "Done" share one width, so the header
+ * holds still; while editing it takes the accent, so the mode is never in doubt.
+ */
+function EditModeButton({ on, onToggle }: { on: boolean; onToggle: () => void }) {
+  return (
+    <Button
+      size="sm"
+      variant={on ? "accent" : "secondary"}
+      icon={<SwapIcon swapped={on} from={<Icon.Pencil />} to={<Icon.Check />} />}
+      title={on ? "Done editing (E)" : "Edit this document (E)"}
+      aria-pressed={on}
+      onClick={onToggle}
+      data-tour="edit-mode"
+      className="ml-1"
+    >
+      <span className="grid *:col-start-1 *:row-start-1">
+        <span className={cx(on && "invisible")}>Edit</span>
+        <span className={cx(!on && "invisible")}>Done</span>
+      </span>
+    </Button>
+  );
+}
+
 interface EditorProps {
   initialSource: string;
   /** Custom component types: the workspace's, or in-memory ones in a sandbox. */
@@ -364,11 +390,16 @@ function EditorView({ initialSource, library, session, tour }: EditorProps) {
   const derived = useMemo(() => deriveDoc(source, customTags), [source, customTags]);
   const [sel, setSel] = useState<Sel>(NONE);
   /**
-   * What the inspector's form is open on: a component path or connection key.
-   * The inspector opens read-only, and selecting anything else goes back to
-   * reading.
+   * Edit mode: the header's Edit button. Out of it the document only reads —
+   * nothing drags, connects, renames or deletes, and the components sidebar,
+   * add and re-layout are gone — so looking around can't change anything.
+   * An empty document (nothing to look at yet) and the walkthrough start in it.
    */
-  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editMode, setEditMode] = useState(() => {
+    if (tour) return true;
+    const d = parse(initialSource).doc;
+    return d.components.length === 0 && d.planes.length === 0;
+  });
   /** "Change shape…" / "Change icon…" / "Change color…": the component whose list the form opens on. */
   const [pickerFor, setPickerFor] = useState<{ path: string; picker: Picker } | null>(null);
   /**
@@ -691,7 +722,6 @@ function EditorView({ initialSource, library, session, tour }: EditorProps) {
           notify(`Moved ${plural(moved.renamed.size, "component")} into ${nameOf(moved.into)}`);
         } else if (moved.renamed.size > 0) {
           setSel((s) => ({ ...s, nodes: s.nodes.map((p) => remapPath(p, moved.renamed)) }));
-          setEditingId((id) => id && remapPath(id, moved.renamed));
         }
       },
       onDrillIn: (path) => {
@@ -813,19 +843,14 @@ function EditorView({ initialSource, library, session, tour }: EditorProps) {
       : liveSelection.kind === "connection"
         ? liveSelection.key
         : liveSelection.path;
-  // Once something else is selected the form stays closed, so coming back reads first.
   useEffect(() => {
-    if (editingId !== null && editingId !== selectedId) setEditingId(null);
     if (pickerFor !== null && pickerFor.path !== selectedId) setPickerFor(null);
     if (spotlight !== null && spotlight.path !== selectedId) setSpotlight(null);
-  }, [editingId, pickerFor, spotlight, selectedId]);
+  }, [pickerFor, spotlight, selectedId]);
   const pickerOpened = useCallback(() => setPickerFor(null), []);
 
-  /** Select a component that was just made, its form open to name it. */
-  const selectNew = useCallback((path: string) => {
-    setSel(only(path));
-    setEditingId(path);
-  }, []);
+  /** Select a component that was just made (edit mode: its form opens to name it). */
+  const selectNew = useCallback((path: string) => setSel(only(path)), []);
 
   const addFromPalette = useCallback(
     (tag: string | undefined, shape?: Shape) => {
@@ -932,12 +957,6 @@ function EditorView({ initialSource, library, session, tour }: EditorProps) {
         return;
       }
       if (isTyping(e.target) || a.paletteOpen) return;
-      if (mod && key === "z") {
-        e.preventDefault();
-        if (e.shiftKey) a.redo();
-        else a.undo();
-        return;
-      }
       if (mod && key === "f") {
         e.preventDefault();
         a.find();
@@ -947,8 +966,18 @@ function EditorView({ initialSource, library, session, tour }: EditorProps) {
         a.escape();
         return;
       }
+      // E: in and out of edit mode.
+      if (!mod && !e.altKey && key === "e") {
+        e.preventDefault();
+        a.toggleEditMode();
+        return;
+      }
       if (!a.editable) return;
-      if (mod && key === "a") {
+      if (mod && key === "z") {
+        e.preventDefault();
+        if (e.shiftKey) a.redo();
+        else a.undo();
+      } else if (mod && key === "a") {
         e.preventDefault();
         a.selectAll();
       } else if (mod && key === "d") {
@@ -1036,9 +1065,20 @@ function EditorView({ initialSource, library, session, tour }: EditorProps) {
 
   /* ---- Selection actions (canvas menu, palette, inspector, shortcuts) ---- */
 
-  // Diff mode shows a past or merged doc read-only; nothing edits it.
-  const editable = diff === null;
-  const editing = editable && selectedId !== null && editingId === selectedId;
+  // Out of edit mode nothing changes the document; diff mode shows a past or
+  // merged doc read-only, so nothing edits it either.
+  const editable = editMode && diff === null;
+  // In edit mode the inspector opens straight on the selection's form.
+  const editing = editable && selectedId !== null;
+  const toggleEditMode = () => {
+    const on = !editMode;
+    setEditMode(on);
+    setDiffView(null);
+    setMenu(null);
+    setPickerFor(null);
+    // The components sidebar is the main way in on desktop: open it with edit mode.
+    setComponentsOpen(on);
+  };
   // Lit only while the list it was picked from shows (the form doesn't list connections).
   const spotlit = spotlight !== null && spotlight.path === selectedPath && !editing ? spotlight.key : null;
   const selCount = liveSel.nodes.length;
@@ -1259,7 +1299,6 @@ function EditorView({ initialSource, library, session, tour }: EditorProps) {
       if (stepSel !== null) setStepSel(null);
       else goToView({ kind: "architecture" });
     } else if (diffView) setDiffView(null);
-    else if (editing) setEditingId(null);
     else if (spotlit) setSpotlight(null);
     else if (liveSel.nodes.length > 0 || liveSel.edges.length > 0) setSel(NONE);
     else setFocus((f) => f.slice(0, -1));
@@ -1287,6 +1326,7 @@ function EditorView({ initialSource, library, session, tour }: EditorProps) {
 
   actions.current = {
     editable,
+    toggleEditMode,
     paletteOpen: palette !== null,
     hasSelection: selCount > 0,
     togglePalette: () => {
@@ -1381,10 +1421,7 @@ function EditorView({ initialSource, library, session, tour }: EditorProps) {
         {
           label: "Rename…",
           icon: <Icon.Pencil />,
-          onSelect: () => {
-            setSel(only(t.path));
-            setEditingId(t.path);
-          },
+          onSelect: () => setSel(only(t.path)),
         },
         "separator",
         { label: "Ungroup", hint: "Remove the plane, keep what's on it", icon: <Icon.Ungroup />, onSelect: () => ungroup(t.path) },
@@ -1414,7 +1451,6 @@ function EditorView({ initialSource, library, session, tour }: EditorProps) {
           icon: <Icon.Shapes />,
           onSelect: () => {
             setSel(only(t.path));
-            setEditingId(t.path);
             setPickerFor({ path: t.path, picker: "shape" });
           },
         },
@@ -1423,7 +1459,6 @@ function EditorView({ initialSource, library, session, tour }: EditorProps) {
           icon: <Icon.Icons />,
           onSelect: () => {
             setSel(only(t.path));
-            setEditingId(t.path);
             setPickerFor({ path: t.path, picker: "icon" });
           },
         },
@@ -1432,7 +1467,6 @@ function EditorView({ initialSource, library, session, tour }: EditorProps) {
           icon: <Icon.Color />,
           onSelect: () => {
             setSel(only(t.path));
-            setEditingId(t.path);
             setPickerFor({ path: t.path, picker: "color" });
           },
         },
@@ -1567,7 +1601,10 @@ function EditorView({ initialSource, library, session, tour }: EditorProps) {
     { id: "find", label: "Find a component", keywords: "search go to jump", icon: <Icon.Search />, shortcut: `${MOD}F`, run: () => openPalette("find") },
     { id: "fit", label: "Zoom to fit", keywords: "fit view", icon: <Icon.FitView />, run: () => canvasApi.current?.fitView() },
     { id: "code", label: codeOpen ? "Hide code" : "Show code (.arch)", icon: <Icon.Code />, run: toggleCode },
-    { id: "components", label: componentsOpen ? "Hide components sidebar" : "Show components sidebar", keywords: "palette catalog types library", icon: <Icon.Sidebar />, run: toggleComponents },
+    ...(editable
+      ? [{ id: "components", label: componentsOpen ? "Hide components sidebar" : "Show components sidebar", keywords: "palette catalog types library", icon: <Icon.Sidebar />, run: toggleComponents }]
+      : []),
+    { id: "edit-mode", label: editMode ? "Done editing" : "Edit", keywords: "edit mode change modify lock view read", icon: editMode ? <Icon.Check /> : <Icon.Pencil />, shortcut: "E", run: toggleEditMode },
     ...(liveFocus.length > 0
       ? [
           { id: "up", label: "Go up a level", icon: <Icon.ChevronLeft />, shortcut: "esc", run: () => setFocus(liveFocus.slice(0, -1)) },
@@ -1643,18 +1680,6 @@ function EditorView({ initialSource, library, session, tour }: EditorProps) {
     <SequenceNavContext.Provider value={sequenceNav}>
     <div className="flex h-dvh flex-col overscroll-none bg-bg">
       <header className="flex h-10 shrink-0 items-center gap-1 border-b border-line bg-surface px-2">
-        {/* The component palette is desktop only; phones add with the + button. */}
-        <span className="hidden md:contents">
-          <IconButton
-            data-tour="add-component"
-            label="Components"
-            onClick={toggleComponents}
-            active={componentsOpen}
-            aria-expanded={componentsOpen}
-          >
-            <Icon.Sidebar />
-          </IconButton>
-        </span>
         <Link
           href={back.href}
           className="flex h-7 shrink-0 items-center gap-2 rounded-md px-1.5 transition-colors hover:bg-surface-2"
@@ -1664,10 +1689,16 @@ function EditorView({ initialSource, library, session, tour }: EditorProps) {
           <span className="hidden font-display text-[17px] leading-none md:inline">Archer</span>
         </Link>
         <span className="mx-1 hidden h-4 w-px bg-line md:block" />
-        <TitleField
-          value={derived.doc.title}
-          onCommit={(title) => mutate((d) => ({ ...d, title }))}
-        />
+        {editable ? (
+          <TitleField
+            value={derived.doc.title}
+            onCommit={(title) => mutate((d) => ({ ...d, title }))}
+          />
+        ) : (
+          <span className="flex h-7 max-w-[38vw] items-center truncate px-2 text-base font-medium text-ink md:max-w-[320px]">
+            {derived.doc.title}
+          </span>
+        )}
         <Icon.ChevronRight className="hidden h-3 w-3 shrink-0 text-ink-3 md:block" />
         <ViewSwitcher
           view={liveView}
@@ -1704,38 +1735,43 @@ function EditorView({ initialSource, library, session, tour }: EditorProps) {
           {toast ? (
             <span className="pr-2 text-xs text-accent">{toast}</span>
           ) : !stored ? (
-            <span className="hidden pr-2 text-xs text-ink-3 md:inline">Edits aren&apos;t saved</span>
+            editable && <span className="hidden pr-2 text-xs text-ink-3 md:inline">Edits aren&apos;t saved</span>
           ) : saveState !== "idle" ? (
             <span className="pr-2 text-xs text-ink-3">
               {saveState === "saving" ? "Saving…" : "Saved"}
             </span>
           ) : null}
-          <IconButton label="Undo (⌘Z)" onClick={undo} disabled={!canUndo}>
-            <Icon.Undo />
-          </IconButton>
-          <IconButton label="Redo (⇧⌘Z)" onClick={redo} disabled={!canRedo}>
-            <Icon.Redo />
-          </IconButton>
-          <span className="hidden md:contents">
-            {!stored && (
-              <IconButton label="Reset" onClick={reset} disabled={!edited}>
-                <Icon.Reset />
+          {editable && (
+            <>
+              <IconButton label="Undo (⌘Z)" onClick={undo} disabled={!canUndo}>
+                <Icon.Undo />
               </IconButton>
-            )}
-            <Menu
-              width={260}
-              align="end"
-              items={relayoutItems}
-              trigger={({ open, toggle }) => (
-                <IconButton label="Re-layout" active={open} onClick={toggle} aria-expanded={open}>
-                  <Icon.Layout />
-                </IconButton>
-              )}
-            />
-          </span>
-          <IconButton data-tour="add-component" label="Add component" onClick={() => openPalette("add")}>
-            <Icon.Plus />
-          </IconButton>
+              <IconButton label="Redo (⇧⌘Z)" onClick={redo} disabled={!canRedo}>
+                <Icon.Redo />
+              </IconButton>
+              <span className="hidden md:contents">
+                {!stored && (
+                  <IconButton label="Reset" onClick={reset} disabled={!edited}>
+                    <Icon.Reset />
+                  </IconButton>
+                )}
+                <Menu
+                  width={260}
+                  align="end"
+                  items={relayoutItems}
+                  trigger={({ open, toggle }) => (
+                    <IconButton label="Re-layout" active={open} onClick={toggle} aria-expanded={open}>
+                      <Icon.Layout />
+                    </IconButton>
+                  )}
+                />
+              </span>
+              <IconButton data-tour="add-component" label="Add component" onClick={() => openPalette("add")}>
+                <Icon.Plus />
+              </IconButton>
+            </>
+          )}
+          <EditModeButton on={editMode} onToggle={toggleEditMode} />
           {stored && (
             <IconButton
               label={`Activity · ${activity.revisions.length} revisions`}
@@ -1799,7 +1835,7 @@ function EditorView({ initialSource, library, session, tour }: EditorProps) {
             <Menu
               width={240}
               items={[
-                ...relayoutItems,
+                ...(editable ? relayoutItems : []),
                 ...(stored
                   ? [
                       { label: "Share", icon: <Icon.Link />, onSelect: () => setShareOpen(true) },
@@ -1815,7 +1851,9 @@ function EditorView({ initialSource, library, session, tour }: EditorProps) {
                       "separator" as const,
                       ...exportItems,
                     ]
-                  : [{ label: "Reset", icon: <Icon.Reset />, disabled: !edited, onSelect: reset }]),
+                  : editable
+                    ? [{ label: "Reset", icon: <Icon.Reset />, disabled: !edited, onSelect: reset }]
+                    : []),
               ]}
               trigger={({ open, toggle }) => (
                 <IconButton label="More" active={open} onClick={toggle} aria-expanded={open}>
@@ -1829,11 +1867,12 @@ function EditorView({ initialSource, library, session, tour }: EditorProps) {
 
       <div className="flex min-h-0 flex-1">
         <Palette
-          open={componentsOpen && liveView.kind === "architecture"}
+          open={editable && componentsOpen && liveView.kind === "architecture"}
           onAdd={addFromPalette}
           onAddPlane={() => addPlaneHere()}
           library={library}
           onFeedback={stored ? () => setFeedbackOpen(true) : undefined}
+          onClose={() => setComponentsOpen(false)}
         />
         <CodePane
           source={source}
@@ -1846,6 +1885,7 @@ function EditorView({ initialSource, library, session, tour }: EditorProps) {
           valid={derived.valid}
           onCopyCode={stored ? () => copyDoc("code") : undefined}
           onCopyForAgent={stored ? () => copyDoc("agent") : undefined}
+          readOnly={!editable}
           selectedPath={selectedPath}
           onSelectPath={(path) =>
             setSelection(
@@ -1921,6 +1961,20 @@ function EditorView({ initialSource, library, session, tour }: EditorProps) {
             </nav>
           )}
           <div data-tour="canvas" className="relative min-h-0 flex-1 bg-ground">
+            {/* The components sidebar hides itself; this brings it back (desktop, edit mode). */}
+            {editable && !componentsOpen && (
+              <div className="absolute left-2 top-2 z-10 hidden md:block md:left-3 md:top-3">
+                <Button
+                  size="sm"
+                  icon={<Icon.Sidebar />}
+                  onClick={toggleComponents}
+                  aria-expanded={false}
+                  data-tour="add-component"
+                >
+                  Components
+                </Button>
+              </div>
+            )}
             {diff ? (
               <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex justify-center p-2 md:p-3">
                 <div className="pointer-events-auto flex min-h-9 max-w-full flex-wrap items-center gap-2 rounded-lg border border-line bg-surface py-1 pl-3 pr-1.5 shadow-md">
@@ -2139,15 +2193,9 @@ function EditorView({ initialSource, library, session, tour }: EditorProps) {
             selection={liveSelection}
             multi={multi}
             editing={editing}
-            onEditingChange={(on) => setEditingId(on ? selectedId : null)}
             readOnly={!editable}
             mutate={mutate}
-            onSelect={(s) => {
-              // From the form, a new selection is the same thing re-keyed (a
-              // rename, a connection's new label): keep editing it.
-              if (editing && s) setEditingId(s.kind === "connection" ? s.key : s.path);
-              setSelection(s);
-            }}
+            onSelect={setSelection}
             spotlight={spotlit}
             onSpotlight={(key) =>
               setSpotlight(key === null || selectedPath === null ? null : { path: selectedPath, key })
@@ -2224,7 +2272,7 @@ function EditorView({ initialSource, library, session, tour }: EditorProps) {
         open={palette !== null}
         mode={palette ?? "all"}
         onClose={() => setPalette(null)}
-        onAdd={addFromPalette}
+        onAdd={editable ? addFromPalette : undefined}
         onAddPlane={editable ? () => addPlaneHere() : undefined}
         library={library}
         commands={paletteCommands}

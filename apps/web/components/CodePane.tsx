@@ -68,6 +68,8 @@ export interface CodePaneProps {
   /** Copy buttons; each is left out when its handler is (no export). */
   onCopyCode?: () => void;
   onCopyForAgent?: () => void;
+  /** The code shows but can't be typed in (the editor in view mode). */
+  readOnly?: boolean;
 }
 
 export function CodePane({
@@ -83,6 +85,7 @@ export function CodePane({
   onCopyForAgent,
   selectedPath,
   onSelectPath,
+  readOnly = false,
 }: CodePaneProps) {
   const viewRef = useRef<EditorView | null>(null);
   const lastEmittedPath = useRef<string | null>(null);
@@ -240,6 +243,7 @@ export function CodePane({
         <CodeEditor
           value={source}
           onChange={onChange}
+          readOnly={readOnly}
           onViewReady={onViewReady}
           extensions={allExtensions}
           className="h-full"

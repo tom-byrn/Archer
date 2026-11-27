@@ -397,6 +397,7 @@ export function Palette({
   onAddPlane,
   library,
   onFeedback,
+  onClose,
 }: {
   /** Closed, the sidebar is hidden but keeps its search and new-type form. */
   open: boolean;
@@ -407,6 +408,8 @@ export function Palette({
   library: UserLibrary;
   /** Open "Send feedback"; without it (the sandbox) the sidebar has no feedback button. */
   onFeedback?: () => void;
+  /** Hide the sidebar (the editor's canvas has the button that brings it back). */
+  onClose?: () => void;
 }) {
   const [query, setQuery] = useState("");
   const [creating, setCreating] = useState(false);
@@ -469,13 +472,13 @@ export function Palette({
         open && "md:flex",
       )}
     >
-      <div className="p-2">
-        <div className="relative">
+      <div className="flex items-center gap-1 p-2">
+        <div className="relative min-w-0 flex-1">
           <Icon.Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-ink-3" />
           <Input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Find a component"
+            placeholder="Search"
             className="pl-7 pr-11"
             onKeyDown={(e) => {
               if (e.key === "Escape") setQuery("");
@@ -485,6 +488,11 @@ export function Palette({
             <Kbd>⌘K</Kbd>
           </span>
         </div>
+        {onClose && (
+          <IconButton label="Hide components" onClick={onClose}>
+            <Icon.Sidebar />
+          </IconButton>
+        )}
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-3">
