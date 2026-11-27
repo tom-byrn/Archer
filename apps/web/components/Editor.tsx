@@ -1057,7 +1057,6 @@ function EditorView({ initialSource, library, session, tour }: EditorProps) {
     setPickerFor(null);
     // The components sidebar is the main way in on desktop: open it with edit mode.
     setComponentsOpen(on);
-    notify(on ? "Editing: changes save as you go" : "Done editing");
   };
   // Lit only while the list it was picked from shows (the form doesn't list connections).
   const spotlit = spotlight !== null && spotlight.path === selectedPath && !editing ? spotlight.key : null;
