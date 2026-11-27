@@ -179,3 +179,16 @@ export {
   PartError,
 } from "./part";
 export type { ComponentPart, ViewPart, PartWrite, OutlineOptions } from "./part";
+export {
+  expandFiles,
+  splitFiles,
+  checkFiles,
+  mountsOf,
+  fileOf,
+  moveToFile,
+  moveInline,
+  resolveFile,
+  relativeFile,
+  dirOf,
+} from "./files";
+export type { FileDiagnostic, ReadFile, Expanded, Mount } from "./files";

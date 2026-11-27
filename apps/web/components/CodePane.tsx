@@ -1,7 +1,19 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { ArchDoc, Diagnostic } from "@archer/lang";
+import {
+  checkFiles,
+  dirOf,
+  expandFiles,
+  fileOf,
+  format,
+  mountsOf,
+  parse,
+  splitFiles,
+  type ArchDoc,
+  type Diagnostic,
+  type ValidateOptions,
+} from "@archer/lang";
 import { EditorView, Decoration, type DecorationSet } from "@codemirror/view";
 import { StateEffect, StateField, EditorSelection } from "@codemirror/state";
 import { lintGutter, setDiagnostics } from "@codemirror/lint";
@@ -68,7 +80,27 @@ export interface CodePaneProps {
   /** Copy buttons; each is left out when its handler is (no export). */
   onCopyCode?: () => void;
   onCopyForAgent?: () => void;
+  /**
+   * The document's root file (spec §2.2): its repository path, or a name for
+   * a document kept in Archer. When components keep their insides in other
+   * files (`use`, `import`), the code view has a tab per file.
+   */
+  rootFile: string;
+  /** The file to show; null: the root, or the file the selection is in. */
+  file: string | null;
+  onFileChange: (file: string | null) => void;
+  /** What files are checked with (the editor's types). */
+  validateOptions: ValidateOptions;
 }
+
+/** A file's name and the folder it's in, for its tab. */
+const fileLabel = (file: string) => ({ name: file.slice(file.lastIndexOf("/") + 1), dir: dirOf(file) });
+
+/** A new file `use` names before it exists: an empty document titled after it. */
+const blankFile = (file: string) => {
+  const name = fileLabel(file).name.replace(/\.arch$/, "").replace(/[-_]+/g, " ");
+  return `arch "${name.charAt(0).toUpperCase()}${name.slice(1)}" v0.2\n`;
+};
 
 export function CodePane({
   source,
@@ -83,8 +115,82 @@ export function CodePane({
   onCopyForAgent,
   selectedPath,
   onSelectPath,
+  rootFile,
+  file: fileProp,
+  onFileChange,
+  validateOptions,
 }: CodePaneProps) {
   const viewRef = useRef<EditorView | null>(null);
+
+  /* ---------------------------------------------------- several files */
+  // With components kept in other files, each tab shows one file's own text
+  // (splitFiles). Typing edits a draft of that file; whenever every file
+  // still parses, the document is put back together (expandFiles) and saved,
+  // while the tab keeps showing what was typed.
+  const mounts = useMemo(() => mountsOf(doc, rootFile), [doc, rootFile]);
+  const split = useMemo(
+    () => (mounts.length > 0 ? splitFiles(doc, rootFile, { layout: true }) : null),
+    [doc, rootFile, mounts],
+  );
+  const [drafts, setDrafts] = useState<ReadonlyMap<string, string>>(new Map());
+  const emitted = useRef<string | null>(null);
+  // A change from anywhere else (the canvas, undo) replaces the drafts.
+  useEffect(() => {
+    if (source !== emitted.current) setDrafts(new Map());
+  }, [source]);
+  const files = useMemo(() => {
+    const list = split ? [...split.keys()] : [rootFile];
+    for (const f of drafts.keys()) if (!list.includes(f)) list.push(f);
+    return list;
+  }, [split, drafts, rootFile]);
+  const file = fileProp !== null && files.includes(fileProp) ? fileProp : rootFile;
+  const textOf = useCallback(
+    (f: string): string | undefined => drafts.get(f) ?? split?.get(f) ?? (f === rootFile ? source : undefined),
+    [drafts, split, rootFile, source],
+  );
+  const tabbed = split !== null || drafts.size > 1;
+  const shown = tabbed ? (textOf(file) ?? "") : source;
+  /** The tab's own document, for selection: where the file's paths start. */
+  const tabDoc = useMemo(() => (tabbed ? parse(shown).doc : doc), [tabbed, shown, doc]);
+  const prefix = useMemo(() => {
+    if (!tabbed || file === rootFile) return [];
+    return mountsOf(doc, rootFile).find((m) => m.file === file)?.path ?? [];
+  }, [tabbed, file, rootFile, doc]);
+  const checked = useMemo(
+    () => (tabbed ? checkFiles(rootFile, (f) => textOf(f) ?? blankFile(f), validateOptions).diagnostics : null),
+    [tabbed, rootFile, textOf, validateOptions],
+  );
+  const shownDiagnostics = checked ? checked.filter((d) => d.file === file) : diagnostics;
+
+  const edit = (text: string) => {
+    if (!tabbed) {
+      onChange(text);
+      return;
+    }
+    const next = new Map(drafts).set(file, text);
+    setDrafts(next);
+    const read = (f: string) => next.get(f) ?? split?.get(f) ?? blankFile(f);
+    const whole = expandFiles(rootFile, read);
+    if (whole.diagnostics.some((d) => d.severity === "error")) return; // a file doesn't parse yet: keep typing
+    // A `use` that names a new file opens it, empty, as a tab of its own.
+    for (const f of whole.files) if (!next.has(f) && !split?.has(f)) next.set(f, read(f));
+    setDrafts(new Map(next));
+    const text2 = format(whole.doc);
+    emitted.current = text2;
+    onChange(text2);
+  };
+  const toPath = (rel: string | null) => (rel === null ? null : [...prefix, ...rel.split(".")].join("."));
+  const fromPath = (path: string) => {
+    const p = path.split(".");
+    return p.slice(0, prefix.length).join(".") === prefix.join(".") ? p.slice(prefix.length).join(".") : null;
+  };
+  // The canvas selects something kept in another file: show that file.
+  useEffect(() => {
+    if (!open || !split || selectedPath === null) return;
+    const where = fileOf(doc, rootFile, selectedPath.split("."));
+    if (where !== file) onFileChange(where);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedPath, open]);
   const lastEmittedPath = useRef<string | null>(null);
   const docRef = useRef(doc);
   docRef.current = doc;
@@ -100,13 +206,17 @@ export function CodePane({
 
   const errorCount = diagnostics.filter((d) => d.severity === "error").length;
   const warnCount = diagnostics.length - errorCount;
+  const tabDocRef = useRef(tabDoc);
+  tabDocRef.current = tabDoc;
+  const toPathRef = useRef(toPath);
+  toPathRef.current = toPath;
 
   // Diagnostics come from props, not a linter source.
   useEffect(() => {
     const view = viewRef.current;
     if (!view || !open) return;
-    view.dispatch(setDiagnostics(view.state, archerLinter(diagnostics, view.state.doc)));
-  }, [diagnostics, open]);
+    view.dispatch(setDiagnostics(view.state, archerLinter(shownDiagnostics, view.state.doc)));
+  }, [shownDiagnostics, open, file]);
 
   // Canvas → code: highlight the selected component's or plane's lines and
   // scroll to it, unless this selection originated from the editor's own cursor.
@@ -118,7 +228,8 @@ export function CodePane({
       view.dispatch({ effects: setSelectedLines.of(null) });
       return;
     }
-    const node = itemAtPath(doc, selectedPath);
+    const rel = tabbed ? fromPath(selectedPath) : selectedPath;
+    const node = rel === null || rel === "" ? undefined : itemAtPath(tabDoc, rel);
     if (!node) {
       view.dispatch({ effects: setSelectedLines.of(null) });
       return;
@@ -133,10 +244,11 @@ export function CodePane({
       ],
     });
     if (!fromEditor) lastEmittedPath.current = null;
-  }, [selectedPath, doc, open]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedPath, tabDoc, open]);
 
-  const diagnosticsRef = useRef(diagnostics);
-  diagnosticsRef.current = diagnostics;
+  const diagnosticsRef = useRef(shownDiagnostics);
+  diagnosticsRef.current = shownDiagnostics;
 
   const onViewReady = useCallback((view: EditorView) => {
     viewRef.current = view;
@@ -154,7 +266,7 @@ export function CodePane({
         );
         if (!userDriven) return;
         const offset = u.state.selection.main.head;
-        const path = itemPathAtOffset(docRef.current, offset);
+        const path = toPathRef.current(itemPathAtOffset(tabDocRef.current, offset));
         if (path === null || path === selectedPathRef.current) return;
         lastEmittedPath.current = path;
         onSelectPathRef.current(path);
@@ -236,18 +348,47 @@ export function CodePane({
         )
       }
     >
+      {tabbed && (
+        <div role="tablist" aria-label="Files" className="flex h-10 shrink-0 items-stretch gap-0.5 overflow-x-auto border-b border-line bg-surface px-2">
+          {files.map((f) => {
+            const { name, dir } = fileLabel(f);
+            const errors = checked?.filter((d) => d.file === f && d.severity === "error").length ?? 0;
+            const on = f === file;
+            return (
+              <button
+                key={f}
+                type="button"
+                role="tab"
+                aria-selected={on}
+                title={f}
+                onClick={() => onFileChange(f === rootFile ? null : f)}
+                className={cx(
+                  "flex shrink-0 items-center gap-1.5 border-b-2 px-3 text-sm transition-colors duration-100",
+                  on ? "border-accent text-ink" : "border-transparent text-ink-3 hover:text-ink",
+                )}
+              >
+                <Icon.File className="h-3.5 w-3.5" />
+                <span className="mono">{name}</span>
+                {dir && <span className="hidden text-xs text-ink-3 md:inline">{dir}</span>}
+                {errors > 0 && <span className="h-1.5 w-1.5 rounded-full bg-danger" />}
+              </button>
+            );
+          })}
+        </div>
+      )}
       <div className="min-h-0 flex-1">
         <CodeEditor
-          value={source}
-          onChange={onChange}
+          key={tabbed ? file : "doc"}
+          value={shown}
+          onChange={edit}
           onViewReady={onViewReady}
           extensions={allExtensions}
           className="h-full"
         />
       </div>
-      {diagnostics.length > 0 && (
+      {shownDiagnostics.length > 0 && (
         <ul className="max-h-40 shrink-0 overflow-y-auto border-t border-line bg-surface py-1">
-          {diagnostics.map((d, i) => {
+          {shownDiagnostics.map((d, i) => {
             const isError = d.severity === "error";
             return (
               <li key={i}>

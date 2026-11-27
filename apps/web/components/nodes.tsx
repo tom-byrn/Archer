@@ -210,6 +210,17 @@ function NestedBadge({ path, count }: { path: string; count: number }) {
   );
 }
 
+/** The file a component's inside is kept in, in its bottom-left corner. */
+function FileChip({ file }: { file?: string }) {
+  if (file === undefined) return null;
+  return (
+    <span className="arch-file" title={`Kept in ${file}`}>
+      <Icon.File />
+      {file.slice(file.lastIndexOf("/") + 1)}
+    </span>
+  );
+}
+
 /**
  * Overlay badges: agent-touched sits top-right; drift sits top-left.
  * Pointer-events off so dragging is unaffected.
@@ -299,6 +310,7 @@ function ArchShapeNode({ id, data, width, height, shape }: NodeProps<ArchNode> &
       <EdgeHandles anchors={geo.anchors} />
       <Badges marks={marks} />
       <NestedBadge path={data.path} count={data.childCount} />
+      <FileChip file={data.file} />
       <svg className="arch-shape" width={w} height={h} aria-hidden>
         {geo.parts.map((d, i) => (
           <path key={i} className="arch-shape-part" d={d} />
@@ -373,6 +385,7 @@ function ArchCardNode({ id, data, width, height }: NodeProps<ArchNode>) {
       <EdgeHandles />
       <Badges marks={marks} />
       <NestedBadge path={data.path} count={data.childCount} />
+      <FileChip file={data.file} />
       {hasIcon(data) && (
         <GlyphSwatch
           tag={data.typeTag}

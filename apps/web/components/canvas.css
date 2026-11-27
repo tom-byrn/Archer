@@ -80,6 +80,35 @@ button.arch-nested:hover {
   color: var(--accent);
 }
 
+/* The file its inside is kept in (nodes.tsx FileChip): bottom-left, opposite
+   the nested count. */
+.arch-file {
+  position: absolute;
+  left: 5px;
+  bottom: 5px;
+  z-index: 2;
+  display: flex;
+  max-width: calc(100% - 52px);
+  height: 16px;
+  align-items: center;
+  gap: 3px;
+  padding: 0 5px 0 4px;
+  border-radius: var(--radius-sm);
+  background-color: var(--accent-soft);
+  color: var(--accent);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  line-height: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  pointer-events: none;
+}
+.arch-file svg {
+  flex: none;
+  height: 11px;
+  width: 11px;
+}
+
 /* Where a drag would land: on a plane, or into a component. */
 .arch-node.arch-drop-target {
   box-shadow:

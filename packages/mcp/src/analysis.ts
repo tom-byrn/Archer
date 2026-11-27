@@ -1,5 +1,6 @@
 import {
   autoLayout,
+  checkFiles,
   forEachScope,
   format,
   layoutMap,
@@ -10,7 +11,9 @@ import {
   validate,
   type ArchDoc,
   type Diagnostic,
+  type FileDiagnostic,
   type LayoutEntry,
+  type ReadFile,
 } from "@archer/lang";
 import { knownConnectionTypes, knownTypes, lookupType } from "@archer/catalog";
 import { ICON_NAMES } from "@archer/catalog/icons";
@@ -39,17 +42,43 @@ export function analyzeSource(source: string, types: Set<string>): Analysis {
   const parsed = parse(source);
   const diagnostics = [
     ...parsed.diagnostics,
-    ...validate(parsed.doc, {
-      knownTypes: types,
-      knownConnectionTypes: knownConnectionTypes(),
-      knownIcons: ICON_NAMES,
-    }),
+    ...validate(parsed.doc, validateOptions(types)),
   ];
   return {
     doc: parsed.doc,
     diagnostics,
     errors: diagnostics.filter((d) => d.severity === "error"),
     warnings: diagnostics.filter((d) => d.severity === "warning"),
+  };
+}
+
+/** The options every check here validates with: the catalog's tags plus `types`. */
+const validateOptions = (types: Set<string>) => ({
+  knownTypes: types,
+  knownConnectionTypes: knownConnectionTypes(),
+  knownIcons: ICON_NAMES,
+});
+
+export interface FilesAnalysis {
+  doc: ArchDoc;
+  /** Every file that went in, the root first (paths from the root's folder). */
+  files: string[];
+  diagnostics: FileDiagnostic[];
+  errors: FileDiagnostic[];
+  warnings: FileDiagnostic[];
+}
+
+/**
+ * A document that may keep parts of itself in other files (`use`, `import`):
+ * every file it reaches is checked, each diagnostic in its own file. A file
+ * with no `use` gives what analyzeSource gives.
+ */
+export function analyzeFiles(root: string, read: ReadFile, types: Set<string>): FilesAnalysis {
+  const r = checkFiles(root, read, validateOptions(types));
+  return {
+    ...r,
+    errors: r.diagnostics.filter((d) => d.severity === "error"),
+    warnings: r.diagnostics.filter((d) => d.severity === "warning"),
   };
 }
 

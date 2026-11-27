@@ -67,6 +67,49 @@ arch "Acme Platform" v0.2
 \`v0.2\` is the **spec version** the file targets. Parsers refuse files with a major
 version they don't understand.
 
+### 2.2 Several files
+
+A document can keep the inside of a component in a file of its own, so a large
+architecture is spread across the codebase, each part next to the code it
+describes:
+
+\`\`\`
+component billing "Billing" @service {
+  color violet
+  use "./services/billing/billing.arch"
+}
+
+import "./services/search/search.arch" as search
+\`\`\`
+
+- \`use "<file>"\` in a component's body says its inside — its components, planes, the
+  connections between them and the views about them — is in that file. The component
+  itself (id, name, type, shape, icon, color, \`desc\`, \`src\`, payloads) stays where it is
+  declared, and declares nothing inside itself there (\`E404\`).
+- \`import "<file>" as <id>\` is shorthand for a component whose whole definition is the
+  file: \`component <id> { use "<file>" }\`, its display name the file's title. It can
+  appear wherever a \`component\` can.
+- The file is an ordinary \`.arch\` document (header, declarations, connections, views; no
+  \`layout\` block, positions stay with the canvas). Its top level is the component's
+  inside, and its paths are relative to it: \`checkout -> ledger\` in
+  \`billing.arch\` is \`billing.checkout -> billing.ledger\` in the whole document. It can
+  use files of its own.
+- **Paths never change.** \`billing.ledger\` is the same path whether \`billing\`'s inside is
+  in its own file or not, so views, connections and agents never need to know.
+- **Each connection and view lives in the deepest file that holds all of it.** A
+  connection between \`billing.ledger\` and \`db\` belongs to the file that declares both
+  \`billing\` and \`db\`; the formatter and every tool that writes files put it there.
+  A file only reaches down (into the files it uses), never up.
+- Paths are relative to the file that names them (\`./\`, \`../\`), and stay inside the
+  folder of the root file (the repository) (\`E405\`). A file describes one component
+  (\`E403\`), files can't use each other in a loop (\`E402\`), and a file that's named must
+  exist (\`E401\`).
+
+Each file validates on its own (\`archer check\` reports every problem in the file it is
+in). Tools that work on the whole document (the canvas, MCP) put the files together: a
+component that uses a file then carries its contents inline as well as its \`use\`, so the
+contents can be written back where they came from.
+
 ## 3. Components
 
 \`\`\`
@@ -105,6 +148,7 @@ component <id> ["Display Name"] [@<type>] [{ <body> }]
   - Child \`component\` declarations — any component can hold components, arbitrarily
     deep, with JSON-object nesting semantics (§3.1).
   - Child \`plane\` declarations — regions on the component's own canvas (§3.4).
+  - \`use "<file>"\` — its inside is kept in another file (§2.2). At most one.
   - Payload blocks (§4).
 
 ### 3.1 Nesting and paths
@@ -667,6 +711,11 @@ A document is **valid** when:
 | \`E101\` | every connection endpoint, sequence participant, lane, \`of\` and \`on\` resolves to a declared component | error    |
 | \`E102\` | edges, transitions and entity references resolve inside their view | error    |
 | \`E201\` | \`json\` / \`yaml\` / \`table\` payloads parse in their format         | error    |
+| \`E401\` | a file named by \`use\` / \`import\` exists (§2.2)                   | error    |
+| \`E402\` | files don't use each other in a loop                             | error    |
+| \`E403\` | a file is used by one component only                             | error    |
+| \`E404\` | a component that uses a file declares nothing inside itself in the file that says so | error    |
+| \`E405\` | a used file's path is relative and stays inside the root's folder | error    |
 | \`W301\` | type tag resolves in the catalog                                 | warning  |
 | \`W302\` | duplicate connection                                             | warning  |
 | \`W303\` | layout entry references a declared component or plane            | warning (entry dropped) |
@@ -784,9 +833,11 @@ layout {
 file        = header { declaration | connection | view } [ layout ] ;
 view        = sequence | flow | states | entities ;
 header      = "arch" string version ;
-declaration = component | plane ;
+declaration = component | import | plane ;
 component   = "component" id [ string ] [ type ] [ "{" { bodyitem } "}" ] ;
-bodyitem    = shape | icon | color | desc | src | declaration | payload ;
+import      = "import" string "as" id [ string ] [ type ] [ "{" { bodyitem } "}" ] ;
+bodyitem    = shape | icon | color | desc | src | use | declaration | payload ;
+use         = "use" string ;
 plane       = "plane" id [ string ] [ type ] [ "{" { planeitem } "}" ] ;
 planeitem   = desc | declaration ;
 shape       = "shape" id ;
@@ -820,7 +871,6 @@ layout      = "layout" "{" { path ":" layoutval | "view" id "{" { id ":" layoutv
 
 ## 12. Open questions (deferred)
 
-- Multi-file / import (\`use "./billing.arch"\`) — v1 is one file per document.
 - In-file custom type definitions for portability.
 - Per-technology payload validation (\`sql\`, \`openapi\`, \`terraform\` formats).
 - Named layouts over one model (C4-style level switching).

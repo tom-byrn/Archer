@@ -63,11 +63,13 @@ function formatItems(scope: Scope, on: PlaneNode | undefined, depth: number): st
 
 function formatComponent(c: ComponentNode, depth: number): string {
   const pad = INDENT.repeat(depth);
-  let head = `${pad}component ${c.id}`;
+  const imported = c.imported === true && c.use !== undefined;
+  let head = imported ? `${pad}import ${quote(c.use!)} as ${c.id}` : `${pad}component ${c.id}`;
   if (c.name !== undefined) head += ` ${quote(c.name)}`;
   if (c.type !== undefined) head += ` @${c.type}`;
 
   const body: string[] = [];
+  if (c.use !== undefined && !imported) body.push(`${INDENT.repeat(depth + 1)}use ${quote(c.use)}`);
   if (c.shape !== undefined) body.push(`${INDENT.repeat(depth + 1)}shape ${c.shape}`);
   if (c.icon !== undefined) body.push(`${INDENT.repeat(depth + 1)}icon ${c.icon}`);
   // A palette name stays bare; anything else (a hex value) is a string.

@@ -1,8 +1,8 @@
-import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
-import { basename, extname, join, relative, resolve } from "node:path";
+import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
+import { basename, dirname, extname, join, relative, resolve } from "node:path";
 import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { autoLayout, format, lex, parse, type Diagnostic } from "@archer/lang";
-import { analyzeSource, typeTags } from "@archer/mcp/analysis";
+import { autoLayout, format, lex, mountsOf, parse, splitFiles, type Diagnostic } from "@archer/lang";
+import { analyzeFiles, analyzeSource, typeTags } from "@archer/mcp/analysis";
 import type {
   ProjectCreated,
   ProjectListItem,
@@ -79,9 +79,45 @@ export async function check(
   // only surface as W301 warnings, never errors.
   const types = typeTags(opts.offline || !account.signedIn() ? [] : await customTypes().catch(() => []));
 
-  const results = [];
-  for (const file of files) {
-    results.push({ file, ...analyzeSource(readSource(file), types) });
+  // Each target is checked with the files it uses (`use`, `import`), each
+  // problem reported in its own file. A file reached from several targets is
+  // reported once.
+  type Result = { file: string; diagnostics: Diagnostic[]; errors: Diagnostic[]; warnings: Diagnostic[] };
+  const byFile = new Map<string, Result>();
+  const seen = new Set<string>();
+  const entry = (file: string): Result => {
+    let r = byFile.get(file);
+    if (!r) byFile.set(file, (r = { file, diagnostics: [], errors: [], warnings: [] }));
+    return r;
+  };
+  for (const target of files) {
+    if (target === STDIN) {
+      const a = analyzeFiles("-", () => readSource(STDIN), types);
+      for (const d of a.diagnostics) entry(STDIN).diagnostics.push(d);
+      continue;
+    }
+    const dir = dirname(target);
+    const show = (f: string) => relative(".", join(dir, f)) || f;
+    entry(show(basename(target)));
+    const a = analyzeFiles(basename(target), (f) => {
+      try {
+        return readFileSync(join(dir, f), "utf8");
+      } catch {
+        return undefined;
+      }
+    }, types);
+    for (const d of a.diagnostics) {
+      const file = show(d.file);
+      const key = `${file} ${d.code} ${d.span?.start.offset ?? ""} ${d.message}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      entry(file).diagnostics.push(d);
+    }
+  }
+  const results = [...byFile.values()];
+  for (const r of results) {
+    r.errors = r.diagnostics.filter((d) => d.severity === "error");
+    r.warnings = r.diagnostics.filter((d) => d.severity === "warning");
   }
   const errors = results.reduce((n, r) => n + r.errors.length, 0);
   const warnings = results.reduce((n, r) => n + r.warnings.length, 0);
@@ -106,7 +142,7 @@ export async function check(
     for (const r of results) for (const d of r.diagnostics) console.log(diagnosticLine(r.file, d));
     const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
     console.error(
-      `${errors === 0 ? "ok" : "FAILED"} — ${plural(files.length, "file")}, ${plural(errors, "error")}, ${plural(warnings, "warning")}`,
+      `${errors === 0 ? "ok" : "FAILED"} — ${plural(results.length, "file")}, ${plural(errors, "error")}, ${plural(warnings, "warning")}`,
     );
   }
   return errors === 0 ? EXIT.ok : EXIT.problems;
@@ -315,20 +351,30 @@ export async function push(
   file: string,
   opts: { project?: string; message?: string },
 ): Promise<number> {
-  const source = readSource(file);
+  readSource(file);
   const projectId = opts.project ?? readLinks().projects[linkKey(file)];
+  const dir = dirname(file);
+  const show = (f: string) => relative(".", join(dir, f)) || f;
 
   return withServer(async (client) => {
     // Validate here first for file:line:col diagnostics; the server applies
-    // the same gate (and keeps the canvas layout) when it saves.
+    // the same gate (and keeps the canvas layout) when it saves. The files
+    // this one uses go up with it, put together into one document.
     const custom = await callTool<TypeList>(client, "list_types");
-    const a = analyzeSource(source, typeTags(custom.custom_types.map((t) => t.tag)));
+    const a = analyzeFiles(basename(file), (f) => {
+      try {
+        return readFileSync(join(dir, f), "utf8");
+      } catch {
+        return undefined;
+      }
+    }, typeTags(custom.custom_types.map((t) => t.tag)));
     if (a.errors.length > 0) {
-      for (const d of [...a.errors, ...a.warnings]) console.log(diagnosticLine(file, d));
+      for (const d of [...a.errors, ...a.warnings]) console.log(diagnosticLine(show(d.file), d));
       console.error("REJECTED — nothing was saved. Fix the errors and push again.");
       return EXIT.problems;
     }
-    for (const d of a.warnings) console.log(diagnosticLine(file, d));
+    for (const d of a.warnings) console.log(diagnosticLine(show(d.file), d));
+    const source = a.files.length > 1 ? format(a.doc) : readSource(file);
 
     let saved: ProjectCreated;
     try {
@@ -373,16 +419,27 @@ export async function pull(
     ),
   );
   // A project stored in a repository file keeps its layout in Archer: the file
-  // only holds the architecture, exactly as publishing writes it.
-  const source = project.repository?.path
-    ? format(parse(project.source).doc, { stripLayout: true })
-    : project.source;
-  if (!opts.force && existsSync(file) && readSource(file) !== source) {
-    // Canonical form differs from hand-written text even with no real edits, so
-    // we can't tell "stale" from "has local work" — make overwriting explicit.
-    throw new UsageError(`${file} differs from the project — pass --force to overwrite it.`);
+  // only holds the architecture, exactly as publishing writes it. One that
+  // keeps parts in other files (`use`) is written back as those files, which
+  // hold no layout either.
+  const doc = parse(project.source).doc;
+  const dir = dirname(file);
+  const writes: [string, string][] =
+    mountsOf(doc, basename(file)).length > 0
+      ? [...splitFiles(doc, basename(file), { layout: !project.repository?.path })].map(([f, text]) => [join(dir, f), text])
+      : [[file, project.repository?.path ? format(doc, { stripLayout: true }) : project.source]];
+  if (!opts.force) {
+    for (const [f, text] of writes)
+      if (existsSync(f) && readSource(f) !== text)
+        // Canonical form differs from hand-written text even with no real edits, so
+        // we can't tell "stale" from "has local work" — make overwriting explicit.
+        throw new UsageError(`${relative(".", f)} differs from the project — pass --force to overwrite it.`);
   }
-  writeFileSync(file, source);
+  for (const [f, text] of writes) {
+    mkdirSync(dirname(f), { recursive: true });
+    writeFileSync(f, text);
+    if (f !== file) console.log(`${relative(".", f)}: pulled`);
+  }
   saveLink(file, projectId);
   console.log(`${file}: pulled "${project.title}"`);
   return EXIT.ok;

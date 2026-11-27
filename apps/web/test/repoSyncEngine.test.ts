@@ -130,6 +130,9 @@ class FakeRepo {
   commits = new Map<string, { sha: string; parent: string | null; files: Map<string, string>; message: string; author: string }>();
   branches = new Map<string, string>();
   pulls: { number: number; head: string; base: string; state: "open" | "closed"; merged: boolean }[] = [];
+  blobs = new Map<string, string>();
+  trees = new Map<string, { base: string; entries: { path: string; sha: string | null }[] }>();
+  pending = new Map<string, { tree: string; parent: string; message: string }>();
   private seq = 0;
   constructor(readonly isPrivate = false) {}
 
@@ -218,6 +221,33 @@ async function github(input: string | URL | Request, init?: RequestInit): Promis
   if ((x = /^\/pulls\/(\d+)$/.exec(rest))) {
     const pr = repo.pulls.find((p) => p.number === Number(x![1]));
     return pr ? json(200, { number: pr.number, html_url: `https://gh.test/pull/${pr.number}`, state: pr.state, merged: pr.merged, head: { ref: pr.head } }) : json(404, {});
+  }
+  // Git data API: what a commit of several files goes through.
+  if (rest === "/git/blobs" && method === "POST") {
+    const content = Buffer.from(body.content, "base64").toString("utf8");
+    repo.blobs.set(blobSha(content), content);
+    return json(201, { sha: blobSha(content) });
+  }
+  if ((x = /^\/git\/commits\/(\w+)$/.exec(rest))) return json(200, { sha: x[1], tree: { sha: `tree-of-${x[1]}` } });
+  if (rest === "/git/trees" && method === "POST") {
+    const id = `tree-${repo.trees.size + 1}`;
+    repo.trees.set(id, { base: body.base_tree.replace("tree-of-", ""), entries: body.tree });
+    return json(201, { sha: id });
+  }
+  if (rest === "/git/commits" && method === "POST") {
+    const id = `pending-${repo.pending.size + 1}`;
+    repo.pending.set(id, { tree: body.tree, parent: body.parents[0], message: body.message });
+    return json(201, { sha: id, html_url: `https://gh.test/c/${id}` });
+  }
+  if ((x = /^\/git\/refs\/heads\/(.+)$/.exec(rest)) && method === "PATCH") {
+    const branch = x[1]!;
+    const c = repo.pending.get(body.sha)!;
+    if (repo.branches.get(branch) !== c.parent) return json(422, { message: "Update is not a fast forward" });
+    const tree = repo.trees.get(c.tree)!;
+    const changes: Record<string, string | null> = {};
+    for (const e of tree.entries) changes[e.path] = e.sha === null ? null : repo.blobs.get(e.sha)!;
+    const sha = repo.commit(branch, changes, c.message, "sam");
+    return json(200, { object: { sha } });
   }
   if (rest === "/installation") return json(404, { message: "Not Found" });
   return json(404, { message: `fake GitHub: no ${method} ${rest}` });
@@ -509,5 +539,97 @@ describe("guards", () => {
     await expect(syncDocument(ME, WS, id)).rejects.toMatchObject({ code: "forbidden" });
     expect(requests).toEqual([]);
     spy.mockRestore();
+  });
+});
+
+describe("a document kept in several files", () => {
+  const ROOT = `arch "Shop" v0.2
+
+component web "Web"
+
+import "./services/billing/billing.arch" as billing
+
+web -> billing.checkout
+`;
+  const BILLING = `arch "Billing" v0.2
+
+component checkout "Checkout"
+
+component ledger "Ledger"
+
+checkout -> ledger
+`;
+  const BILLING_PATH = "services/billing/billing.arch";
+  beforeEach(() => {
+    repo.commit("main", { "architecture.arch": ROOT, [BILLING_PATH]: BILLING }, "Split billing out", "sam");
+  });
+
+  it("imports every file, put together, and knows each file's version", async () => {
+    const id = await imported();
+    const text = fileSource(doc(id).source);
+    expect(text).toContain(`import "./services/billing/billing.arch" as billing "Billing" {`);
+    expect(text).toContain("billing.checkout -> billing.ledger");
+    expect(doc(id).repo.base?.blob).toBe(`architecture.arch=${blobSha(ROOT)};${BILLING_PATH}=${blobSha(BILLING)}`);
+    expect(await syncDocument(ME, WS, id)).toEqual({ status: "unchanged" });
+  });
+
+  it("follows a push to a used file alone, credited to that commit", async () => {
+    const id = await imported();
+    repo.commit("main", { [BILLING_PATH]: BILLING.replace('component ledger "Ledger"', 'component ledger "Ledger"\n\ncomponent refunds "Refunds"') }, "Add refunds", "claude");
+    expect(await handleWebhook("push", { ref: "refs/heads/main", after: "x", repository: { name: "shop", owner: { login: "acme" } }, commits: [{ modified: [BILLING_PATH] }] })).toMatchObject({
+      documents: [{ id, status: "imported" }],
+    });
+    expect(fileSource(doc(id).source)).toContain('component refunds "Refunds"');
+    expect(convex.state.revisions.at(-1)).toMatchObject({ author: { kind: "git", name: "claude" }, summary: "Add refunds" });
+  });
+
+  it("reports a broken used file by name and keeps the last good version", async () => {
+    const id = await imported();
+    repo.commit("main", { [BILLING_PATH]: BILLING.replace("checkout -> ledger", "checkout -> nowhere") }, "WIP", "claude");
+    const r = await syncDocument(ME, WS, id);
+    expect(r).toMatchObject({ status: "problem" });
+    expect((r as { message: string }).message).toContain(`E101 in ${BILLING_PATH} on line 7`);
+  });
+
+  it("publishes an edit inside a used file to that file alone, in one commit", async () => {
+    const id = await imported();
+    userEdit(id, 'component ledger "Ledger"', 'component ledger "Ledger" {\n    desc "Double-entry"\n  }');
+    const before = repo.at("main")!.sha;
+    await publishDocument(ME, WS, id, { mode: "commit" });
+    const after = repo.at("main")!;
+    expect(after.parent).toBe(before);
+    expect(after.files.get("architecture.arch")).toBe(ROOT);
+    expect(after.files.get(BILLING_PATH)).toContain('desc "Double-entry"');
+    expect(await syncDocument(ME, WS, id)).toEqual({ status: "unchanged" });
+    expect(syncStatus(doc(id).repo, doc(id).source)).toEqual({ kind: "synced" });
+  });
+
+  it("opens a pull request that writes every file, and adds to it", async () => {
+    const id = await imported();
+    userEdit(id, 'component web "Web"', 'component web "Web" {\n  desc "Storefront"\n}');
+    userEdit(id, 'component checkout "Checkout"', 'component checkout "Checkout" {\n    desc "Pay"\n  }');
+    const pr = await publishDocument(ME, WS, id, { mode: "pr" });
+    const branch = repo.pulls[0]!.head;
+    expect(repo.file(branch, "architecture.arch")).toContain('desc "Storefront"');
+    expect(repo.file(branch, BILLING_PATH)).toContain('desc "Pay"');
+    expect(repo.file("main", BILLING_PATH)).toBe(BILLING);
+    userEdit(id, 'desc "Pay"', 'desc "Pay now"');
+    expect(await publishDocument(ME, WS, id, { mode: "pr" })).toMatchObject({ mode: "pr", number: (pr as { number: number }).number, updated: true });
+    expect(repo.file(branch, BILLING_PATH)).toContain('desc "Pay now"');
+  });
+
+  it("deletes a file the document stops using, and creates one it starts using", async () => {
+    const id = await imported();
+    // In the editor: billing's inside moves back into the root, web's into a file of its own.
+    doc(id).source = doc(id).source
+      .replace(`import "./services/billing/billing.arch" as billing "Billing" {`, `component billing "Billing" {`)
+      .replace(`component web "Web"`, `component web "Web" {\n  use "./web/web.arch"\n}`);
+    doc(id).updatedAt = convex.tick();
+    await publishDocument(ME, WS, id, { mode: "commit" });
+    const main = repo.at("main")!;
+    expect(main.files.has(BILLING_PATH)).toBe(false);
+    expect(main.files.get("web/web.arch")).toBe(`arch "Web" v0.2\n`);
+    expect(main.files.get("architecture.arch")).toContain(`component billing "Billing" {\n  component checkout "Checkout"`);
+    expect(await syncDocument(ME, WS, id)).toEqual({ status: "unchanged" });
   });
 });

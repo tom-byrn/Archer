@@ -10,9 +10,11 @@ import { SHAPES, isShape } from "./shapes";
 import { COLORS, isColor } from "./colors";
 import { messageConnection, sequenceRows } from "./sequence";
 import { VIEW_LABELS, allViews, placeableIds } from "./views";
+import { resolveFile } from "./files";
 import {
   pathToString,
   type ArchDoc,
+  type ComponentNode,
   type Diagnostic,
   type ItemNode,
   type PayloadNode,
@@ -414,6 +416,41 @@ export function validate(doc: ArchDoc, opts: ValidateOptions = {}): Diagnostic[]
       message: `Layout entry for '${e.node}' in view '${e.view}' does not match a node of that view (it will be dropped).`,
       span: e.span,
     });
+  }
+
+  // E403/E405: the files components keep their insides in (spec §2.2), as
+  // seen from a root file at the top of the folder.
+  {
+    const seen = new Map<string, string>();
+    const visit = (components: readonly ComponentNode[], path: string[], file: string) => {
+      for (const c of components) {
+        const p = [...path, c.id];
+        let inner = file;
+        if (c.use !== undefined) {
+          const target = resolveFile(file, c.use);
+          if (target === null || !c.use.endsWith(".arch")) {
+            diagnostics.push({
+              code: "E405",
+              severity: "error",
+              message: `Component '${p.join(".")}' uses '${c.use}': name an .arch file by a relative path inside the folder, like "./billing/billing.arch".`,
+              span: c.span,
+            });
+          } else if (seen.has(target)) {
+            diagnostics.push({
+              code: "E403",
+              severity: "error",
+              message: `Components '${seen.get(target)}' and '${p.join(".")}' both use ${target}: a file describes one component.`,
+              span: c.span,
+            });
+          } else {
+            seen.set(target, p.join("."));
+            inner = target;
+          }
+        }
+        visit(c.children, p, inner);
+      }
+    };
+    visit(doc.components, [], "document.arch");
   }
 
   return diagnostics;

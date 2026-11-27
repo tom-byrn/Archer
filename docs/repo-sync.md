@@ -40,6 +40,21 @@ problem); while there's something to publish it becomes the primary
 **Publish** button with the number of changes (**Create file** before the
 file exists). Its menu names the file, repository and branch.
 
+## Several files
+
+A document can keep the inside of a component in a file of its own (`use`,
+`import`; language spec §2.2), usually next to the code it describes. The
+document's file (`repo.path`) is then the root: Archer reads it and every file
+it reaches, puts them together, and syncs the whole as one document, so the
+rules below don't change. `repo.base.blob` identifies the set (each file's
+path and blob sha; just the blob sha for a single file), an import is
+credited to the newest commit among the files that changed, and a problem
+names the file it's in. Publishing splits the draft back into its files
+(`splitFiles`): one commit writes every file that changed, creates the ones a
+component started using, and deletes the ones nothing uses any more. In the
+editor, *Move to its own file…* on a component starts a file and *Move back
+inline* ends one; the code view has a tab per file.
+
 ## Keeping up with the branch
 
 Archer syncs a document when it's opened, when its tab regains focus (at most

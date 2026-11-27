@@ -348,6 +348,48 @@ export async function putFile(
   return { commit: data.commit.sha, blob: data.content.sha, url: data.commit.html_url };
 }
 
+/**
+ * Write several files (and delete some: `content: null`) in one commit on
+ * `branch`, on top of `parent` (the commit the change was planned against).
+ * Moving the branch isn't forced, so GitHub refuses with a conflict when the
+ * branch has moved on since `parent`. Returns the commit and each written
+ * file's blob sha.
+ */
+export async function commitFiles(
+  token: string | null,
+  owner: string,
+  name: string,
+  change: { branch: string; parent: string; message: string; files: { path: string; content: string | null }[] },
+): Promise<{ commit: string; url: string; blobs: Record<string, string> }> {
+  const repo = `/repos/${enc(owner)}/${enc(name)}`;
+  const blobs: Record<string, string> = {};
+  for (const f of change.files) {
+    if (f.content === null) continue;
+    const { data } = await github<{ sha: string }>(`${repo}/git/blobs`, token, {
+      method: "POST",
+      body: JSON.stringify({ content: toBase64(f.content), encoding: "base64" }),
+    });
+    blobs[f.path] = data.sha;
+  }
+  const parent = await github<{ tree: { sha: string } }>(`${repo}/git/commits/${enc(change.parent)}`, token);
+  const tree = await github<{ sha: string }>(`${repo}/git/trees`, token, {
+    method: "POST",
+    body: JSON.stringify({
+      base_tree: parent.data.tree.sha,
+      tree: change.files.map((f) => ({ path: f.path, mode: "100644", type: "blob", sha: f.content === null ? null : blobs[f.path] })),
+    }),
+  });
+  const commit = await github<{ sha: string; html_url: string }>(`${repo}/git/commits`, token, {
+    method: "POST",
+    body: JSON.stringify({ message: change.message, tree: tree.data.sha, parents: [change.parent] }),
+  });
+  await github(`${repo}/git/refs/heads/${encPath(change.branch)}`, token, {
+    method: "PATCH",
+    body: JSON.stringify({ sha: commit.data.sha, force: false }),
+  });
+  return { commit: commit.data.sha, url: commit.data.html_url, blobs };
+}
+
 export interface GitHubPull {
   number: number;
   url: string;

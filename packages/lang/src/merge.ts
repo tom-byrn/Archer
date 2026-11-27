@@ -81,7 +81,7 @@ const samePayloads = (a: PayloadNode[], b: PayloadNode[]): boolean => {
 };
 
 /** Own fields holding one string each; `src`, a list, merges beside them. */
-const OWN_FIELDS = ["name", "type", "shape", "icon", "color", "desc", "plane"] as const;
+const OWN_FIELDS = ["name", "type", "shape", "icon", "color", "desc", "plane", "use"] as const;
 const PLANE_FIELDS = ["name", "type", "desc", "plane"] as const;
 
 const samePlane = (a: PlaneNode, b: PlaneNode): boolean =>
@@ -163,6 +163,10 @@ function mergeComponent(
       if (r.value === undefined) delete merged[field];
       else merged[field] = r.value;
     }
+    // `import … as` goes with the file it names.
+    const imported = merged.use === undefined ? undefined : merged.use === t.use && merged.use !== o.use ? t.imported : o.imported;
+    if (imported) merged.imported = true;
+    else delete merged.imported;
     const src = merge3(b?.src, o.src, t.src, sameSources);
     if (src.conflict) conflicts.add("component", path, "changed src on both sides");
     if (src.value === undefined || src.value.length === 0) delete merged.src;

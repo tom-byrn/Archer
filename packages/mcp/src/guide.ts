@@ -231,6 +231,21 @@ that branch, is the source of truth:
 - \`update_project\` on such a project saves to its **unpublished draft**; a
   human publishes drafts back to the repository as a pull request. Use it
   only when you have no checkout of the repository.
+- A document can be **spread over several files** (spec §2.2): a component
+  whose body says \`use "./services/billing/billing.arch"\`, or
+  \`import "./services/billing/billing.arch" as billing\`, keeps its inside
+  in that file. Edit the file that holds what you're changing: the parts of
+  billing and the connections between them in \`billing.arch\` (paths there
+  are relative to billing: \`checkout -> ledger\`); a connection that leaves
+  billing in the file above, with full paths (\`billing.ledger -> db\`).
+  Paths never change. When one file grows past a few screens, give a part
+  its own file next to its code. \`archer check architecture.arch\` checks
+  every file it reaches.
+- Over MCP the files are put together: \`get_project\` and \`get_part\`
+  show a component that uses a file with its \`use\` (or as
+  \`import "…" as billing "Billing" { … }\`) and its contents inline. Keep
+  the \`use\`/\`import\` line when you edit; publishing writes each piece
+  back to its file.
 
 ### Link components to code
 - The \`src "…"\` field inside a component body records where it lives:
@@ -476,6 +491,11 @@ The full language specification is at the end of this guide. Key habits:
 | E101 | Connection endpoint, sequence participant, lane, \`of\` or \`on\` doesn't resolve, or is a plane | Declare the component, fix the path, or use a component on the plane |
 | E102 | A flow edge, transition or entity reference names something that isn't in its view | Declare the node, state, entity or field, or fix the id |
 | E201 | json/yaml/table payload doesn't parse | Fix the payload content |
+| E401 | A file named by \`use\` / \`import\` doesn't exist | Create it, or fix the relative path |
+| E402 | Files use each other in a loop | Remove one of the \`use\` lines |
+| E403 | One file used by two components | Give each component its own file |
+| E404 | A component that uses a file also declares parts inline (in a file on disk) | Move the parts into the used file |
+| E405 | A used file's path is absolute or leaves the repository | Use a relative path like \`./billing/billing.arch\` |
 | W301 | Unknown type tag (warning) | Optional: use a catalog tag or create a custom type |
 | W302 | Duplicate connection (warning) | Optional: remove one |
 | W303 | Layout entry for unknown path (warning) | Ignored; entry is dropped |

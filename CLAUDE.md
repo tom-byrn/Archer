@@ -193,6 +193,22 @@ Router + React Flow + Convex).
   one); anything else that isn't `#rrggbb` is `W306`. `toFlow` passes the
   resolved hex as `data.color`, beside the type's `accent`. The inspector's
   picker is `components/ColorPicker.tsx` ("Change color…" opens it).
+- Several files (spec §2.2): a component can keep its inside in another
+  `.arch` file (`use "./billing/billing.arch"` in its body, or
+  `import "./billing/billing.arch" as billing`). Everything in the app works
+  on the document put together (`expandFiles` in `packages/lang/src/files.ts`):
+  the component carries its contents inline *and* its `use`, so `splitFiles`
+  can write each piece back (a connection or view goes in the deepest file
+  that holds all of it; paths never change). `checkFiles` validates file by
+  file (the CLI's `check`/`push`/`pull` use it via `analyzeFiles` in
+  `mcp/src/analysis.ts`); `moveToFile`/`moveInline` re-point nested `use`
+  paths. Repo sync reads and publishes every file (`readDocFiles`,
+  `commitFiles` — one commit for many files; `repo.base.blob` is a
+  fingerprint of the set). Editor: the code view has a tab per file
+  (`CodePane`, root = `repo.path` or `architecture.arch`), nodes show a file
+  chip, the breadcrumb names the file, the inspector has "Stored in", and
+  "Move to its own file…" (`FileDialog`). Pasting a component drops its
+  `use` (the original keeps the file).
 - Planes and nesting (spec §3.1, §3.4, language v0.2): a `plane` is a titled
   region of a canvas, for readers only. It is transparent to paths (`api` on
   plane `backend` is still `api`), never a connection endpoint (`E101`), and

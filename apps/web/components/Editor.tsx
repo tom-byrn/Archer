@@ -55,14 +55,18 @@ import {
   findView,
   VIEW_LABELS,
   type ViewKind,
+  fileOf,
+  moveInline,
+  moveToFile,
 } from "@archer/lang";
+import { FileDialog, fileProblem, suggestFile } from "./FileDialog";
 import Link from "next/link";
 import { useAuth } from "@clerk/nextjs";
 import { lookupType } from "@archer/catalog";
 import { toFlow } from "@/lib/toFlow";
 import { fragmentSize, parseFragment } from "@/lib/clipboard";
 import { resolveDropTarget } from "@/lib/dropTarget";
-import { deriveDoc, useArchDoc } from "@/lib/useArchDoc";
+import { deriveDoc, useArchDoc, validateOptions } from "@/lib/useArchDoc";
 import type { UserLibrary } from "@/lib/userLibrary";
 import { useIsDark } from "@/lib/useIsDark";
 import type { Id } from "@/convex/_generated/dataModel";
@@ -388,6 +392,24 @@ function EditorView({ initialSource, library, session, tour }: EditorProps) {
   /** "New view…" is open, starting on this kind. */
   const [newView, setNewView] = useState<ViewKind | null>(null);
   const [codeOpen, setCodeOpen] = useState(false);
+  /** The file the code view shows, when the document is kept in several (null: the root). */
+  const [codeFile, setCodeFile] = useState<string | null>(null);
+  /**
+   * The document's root file (spec §2.2): its repository path when it's
+   * stored in one, else a name, so `use` paths have a folder to start from.
+   */
+  const rootFile = repo?.path ?? "architecture.arch";
+  const checkOptions = useMemo(() => validateOptions(customTags), [customTags]);
+  /** "Move to its own file…" is open for this component. */
+  const [fileFor, setFileFor] = useState<string | null>(null);
+  /** Show a file of the document's in the code view. */
+  const openFile = useCallback(
+    (file: string) => {
+      setCodeFile(file === rootFile ? null : file);
+      setCodeOpen(true);
+    },
+    [rootFile],
+  );
   // The component palette (left sidebar) starts closed every time the editor
   // opens, so the canvas gets the whole width until it's asked for.
   const [componentsOpen, setComponentsOpen] = useState(false);
@@ -1155,6 +1177,22 @@ function EditorView({ initialSource, library, session, tour }: EditorProps) {
     notify(`Moved ${nameOf(moved)} out of ${nameOf(parent)}`);
     goTo(moved.join("."));
   };
+  /** Keep a component's inside in a file of its own (spec §2.2). */
+  const keepInFile = (path: string, file: string) => {
+    if (mutate((d) => moveToFile(d, rootFile, path.split("."), file))) {
+      setFileFor(null);
+      notify(`Kept in ${file}`);
+    }
+  };
+  /** Bring a component's inside back into the file that declares it. */
+  const keepInline = (path: string) => {
+    const into = fileOf(derived.doc, rootFile, path.split("."));
+    if (mutate((d) => moveInline(d, rootFile, path.split(".")))) notify(`Moved back into ${into}`);
+  };
+  /** The file a component's inside is kept in, when it uses one. */
+  const fileFrom = (path: string): string | null =>
+    findComponent(derived.doc, path.split("."))?.use !== undefined ? fileOf(derived.doc, rootFile, [...path.split("."), "_"]) : null;
+
   const convertToPlane = (path: string) => {
     const plane = mutateWith((d) => {
       const r = componentToPlane(d, path.split("."));
@@ -1415,6 +1453,14 @@ function EditorView({ initialSource, library, session, tour }: EditorProps) {
             setPickerFor({ path: t.path, picker: "color" });
           },
         },
+        ...(editable
+          ? fileFrom(t.path)
+            ? [
+                { label: "Open file", hint: fileFrom(t.path)!, icon: <Icon.File />, onSelect: () => openFile(fileFrom(t.path)!) },
+                { label: "Move back inline", hint: `Into ${fileOf(derived.doc, rootFile, t.path.split("."))}`, icon: <Icon.Code />, onSelect: () => keepInline(t.path) },
+              ]
+            : [{ label: "Move to its own file…", icon: <Icon.File />, onSelect: () => setFileFor(t.path) }]
+          : []),
         ...(inside > 0
           ? [
               {
@@ -1814,6 +1860,17 @@ function EditorView({ initialSource, library, session, tour }: EditorProps) {
           library={library}
           onFeedback={stored ? () => setFeedbackOpen(true) : undefined}
         />
+        {fileFor !== null && findComponent(derived.doc, fileFor.split(".")) && (
+          <FileDialog
+            open
+            onClose={() => setFileFor(null)}
+            name={findComponent(derived.doc, fileFor.split("."))!.name ?? fileFor}
+            suggested={suggestFile(fileOf(derived.doc, rootFile, fileFor.split(".")), findComponent(derived.doc, fileFor.split("."))!)}
+            check={(f) => fileProblem(derived.doc, rootFile, f)}
+            onMove={(f) => keepInFile(fileFor, f)}
+            stored={repo?.path ? "repo" : "archer"}
+          />
+        )}
         <CodePane
           source={source}
           onChange={setSource}
@@ -1833,6 +1890,10 @@ function EditorView({ initialSource, library, session, tour }: EditorProps) {
                 : { kind: findPlane(derived.doc, path.split(".")) ? "plane" : "component", path },
             )
           }
+          rootFile={rootFile}
+          file={codeFile}
+          onFileChange={setCodeFile}
+          validateOptions={checkOptions}
         />
         <main className="relative flex min-w-0 flex-1 flex-col">
           {openSequence ? (
@@ -1885,6 +1946,17 @@ function EditorView({ initialSource, library, session, tour }: EditorProps) {
                   </button>
                 </span>
               ))}
+              {fileOf(derived.doc, rootFile, [...liveFocus, "_"]) !== rootFile && (
+                <button
+                  type="button"
+                  onClick={() => openFile(fileOf(derived.doc, rootFile, [...liveFocus, "_"]))}
+                  title="What's on this canvas is kept in this file: open it"
+                  className="mono ml-2 inline-flex h-5 shrink-0 items-center gap-1 rounded-full bg-accent-soft px-2 text-xs text-accent transition-opacity hover:opacity-80"
+                >
+                  <Icon.File className="h-3 w-3" />
+                  {fileOf(derived.doc, rootFile, [...liveFocus, "_"])}
+                </button>
+              )}
               <span className="ml-auto hidden items-center gap-1.5 pl-2 text-xs text-ink-3 md:flex">
                 <Kbd>esc</Kbd> up a level
               </span>
@@ -2135,6 +2207,14 @@ function EditorView({ initialSource, library, session, tour }: EditorProps) {
             repo={repo}
             pickerFor={pickerFor}
             onPickerOpened={pickerOpened}
+            files={{
+              fileOf: (p) => fileOf(derived.doc, rootFile, [...p, "_"]),
+              declaredIn: (p) => fileOf(derived.doc, rootFile, p),
+              open: openFile,
+              moveTo: setFileFor,
+              inline: keepInline,
+              ...(repo?.path ? { githubUrl: (f: string) => `https://github.com/${repo.owner}/${repo.name}/blob/${repo.branch}/${f}` } : {}),
+            }}
           />
         )}
       </div>
